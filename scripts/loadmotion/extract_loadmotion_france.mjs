@@ -46,7 +46,7 @@ async function loginWithCredentials(){
   const url=`${base}/v1/auth/signin`;
   const response=await fetch(url,{
     method:'POST',
-    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    headers:{'Content-Type':'application/json','Accept':'application/json','Tenant':tenant},
     body:JSON.stringify({email:loginId,password:loginPassword})
   });
   const txt=await response.text();
