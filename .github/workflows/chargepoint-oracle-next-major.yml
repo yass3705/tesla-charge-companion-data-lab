@@ -69,7 +69,7 @@ jobs:
             sid=val(r,'id_station_itinerance','id_station_itinerance') or eid
             if eid: by_evse[norm(eid)].append((r,c))
             by_station[sid].append((r,c))
-          exact=[]; exact_locations=set(); candidates=[]; ambiguities=[]
+          exact=[]; exact_locations=set(); candidates=[]; ambiguities=[]; nearby=[]
           for e in targets:
             eids=[norm(x.get('evseId')) for x in e.get('evses',[]) if x.get('evseId')]
             hits=[]; seen=set()
@@ -94,9 +94,17 @@ jobs:
             opts=sorted(unique.values(),key=lambda x:(x['distanceMeters'],-x['similarity']))
             if len(opts)==1: candidates.append({'electraLocationId':e['electraLocationId'],'name':e.get('name'),'address':e.get('address'),'city':e.get('city'),'postalCode':e.get('postalCode'),'operator':e.get('operator'),'candidate':opts[0]})
             elif len(opts)>1: ambiguities.append({'electraLocationId':e['electraLocationId'],'name':e.get('name'),'candidates':opts})
-          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'national':'QualiCharge/PAN latest endpoint with pinned fallback','electraResidualSnapshot':residual and json.load(open('electra-residuals.json')).get('generatedAt'),'matching':'exact normalized EVSE ID first; then single station <=15m and name/address similarity >=0.70; no automatic publication'},'coverage':{'chargePointResidualLocations':len(targets),'exactIdLocations':len(exact),'strictUniqueCandidates':len(candidates),'ambiguous':len(ambiguities),'unresolved':len(targets)-len(exact)-len(candidates)},'exact':exact,'strictCandidates':candidates,'ambiguous':ambiguities}
+            # Keep the nearest <=250 m station as an exploration lead even when it fails the strict gate.
+            allnear=[]
+            for sid,rows in by_station.items():
+              r,c=rows[0]; d=dist(ec,c)
+              if d<=250:
+                allnear.append({'stationId':sid,'distanceMeters':round(d,2),'similarity':round(sim((e.get('name') or '')+' '+(e.get('address') or ''),val(r,'nom_station','nom_amenageur','nom_enseigne')+' '+val(r,'adresse_station','adresse2_station')),3),'nationalCpo':val(r,'nom_operateur','nom_amenageur'),'nationalName':val(r,'nom_station','nom_amenageur'),'nationalEvseIds':[val(x,'id_pdc_itinerance') for x,_ in rows]})
+            if allnear:
+              nearby.append({'electraLocationId':e['electraLocationId'],'name':e.get('name'),'operator':e.get('operator'),'nearest':sorted(allnear,key=lambda x:(x['distanceMeters'],-x['similarity']))[:3]})
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'national':'QualiCharge/PAN latest endpoint with pinned fallback','electraResidualSnapshot':residual and json.load(open('electra-residuals.json')).get('generatedAt'),'matching':'exact normalized EVSE ID first; then single station <=15m and name/address similarity >=0.70; no automatic publication'},'coverage':{'chargePointResidualLocations':len(targets),'exactIdLocations':len(exact),'strictUniqueCandidates':len(candidates),'ambiguous':len(ambiguities),'nearbyLeadLocations':len(nearby),'unresolved':len(targets)-len(exact)-len(candidates)},'exact':exact,'strictCandidates':candidates,'ambiguous':ambiguities,'nearbyLeads':nearby}
           pathlib.Path('data/operator_direct/chargepoint_electra_crosswalk_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          pathlib.Path('reports/france/chargepoint/electra-crosswalk-summary.json').write_text(json.dumps({'source':out['source'],'coverage':out['coverage'],'sampleExact':exact[:10],'sampleCandidates':candidates[:10],'sampleAmbiguous':ambiguities[:5]},ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/chargepoint/electra-crosswalk-summary.json').write_text(json.dumps({'source':out['source'],'coverage':out['coverage'],'sampleExact':exact[:10],'sampleCandidates':candidates[:10],'sampleAmbiguous':ambiguities[:5],'sampleNearbyLeads':nearby[:20]},ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(out['coverage'],ensure_ascii=False))
           PY
       - name: Publish report
