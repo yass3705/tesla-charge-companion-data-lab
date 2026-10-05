@@ -7,6 +7,7 @@ import path from 'node:path';
 const OUT=process.argv[2]||'data/platforms/electra/france';
 const NATIONAL=process.argv[3]||'stable/v9-production-runtime/data/v9/france-static/all.json.gz';
 const ASSOCIATIONS=process.argv[4]||'data/platforms/electra/irve-associations-batch-01.json';
+const ASSOCIATION_DIR=process.argv[5]||'data/platforms/electra/irve-association-batches';
 const URL='https://emsp.go-electra.com/graphql';
 const PAGE_SIZE=100,CONCURRENCY=8,MAX_RETRIES=5,TILE=.5;
 await fs.mkdir(OUT,{recursive:true});
@@ -114,9 +115,19 @@ async function worker(){while(true){const i=next++;if(i>=totalPages)return;const
 await Promise.all(Array.from({length:CONCURRENCY},worker));
 if(failures.length)throw new Error(`Electra extraction has ${failures.length} failed pages; refusing snapshot`);
 
-const associationDocument=JSON.parse(fss.readFileSync(ASSOCIATIONS,'utf8'));
-if(associationDocument.schemaVersion!==1||!Array.isArray(associationDocument.associations))throw new Error('Invalid curated IRVE association document');
-const curatedAssociations=new Map(associationDocument.associations.map(a=>[String(a[0]),a]));
+const associationDocuments=[JSON.parse(fss.readFileSync(ASSOCIATIONS,'utf8'))];
+let associationPartFiles=[];
+try{associationPartFiles=(await fs.readdir(ASSOCIATION_DIR)).filter(name=>name.endsWith('.json')).sort();}
+catch(error){if(error?.code!=='ENOENT')throw error;}
+for(const file of associationPartFiles)associationDocuments.push(JSON.parse(fss.readFileSync(path.join(ASSOCIATION_DIR,file),'utf8')));
+if(associationDocuments.some(doc=>doc.schemaVersion!==1||doc.status!=='curated_location_associations'||!Array.isArray(doc.associations)))throw new Error('Invalid curated IRVE association document');
+const curatedAssociations=new Map();
+for(const doc of associationDocuments)for(const association of doc.associations){
+  const id=String(association[0]);
+  if(curatedAssociations.has(id))throw new Error('Duplicate Electra location in curated IRVE associations: '+id);
+  curatedAssociations.set(id,{association,document:doc});
+}
+const batchStats=new Map(associationDocuments.map(doc=>[doc.batch,{applied:0,conflicts:0}]));
 const exactClaims=new Map();
 for(const loc of locations)for(const evse of loc.evses||[]){
   const id=norm(evse?.evseId);
@@ -132,7 +143,8 @@ for(const x of locations){
   const cs=cpoSummary.get(cpo);cs.totalCompatibleLocations++;
   const reject=reason=>{reasons[reason]=(reasons[reason]||0)+1;cs.rejected[reason]=(cs.rejected[reason]||0)+1;residualLocations.push({electraLocationId:String(x.id),name:x.name||null,address:x.address||null,city:x.city||null,postalCode:x.postalCode||null,country:x.country||null,coordinates:x.coordinates||null,connectorTypes:x.connectorTypes||[],maxPower:x.maxPower??null,cpo,operator:x.operator?.name||null,reason,evses:(x.evses||[]).map(e=>({id:e.id||null,evseId:e.evseId||null,status:e.status||null,physicalReference:e.physicalReference||null}))});};
   const exact=[...new Set((x.evses||[]).map(e=>e?.evseId).filter(Boolean).filter(id=>nationalEvse.has(norm(id))))];
-  const override=curatedAssociations.get(String(x.id));
+  const associationMatch=curatedAssociations.get(String(x.id));
+  const override=associationMatch?.association,associationDocument=associationMatch?.document;
   let associatedIds=exact,identityMode='exact_national_irve_evse',associationEvidence=null;
   if(!exact.length&&override){
     const legacyShape=Array.isArray(override[1]);
@@ -147,8 +159,10 @@ for(const x of locations){
       associatedIds=candidateIds;identityMode='curated_irve_location';
       associationEvidence={batch:associationDocument.batch,distanceMeters:Number(override[distanceIndex]),nameAddressSimilarity:Number(override[similarityIndex])};
       stats.curatedLocationAssociations++;cs.curatedLocationAssociations++;
+      const batchStat=batchStats.get(associationDocument.batch);if(batchStat)batchStat.applied++;
     }else{
       stats.manualAssociationConflicts++;
+      const batchStat=batchStats.get(associationDocument.batch);if(batchStat)batchStat.conflicts++;
       if(exactConflict){reject('manual_irve_association_conflict');continue;}
     }
   }
@@ -176,7 +190,7 @@ for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0
   const [a,b]=id.slice(2).split('_').map(Number);
   manifestTiles.push({id,file,minLat:a*TILE,maxLat:(a+1)*TILE,minLon:b*TILE,maxLon:(b+1)*TILE,count:offers.length,bytes:gz.length,sha256:sha(gz)});
 }
-const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),associationBatches:[{batch:associationDocument.batch,cpoCounts:associationDocument.cpoCounts||{},candidateCount:associationDocument.candidateCount,ambiguousExcluded:associationDocument.ambiguousExcluded,collisionExcluded:associationDocument.collisionExcluded||0,applied:stats.curatedLocationAssociations,conflicts:stats.manualAssociationConflicts}],policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true},tiles:manifestTiles};
+const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),associationBatches:associationDocuments.map(doc=>({batch:doc.batch,cpoCounts:doc.cpoCounts||{},candidateCount:doc.candidateCount,ambiguousExcluded:doc.ambiguousExcluded||0,collisionExcluded:doc.collisionExcluded||0,applied:batchStats.get(doc.batch)?.applied||0,conflicts:batchStats.get(doc.batch)?.conflicts||0})),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true},tiles:manifestTiles};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 const residualGz=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,country:'FR',generatedAt:manifest.generatedAt,locations:residualLocations})),{level:9});
 await fs.writeFile(path.join(OUT,'residuals.json.gz'),residualGz);
