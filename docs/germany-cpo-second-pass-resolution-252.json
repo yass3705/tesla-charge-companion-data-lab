@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 252,
+  "date": "2026-10-05",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-251.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 258,
+    "partial": 333,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadt Glücksburg",
+      "status": "partial",
+      "coverage": {
+        "canonicalRawTariffSites": "10/10",
+        "canonicalEvseIds": "0",
+        "currentBNetzA": "10 sites / 21 charge points as of 2026-09-01"
+      },
+      "exactResidual": "eRound has tax-included QR tariff objects on all 10 canonical sites, but no EVSE IDs in the audit and current BNetzA denominator is 21 points including DC/HPC classes. Reconcile all 21 points/classes and applicable anonymous tariffs before promotion."
+    },
+    {
+      "cpo": "Schreinerhof Betriebs GmbH",
+      "status": "partial",
+      "coverage": {
+        "canonical": "1/1 site, 14 EVSE IDs",
+        "backend": "eRound"
+      },
+      "exactResidual": "eRound objects expose direct QR/card payment, taxIncluded=true and a 0.68 EUR/kWh + 1.00 EUR base profile on observed objects. External public inventories are inconsistent/older; no current first-party denominator corroboration found. Keep partial until current public EVSE denominator and all relevant classes are closed."
+    },
+    {
+      "cpo": "PMP Energie GmbH",
+      "status": "partial",
+      "coverage": {
+        "canonical": "1/1 site, 2 EVSE IDs",
+        "backend": "eRound"
+      },
+      "exactResidual": "Direct QR/card and taxIncluded=true are present, but multiple tariff objects on the same scope expose differing component sets, including 1.50 EUR basePrice on some variants. Resolve deterministic applicability before promotion."
+    },
+    {
+      "family": "chargecloud 100%-raw cohort",
+      "status": "partial-family",
+      "examples": [
+        "ServiceSTADTwerke GmbH & Co. KG",
+        "Carl Knauber Holding GmbH & Co. KG",
+        "Mecklenburgische Bäderbahn Molli GmbH"
+      ],
+      "exactResidual": "Detailed energy/start/blocking components exist at 100% raw-site coverage, but canonical chargecloud objects still expose payment=null and taxIncluded=null. Do not infer anonymous-ad-hoc or gross/VAT from raw tariff presence; require first-party or equivalent authoritative closure."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 258,
+    "partial": 333,
+    "blocked": 0
+  },
+  "indicator": "221 -> 258 complete (+37)",
+  "top5": {
+    "status": "parked/treated-fail-closed; unchanged",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda",
+      "amperio",
+      "50five"
+    ]
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "258 + 333 + 0 = 591",
+    "totalNamedCpos": 591,
+    "unsafeExtrapolations": 0,
+    "duplicateAliasChange": "none",
+    "antiStagnation": "new bounded gaps persisted after distinct eRound and chargecloud passes"
+  },
+  "nextSafeAction": "Move beyond the exhausted 100%-raw subset lacking semantic closure: target chargecloud CPOs with first-party ad-hoc/gross evidence (Ratingen profile), then Mobilithek/AFIR/DATEX B1/B3/B6."
+}
