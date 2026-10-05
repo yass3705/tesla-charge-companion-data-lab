@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 251,
+  "date": "2026-10-05",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-250.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 257,
+    "partial": 334,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Grünstrom Ladepark A44 GmbH",
+      "status": "complete",
+      "promotion": "partial->complete",
+      "coverage": {
+        "sites": "1/1",
+        "evse": "10/10",
+        "powerClass": "10 HPC CCS up to 400 kW"
+      },
+      "evidenceSummary": "Canonical eRound/AFIR has 100% site coverage and all 10 EVSE, taxIncluded=true and direct credit/debit-card payment. Current first-party operator site independently closes the denominator (one park, 10 charge points) and anonymous direct-payment semantics at 0.39 EUR/kWh without app/subscription, explicitly separated from third-party charging cards.",
+      "tariffProfile": "0.39 EUR/kWh direct ad-hoc; AFIR/eRound also carries 0.10 EUR/min from minute 60 capped at 17.85 EUR, tax included."
+    },
+    {
+      "cpo": "ecoCharge GmbH",
+      "status": "partial",
+      "coverage": {
+        "canonicalAudit": "1 site / 1 EVSE",
+        "currentExternalDiscovery": "2 stations / 6 charge points"
+      },
+      "exactResidual": "Denominator mismatch discovered. Do not promote from stale 1/1 canonical AFIR sample. Reconcile current ecoCharge inventory and direct tariff per EVSE before promotion."
+    },
+    {
+      "cpo": "PMP Energie GmbH",
+      "status": "partial",
+      "coverage": {
+        "sites": "1/1",
+        "evse": "2 canonical EVSE"
+      },
+      "exactResidual": "100% site coverage with taxIncluded and direct QR/card objects, but multiple tariff objects expose differing components (including basePrice 1.50 EUR on some variants). Need deterministic interpretation of applicable anonymous tariff per EVSE before promotion."
+    }
+  ],
+  "promotions": [
+    "Grünstrom Ladepark A44 GmbH"
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 258,
+    "partial": 333,
+    "blocked": 0
+  },
+  "indicator": "221 -> 258 complete (+37)",
+  "top5": {
+    "status": "parked after two evidence passes; unchanged"
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "258 + 333 + 0 = 591",
+    "totalNamedCpos": 591,
+    "unsafeExtrapolations": 0,
+    "denominatorGuard": "ecoCharge withheld after current inventory mismatch"
+  },
+  "nextSafeAction": "Continue remaining 100%-raw-AFIR cohort. Prioritize eRound operators with current denominator corroboration and explicit anonymous payment/tax/fees; keep chargecloud payment/tax-null cases partial unless first-party closes them."
+}
