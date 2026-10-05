@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-05",
+  "type": "treated-maintenance-gap-reduction-pass2",
+  "canonicalBusinessState": {
+    "batch": "batch609",
+    "treated": 100,
+    "setAside": 117,
+    "activeBusiness": 0,
+    "historicalResolvedSlots": 74,
+    "total": 291,
+    "businessUnresolvedAuthorities": 0,
+    "pendingDedupe": 0
+  },
+  "improvements": {
+    "driveco": {
+      "oldMisreadResidual": 3841,
+      "correctDirectScope": {
+        "drivecoNetworkRows": 1837,
+        "priced": 1595,
+        "residual": 242,
+        "coveragePct": 86.826
+      },
+      "partnerNetworkRowsExcluded": 3605,
+      "report": "reports/france/driveco/direct-scope-reconciliation.json",
+      "commit": "8f7c8880a90d710578943f96b0903cda9a124806"
+    },
+    "spieChargezy": {
+      "panRows": 291,
+      "exactDirectRows": 291,
+      "residual": 0,
+      "coveragePct": 100,
+      "runtimeOffers": 4,
+      "runtimeEvse": 291,
+      "artifact": "data/operator_direct/chargezy_te63_official_france.json",
+      "runtime": "v9-production-runtime/data/v9/france-chargezy-te63-offers.json",
+      "commit": "f1b9e761dffe3767ff0924cb10e6455ab85668f5"
+    },
+    "spieCurrentPan": {
+      "rows": 4563,
+      "rowsWithTariffReference": 4214,
+      "rowsWithoutTariffReference": 349,
+      "unresolvedAfterChargezy": {
+        "beziers": 58
+      },
+      "metropolisExact": {
+        "rows": 1950,
+        "exact": 1651,
+        "residual": 299
+      }
+    },
+    "bump": {
+      "franceStations": 1591,
+      "francePoints": 2480,
+      "rankablePoints": 2290,
+      "residual": 190,
+      "coveragePct": 92.339,
+      "runtimeOffers": 66,
+      "runtime": "v9-production-runtime/data/v9/france-bump-offers.json",
+      "runtimeCommit": "76d15076240a77a276c3a21d71440255c0649566"
+    },
+    "greenspot": {
+      "uniqueIrveEvses": 730,
+      "currentFirstPartyExactLiveMatches": 215,
+      "currentFirstPartyTariffRows": 215,
+      "unmatchedInventoryEvses": 515,
+      "siteErrors": 0,
+      "status": "partial-fail-closed; unmatched inventory is not eligible for tariff inheritance"
+    },
+    "delmonicos": {
+      "producerStations": 63,
+      "delmonicosOrneStations": 60,
+      "freshmileMigratedHomecourtStations": 3,
+      "residual": 0,
+      "report": "reports/fixed-tariff-refresh-france-delmonicos-latest.json",
+      "commit": "cd45b55d778ae5157904b24aad7d207994d7c069"
+    },
+    "reveo": {
+      "connectors": 1710,
+      "exactDirect": 1708,
+      "residual": 2,
+      "coveragePct": 99.883,
+      "status": "2 connectors have no active tariff in current official OCPI; remain fail-closed"
+    },
+    "loadMotion": {
+      "effectiveRefresh": false,
+      "reason": "Data Lab tenant secrets absent; last validated snapshot retained",
+      "yes55": {
+        "tested": 1135,
+        "priced": 253,
+        "noTariff": 361,
+        "empty": 521
+      },
+      "loadStations": {
+        "tested": 77,
+        "priced": 75,
+        "empty": 2
+      },
+      "mobisdec": {
+        "tested": 1261,
+        "priced": 1261
+      }
+    }
+  },
+  "remainingPriority": [
+    {
+      "authority": "YES55",
+      "kind": "coverage",
+      "reason": "882 tested rows have no retained exact tariff in last validated snapshot; live refresh blocked by absent Data Lab secret"
+    },
+    {
+      "authority": "Greenspot",
+      "kind": "inventory-reconciliation",
+      "reason": "515 FRGSP inventory EVSE are not present in the current first-party live portal result; no inheritance"
+    },
+    {
+      "authority": "SPIE CityNetworks / Metropolis",
+      "kind": "exact-overlay",
+      "reason": "299/1950 current Metropolis PAN rows remain outside exact numeric overlay"
+    },
+    {
+      "authority": "DRIVECO",
+      "kind": "direct-scope",
+      "reason": "242/1837 DRIVECO-network rows lack published direct tarification in current official inventory"
+    },
+    {
+      "authority": "Bump",
+      "kind": "exact-mapping",
+      "reason": "190/2480 France PDC remain non-rankable after station fallback"
+    },
+    {
+      "authority": "SPIE CityNetworks / Béziers",
+      "kind": "numeric-grid",
+      "reason": "58 PAN rows; official Orios CGAUV confirms network/rules but current numeric grid is not embedded in the CGAUV"
+    },
+    {
+      "authority": "WAAT",
+      "kind": "maintenance-source",
+      "reason": "current QualiCharge route returns 0 WAAT EVSE"
+    },
+    {
+      "authority": "Load Stations",
+      "kind": "small-residual",
+      "reason": "2/77 empty in last validated Load Motion snapshot; live refresh blocked by absent secret"
+    },
+    {
+      "authority": "REVEO",
+      "kind": "small-residual",
+      "reason": "2/1710 current official OCPI connectors have no active tariff"
+    }
+  ],
+  "runtimeReliability": {
+    "note": "Bump missing runtime source has been repaired. Chargezy TE63 added as a new exact direct runtime source. Other pre-existing registry entries with missing files remain maintenance gaps and must be compiled or deprecated explicitly, not silently ignored."
+  },
+  "policy": "No business authority reopened. treated remains a safe-method classification, not a 100%-priced claim. Exact CPO-direct -> Electra -> Electroverse -> unpriced; no tariff extrapolation.",
+  "reemploymentV8V9CpoDirect": "Reused validated DRIVECO inventory classification, SPIE/Orios network identity, Load Motion exact snapshots, Greenspot first-party live portal, Bump public direct GraphQL mapping, REVEO official OCPI, and Freshmile exact Homécourt migration. Electra/Electroverse remain roaming fallback only.",
+  "result": "PASS_MATERIAL_GAPS_REDUCED_AND_RESCOPED"
+}
