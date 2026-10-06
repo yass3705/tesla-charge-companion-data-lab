@@ -31,7 +31,7 @@ for(const target of targets){
     const batch=all.slice(index,index+5),query=`query Targeted { ${batch.map((pk,i)=>`s${i}:chargingLocation(pk:${JSON.stringify(pk)}){chargingLocationPk name address city coordinates operator{name}}`).join(' ')} }`;
     const response=await client.request(query,{}, {attempts:2});
     if(response.status!==200||response.json?.errors?.length){report.errors.push({target:target.id,batch,status:response.status,errors:(response.json?.errors||[]).map(e=>e.message)});continue;}
-    for(const [i,pk] of batch.entries()){const loc=response.json?.data?.[`s${i}`];if(!loc)continue;const distance=distanceM(target,loc.coordinates);if(distance!=null&&distance<=250)candidates.push({pk,distanceM:distance,name:loc.name,address:loc.address,city:loc.city,operator:loc.operator?.name,mapping:mapped.get(pk)||null});}
+    for(const [i,pk] of batch.entries()){const loc=response.json?.data?.[`s${i}`];if(!loc)continue;const distance=distanceM(target,loc.coordinates);if(distance!=null&&distance<=250)candidates.push({pk,distanceM:distance,name:loc.name,address:loc.address,city:loc.city,coordinates:loc.coordinates,operator:loc.operator?.name,mapping:mapped.get(pk)||null});}
     await sleep(500);
   }
   candidates.sort((a,b)=>a.distanceM-b.distanceM);
