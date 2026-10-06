@@ -5,6 +5,7 @@ import gzip
 import json
 import re
 import time
+import unicodedata
 import urllib.parse
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -37,6 +38,12 @@ def direct_texts(items):
             if isinstance(text, str) and text.strip() and text not in out:
                 out.append(text)
     return out
+
+
+def normalized_name(value):
+    value = unicodedata.normalize("NFKD", value or "")
+    value = "".join(ch for ch in value if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", "", value.lower())
 
 
 def main():
@@ -86,8 +93,9 @@ def main():
             ((distance_m(station["lat"], station["lon"], c["pos"][1], c["pos"][0]), c) for c in candidates),
             key=lambda x: x[0],
         )
-        if len(measured) != 1 or measured[0][0] > 100:
-            result["status"] = "ambiguous_or_distant_map_station"
+        same_name = len(measured) == 1 and normalized_name(measured[0][1]["detail"].get("name")) == normalized_name(station["name"])
+        if len(measured) != 1 or measured[0][0] > 750 or (measured[0][0] > 100 and not same_name):
+            result["status"] = "ambiguous_distant_or_name_mismatch"
             result["candidates"] = [{"mapId": c["mapId"], "distanceM": round(d, 1)} for d, c in measured]
             return result
         dist, match = measured[0]
