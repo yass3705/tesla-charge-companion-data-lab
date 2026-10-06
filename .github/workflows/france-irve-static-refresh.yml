@@ -9,6 +9,7 @@ on:
     paths:
       - ".github/workflows/france-irve-static-refresh.yml"
       - "scripts/france/build_france_irve_static_v9.py"
+      - "scripts/france/build_france_irve_dynamic_status_v9.py"
       - "scripts/france/audit_france_irve_residuals.py"
       - "data/platforms/electra/france/residuals.json.gz"
 
@@ -86,6 +87,10 @@ jobs:
             -o "$RUNNER_TEMP/france-irve/dynamic.csv" \
             'https://proxy.transport.data.gouv.fr/resource/consolidation-nationale-irve-dynamique'
           test -s "$RUNNER_TEMP/france-irve/dynamic.csv"
+          python scripts/france/build_france_irve_dynamic_status_v9.py \
+            --static-all data/national/france-irve-static-v9/all.json.gz \
+            --dynamic-csv "$RUNNER_TEMP/france-irve/dynamic.csv" \
+            --out data/national/france-irve-dynamic-status-v9.json.gz
           python scripts/france/audit_france_irve_residuals.py \
             --static-all data/national/france-irve-static-v9/all.json.gz \
             --static-manifest data/national/france-irve-static-v9/manifest.json \
@@ -100,7 +105,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/national/france-irve-static-v9 reports/france/irve/irve-residual-crosswalk-latest.json
+          git add data/national/france-irve-static-v9 data/national/france-irve-dynamic-status-v9.json.gz reports/france/irve/irve-residual-crosswalk-latest.json
           if git diff --cached --quiet; then
             echo 'No base or manifest changes to persist.'
             exit 0
