@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   probe:
@@ -25,6 +25,16 @@ jobs:
           node-version: '22'
       - name: Probe current location and tariffs near reported stations
         run: node scripts/electroverse_targeted_station_probe.mjs
+      - name: Validate and publish exact source joins
+        run: |
+          set -euo pipefail
+          python3 scripts/integrate_electroverse_targeted_probe.py
+          node scripts/electroverse_cache_audit.mjs
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/electroverse/irve_location_mapping.json data/electroverse/tariff_cache/manifest.json data/electroverse/tariff_cache/shard-089.json data/electroverse/tariff_cache/shard-093.json reports/electroverse/targeted-station-probe.json
+          git commit -m "data(electroverse): verify Lidl Dole and Electra Bois-d'Arcy prices"
+          git push origin HEAD:fix/electroverse-targeted-stations
       - name: Preserve evidence
         if: always()
         uses: actions/upload-artifact@v4
