@@ -1,12 +1,13 @@
 name: IZIVIA FAST national official tariff capture
 
 on:
+  schedule:
+    - cron: '17 6 * * 1'
   push:
     branches: [feat/izivia-fast-station-tariffs]
     paths:
       - scripts/izivia_fast_capture.py
       - scripts/build_izivia_fast_offers.py
-      - .github/workflows/izivia-fast-capture.yml
   workflow_dispatch:
 
 permissions:
@@ -22,7 +23,16 @@ jobs:
         run: python3 scripts/izivia_fast_capture.py
       - name: Build exact station and connector direct offers
         run: python3 scripts/build_izivia_fast_offers.py out/izivia-fast-national-capture.json.gz out/izivia-fast-direct-france.json
+      - name: Guard verified national coverage against tariff drift
+        run: |
+          python3 - <<'PY'
+          import json
+          p=json.load(open('out/izivia-fast-direct-france.json'))['policy']
+          assert p['pricedStations']>=616, f"FAST direct coverage dropped: {p['pricedStations']}"
+          assert set(x['stationId'] for x in p['excludedStations']) <= {'FRIZFPFAST339','FRIZFPFAST408','FRIZFPFAST560','FRIZFPFAST730'}, p['excludedStations']
+          PY
       - name: Publish immutable capture and coverage report on review branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/izivia-fast-station-tariffs'
         shell: bash
         run: |
           set -euo pipefail
@@ -39,5 +49,7 @@ jobs:
         if: always()
         with:
           name: izivia-fast-national-capture
-          path: out/izivia-fast-national-*
+          path: |
+            out/izivia-fast-national-*
+            out/izivia-fast-direct-france.json
           retention-days: 7
