@@ -1,5 +1,7 @@
 name: France Electra PAN exact tariff snapshot
 on:
+  schedule:
+    - cron: '17 3 * * 1' # Monday 03:17 UTC: refresh exact Electra app prices
   workflow_dispatch:
   push:
     branches: [main]
@@ -9,7 +11,7 @@ permissions:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - name: Match Electra public map to France PAN and fetch tariffs
@@ -19,7 +21,7 @@ jobs:
           mkdir -p reports/france/electra data/operator_direct /tmp/electra
           curl -fLsS --retry 3 'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz' -o /tmp/electra/all.json.gz
           python - <<'PY'
-          import requests,re,json,pathlib,html as htmllib,gzip,math,concurrent.futures,datetime
+          import requests,re,json,pathlib,html as htmllib,gzip,math,concurrent.futures,datetime,time
           s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
           page=s.get('https://stations.go-electra.com/fr',timeout=30).text
           sm=re.search(r'<script[^>]+id=["\']stations-data["\'][^>]*>(.*?)</script>',page,re.I|re.S)
@@ -39,6 +41,8 @@ jobs:
             ws={'id':str(sid),'name':p.get('name'),'lat':lat,'lon':lon,'country':p.get('country'),'city':p.get('city'),'postalCode':p.get('postalCode')}
             all_public.append(ws)
             if str(p.get('country','')).upper()=='FR': france_public.append(ws)
+          if len(france_public)<350:
+            raise RuntimeError(f'Electra official map unexpectedly small: {len(france_public)} FR stations')
           # V9 compact station schema: [stationId,name,address,lat,lon,operator,pdcCount,hoursOr0,powerGroups,date,sourceName]
           rows=json.loads(gzip.open('/tmp/electra/all.json.gz','rt',encoding='utf-8').read())
           pan=[]
@@ -73,15 +77,36 @@ jobs:
               return {'station':ws,'status':rr.status_code,'location':loc,'errors':(j or {}).get('errors') if isinstance(j,dict) else None}
             except Exception as e:return {'station':ws,'error':str(e)}
           stations=[]
-          with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
+          with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
             for r in ex.map(fetch_one,france_public): stations.append(r)
+          # Retry rate-limited or incomplete locations serially before publishing.
+          recovered=0
+          for row in stations:
+            if (row.get('location') or {}).get('chargeTariffs'): continue
+            sid=row['station']['id']
+            for attempt in range(1,6):
+              try:
+                rr=s.post(endpoint,json={'query':gql,'variables':{'locationId':sid}},timeout=25)
+                payload=rr.json() if rr.ok else None
+                loc=(payload or {}).get('data',{}).get('location') if isinstance(payload,dict) else None
+                if loc and loc.get('chargeTariffs'):
+                  row.update({'status':rr.status_code,'location':loc,'errors':(payload or {}).get('errors')})
+                  row.pop('error',None)
+                  recovered+=1
+                  break
+                row.update({'status':rr.status_code,'errors':(payload or {}).get('errors') if isinstance(payload,dict) else None})
+              except Exception as exc:
+                row['error']=str(exc)
+              time.sleep((2 if row.get('status')==429 else .6)*attempt)
+            time.sleep(.25)
           ok=[x for x in stations if x.get('location')]
           priced=[x for x in ok if (x.get('location') or {}).get('chargeTariffs')]
-          out={'schemaVersion':'1.1.0','dataset':'electra-exact-france-public','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'country':'FR','operator':'Electra','sources':{'officialPublicMap':'https://stations.go-electra.com/fr','publicGraphql':endpoint,'panV9':'tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz'},'coverage':{'panElectraStations':len(pan),'publicMapStationsEurope':len(all_public),'officialPublicMapStationsFR':len(france_public),'panRowsMatchedToOfficialMap':len(pan_matches),'uniqueOfficialStationsMatchedFromPAN':len(matched),'unmatchedPanRows':len(unmatched_pan),'graphqlOk':len(ok),'stationsWithChargeTariffs':len(priced)},'panMatches':pan_matches,'unmatchedPanRows':unmatched_pan,'stations':stations}
-          pathlib.Path('reports/france/electra/pan-exact-tariff-snapshot.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          out={'schemaVersion':'1.1.0','dataset':'electra-exact-france-public','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'country':'FR','operator':'Electra','sources':{'officialPublicMap':'https://stations.go-electra.com/fr','publicGraphql':endpoint,'panV9':'tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz'},'coverage':{'panElectraStations':len(pan),'publicMapStationsEurope':len(all_public),'officialPublicMapStationsFR':len(france_public),'panRowsMatchedToOfficialMap':len(pan_matches),'uniqueOfficialStationsMatchedFromPAN':len(matched),'unmatchedPanRows':len(unmatched_pan),'graphqlOk':len(ok),'stationsWithChargeTariffs':len(priced),'rateLimitRecoveredThisRun':recovered,'remainingWithoutTariffs':len(stations)-len(priced)},'panMatches':pan_matches,'unmatchedPanRows':unmatched_pan,'stations':stations}
           # Official map is authoritative for Electra-direct station scope. Publish fail-closed only when almost every official FR station answers GraphQL.
-          if len(france_public)>=350 and len(ok)>=int(.98*len(france_public)) and len(priced)>=int(.95*len(france_public)):
-            pathlib.Path('data/operator_direct/electra_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          if len(ok)<int(.98*len(france_public)) or len(priced)<int(.95*len(france_public)):
+            raise RuntimeError(f'Electra price coverage too low: {len(priced)}/{len(france_public)}; previous published snapshot retained')
+          pathlib.Path('reports/france/electra/pan-exact-tariff-snapshot.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('data/operator_direct/electra_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps({'coverage':out['coverage'],'samplePriced':[{'station':x['station'],'tariffs':x['location'].get('chargeTariffs')} for x in priced[:8]],'unmatchedPanSample':unmatched_pan[:8]},ensure_ascii=False,indent=2)[:50000])
           PY
       - name: Publish
