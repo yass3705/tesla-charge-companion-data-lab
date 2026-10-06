@@ -182,6 +182,8 @@ jobs:
         if: success() && github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
+          git fetch origin main
+          git checkout --detach origin/main
           python - <<'PY'
           import json, shutil
           from pathlib import Path
