@@ -129,11 +129,19 @@ def main():
         "unmatchedMapCodes": sorted(set(by_code) - set(fast)),
         "exceptions": [{"stationId": row["stationId"], "status": row["status"]} for row in rows if row["status"] != "direct_price_published"],
     }
+    dole = next(row for row in rows if row["stationId"] == "FRIZFPFAST422")
+    summary["doleMapDetail"] = dole.get("mapDetail")
+    summary["exceptionDetails"] = [
+        {"stationId": row["stationId"], "name": row["name"], "candidates": row.get("candidates")}
+        for row in rows if row["status"] != "direct_price_published"
+    ]
     OUTPUT.parent.mkdir(exist_ok=True)
     with gzip.open(OUTPUT, "wt", encoding="utf-8") as file:
         json.dump({"summary": summary, "stations": rows}, file, ensure_ascii=False, separators=(",", ":"))
     SUMMARY.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
-    print(json.dumps({k: v for k, v in summary.items() if k not in ("detailFailures", "exceptions", "unmatchedMapCodes")}, ensure_ascii=False, indent=2))
+    print(json.dumps({k: v for k, v in summary.items() if k not in ("detailFailures", "exceptions", "unmatchedMapCodes", "doleMapDetail", "exceptionDetails")}, ensure_ascii=False, indent=2))
+    print("DOLE_DETAIL", json.dumps(dole.get("mapDetail"), ensure_ascii=False)[:12000])
+    print("EXCEPTION_DETAILS", json.dumps(summary["exceptionDetails"], ensure_ascii=False)[:16000])
     print("EXCEPTIONS", json.dumps(summary["exceptions"], ensure_ascii=False))
     if len(rows) != len(fast):
         raise RuntimeError("National FAST capture lost station rows")
