@@ -118,16 +118,55 @@ def build(capture):
     }
 
 
+def build_inventory(capture):
+    stations = []
+    for row in capture["stations"]:
+        if row.get("status") != "direct_price_published":
+            continue
+        sid = row["stationId"]
+        detail = row.get("mapDetail") or {}
+        evses = []
+        for stat in detail.get("chargingConnectorsStats") or []:
+            config = connector_config(stat)
+            if config is None:
+                continue
+            kind, power = config
+            standard = str(stat["standard"]).lower()
+            count = int(stat["totalConnectorCount"])
+            evse_id = f"izivia-map-{standard}-{str(power).replace('.', '_')}"
+            evses.append({"id": evse_id, "stalls": count,
+                          "connectors": [{"id": f"{evse_id}:connector", "kind": kind, "powerKw": power}]})
+        if not evses:
+            continue
+        stations.append({
+            "canonicalId": f"FR:national:{sid}", "sourceStationId": sid, "countryCode": "FR",
+            "name": row["name"], "address": row["address"], "latitude": row["lat"], "longitude": row["lon"],
+            "physicalOperator": {"name": "IZIVIA"}, "networkBrand": "IZIVIA FAST",
+            "evses": evses, "updatedAt": capture["summary"]["capturedAt"],
+        })
+    return {"schemaVersion": 1, "country": "FR", "sourceSnapshotAt": capture["summary"]["capturedAt"],
+            "mode": "exact_station_official_map_connector_correction",
+            "policy": {"exactNationalStationIdsOnly": True, "mapOnlyStationsExcluded": True,
+                       "pdcIdsNotInferred": True, "connectorCountsFromOfficialMap": True},
+            "stations": stations}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("capture", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--inventory-output", type=Path)
     args = parser.parse_args()
     with gzip.open(args.capture, "rt", encoding="utf-8") as file:
         capture = json.load(file)
     offers = build(capture)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(offers, ensure_ascii=False, indent=2) + "\n")
+    if args.inventory_output:
+        inventory = build_inventory(capture)
+        args.inventory_output.parent.mkdir(parents=True, exist_ok=True)
+        args.inventory_output.write_text(json.dumps(inventory, ensure_ascii=False, indent=2) + "\n")
+        print(json.dumps({"officialConnectorInventoryStations": len(inventory["stations"])}, ensure_ascii=False))
     print(json.dumps({"pricedStations": offers["policy"]["pricedStations"],
                       "excludedStations": offers["policy"]["excludedStations"],
                       "mapOnlyStations": offers["policy"]["mapOnlyStationsWithoutNationalInventory"],
