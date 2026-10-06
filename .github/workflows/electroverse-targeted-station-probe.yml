@@ -1,0 +1,34 @@
+name: Electroverse targeted station evidence
+
+on:
+  push:
+    branches:
+      - fix/electroverse-targeted-stations
+    paths:
+      - scripts/electroverse_targeted_station_probe.mjs
+      - .github/workflows/electroverse-targeted-station-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe current location and tariffs near reported stations
+        run: node scripts/electroverse_targeted_station_probe.mjs
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-targeted-stations
+          path: reports/electroverse/targeted-station-probe.json
+          if-no-files-found: warn
