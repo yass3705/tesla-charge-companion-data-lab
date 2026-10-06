@@ -6,10 +6,19 @@ on:
   schedule:
     - cron: "37 6 * * *"
   push:
-    branches: ["main"]
+    branches: ["main", "feat/izivia-fast-station-tariffs"]
     paths:
       - "scripts/izivia_official.py"
+      - "scripts/izivia_station_tariffs.py"
+      - "scripts/izivia_fast_probe.py"
+      - "scripts/test_izivia_station_tariffs.py"
       - "scripts/public_safety_check.py"
+      - ".github/workflows/izivia-official-tariffs.yml"
+  pull_request:
+    paths:
+      - "scripts/izivia_station_tariffs.py"
+      - "scripts/izivia_fast_probe.py"
+      - "scripts/test_izivia_station_tariffs.py"
       - ".github/workflows/izivia-official-tariffs.yml"
 
 permissions:
@@ -45,7 +54,7 @@ jobs:
           cat out/izivia/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish sanitized diagnostic after extraction failure
-        if: failure() && steps.extract.outcome == 'failure'
+        if: failure() && steps.extract.outcome == 'failure' && github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
           test -f out/izivia/DIAGNOSTIC.json || exit 0
@@ -126,7 +135,7 @@ jobs:
           python scripts/public_safety_check.py .
 
       - name: Commit validated IZIVIA rule set
-        if: success() && steps.publish.outputs.changed == '1'
+        if: success() && steps.publish.outputs.changed == '1' && github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -134,3 +143,73 @@ jobs:
           git add data/operator_direct/izivia_official_france.json reports/izivia/latest_summary.md
           git commit -m "data(izivia): publish official tariff families [run ${GITHUB_RUN_ID}]"
           git push origin HEAD:main
+
+  station-tariffs:
+    # The daily network-page check and station-card check are independent. This
+    # still runs when extraction of a general tariff page needs attention.
+    needs: check
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Capture official FAST and Express direct station tariffs
+        run: |
+          python -m unittest discover -s scripts -p 'test_izivia_station_tariffs.py'
+          python -m py_compile scripts/izivia_station_tariffs.py scripts/izivia_fast_probe.py
+          python scripts/izivia_station_tariffs.py
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          data=json.load(open('out/izivia-station-tariffs-latest.json'))
+          changes=json.load(open('out/izivia-station-tariff-changes.json'))['changes']
+          print('## IZIVIA FAST and Express official station cards')
+          for network,summary in data['summary'].items():
+              change=changes[network]
+              print(f"- {network}: {summary['mapStations']} map stations, {summary['withDirectPrice']} with direct prices; "
+                    f"{len(change['tariffChangedMapIds'])} changed tariffs, {len(change['addedMapIds'])} added, "
+                    f"{len(change['removedMapIds'])} removed.")
+          print(f"- Semantic SHA-256: `{data['semanticSha256']}`")
+          PY
+
+      - name: Public-safety scan
+        if: success()
+        run: python scripts/public_safety_check.py .
+
+      - name: Publish changed station tariff cards to Data Lab
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          source=Path('out/izivia-station-tariffs-latest.json')
+          target=Path('data/operator_direct/izivia_station_tariffs_latest.json')
+          new=json.loads(source.read_text())
+          old=json.loads(target.read_text()) if target.exists() else None
+          if old and old.get('semanticSha256') == new['semanticSha256']:
+              Path('out/izivia-station-changed.flag').write_text('0')
+              print('No station or direct-tariff change')
+          else:
+              shutil.copy2(source,target)
+              Path('out/izivia-station-changed.flag').write_text('1')
+              print('Validated station-level FAST/Express change prepared')
+          PY
+          if [ "$(cat out/izivia-station-changed.flag)" = 1 ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add data/operator_direct/izivia_station_tariffs_latest.json
+            git commit -m "data(izivia): refresh FAST and Express station tariffs [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: izivia-fast-express-station-tariffs
+          path: out/izivia-station-*.json
+          if-no-files-found: ignore
+          retention-days: 14
