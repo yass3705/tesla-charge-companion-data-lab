@@ -76,7 +76,7 @@ def main():
         )[:4]
         candidates = []
         for distance, marker in nearby:
-            if distance > 250:
+            if distance > 800:
                 continue
             status, detail = request(f"charging-locations/{marker['id']}", "POST", {"filters": FILTERS})
             item = {"mapId": marker["id"], "distanceM": round(distance, 1), "detailStatus": status}
