@@ -1,0 +1,27 @@
+name: IZIVIA FAST national official tariff capture
+
+on:
+  push:
+    branches: [feat/izivia-fast-station-tariffs]
+    paths:
+      - scripts/izivia_fast_capture.py
+      - .github/workflows/izivia-fast-capture.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture exact national FAST tariff facts
+        run: python3 scripts/izivia_fast_capture.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: izivia-fast-national-capture
+          path: out/izivia-fast-national-*
+          retention-days: 7
