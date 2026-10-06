@@ -1,0 +1,27 @@
+name: IZIVIA FAST exact station tariff probe
+
+on:
+  push:
+    branches: [feat/izivia-fast-station-tariffs]
+    paths:
+      - scripts/izivia_fast_probe.py
+      - .github/workflows/izivia-fast-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture exact FAST tariffs from official map
+        run: python3 scripts/izivia_fast_probe.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: izivia-fast-probe
+          path: out/izivia-fast-probe.json
+          retention-days: 7
