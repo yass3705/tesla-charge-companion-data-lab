@@ -63,7 +63,7 @@ def capture_network(network, spec, workers, minimum=None):
     if status != 200 or not isinstance(markers, list):
         raise RuntimeError(f"{network}: marker request failed (HTTP {status})")
     if minimum is None:
-        minimum = 600 if network == "IZIVIA FAST" else 150
+        minimum = 665 if network == "IZIVIA FAST" else 155
     if len(markers) < minimum:
         raise RuntimeError(f"{network}: only {len(markers)} markers, expected at least {minimum}")
     ids = [m.get("id") for m in markers if isinstance(m, dict)]
