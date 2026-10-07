@@ -1,0 +1,43 @@
+name: Probe failed public tariff feeds
+on:
+  push:
+    branches: [codex/probe-failed-feeds-20261007]
+    paths:
+      - ".github/workflows/probe-failed-feeds-20261007.yml"
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Probe public endpoints without credentials
+        shell: bash
+        run: |
+          set -u
+          urls=(
+            'https://char.gy/open-ocpi/locations?limit=20&offset=0'
+            'https://char.gy/open-ocpi/locations?limit=20&offset=5400'
+            'https://char.gy/open-ocpi/locations?limit=20&offset=5420'
+            'https://char.gy/open-ocpi/locations?limit=50&offset=5400'
+            'https://char.gy/open-ocpi/locations?limit=100&offset=5400'
+            'https://char.gy/open-ocpi/tariffs?limit=20&offset=0'
+            'https://cpo-api.gozerocharge.com/api/v1/ocpi/2.2.1/locations'
+            'https://cpo-api.gozerocharge.com/api/v1/ocpi/versions'
+            'https://cpo-api.gozerocharge.com/ocpi/versions'
+            'https://api.gozerocharge.com/api/v1/ocpi/2.2.1/locations'
+            'https://chargingservices.totalenergies.com/fr/find-a-charger?countryCode=NL'
+            'https://chargingservices.totalenergies.com/nl/find-a-charger?countryCode=NL'
+            'https://chargingservices.totalenergies.com/'
+          )
+          for url in "${urls[@]}"; do
+            printf '\nURL %s\n' "$url"
+            curl --location --silent --show-error --max-time 18 \
+              --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36' \
+              --header 'Accept: application/json,text/html;q=0.9,*/*;q=0.8' \
+              --dump-header /tmp/probe-headers --output /tmp/probe-body \
+              --write-out 'HTTP=%{http_code} BYTES=%{size_download} FINAL=%{url_effective}\n' "$url" || true
+            grep -Ei '^(content-type|location|link|x-total-count|retry-after|server):' /tmp/probe-headers | tail -8 || true
+            head -c 120 /tmp/probe-body | tr '\n' ' ' || true
+            printf '\n'
+          done
