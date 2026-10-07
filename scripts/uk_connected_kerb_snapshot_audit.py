@@ -46,11 +46,14 @@ def main():
     tariff_map = {tariff["id"]: tariff for tariff in tariffs}
     connectors = {c["id"]: c for loc in public for evse in loc["evses"] for c in evse["connectors"]}
     missing = sorted({tid for c in connectors.values() for tid in c.get("tariff_ids", []) if tid not in tariff_map})
-    excluded, eligible = [], []
+    excluded, eligible, empty_stations, partial_stations = [], [], [], []
     for loc in public:
-        reasons = set()
+        kept_evses = []
+        station_exclusions = 0
         for evse in loc["evses"]:
+            kept_connectors = []
             for conn in evse["connectors"]:
+                reasons = set()
                 refs = set(conn.get("tariff_ids", conn.get("tariif_ids", [])))
                 if len(refs) != 1:
                     reasons.add("multiple_or_missing_tariff_references")
@@ -62,24 +65,37 @@ def main():
                     reasons.add("additional_fees_without_conditions")
                 if refs - tariff_map.keys():
                     reasons.add("unresolved_tariff_reference")
-        if loc["id"] in conflicts:
-            reasons.add("conflicting_location_records")
-        if reasons:
-            excluded.append({"id": loc["id"], "name": loc.get("name"), "reasons": sorted(reasons)})
+                if loc["id"] in conflicts:
+                    reasons.add("conflicting_location_records")
+                if reasons:
+                    station_exclusions += 1
+                    excluded.append({"stationId": loc["id"], "stationName": loc.get("name"),
+                                     "evseUid": evse["uid"], "evseId": evse.get("evse_id"),
+                                     "connectorId": conn["id"], "reasons": sorted(reasons)})
+                else:
+                    kept_connectors.append(conn)
+            if kept_connectors:
+                kept_evses.append({**evse, "connectors": kept_connectors})
+        if kept_evses:
+            eligible.append({**loc, "evses": kept_evses})
+            if station_exclusions:
+                partial_stations.append(loc["id"])
         else:
-            eligible.append(loc)
+            empty_stations.append(loc["id"])
     policy = {
         "provider": "Connected Kerb", "snapshotCollectedAt": source["collectedAt"],
-        "rule": "Exclude the entire station when any connector has ambiguous price applicability; retain raw source data.",
-        "excludedStationCount": len(excluded), "priceUnambiguousStationCount": len(eligible),
-        "excludedStations": excluded,
+        "rule": "Exclude only ambiguous connectors; retain other EVSEs/connectors at the same station. Omit a station only when no connector remains. Raw source is retained.",
+        "excludedConnectorCount": len(excluded), "excludedStationCount": len(empty_stations),
+        "priceUnambiguousStationCount": len(eligible), "partiallyRetainedStationCount": len(partial_stations),
+        "excludedStationIds": empty_stations, "partiallyRetainedStationIds": partial_stations,
+        "excludedConnectors": excluded,
         "eligibleDataset": "data/national/uk_connected_kerb_price_unambiguous_locations.json.gz",
         "note": "Price-unambiguous does not assert retail/ad-hoc scope or public access; those validations remain required before V9 publication.",
     }
     (ROOT / "reports/uk/connected-kerb-price-exclusions-latest.json").write_text(json.dumps(policy, indent=2) + "\n")
     with gzip.open(ROOT / policy["eligibleDataset"], "wt", encoding="utf-8") as f:
         json.dump({"source": "Connected Kerb operator API", "collectedAt": source["collectedAt"],
-                   "priceAmbiguousStationsExcluded": True, "locations": eligible}, f, separators=(",", ":"))
+                   "priceAmbiguousConnectorsExcluded": True, "locations": eligible}, f, separators=(",", ":"))
     audit = {
         "provider": "Connected Kerb", "snapshotCollectedAt": source["collectedAt"],
         "rawLocationRows": len(source["locations"]), "distinctLocationIds": len(unique),
@@ -98,7 +114,9 @@ def main():
         "scope": "publish=true is a source flag; public access, planned/removed EVSEs and concessions still need publication filtering",
         "pricingBlocker": "Tariff objects lack type/name/restrictions; multiple ENERGY prices and multiple tariff references cannot be assigned to retail/ad-hoc or time windows without further operator clarification.",
         "publishedToV9": False,
-        "priceAmbiguousStationsExcluded": len(excluded),
+        "priceAmbiguousStationsExcluded": len(empty_stations),
+        "priceAmbiguousConnectorsExcluded": len(excluded),
+        "partiallyRetainedStations": len(partial_stations),
         "priceUnambiguousStations": len(eligible),
         "exclusionPolicy": "reports/uk/connected-kerb-price-exclusions-latest.json",
     }
