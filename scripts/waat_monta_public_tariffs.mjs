@@ -20,7 +20,7 @@ let apiHeaders=null,observedMapUrl=null;
 page.on('request',async req=>{
   if(apiHeaders||!req.url().includes('api.monta.app/api/v1/charge_points/map')) return;
   const h=await req.allHeaders();
-  const keep=['authorization','operator','application','application-version','accept','accept-language'];
+  const keep=['authorization','operator','application','application-version','meta','accept','accept-language'];
   const picked=Object.fromEntries(keep.filter(k=>h[k]).map(k=>[k,h[k]]));
   if(picked.authorization){ apiHeaders=picked; observedMapUrl=req.url(); }
 });
