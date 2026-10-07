@@ -1,7 +1,7 @@
 name: France Electra PAN exact tariff snapshot
 on:
   schedule:
-    - cron: '17 3 * * 1' # Monday 03:17 UTC: refresh exact Electra app prices
+    - cron: '17 3 * * *' # Daily 03:17 UTC, after the PAN static refresh
   workflow_dispatch:
   push:
     branches: [main]
@@ -14,12 +14,14 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Match Electra public map to France PAN and fetch tariffs
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p reports/france/electra data/operator_direct /tmp/electra
-          curl -fLsS --retry 3 'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz' -o /tmp/electra/all.json.gz
+          cp data/national/france-irve-static-v9/all.json.gz /tmp/electra/all.json.gz
           python - <<'PY'
           import requests,re,json,pathlib,html as htmllib,gzip,math,concurrent.futures,datetime,time
           s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
@@ -101,7 +103,7 @@ jobs:
             time.sleep(.25)
           ok=[x for x in stations if x.get('location')]
           priced=[x for x in ok if (x.get('location') or {}).get('chargeTariffs')]
-          out={'schemaVersion':'1.1.0','dataset':'electra-exact-france-public','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'country':'FR','operator':'Electra','sources':{'officialPublicMap':'https://stations.go-electra.com/fr','publicGraphql':endpoint,'panV9':'tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz'},'coverage':{'panElectraStations':len(pan),'publicMapStationsEurope':len(all_public),'officialPublicMapStationsFR':len(france_public),'panRowsMatchedToOfficialMap':len(pan_matches),'uniqueOfficialStationsMatchedFromPAN':len(matched),'unmatchedPanRows':len(unmatched_pan),'graphqlOk':len(ok),'stationsWithChargeTariffs':len(priced),'rateLimitRecoveredThisRun':recovered,'remainingWithoutTariffs':len(stations)-len(priced)},'panMatches':pan_matches,'unmatchedPanRows':unmatched_pan,'stations':stations}
+          out={'schemaVersion':'1.1.0','dataset':'electra-exact-france-public','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'country':'FR','operator':'Electra','sources':{'officialPublicMap':'https://stations.go-electra.com/fr','publicGraphql':endpoint,'panV9':'tesla-charge-companion-data-lab/main/data/national/france-irve-static-v9/all.json.gz'},'coverage':{'panElectraStations':len(pan),'publicMapStationsEurope':len(all_public),'officialPublicMapStationsFR':len(france_public),'panRowsMatchedToOfficialMap':len(pan_matches),'uniqueOfficialStationsMatchedFromPAN':len(matched),'unmatchedPanRows':len(unmatched_pan),'graphqlOk':len(ok),'stationsWithChargeTariffs':len(priced),'rateLimitRecoveredThisRun':recovered,'remainingWithoutTariffs':len(stations)-len(priced)},'panMatches':pan_matches,'unmatchedPanRows':unmatched_pan,'stations':stations}
           # Official map is authoritative for Electra-direct station scope. Publish fail-closed only when almost every official FR station answers GraphQL.
           if len(ok)<int(.98*len(france_public)) or len(priced)<int(.95*len(france_public)):
             raise RuntimeError(f'Electra price coverage too low: {len(priced)}/{len(france_public)}; previous published snapshot retained')

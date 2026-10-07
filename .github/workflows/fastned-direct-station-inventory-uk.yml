@@ -1,6 +1,8 @@
 name: Fastned Direct station inventory UK
 
 on:
+  schedule:
+    - cron: "13 6 * * *"
   push:
     branches: ["main"]
     paths:
@@ -31,8 +33,12 @@ jobs:
           assert p["operator"]=="Fastned" and p["country"]=="GB"
           assert p["counts"]["ukLocationCount"]>=10
           assert all(x["country"]=="GB" for x in p["locations"])
-          assert all(abs(x["stationStandardGbpPerKwh"]-0.79)<0.001 for x in p["locations"])
-          assert all(abs(x["stationGoldGbpPerKwh"]-0.55)<0.001 for x in p["locations"])
+          profiles={x["id"]:x for x in p["pricingProfiles"]}
+          standard=profiles["fastned-standard"]["pricePerKwhGbp"]
+          gold=profiles["fastned-gold"]["pricePerKwhGbp"]
+          assert standard>0 and gold>0 and gold<standard
+          assert all(abs(x["stationStandardGbpPerKwh"]-standard)<0.001 for x in p["locations"])
+          assert all(abs(x["stationGoldGbpPerKwh"]-gold)<0.001 for x in p["locations"])
           assert p["scope"]["partnerOperatorLocationsIncluded"] is False
           print(p["counts"])
           PY
