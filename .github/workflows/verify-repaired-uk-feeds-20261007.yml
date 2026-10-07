@@ -1,0 +1,32 @@
+name: Verify repaired UK feeds
+on:
+  push:
+    branches: [codex/repair-uk-open-feeds-20261007]
+    paths:
+      - ".github/workflows/verify-repaired-uk-feeds-20261007.yml"
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect Go Zero
+        run: python3 scripts/collect_uk_validated_open_feeds.py --only 'Go Zero' --output /tmp/gozero.json
+      - name: Collect char.gy
+        run: python3 scripts/collect_uk_validated_open_feeds.py --only 'char.gy' --output /tmp/chargy.json
+      - name: Check exact source identity and coverage
+        run: |
+          python3 - <<'PY'
+          import json
+          for name,path,party in [('Go Zero','/tmp/gozero.json','GOZ'),('char.gy','/tmp/chargy.json','CGY')]:
+              d=json.load(open(path))
+              assert d['summary']['failedSources']==0,d['failures']
+              assert d['summary']['completeSources']==1,d['summary']
+              s=d['sources'][0]
+              assert s['name']==name
+              assert party in s['summary']['partyIdsObserved'],s['summary']['partyIdsObserved']
+              assert s['summary']['missingTariffIds']==[],s['summary']['missingTariffIds'][:10]
+              print(name,d['summary'])
+          PY
