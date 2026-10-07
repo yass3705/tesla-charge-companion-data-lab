@@ -20,7 +20,7 @@ let apiHeaders=null;
 page.on('request',async req=>{
   if(apiHeaders||!req.url().includes('api.monta.app/api/v1/charge_points/map')) return;
   const h=await req.allHeaders();
-  const keep=['authorization','operator','application','application-version','accept','accept-language'];
+  const keep=['authorization','operator','application','application-version','meta','uuid','timezone','accept','accept-language'];
   const picked=Object.fromEntries(keep.filter(k=>h[k]).map(k=>[k,h[k]]));
   if(picked.authorization) apiHeaders=picked;
 });
@@ -28,7 +28,7 @@ page.on('request',async req=>{
 // Exact bootstrap already validated by the browser-capture workflow.
 await page.goto('https://maps.monta.app/?lat=45.7045&lng=4.9445&zoom=16&locale=fr',{waitUntil:'domcontentloaded',timeout:60000});
 for(let i=0;i<60&&!apiHeaders;i++) await page.waitForTimeout(500);
-if(!apiHeaders?.authorization) throw new Error('Public Monta guest authorization header was not observed');
+if(!apiHeaders?.authorization || !apiHeaders.meta || !apiHeaders.uuid || !apiHeaders.timezone) throw new Error('Required public Monta guest headers were not observed');
 
 // All subsequent API calls are executed inside the public map browser origin. The anonymous
 // guest credential remains memory-only and is never written to disk or logs.
@@ -52,18 +52,19 @@ function priceFields(obj){const out={};const walk=(x,p='$')=>{if(Array.isArray(x
 
 const groups=new Map(), matches=new Map();
 let mapCalls=0,mapErrors=0,cursor=0;
+const mapErrorStatuses={};
 async function worker(){
   while(true){
     const i=cursor++;if(i>=stations.length)return;
     const s=stations[i],[lat,lng]=s.coordinates,dLat=.012,dLng=.018;
     const q=new URLSearchParams({top:String(lat+dLat),bottom:String(lat-dLat),left:String(lng-dLng),right:String(lng+dLng),zoom:'15',center_lat:String(lat),center_lng:String(lng),segmented:'1',busy_all:'1',busy_queue:'1',passive:'1'});
     let r=null;
-    for(let a=0;a<3;a++){
+    for(let a=0;a<5;a++){
       r=await fetchJson('https://api.monta.app/api/v1/charge_points/map?'+q);mapCalls++;
       if(r.status===200)break;
-      if([429,500,502,503,504].includes(r.status)){await sleep(400*(a+1));continue}break;
+      if([429,500,502,503,504].includes(r.status)){await sleep(Math.min(12000,1500*2**a));continue}break;
     }
-    if(r?.status!==200){mapErrors++;continue}
+    if(r?.status!==200){mapErrors++;const status=String(r?.status??'none');mapErrorStatuses[status]=(mapErrorStatuses[status]||0)+1;continue}
     const seen=new Set(),near=[];
     for(const g of [...(r.data?.list||[]),...(r.data?.single_list||[])]){
       const key=`${g.document||'group'}:${g.id}`;if(seen.has(key))continue;seen.add(key);
@@ -75,7 +76,7 @@ async function worker(){
     matches.set(norm(s.stationIdNormalized||s.stationId),near.sort((a,b)=>(a.distanceM??1e9)-(b.distanceM??1e9)).slice(0,10));
   }
 }
-await Promise.all(Array.from({length:6},worker));
+await Promise.all(Array.from({length:3},worker));
 
 const candidateKeys=new Set();
 for(const[k,g]of groups)if(isWaat(g.operator_name))candidateKeys.add(k);
@@ -103,7 +104,7 @@ const outputStations=stations.map(s=>{
   const m=(matches.get(sid)||[]).filter(x=>directKeys.has(x.key)).map(x=>({key:x.key,distanceM:x.distanceM,name:x.name,operator_name:x.operator_name,price_label:x.price_label}));
   return {stationId:s.stationId,stationIdNormalized:s.stationIdNormalized,stationName:s.stationName,address:s.address,coordinates:s.coordinates,evseIdsIrve:s.evseIds||[],maxPowerKw:s.maxPowerKw,montaMatches:m,rankableDirect:false,blockingReason:m.length?'pricing_normalization_pending':'no_current_direct_waat_monta_match'};
 });
-const payload={schemaVersion:'2.0.0',dataset:'waat-monta-public-direct-tariffs-france',operator:'WAAT',operatorPrefix:'FR*WA2',country:'FR',generatedAt:new Date().toISOString(),source:{name:'Monta Web Map public guest API',map:'https://maps.monta.app/',api:'https://api.monta.app/api/v1/',auth:'anonymous public web-map guest session; credential never persisted'},scope:{operatorDirectOnly:true,roamingIncluded:false,residentialIncluded:false,guestPublicApi:true,pricesFailClosedUntilNormalized:true},counts:{irveStationCount:stations.length,mapCalls,mapErrors,mapGroupsSeen:groups.size,candidateGroupCount:candidateKeys.size,directWaatGroupCount:direct.length,detailErrors,stationsWithDirectMontaMatch:outputStations.filter(x=>x.montaMatches.length).length},directGroups:direct,stations:outputStations};
+const payload={schemaVersion:'2.0.0',dataset:'waat-monta-public-direct-tariffs-france',operator:'WAAT',operatorPrefix:'FR*WA2',country:'FR',generatedAt:new Date().toISOString(),source:{name:'Monta Web Map public guest API',map:'https://maps.monta.app/',api:'https://api.monta.app/api/v1/',auth:'anonymous public web-map guest session; credential never persisted'},scope:{operatorDirectOnly:true,roamingIncluded:false,residentialIncluded:false,guestPublicApi:true,pricesFailClosedUntilNormalized:true},counts:{irveStationCount:stations.length,mapCalls,mapErrors,mapErrorStatuses,mapGroupsSeen:groups.size,candidateGroupCount:candidateKeys.size,directWaatGroupCount:direct.length,detailErrors,stationsWithDirectMontaMatch:outputStations.filter(x=>x.montaMatches.length).length},directGroups:direct,stations:outputStations};
 fs.mkdirSync('data/national',{recursive:true});fs.mkdirSync('data/reports',{recursive:true});
 fs.writeFileSync(OUT,zlib.gzipSync(Buffer.from(JSON.stringify(payload)),{level:9}));
 const priceLabels={};for(const x of direct){const p=String(x.group?.price_label??'').trim();if(p)priceLabels[p]=(priceLabels[p]||0)+1}
