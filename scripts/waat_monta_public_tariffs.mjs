@@ -46,7 +46,7 @@ const observed=await fetchJson(observedMapUrl);
 const [firstLat,firstLng]=stations[0].coordinates;
 const probeParams=new URLSearchParams({top:String(firstLat+.012),bottom:String(firstLat-.012),left:String(firstLng-.018),right:String(firstLng+.018),zoom:'15',center_lat:String(firstLat),center_lng:String(firstLng),segmented:'1',busy_all:'1',busy_queue:'1',passive:'1'});
 const custom=await fetchJson('https://api.monta.app/api/v1/charge_points/map?'+probeParams);
-console.log(JSON.stringify({observedMapUrl,observedStatus:observed.status,observedError:observed.text?.slice(0,300),customStatus:custom.status,customError:custom.text?.slice(0,300)}));
+console.log(JSON.stringify({observedMapUrl,observedStatus:observed.status,observedError:JSON.stringify(observed.data??observed.text)?.slice(0,800),customStatus:custom.status,customError:JSON.stringify(custom.data??custom.text)?.slice(0,800)}));
 await browser.close();
 process.exit(0);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
