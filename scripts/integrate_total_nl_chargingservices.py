@@ -38,7 +38,7 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def fetch_config() -> tuple[str, str, str, str]:
+def fetch_config() -> tuple[str, str, str]:
     root_req = urllib.request.Request(
         WEB_ROOT,
         headers={"Accept": "text/html,*/*;q=0.8", "User-Agent": "Mozilla/5.0"},
@@ -277,7 +277,7 @@ def main() -> None:
     report = {
         "schemaVersion": 1,
         "generatedAt": generated,
-        "apiSource": {"webRuntime": WEB_JS, "endpoint": f"{base}{API_PATH}", "apiKeyPersisted": False},
+        "apiSource": {"webRuntime": web_js, "endpoint": f"{base}{API_PATH}", "apiKeyPersisted": False},
         "officialInventory": {
             "locations": sum(1 for x in inventory if (x.get("address") or {}).get("country") == "NL" and x.get("serviceOperatorId") == "TotalEnergies"),
             "evseConnectors": sum(1 for x in inventory if (x.get("address") or {}).get("country") == "NL" and x.get("serviceOperatorId") == "TotalEnergies" for s in x.get("chargingSpots") or [] for e in s.get("evses") or [] for _ in e.get("connectors") or []),
