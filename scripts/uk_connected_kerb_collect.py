@@ -2,6 +2,7 @@
 """Collect operator-supplied Connected Kerb infrastructure API, without secrets in output."""
 import argparse
 import gzip
+import http.client
 import json
 import os
 import time
@@ -26,7 +27,7 @@ class Client:
         self.token = token
         self.mode = "as_supplied"
 
-    def get(self, path, page, limit=1000):
+    def get(self, path, page, limit=100):
         url = BASE + path + "?" + urllib.parse.urlencode({"page": page, "limit": limit})
         for attempt in range(5):
             auth = self.token if self.mode == "as_supplied" else "Bearer " + self.token
@@ -44,6 +45,11 @@ class Client:
                     time.sleep(min(2 ** attempt, 16))
                     continue
                 raise RuntimeError(f"Connected Kerb {path} page {page}: HTTP {error.code}") from None
+            except (http.client.IncompleteRead, urllib.error.URLError, TimeoutError, ConnectionError):
+                if attempt < 4:
+                    time.sleep(min(2 ** attempt, 16))
+                    continue
+                raise RuntimeError(f"Connected Kerb {path} page {page}: interrupted response after retries") from None
         raise RuntimeError("Connected Kerb request retry limit exceeded")
 
 
