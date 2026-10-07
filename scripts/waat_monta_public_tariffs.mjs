@@ -20,7 +20,7 @@ let apiHeaders=null;
 page.on('request',async req=>{
   if(apiHeaders||!req.url().includes('api.monta.app/api/v1/charge_points/map')) return;
   const h=await req.allHeaders();
-  const keep=['authorization','operator','application','application-version','accept','accept-language'];
+  const keep=['authorization','operator','application','application-version','meta','uuid','timezone','accept','accept-language'];
   const picked=Object.fromEntries(keep.filter(k=>h[k]).map(k=>[k,h[k]]));
   if(picked.authorization) apiHeaders=picked;
 });
@@ -28,7 +28,7 @@ page.on('request',async req=>{
 // Exact bootstrap already validated by the browser-capture workflow.
 await page.goto('https://maps.monta.app/?lat=45.7045&lng=4.9445&zoom=16&locale=fr',{waitUntil:'domcontentloaded',timeout:60000});
 for(let i=0;i<60&&!apiHeaders;i++) await page.waitForTimeout(500);
-if(!apiHeaders?.authorization) throw new Error('Public Monta guest authorization header was not observed');
+if(!apiHeaders?.authorization || !apiHeaders.meta || !apiHeaders.uuid || !apiHeaders.timezone) throw new Error('Required public Monta guest headers were not observed');
 
 // All subsequent API calls are executed inside the public map browser origin. The anonymous
 // guest credential remains memory-only and is never written to disk or logs.
