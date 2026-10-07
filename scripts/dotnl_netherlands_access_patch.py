@@ -88,7 +88,8 @@ def main():
             row[7]=acc; patched+=1
         return patched
     all_path=args.runtime_dir/manifest['allFile']; rows=gz_read(all_path); stats['runtimeRowsPatched']+=patch_rows(rows)
-    _,all_bytes,_=gz_write(all_path,rows); manifest['allBytes']=all_bytes
+    _,all_bytes,all_sha=gz_write(all_path,rows)
+    manifest['allBytes']=all_bytes; manifest['allSha256']=all_sha
     for tile in manifest.get('tiles') or []:
         path=args.runtime_dir/tile['file']; arr=gz_read(path); patch_rows(arr)
         _,gz_n,sha=gz_write(path,arr); tile['bytes']=gz_n; tile['count']=len(arr); tile['sha256']=sha
