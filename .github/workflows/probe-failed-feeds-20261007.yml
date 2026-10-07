@@ -54,6 +54,11 @@ jobs:
           print('config_found',bool(match),'bffApiUrl_name', 'bffApiUrl' in body,'globalApiKey_name','globalApiKey' in body,'len',len(body))
           candidates=re.findall(r"JSON\\.parse\\('([^']+)'\\)",body)
           print('parse_candidates',len(candidates),'candidate_with_fields',sum('bffApiUrl' in c and 'globalApiKey' in c for c in candidates))
+          for name in ('bffApiUrl','globalApiKey'):
+              idx=body.find(name)
+              fragment=body[max(0,idx-45):idx+len(name)+80]
+              masked=''.join('x' if c.isalpha() else '0' if c.isdigit() else c for c in fragment)
+              print(name+'_shape',masked)
           if match:
               try: config=json.loads(match.group(1))
               except Exception as e:
