@@ -4,9 +4,18 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "25 1 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/integrate_total_nl_chargingservices.py"
+      - ".github/workflows/netherlands-totalenergies-direct-tariffs-refresh.yml"
 
 permissions:
   contents: write
+
+concurrency:
+  group: netherlands-dotnl-canonical
+  cancel-in-progress: false
 
 jobs:
   refresh:
@@ -21,10 +30,15 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/integrate_total_nl_chargingservices.py
+          rm -rf data/national/netherlands_dotnl/runtime
           python3 scripts/dotnl_netherlands_runtime.py \
             data/national/netherlands_dotnl/normalized.json.gz \
             data/national/netherlands_dotnl/runtime \
             reports/netherlands_dotnl_runtime.json
+          python3 scripts/dotnl_netherlands_access_patch.py \
+            data/national/netherlands_dotnl/normalized.json.gz \
+            data/national/netherlands_dotnl/runtime \
+            reports/netherlands-dotnl-access-report.json
 
       - name: Validate direct-price guards
         run: |
@@ -54,7 +68,8 @@ jobs:
             data/national/netherlands_dotnl/runtime \
             data/operator_direct/totalenergies_nl_payg_exact_overlay.json \
             reports/netherlands/totalenergies-direct-payg-live-integration-2026-10-04.json \
-            reports/netherlands_dotnl_runtime.json
+            reports/netherlands_dotnl_runtime.json \
+            reports/netherlands-dotnl-access-report.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'data(nl): refresh TotalEnergies direct PAYG tariffs'
           git pull --rebase origin main
