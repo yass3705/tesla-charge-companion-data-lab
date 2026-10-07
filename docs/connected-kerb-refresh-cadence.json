@@ -1,0 +1,12 @@
+{
+  "operator": "Connected Kerb",
+  "cadence": "daily",
+  "workflow": ".github/workflows/uk-connected-kerb-daily.yml",
+  "cronUTC": "17 2 * * *",
+  "parisSummerTime": "04:17",
+  "parisWinterTime": "03:17",
+  "stages": ["operator_api", "guest_app_detail", "same_baseline_validation", "connector_exclusions", "v9_data_compilation", "atomic_repository_publication"],
+  "failurePolicy": "A failed stage does not replace the persisted validated snapshot. Newer inventory prevents older runs from overwriting it.",
+  "runtimePublication": "The current V9 preview uses a pinned data commit. This workflow prepares new validated data but does not change that deployment pin or redeploy the preview.",
+  "productionPurpose": "Continue refreshing validated station and tariff data in production. A data snapshot release is separate from an application code deployment."
+}

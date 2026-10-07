@@ -1,0 +1,88 @@
+name: Connected Kerb UK daily validated refresh
+
+on:
+  schedule:
+    # 02:17 UTC = 04:17 Paris in summer / 03:17 in winter.
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-connected-kerb-app-refresh
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Collect operator inventory and tariffs
+        env:
+          CONNECTED_KERB_TOKEN: ${{ secrets.CONNECTED_KERB_TOKEN }}
+        run: python -u scripts/uk_connected_kerb_collect.py
+      - name: Audit raw operator snapshot
+        run: python scripts/uk_connected_kerb_snapshot_audit.py
+      - name: Collect guest detail prices against this exact inventory
+        run: python -u scripts/uk_connected_kerb_app_collect.py
+      - name: Validate connector exclusions and compile V9 data
+        run: python scripts/uk_connected_kerb_reconcile.py
+      - name: Publish coherent data while preserving current progress
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(data/national/uk_connected_kerb_locations.json.gz data/national/uk_connected_kerb_tariffs.json.gz reports/uk/connected-kerb-latest.json reports/uk/connected-kerb-snapshot-audit-latest.json data/national/uk_connected_kerb_app_details.json.gz data/national/uk_connected_kerb_app_direct_offers.json.gz reports/uk/connected-kerb-app-collection-latest.json)
+          checkpoint="$(mktemp -d)"
+          for p in "${files[@]}"; do
+            test -f "$p"
+            mkdir -p "$checkpoint/$(dirname "$p")"
+            cp "$p" "$checkpoint/$p"
+          done
+          export CK_DAILY_CHECKPOINT="$checkpoint"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            python - <<'PY'
+          import datetime, gzip, json, os, pathlib
+          p = 'data/national/uk_connected_kerb_locations.json.gz'
+          def timestamp(root):
+              with gzip.open(pathlib.Path(root) / p, 'rt') as f:
+                  return datetime.datetime.fromisoformat(json.load(f)['collectedAt'])
+          if timestamp('.') > timestamp(os.environ['CK_DAILY_CHECKPOINT']):
+              raise SystemExit('Newer operator inventory already published; refusing an older daily snapshot.')
+          PY
+            for p in "${files[@]}"; do
+              mkdir -p "$(dirname "$p")"
+              cp "$checkpoint/$p" "$p"
+            done
+            python scripts/uk_connected_kerb_collect.py --update-progress
+            python scripts/uk_connected_kerb_reconcile.py
+            python - <<'PY'
+          import json, pathlib
+          path = pathlib.Path('docs/uk-cpo-progress-2026-09.json')
+          progress = json.loads(path.read_text())
+          doc = json.loads(pathlib.Path('docs/connected-kerb-uk-integration-2026-10-07.json').read_text())
+          row = next(row for row in progress['cpos'] if row['name'] == 'Connected Kerb')
+          row.update(status='partial_guest_app_validated_snapshot',
+                     validatedConnectors=doc['counts']['validatedConnectors'],
+                     unresolvedConnectors=doc['counts']['unresolvedConnectors'],
+                     retainedStations=doc['counts']['retainedStations'],
+                     latestSnapshotPublishedToV9=doc['publishedToV9'],
+                     refreshCadence='daily', dailyWorkflow='.github/workflows/uk-connected-kerb-daily.yml',
+                     evidence='Daily operator inventory and exact guest-detail price reconciliation; unresolved connectors excluded individually.',
+                     next='Publish the validated data snapshot to the runtime and resolve remaining excluded connectors.')
+          path.write_text(json.dumps(progress, indent=2) + '\n')
+          PY
+            git add "${files[@]}" data/national/uk_connected_kerb_v9.json.gz data/national/uk_connected_kerb_price_unambiguous_locations.json.gz reports/uk/connected-kerb-price-exclusions-latest.json docs/connected-kerb-uk-integration-2026-10-07.json docs/uk-cpo-progress-2026-09.json v9-production-runtime/data/v9/uk-connected-kerb-offers.candidate.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data(uk): daily validated Connected Kerb refresh [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$((attempt * 2))"
+          done
+          exit 1
