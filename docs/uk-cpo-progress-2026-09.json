@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-03T20:00:00Z",
+  "updatedAt": "2026-10-07T12:06:31.334322+00:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -531,13 +531,45 @@
     },
     {
       "name": "Connected Kerb",
-      "status": "blocked_external_token",
-      "access": "token_required",
+      "status": "partial_api_collected_tariff_scope_pending",
+      "access": "operator_supplied_api_token",
       "versionsEndpoint": "https://cp.connectedkerb.com/ocpi/versions",
-      "evidence": "Connected Kerb operates OCPI at https://cp.connectedkerb.com/ocpi/ and an AMPECO public API at /public-api/. Both return 401 anonymously; bearer tokens are issued from the operator back office and there is no public self-service credential path.",
-      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
-      "requestStatus": "submitted_2026-10-02",
-      "requestSubmittedAt": "2026-10-02"
+      "evidence": "Authenticated API snapshot persisted with pagination and exact connector tariff-reference audit. Retail/ad-hoc tariff semantics still require verification.",
+      "next": "Validate direct public tariff scope, VAT and time restrictions before V9 pricing publication.",
+      "requestStatus": "token_received_2026-10-07",
+      "requestSubmittedAt": "2026-10-02",
+      "documentation": "https://api.cpms.connectedkerb.co.uk/api-docs",
+      "baseUrl": "https://api.cpms.connectedkerb.co.uk/api/2.2.1/v1/",
+      "datasetLocations": "data/national/uk_connected_kerb_locations.json.gz",
+      "datasetTariffs": "data/national/uk_connected_kerb_tariffs.json.gz",
+      "report": "reports/uk/connected-kerb-latest.json",
+      "validatedCounts": {
+        "locations": 2436,
+        "tariffs": 140,
+        "evses": 9915,
+        "connectors": 9424,
+        "connectorsWithTariffRefs": 9424,
+        "connectorsWithResolvedTariffRefs": 9424,
+        "connectorsWithoutTariffRefs": 0,
+        "missingTariffIds": [],
+        "ambiguousTariffIds": [],
+        "referencedTariffs": 135,
+        "currencies": {
+          "GBP": 140
+        },
+        "priceComponentTypes": {
+          "ENERGY": 222,
+          "TIME": 1,
+          "PARKING_TIME": 1
+        },
+        "publishCounts": {
+          "True": 2394,
+          "False": 42
+        },
+        "countryCounts": {
+          "GB": 2436
+        }
+      }
     },
     {
       "name": "Charge My Street",
@@ -2871,18 +2903,16 @@
     "canonicalReconciliation": "Persist successful source results even when another source in the same batch fails, then reconcile the canonical ledger from persisted evidence."
   },
   "currentStatusCounts": {
-    "asOf": "2026-10-03",
-    "complete": 25,
-    "set_aside_external_request": 11,
+    "asOf": "2026-10-07",
+    "complete": 30,
+    "set_aside_external_request": 9,
     "blocked_external_ocpi_token": 1,
     "set_aside_user_followup": 1,
-    "set_aside_external_free_api_account": 1,
-    "set_aside_technical_pricing_layer": 1,
-    "set_aside_technical_roaming_feed": 1,
-    "coverage_platform_scope_not_cpo": 1,
-    "set_aside_technical_authenticated_backend": 1,
-    "set_aside_technical_public_index_only": 1,
-    "blocked_external_token": 1,
+    "set_aside_station_specific_pricing_no_direct_feed": 1,
+    "complete_platform_scope_not_cpo": 1,
+    "set_aside_station_specific_pricing_authenticated_backend": 1,
+    "set_aside_station_specific_pricing_no_current_public_tariff": 1,
+    "partial_api_collected_tariff_scope_pending": 1,
     "canonicalEntries": 46,
     "semanticCpos": 45
   },
