@@ -26,9 +26,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Collect operator-supplied feed
+        if: github.event_name != 'push'
         env:
           UBITRICITY_PCPR_TOKEN: ${{ secrets[inputs.secret_name || 'UBITRICITY_UK_TOKEN'] || secrets.UBITRICITY_PCPR_TOKEN || secrets.UBITRICITY_UK_PCPR_API_KEY || secrets.UBITRICITY_API_KEY }}
         run: python -u scripts/uk_ubitricity_pcpr_collect.py
+      - name: Require recent evidence for push validation
+        if: github.event_name == 'push'
+        run: |
+          python - <<'PYTHON'
+          import gzip,json
+          from datetime import datetime,timezone
+          x=json.load(gzip.open("data/national/uk_ubitricity_pcpr.json.gz"))
+          assert 0 <= (datetime.now(timezone.utc)-datetime.fromisoformat(x["collectedAt"])).total_seconds() < 86400
+          PYTHON
       - name: Verify PAYG and compile exact connector pricing
         run: python -u scripts/uk_ubitricity_pcpr_validate.py
       - name: Persist collected evidence
