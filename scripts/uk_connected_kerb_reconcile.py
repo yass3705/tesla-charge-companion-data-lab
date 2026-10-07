@@ -128,6 +128,15 @@ def main():
                v9Candidate='v9-production-runtime/data/v9/uk-connected-kerb-offers.candidate.json')
     doc.pop('tariffLimitations', None)
     doc.pop('duplicateResolution', None)
+    activation_path = 'docs/connected-kerb-v9-activation-2026-10-07.json'
+    if (ROOT / activation_path).exists():
+        activation = read(activation_path)
+        doc['activeRuntime'] = {'report': activation_path, 'sourceDataSha': activation['sourceDataSha'],
+                                'previewUrl': activation['previewUrl'], 'status': activation['status']}
+        doc['publishedToV9'] = activation['status'] == 'active' and activation['appCollectedAt'] == app['collectedAt']
+        if doc['publishedToV9']:
+            doc['status'] = 'partial_guest_app_pricing_active_v9'
+            doc['next'] = 'Resolve remaining excluded connectors individually; keep their stations when other connectors are validated.'
     write('docs/connected-kerb-uk-integration-2026-10-07.json', doc)
     print(json.dumps(doc['counts']))
 
