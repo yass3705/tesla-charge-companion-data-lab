@@ -3,7 +3,7 @@ import csv, io, json, urllib.request
 from itertools import chain
 from pathlib import Path
 
-SOURCE="https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435"
+SOURCE="https://proxy.transport.data.gouv.fr/resource/consolidation-transport-irve-statique"
 MAP=Path("data/electroverse/irve_location_mapping.json")
 OUT=Path("reports/electroverse/irve-fingerprint-index.json")
 

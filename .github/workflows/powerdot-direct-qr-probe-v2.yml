@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           mkdir -p tmp reports data/national
           curl -fL --retry 3 --retry-delay 2 \
-            'https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435' \
+            'https://proxy.transport.data.gouv.fr/resource/consolidation-transport-irve-statique' \
             -o tmp/irve.csv
 
       - name: Inventory Powerdot and probe direct QR frontend
@@ -223,7 +223,7 @@ jobs:
           with_tariff = [s for s in stations.values() if s['tarificationValues']]
           payload = {
               'generatedAt': datetime.now(timezone.utc).isoformat(),
-              'source': 'data.gouv national IRVE resource eb76d20a-8501-400e-b336-d85724de5435 (2026-08-25)',
+              'source': 'transport.data.gouv.fr PAN IRVE static consolidation',
               'operator': 'Power Dot France',
               'scope': {'country': 'FR', 'cpoOnly': True, 'roamingTariffsIncluded': False},
               'csvHeaders': headers,

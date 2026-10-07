@@ -3,7 +3,7 @@
 """Read-only national Greenspot extractor for Tesla Charge Companion.
 
 Sources:
-- current national IRVE consolidated resource on data.gouv.fr
+- current national IRVE consolidated resource on transport.data.gouv.fr
 - public Greenspot / Last Mile Solutions map backend at greenspot.evc-net.com
 
 No login, cookie, token or payment/session action is used.
@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import csv
 import datetime as dt
 import gzip
+import io
 import json
 import math
 import pathlib
@@ -23,9 +25,9 @@ import time
 import urllib.parse
 import urllib.request
 from collections import Counter, defaultdict
+from itertools import chain
 
-IRVE_RESOURCE_ID = "eb76d20a-8501-400e-b336-d85724de5435"
-IRVE_URL = f"https://tabular-api.data.gouv.fr/api/resources/{IRVE_RESOURCE_ID}/data/"
+IRVE_URL = "https://proxy.transport.data.gouv.fr/resource/consolidation-transport-irve-statique"
 LMS_BASE = "https://greenspot.evc-net.com"
 LMS_AJAX = f"{LMS_BASE}/api/ajax"
 LMS_HANDLER = "\\LMS\\EV\\AsyncServices\\DashboardAsyncService"
@@ -61,29 +63,17 @@ def freshness_key(row: dict) -> tuple[str, str]:
     return (str(row.get("date_maj") or ""), str(row.get("last_modified") or ""))
 
 
-def fetch_irve_rows(page_size: int = 200) -> tuple[list[dict], dict]:
-    page = 1
+def fetch_irve_rows() -> tuple[list[dict], dict]:
     rows: list[dict] = []
-    meta = {}
-    while True:
-        params = urllib.parse.urlencode(
-            {
-                "page": page,
-                "page_size": page_size,
-                "id_pdc_itinerance__contains": "FR*GSP",
-            }
-        )
-        obj = http_json(f"{IRVE_URL}?{params}", timeout=60)
-        batch = obj.get("data") or []
-        rows.extend(batch)
-        meta = obj.get("meta") or meta
-        next_link = (obj.get("links") or {}).get("next")
-        if not next_link or not batch:
-            break
-        page += 1
-        if page > 1000:
-            raise RuntimeError("IRVE pagination safety limit reached")
-    return rows, meta
+    req = urllib.request.Request(IRVE_URL, headers={"User-Agent": USER_AGENT, "Accept": "text/csv"})
+    with urllib.request.urlopen(req, timeout=180) as response:
+        text = io.TextIOWrapper(response, encoding="utf-8-sig", newline="")
+        header = text.readline()
+        delimiter = max((",", ";", "\t", "|"), key=header.count)
+        for row in csv.DictReader(chain([header], text), delimiter=delimiter):
+            if normalize_evse(row.get("id_pdc_itinerance")).startswith("FRGSP"):
+                rows.append(row)
+    return rows, {"total": len(rows), "sourceUrl": IRVE_URL}
 
 
 def is_genuine_greenspot(row: dict) -> bool:
@@ -452,9 +442,9 @@ def main():
         "generatedAt": now,
         "source": {
             "inventory": {
-                "authority": "data.gouv.fr national IRVE consolidated resource",
-                "resourceId": IRVE_RESOURCE_ID,
-                "filterDiscovery": "id_pdc_itinerance contains FR*GSP, then strict normalized prefix FRGSPE",
+                "authority": "transport.data.gouv.fr national IRVE static consolidation",
+                "sourceUrl": IRVE_URL,
+                "filterDiscovery": "normalized id_pdc_itinerance starts with FRGSP, then strict prefix FRGSPE",
             },
             "live": {
                 "authority": "Greenspot / Last Mile Solutions first-party public portal",
