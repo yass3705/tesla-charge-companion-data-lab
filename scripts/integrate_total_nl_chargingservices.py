@@ -20,6 +20,7 @@ import json
 import re
 import urllib.parse
 import urllib.request
+import urllib.error
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,26 +44,41 @@ def fetch_config() -> tuple[str, str, str]:
         WEB_ROOT,
         headers={"Accept": "text/html,*/*;q=0.8", "User-Agent": "Mozilla/5.0"},
     )
-    with urllib.request.urlopen(root_req, timeout=60) as response:
-        root = response.read().decode("utf-8", "replace")
+    try:
+        with urllib.request.urlopen(root_req, timeout=60) as response:
+            root = response.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        if exc.code != 403:
+            raise
+        # The public HTML may present a CAPTCHA to CI, while its public
+        # runtime bundle and official API remain accessible.
+        root = ""
     scripts = re.findall(r'<script[^>]+src=["\']([^"\']+main\.[^"\']+\.js)["\']', root, re.I)
-    web_js = urllib.parse.urljoin(WEB_ROOT, scripts[-1]) if scripts else WEB_JS_FALLBACK
-    req = urllib.request.Request(
-        web_js,
-        headers={"Accept": "application/javascript,*/*;q=0.8", "User-Agent": "Mozilla/5.0"},
-    )
-    with urllib.request.urlopen(req, timeout=60) as response:
-        text = response.read().decode("utf-8", "replace")
-    match = CONFIG_RE.search(text)
-    if not match:
-        raise RuntimeError("Total web runtime configuration not found")
-    config = json.loads(match.group(1))
-    for name in ("bffApiUrl", "globalApiKey"):
-        if not config.get(name):
-            raise RuntimeError(f"Total web runtime configuration missing {name}")
-    # marketplace-evp is in the separate Angular app config, not the env JSON.
-    return config["bffApiUrl"], config["globalApiKey"], web_js
-
+    dynamic_js = urllib.parse.urljoin(WEB_ROOT, scripts[-1]) if scripts else WEB_JS_FALLBACK
+    candidates = list(dict.fromkeys((dynamic_js, WEB_JS_FALLBACK)))
+    for web_js in candidates:
+        req = urllib.request.Request(
+            web_js,
+            headers={"Accept": "application/javascript,*/*;q=0.8", "User-Agent": "Mozilla/5.0"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as response:
+                text = response.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError:
+            continue
+        match = CONFIG_RE.search(text)
+        if match:
+            config = json.loads(match.group(1))
+        else:
+            base_match = re.search(r'"bffApiUrl"\s*:\s*"([^"]+)"', text)
+            key_match = re.search(r'"globalApiKey"\s*:\s*"([^"]+)"', text)
+            if not base_match or not key_match:
+                continue
+            config = {"bffApiUrl": base_match.group(1), "globalApiKey": key_match.group(1)}
+        if config.get("bffApiUrl") and config.get("globalApiKey"):
+            # The public web key is held in memory and never logged or saved.
+            return config["bffApiUrl"], config["globalApiKey"], web_js
+    raise RuntimeError("Total public web runtime configuration not found")
 
 def fetch_inventory(base: str, key: str) -> list[dict]:
     params = urllib.parse.urlencode({"countryCode": "NL", "pageNumber": "0", "pageSize": "5", "language": "nl-NL"})
