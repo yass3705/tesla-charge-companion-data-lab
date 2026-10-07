@@ -2,8 +2,9 @@ name: Netherlands TotalEnergies direct PAYG tariff refresh
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "25 1 * * *"
+  workflow_run:
+    workflows: ["Netherlands DOT-NL canonical dataset"]
+    types: [completed]
   push:
     branches: ["main"]
     paths:
@@ -19,6 +20,7 @@ concurrency:
 
 jobs:
   refresh:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
