@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p tmp reports data/national
           curl -fL --retry 3 --retry-delay 2 \
-            'https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435' \
+            'https://proxy.transport.data.gouv.fr/resource/consolidation-transport-irve-statique' \
             -o tmp/irve.csv
       - name: Extract direct Powerdot tariffs
         run: |
@@ -266,7 +266,7 @@ jobs:
               row=pdc.get(pid) or {}; sid=get(row,'id_station_itinerance','id_station_local')
               if sid:covered_station_ids.add(sid)
 
-          payload={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'operator':'Power Dot France','endpoint':ENDPOINT,'sourceType':'direct_cpo_public_adhoc_api','roaming':False,'emspCode':''},'irveSource':'data.gouv national IRVE resource eb76d20a-8501-400e-b336-d85724de5435 (2026-08-25)','counts':{'irveRows':len(rows),'uniqueIrvePdc':len(pdc),'uniqueIrveStations':len(station_ids),'derivedChargerNames':len(charger_names),'unmappedPdc':len(unmapped),'apiSuccessChargers':len(success),'apiFailedChargers':len(failures),'coveredIrvePdc':len(covered_pdc),'coveredIrveStations':len(covered_station_ids),'decodedConnectors':connectors,'pricedConnectors':priced_connectors,'locations':len(locations),'connectorsWithNonEnergyComponent':with_non_energy},'componentCounts':dict(component_counts),'energyRateDistribution':{str(k):v for k,v in sorted(energy_rates.items())},'tariffIdCounts':dict(tariff_ids),'unmappedPdcSample':unmapped[:100],'failureSample':failures[:100],'chargers':success}
+          payload={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'operator':'Power Dot France','endpoint':ENDPOINT,'sourceType':'direct_cpo_public_adhoc_api','roaming':False,'emspCode':''},'irveSource':'transport.data.gouv.fr PAN IRVE static consolidation','counts':{'irveRows':len(rows),'uniqueIrvePdc':len(pdc),'uniqueIrveStations':len(station_ids),'derivedChargerNames':len(charger_names),'unmappedPdc':len(unmapped),'apiSuccessChargers':len(success),'apiFailedChargers':len(failures),'coveredIrvePdc':len(covered_pdc),'coveredIrveStations':len(covered_station_ids),'decodedConnectors':connectors,'pricedConnectors':priced_connectors,'locations':len(locations),'connectorsWithNonEnergyComponent':with_non_energy},'componentCounts':dict(component_counts),'energyRateDistribution':{str(k):v for k,v in sorted(energy_rates.items())},'tariffIdCounts':dict(tariff_ids),'unmappedPdcSample':unmapped[:100],'failureSample':failures[:100],'chargers':success}
           with gzip.open(OUT,'wt',encoding='utf-8') as fh:json.dump(payload,fh,ensure_ascii=False,separators=(',',':'))
 
           lines=['# Powerdot France — direct CPO national extraction','',f"Generated: {payload['generatedAt']}",'','## Coverage']

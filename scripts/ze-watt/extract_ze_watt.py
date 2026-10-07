@@ -2,8 +2,10 @@
 # Batch431 national method validated: read-only FR*ZWO -> exact my.ze-watt.com terminal tariff extraction.
 import argparse
 import concurrent.futures
+import csv
 import datetime as dt
 import gzip
+import io
 import json
 import re
 import time
@@ -11,9 +13,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter, defaultdict
+from itertools import chain
 
-RESOURCE_ID = "eb76d20a-8501-400e-b336-d85724de5435"
-TABULAR = f"https://tabular-api.data.gouv.fr/api/resources/{RESOURCE_ID}/data/"
+IRVE_URL = "https://proxy.transport.data.gouv.fr/resource/consolidation-transport-irve-statique"
 ZEWATT = "https://my.ze-watt.com/api/stripe-payment/v1/charge-point/{serial}/company"
 UA = "TeslaChargeCompanion/ZeWattReadOnlyAudit (+https://github.com/yass3705/tesla-stations-updater-test)"
 SERIAL_RE = re.compile(r"^ZW\d+$", re.I)
@@ -37,29 +39,16 @@ def get_json(url, timeout=20, retries=2):
     return None, None, last
 
 def fetch_irve():
-    cols = ",".join([
-        "id_pdc_itinerance", "id_station_itinerance", "id_station_local",
-        "nom_station", "nom_operateur", "nom_enseigne", "adresse_station",
-        "puissance_nominale", "paiement_acte", "paiement_cb", "tarification", "date_maj"
-    ])
     rows = []
-    page = 1
-    while True:
-        params = urllib.parse.urlencode({
-            "page": page,
-            "page_size": 200,
-            "columns": cols,
-            "id_pdc_itinerance__contains": "FR*ZWO",
-        })
-        status, payload, error = get_json(f"{TABULAR}?{params}", timeout=30, retries=3)
-        if status != 200 or not payload:
-            raise RuntimeError(f"IRVE page {page} failed: status={status} error={error}")
-        batch = payload.get("data", [])
-        rows.extend(batch)
-        total = int(payload.get("meta", {}).get("total", len(rows)))
-        if len(rows) >= total or not payload.get("links", {}).get("next"):
-            return rows, total
-        page += 1
+    req = urllib.request.Request(IRVE_URL, headers={"User-Agent": UA, "Accept": "text/csv"})
+    with urllib.request.urlopen(req, timeout=180) as response:
+        text = io.TextIOWrapper(response, encoding="utf-8-sig", newline="")
+        header = text.readline()
+        delimiter = max((",", ";", "\t", "|"), key=header.count)
+        for row in csv.DictReader(chain([header], text), delimiter=delimiter):
+            if re.sub(r"[^A-Z0-9]", "", str(row.get("id_pdc_itinerance") or "").upper()).startswith("FRZWO"):
+                rows.append(row)
+    return rows, len(rows)
 
 def derive_serial(row):
     local = (row.get("id_station_local") or "").strip()
@@ -184,8 +173,8 @@ def main():
         "schemaVersion": 1,
         "generatedAt": generated,
         "source": {
-            "irveResourceId": RESOURCE_ID,
-            "irveFilter": "id_pdc_itinerance contains FR*ZWO",
+            "irveUrl": IRVE_URL,
+            "irveFilter": "normalized id_pdc_itinerance starts with FRZWO",
             "zeWattEndpointTemplate": "https://my.ze-watt.com/api/stripe-payment/v1/charge-point/{serial}/company",
             "readOnly": True,
             "paymentIntentEndpointCalled": False,

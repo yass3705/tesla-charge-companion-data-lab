@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const IRVE_URL = process.env.IRVE_URL ||
-  "https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435";
+  "https://proxy.transport.data.gouv.fr/resource/consolidation-transport-irve-statique";
 const BFF = process.env.EPOWERDIRECT_BFF ||
   "https://api.services-emobility.com/pay/api";
 const OUTPUT = process.argv[2] ||

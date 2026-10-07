@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SOURCE = "https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435"
+DEFAULT_SOURCE = "https://proxy.transport.data.gouv.fr/resource/consolidation-transport-irve-statique"
 DEFAULT_JSON = ROOT / "reports/france/irve-public-access-audit.json"
 DEFAULT_CSV = ROOT / "reports/france/irve-public-access-suspects.csv"
 
