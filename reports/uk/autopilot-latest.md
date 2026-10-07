@@ -1,6 +1,6 @@
 # UK TCC zero-cost autopilot snapshot
 
-- Generated: 2026-10-07T13:22:40Z
+- Generated: 2026-10-07T13:38:19Z
 - Canonical CPOs: **46**
 - Complete: **31**
 - Actionable partial: **1**
