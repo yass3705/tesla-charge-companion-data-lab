@@ -1,0 +1,27 @@
+{
+  "provider": "Ubitricity UK",
+  "frequency": "daily",
+  "cron": "37 2 * * *",
+  "timeZone": "UTC",
+  "parisSummer": "04:37",
+  "parisWinter": "03:37",
+  "workflow": ".github/workflows/uk-ubitricity-pcpr-refresh.yml",
+  "secretName": "UBITRICITY_UK_TOKEN",
+  "steps": [
+    "authenticated full locations and tariffs",
+    "independent public PAYG current/next day checks at two exact connectors per tariff",
+    "compile gross prices with London timezone and applicable idle fees",
+    "atomic publish of raw data, validation evidence and V9 feed"
+  ],
+  "failurePolicy": "Do not publish failed/empty/out-of-scope collection. Conflicting or unverifiable connector tariffs remain unpriced; preserve every station identity.",
+  "quotaPolicy": "30 location requests/hour maximum; code pushes validate existing evidence younger than 24h instead of recollecting. Daily and manual runs collect fresh data.",
+  "automaticPreviewDeployment": false,
+  "otherCountries": {
+    "observedScope": [
+      "GBR"
+    ],
+    "locationCount": 12424,
+    "unfilteredFullPagination": true,
+    "conclusion": "Current token exposes UK only. No FR/NL/DE tariffs or stations were obtained; an expanded authorized scope is needed before using this feed for those countries."
+  }
+}

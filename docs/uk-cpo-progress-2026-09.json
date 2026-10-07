@@ -598,21 +598,43 @@
     {
       "name": "Shell Recharge ubitricity",
       "status": "complete",
-      "access": "official_direct_access_portal_api_exact_station_tariffs",
-      "evidence": "Validated official charge.ubitricity.com Direct Access backend on 2026-10-03: 320 inventory rows, 292 exact station tariff matches (91.25% final priced coverage after merge), 279 exact portal rows promoted directly (272 four-band + 7 flat), and 28 residual rows remain fail-closed. No eMSP tariffs used. Seven exact portal-linked rows have custom time-band shapes not represented by the current deterministic schema; 21 lack a safe exact crosswalk.",
-      "next": "Treat as complete for V9 with bounded fail-closed residual; refresh the exact portal overlay on schedule. Reopen only if the portal tariff schema is extended or a safe exact match appears for residuals.",
-      "dataset": "data/operator_direct/ubitricity_uk_deterministic_pricing.json",
-      "overlay": "data/operator_direct/ubitricity_uk_direct_access_exact_overlay_2026-10-03.json",
-      "report": "reports/uk/ubitricity-deterministic-pricing-latest.json",
+      "access": "authenticated_pcpr_with_independent_exact_payg_tariff_validation",
+      "evidence": "Full authenticated UK PCPR inventory: 12,424 stations / 14,077 connectors. Five of eight tariff IDs independently match public PAYG current/next-day details at two exact connectors per tariff. 13,619 connectors priced including VAT in Europe/London. 398 connectors rejected for PCPR/PAYG conflicts; 60 for missing exact PAYG tariff. All station identities retained; excluded connectors never inherit another offer. Official 7–22kW idle fee included with 60-minute post-charge grace in 08:00–20:00 window.",
+      "next": "Daily authenticated collection and independent PAYG validation. Resolve only three bounded rejected tariff IDs; current API token returns GB only.",
+      "dataset": "data/national/uk_ubitricity_v9.json.gz",
+      "overlay": "data/operator_direct/ubitricity_uk_pcpr_payg_evidence.json",
+      "report": "reports/uk/ubitricity-pcpr-validation-latest.json",
       "completionMode": "complete_with_bounded_fail_closed_station_pricing_residual",
-      "locationCount": 320,
-      "pricedLocationCount": 292,
-      "failClosedLocationCount": 28,
-      "coveragePct": 91.25,
+      "locationCount": 12424,
+      "pricedLocationCount": 12011,
+      "failClosedLocationCount": 413,
+      "coveragePct": 96.75,
       "portalExactPromotedRows": 279,
       "portalExactCustomShapeResidualRows": 7,
       "noSafeExactCrosswalkResidualRows": 21,
-      "validatedAt": "2026-10-03"
+      "validatedAt": "2026-10-07T14:58:41.030760+00:00",
+      "previousPaygBaseline": {
+        "dataset": "data/operator_direct/ubitricity_uk_deterministic_pricing.json",
+        "overlay": "data/operator_direct/ubitricity_uk_direct_access_exact_overlay_2026-10-03.json",
+        "locationCount": 320,
+        "pricedLocationCount": 292,
+        "validatedAt": "2026-10-03"
+      },
+      "pricedConnectorCount": 13619,
+      "failClosedConnectorCount": 458,
+      "partiallyPricedLocationCount": 2,
+      "coverageBasis": "connectors",
+      "runtimeIntegration": {
+        "status": "preview_validation_running",
+        "dataSha": "8e3462094dfa36d6e5623bfc9838f5fc53bab914",
+        "runtimeSha": "36951ac9b9f593ebc3c137246559915e004375a6"
+      },
+      "refresh": {
+        "cron": "37 2 * * *",
+        "timeZone": "UTC",
+        "workflow": ".github/workflows/uk-ubitricity-pcpr-refresh.yml",
+        "automaticPreviewDeployment": false
+      }
     },
     {
       "name": "Blink",
