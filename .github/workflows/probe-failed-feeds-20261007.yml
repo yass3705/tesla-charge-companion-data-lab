@@ -58,7 +58,7 @@ jobs:
               idx=body.find(name)
               fragment=body[max(0,idx-45):idx+len(name)+80]
               masked=''.join('x' if c.isalpha() else '0' if c.isdigit() else c for c in fragment)
-              print(name+'_shape',masked)
+              print(name+'_shape',masked,'prefix_codes',[ord(c) for c in body[max(0,idx-4):idx]],'suffix_codes',[ord(c) for c in body[idx+len(name):idx+len(name)+5]])
           if match:
               try: config=json.loads(match.group(1))
               except Exception as e:
