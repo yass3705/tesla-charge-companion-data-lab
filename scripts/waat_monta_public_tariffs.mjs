@@ -16,11 +16,11 @@ const browser=await chromium.launch({executablePath,headless:true,args:['--no-sa
 const context=await browser.newContext({locale:'fr-FR',userAgent:'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',viewport:{width:1280,height:900}});
 const page=await context.newPage();
 
-let apiHeaders=null,observedMapUrl=null;
+let apiHeaders=null,observedMapUrl=null,observedHeaderNames=[];
 page.on('request',async req=>{
   if(apiHeaders||!req.url().includes('api.monta.app/api/v1/charge_points/map')) return;
-  const h=await req.allHeaders();
-  const keep=['authorization','operator','application','application-version','meta','uuid','accept','accept-language'];
+  const h=await req.allHeaders(); observedHeaderNames=Object.keys(h).sort();
+  const keep=['authorization','operator','application','application-version','meta','uuid','timezone','accept','accept-language'];
   const picked=Object.fromEntries(keep.filter(k=>h[k]).map(k=>[k,h[k]]));
   if(picked.authorization){ apiHeaders=picked; observedMapUrl=req.url(); }
 });
@@ -46,7 +46,7 @@ const observed=await fetchJson(observedMapUrl);
 const [firstLat,firstLng]=stations[0].coordinates;
 const probeParams=new URLSearchParams({top:String(firstLat+.012),bottom:String(firstLat-.012),left:String(firstLng-.018),right:String(firstLng+.018),zoom:'15',center_lat:String(firstLat),center_lng:String(firstLng),segmented:'1',busy_all:'1',busy_queue:'1',passive:'1'});
 const custom=await fetchJson('https://api.monta.app/api/v1/charge_points/map?'+probeParams);
-console.log(JSON.stringify({observedMapUrl,observedStatus:observed.status,observedError:JSON.stringify(observed.data??observed.text)?.slice(0,800),customStatus:custom.status,customError:JSON.stringify(custom.data??custom.text)?.slice(0,800)}));
+console.log(JSON.stringify({observedMapUrl,observedHeaderNames,observedStatus:observed.status,observedError:JSON.stringify(observed.data??observed.text)?.slice(0,800),customStatus:custom.status,customError:JSON.stringify(custom.data??custom.text)?.slice(0,800)}));
 await browser.close();
 process.exit(0);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
