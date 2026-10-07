@@ -65,8 +65,8 @@ jobs:
                   print('config_parse_error',type(e).__name__)
                   raise SystemExit(0)
           else:
-              base_match=re.search(r'\"bffApiUrl\"\\s*:\\s*\"([^\"]+)\"',body)
-              key_match=re.search(r'\"globalApiKey\"\\s*:\\s*\"([^\"]+)\"',body)
+              base_match=re.search(r'"bffApiUrl"\s*:\s*"([^"]+)"',body)
+              key_match=re.search(r'"globalApiKey"\s*:\s*"([^"]+)"',body)
               print('literal_base_found',bool(base_match),'literal_key_found',bool(key_match))
               if not base_match or not key_match: raise SystemExit(0)
               config={'bffApiUrl':base_match.group(1),'globalApiKey':key_match.group(1)}
