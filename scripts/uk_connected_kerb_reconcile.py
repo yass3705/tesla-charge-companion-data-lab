@@ -101,12 +101,22 @@ def main():
                            'operatorIds': ['Connected Kerb'], 'stationIds': [offer['locationId']],
                            'evseIds': [offer['evseId'] or offer['evseUid']], 'countries': ['GB'],
                            'currency': 'GBP', 'directOperatorOnly': True, 'verifiedScope': 'exact_evse',
-                           'pricing': {'type': 'rules', 'rules': rules},
+                           'pricing': {'type': 'rules', 'timeZone': 'UTC', 'rules': rules},
                            'metadata': {'timeZone': 'UTC', 'displayTimeZone': 'Europe/London',
                                         'connectorId': offer['connectorId'], 'pricingScope': app['pricingScope']}})
     write('v9-production-runtime/data/v9/uk-connected-kerb-offers.candidate.json',
           {'country': 'GB', 'generatedAt': app['collectedAt'], 'activationStatus': 'pending_runtime_timezone_and_station_loader',
            'directOffers': candidates})
+    by_connector = {o['metadata']['connectorId']: o for o in candidates}
+    runtime_locations = copy.deepcopy(eligible)
+    for loc in runtime_locations:
+        for evse in loc['evses']:
+            for conn in evse['connectors']:
+                conn['validatedV9Offer'] = by_connector[conn['id']]
+    write('data/national/uk_connected_kerb_v9.json.gz', {
+        'collectedAt': app['collectedAt'], 'operatorBaselineCollectedAt': source['collectedAt'],
+        'sources': [{'id': 'connected-kerb-guest', 'name': 'Connected Kerb',
+                     'pricingScope': 'cpo_direct_standard_guest', 'locations': runtime_locations, 'tariffs': []}]})
     doc = read('docs/connected-kerb-uk-integration-2026-10-07.json')
     doc.update(status='guest_app_reconciled_v9_candidate_ready', snapshotCollectedAt=source['collectedAt'],
                appCollectedAt=app['collectedAt'], publishedToV9=False,
