@@ -2,6 +2,7 @@
 """Collect operator-supplied Connected Kerb infrastructure API, without secrets in output."""
 import argparse
 import gzip
+import hashlib
 import http.client
 import json
 import os
@@ -54,7 +55,7 @@ class Client:
 
 
 def collect(client, path, identity):
-    rows, seen, page = [], set(), 1
+    rows, seen_pages, identities, page = [], set(), Counter(), 1
     expected = None
     while page <= 2000:
         payload = client.get(path, page)
@@ -68,18 +69,24 @@ def collect(client, path, identity):
                 raise ValueError(f"{path}: inventory changed during pagination; retry full collection")
             expected = total
         batch = payload["data"]
+        fingerprint = hashlib.sha256(json.dumps(batch, sort_keys=True).encode()).hexdigest()
+        if batch and fingerprint in seen_pages:
+            raise ValueError(f"{path}: repeated entire page {page}")
+        seen_pages.add(fingerprint)
         for row in batch:
             key = str(row.get(identity) or "")
-            if not key or key in seen:
-                raise ValueError(f"{path}: missing or repeated object ID on page {page}")
-            seen.add(key)
+            if not key:
+                raise ValueError(f"{path}: missing object ID on page {page}")
+            identities[key] += 1
             rows.append(row)
         pages = pagination.get("totalPages")
         done = (pages is not None and page >= int(pages)) or (expected is not None and len(rows) >= expected)
         if done or not batch:
             if expected is not None and len(rows) != expected:
                 raise ValueError(f"{path}: collected {len(rows)} objects, expected {expected}")
-            return rows, {"pages": page, "reportedTotal": expected, "count": len(rows)}
+            return rows, {"pages": page, "reportedTotal": expected, "count": len(rows),
+                          "distinctIds": len(identities),
+                          "duplicateIds": {k: n for k, n in identities.items() if n > 1}}
         page += 1
         time.sleep(0.1)
     raise ValueError(f"{path}: pagination limit exceeded")
@@ -91,7 +98,14 @@ def tariff_ids(conn):
 
 
 def audit(locations, tariffs):
-    tariff_map = {str(t["id"]): t for t in tariffs}
+    tariff_map, ambiguous = {}, set()
+    for tariff in tariffs:
+        key = str(tariff["id"])
+        if key in tariff_map and tariff_map[key] != tariff:
+            ambiguous.add(key)
+        tariff_map[key] = tariff
+    for key in ambiguous:
+        del tariff_map[key]
     evses = connectors = linked = resolved = 0
     refs, missing, currencies, components = set(), set(), Counter(), Counter()
     publish = Counter()
@@ -113,7 +127,7 @@ def audit(locations, tariffs):
                 components[str(pc.get("type"))] += 1
     return {"evses": evses, "connectors": connectors, "connectorsWithTariffRefs": linked,
             "connectorsWithResolvedTariffRefs": resolved, "connectorsWithoutTariffRefs": connectors - linked,
-            "missingTariffIds": sorted(missing), "referencedTariffs": len(refs),
+            "missingTariffIds": sorted(missing), "ambiguousTariffIds": sorted(ambiguous), "referencedTariffs": len(refs),
             "currencies": dict(currencies), "priceComponentTypes": dict(components),
             "publishCounts": dict(publish), "countryCounts": dict(Counter(l.get("country_code") for l in locations))}
 
