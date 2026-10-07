@@ -46,6 +46,40 @@ def main():
     tariff_map = {tariff["id"]: tariff for tariff in tariffs}
     connectors = {c["id"]: c for loc in public for evse in loc["evses"] for c in evse["connectors"]}
     missing = sorted({tid for c in connectors.values() for tid in c.get("tariff_ids", []) if tid not in tariff_map})
+    excluded, eligible = [], []
+    for loc in public:
+        reasons = set()
+        for evse in loc["evses"]:
+            for conn in evse["connectors"]:
+                refs = set(conn.get("tariff_ids", conn.get("tariif_ids", [])))
+                if len(refs) != 1:
+                    reasons.add("multiple_or_missing_tariff_references")
+                if refs & set(multi_energy):
+                    reasons.add("multiple_energy_prices_without_conditions")
+                if refs & set(no_energy):
+                    reasons.add("missing_energy_price")
+                if refs & set(non_energy):
+                    reasons.add("additional_fees_without_conditions")
+                if refs - tariff_map.keys():
+                    reasons.add("unresolved_tariff_reference")
+        if loc["id"] in conflicts:
+            reasons.add("conflicting_location_records")
+        if reasons:
+            excluded.append({"id": loc["id"], "name": loc.get("name"), "reasons": sorted(reasons)})
+        else:
+            eligible.append(loc)
+    policy = {
+        "provider": "Connected Kerb", "snapshotCollectedAt": source["collectedAt"],
+        "rule": "Exclude the entire station when any connector has ambiguous price applicability; retain raw source data.",
+        "excludedStationCount": len(excluded), "priceUnambiguousStationCount": len(eligible),
+        "excludedStations": excluded,
+        "eligibleDataset": "data/national/uk_connected_kerb_price_unambiguous_locations.json.gz",
+        "note": "Price-unambiguous does not assert retail/ad-hoc scope or public access; those validations remain required before V9 publication.",
+    }
+    (ROOT / "reports/uk/connected-kerb-price-exclusions-latest.json").write_text(json.dumps(policy, indent=2) + "\n")
+    with gzip.open(ROOT / policy["eligibleDataset"], "wt", encoding="utf-8") as f:
+        json.dump({"source": "Connected Kerb operator API", "collectedAt": source["collectedAt"],
+                   "priceAmbiguousStationsExcluded": True, "locations": eligible}, f, separators=(",", ":"))
     audit = {
         "provider": "Connected Kerb", "snapshotCollectedAt": source["collectedAt"],
         "rawLocationRows": len(source["locations"]), "distinctLocationIds": len(unique),
@@ -64,6 +98,9 @@ def main():
         "scope": "publish=true is a source flag; public access, planned/removed EVSEs and concessions still need publication filtering",
         "pricingBlocker": "Tariff objects lack type/name/restrictions; multiple ENERGY prices and multiple tariff references cannot be assigned to retail/ad-hoc or time windows without further operator clarification.",
         "publishedToV9": False,
+        "priceAmbiguousStationsExcluded": len(excluded),
+        "priceUnambiguousStations": len(eligible),
+        "exclusionPolicy": "reports/uk/connected-kerb-price-exclusions-latest.json",
     }
     path = ROOT / "reports/uk/connected-kerb-snapshot-audit-latest.json"
     path.write_text(json.dumps(audit, indent=2) + "\n")

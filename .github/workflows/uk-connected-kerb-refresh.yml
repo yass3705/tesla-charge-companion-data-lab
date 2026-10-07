@@ -28,6 +28,8 @@ jobs:
         env:
           CONNECTED_KERB_TOKEN: ${{ secrets.CONNECTED_KERB_TOKEN }}
         run: python scripts/uk_connected_kerb_collect.py
+      - name: Exclude stations with ambiguous price applicability
+        run: python scripts/uk_connected_kerb_snapshot_audit.py
       - name: Publish snapshot and reconcile current UK progress
         shell: bash
         run: |
@@ -35,7 +37,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           checkpoint="$(mktemp -d)"
-          files=(data/national/uk_connected_kerb_locations.json.gz data/national/uk_connected_kerb_tariffs.json.gz reports/uk/connected-kerb-latest.json)
+          files=(data/national/uk_connected_kerb_locations.json.gz data/national/uk_connected_kerb_tariffs.json.gz reports/uk/connected-kerb-latest.json data/national/uk_connected_kerb_price_unambiguous_locations.json.gz reports/uk/connected-kerb-snapshot-audit-latest.json reports/uk/connected-kerb-price-exclusions-latest.json)
           for p in "${files[@]}"; do
             mkdir -p "$checkpoint/$(dirname "$p")"
             cp "$p" "$checkpoint/$p"
