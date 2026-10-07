@@ -1,8 +1,8 @@
 # Powerdot direct QR probe v2
 
-- Powerdot IRVE rows: **14175**
-- Unique stations: **1177**
-- EVSE/PDC: **14175**
+- Powerdot IRVE rows: **7733**
+- Unique stations: **1181**
+- EVSE/PDC: **7733**
 - Stations with IRVE tarification text: **1**
 - QR probes: **202**
 - QR HTTP 200: **4**
@@ -10,8 +10,8 @@
 
 ## Known public QR probes
 
-- Mr Bricolage Champniers | MRB_CHP_KPC20001 | HTTP 200 | len 3863 | final https://adhoc.pwrdt.com/?charger_name=MRB_CHP_KPC20001
-- Netto Soustons | NET_SST_KPS20001 | HTTP 200 | len 3863 | final https://adhoc.pwrdt.com/?charger_name=NET_SST_KPS20001
+- Mr Bricolage Champniers | MRB_CHP_KPC20001 | HTTP 200 | len 3696 | final https://adhoc.pwrdt.com/?charger_name=MRB_CHP_KPC20001
+- Netto Soustons | NET_SST_KPS20001 | HTTP 200 | len 3696 | final https://adhoc.pwrdt.com/?charger_name=NET_SST_KPS20001
 
 ## Successful derived QR candidates
 
@@ -20,67 +20,51 @@
 
 ## Frontend/API findings
 
-- Asset: https://adhoc.pwrdt.com/assets/index-B36_HfRJ.js | HTTP 200 | len 420534
-  - URL: http://www.powerdot.pt
-  - URL: http://www.powerdot.pt</Action>
-  - URL: https://api.mapbox.com/geocoding/v5/mapbox.places
-  - URL: https://api.mapbox.com/search/searchbox/v1
-  - URL: https://api.pwrdt.com
-  - URL: https://auth.powerdot.eu/realms
+- Asset: https://adhoc.pwrdt.com/assets/index-DjLGPfWV.js | HTTP 200 | len 159325
+  - URL: http://www.powerdot.es
+  - URL: http://www.powerdot.es</Action>
   - URL: https://powerdot.eu/
   - URL: https://powerdot.eu/</Action>,
-  - URL: https://www.powerdot.pt
-  - URL: https://www.powerdot.pt</Action>,
-  - Snippet: js","assets/vendor-analytics-pR5Mwgig.js","assets/NeedHelpChoosingChargerPopup-DKH4GCyf.js","assets/ConnectorUnavailablePopup-D2gccAJB.js","assets/_terminal-CwgZ5tJ7.js","assets/UnpaidDebtOverlayManager-BwX9FkjU.js","assets/TutorialPopup-BqDWCees.js","assets/LazyCountryPickerBottomSheet-j
-  - Snippet: ew2op.js","assets/vendor-payments-Dn6H7tOa.js","assets/NetworkRatesBottomSheet-CnWikIl2.js","assets/ConnectorsCount-C48C1A3n.js","assets/SectionTitle-D0KDrQOV.js","assets/InlineRateExperience-CPirSG02.js","assets/GetDiscountCodePopup-DkREnbMv.js","assets/useChargingCurveService-CSjfCjAT.j
-  - Snippet: CSjfCjAT.js","assets/terminal-charging-CACr3o-a.js","assets/SessionStateBanner-BB3_4Rp0.js","assets/PricingInfoBottomSheet-Di9ACFNL.js","assets/FeatureInfoDrawer-CnM3r4DG.js","assets/subscription-plans-_yQtFhoH.js","assets/SubscriptionPlansBottomSheet-nIXIhVkp.js","assets/_map-auth-BDsr
-  - Snippet: ,"assets/session-summary-Bkk-E_yT.js","assets/session-payment-failed-BPscH3QE.js","assets/preparing-connector-Dl-AzDQO.js","assets/pre-authorization-B9r8xpc3.js","assets/ChangeAmountBottomSheet-xa0g9wOr.js","assets/StateBanner-D0kOVRrG.js","assets/payment-D8dFjNU1.js","assets/LazyPaymentE
-  - Snippet: Cvtvg7ML.js","assets/location-D6ivoFSD.js","assets/HowToGeoLocationBottomSheet-B-GQE-xo.js","assets/connector-selection-CuEhC9yd.js","assets/coming-soon-Gb4jAkq-.js","assets/charging--g5huhDj.js","assets/subscription-details-pZKQc8xU.js","assets/setup-subscription-C9tRP1Dv.js","assets/Cou
-- Asset: https://adhoc.pwrdt.com/assets/index-B36_HfRJ.js | HTTP 200 | len 420534
-  - URL: http://www.powerdot.pt
-  - URL: http://www.powerdot.pt</Action>
-  - URL: https://api.mapbox.com/geocoding/v5/mapbox.places
-  - URL: https://api.mapbox.com/search/searchbox/v1
-  - URL: https://api.pwrdt.com
-  - URL: https://auth.powerdot.eu/realms
+  - URL: https://www.powerdot.es
+  - URL: https://www.powerdot.es</Action>
+  - Snippet:  EVen ohiko jokabideagatik.",h="Saioaren datuak kargatzen...",c={energy:"Energia",power:"Potentzia",price:"Prezioa",time:"Saioaren denbora",battery:"Bateria"},m="Xehetasunak ikusi",f={graph:{title:"Kargatzeko kurba"},title:"Saioaren xehetasunak"},E="Eskuratu saio-esteka zure posta ele
+  - Snippet: a kobratuko da.",title:"Ziur zaude zure saioa gelditu nahi duzula?"},S={overtime:{info:'Saioaren $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) minutu igaro ondoren, aparteko karguak aplikatuko dira <strong>{{overtimePriceRate}} {{currency}}/min.</strong>',minu
+  - Snippet: {overtimeLimitMinutes}} }) minutu igaro ondoren, aparteko karguak aplikatuko dira <strong>{{overtimePriceRate}} {{currency}}/min.</strong>',minutes_one:"{{count}} minutu",minutes_other:"{{count}} minutuak",reaching:'<strong>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOve
+  - Snippet: n.</strong>',minutes_one:"{{count}} minutu",minutes_other:"{{count}} minutuak",reaching:'<strong>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOvertime}} })</strong> minutu barru, $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) iritsiko zara. Apartek
+  - Snippet: g>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOvertime}} })</strong> minutu barru, $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) iritsiko zara. Aparteko karguak <strong>{{overtimePriceRate}} {{currency}}/min</strong> aplikatuko dira orduan.',runn
+- Asset: https://adhoc.pwrdt.com/assets/index-DjLGPfWV.js | HTTP 200 | len 159325
+  - URL: http://www.powerdot.es
+  - URL: http://www.powerdot.es</Action>
   - URL: https://powerdot.eu/
   - URL: https://powerdot.eu/</Action>,
-  - URL: https://www.powerdot.pt
-  - URL: https://www.powerdot.pt</Action>,
-  - Snippet: js","assets/vendor-analytics-pR5Mwgig.js","assets/NeedHelpChoosingChargerPopup-DKH4GCyf.js","assets/ConnectorUnavailablePopup-D2gccAJB.js","assets/_terminal-CwgZ5tJ7.js","assets/UnpaidDebtOverlayManager-BwX9FkjU.js","assets/TutorialPopup-BqDWCees.js","assets/LazyCountryPickerBottomSheet-j
-  - Snippet: ew2op.js","assets/vendor-payments-Dn6H7tOa.js","assets/NetworkRatesBottomSheet-CnWikIl2.js","assets/ConnectorsCount-C48C1A3n.js","assets/SectionTitle-D0KDrQOV.js","assets/InlineRateExperience-CPirSG02.js","assets/GetDiscountCodePopup-DkREnbMv.js","assets/useChargingCurveService-CSjfCjAT.j
-  - Snippet: CSjfCjAT.js","assets/terminal-charging-CACr3o-a.js","assets/SessionStateBanner-BB3_4Rp0.js","assets/PricingInfoBottomSheet-Di9ACFNL.js","assets/FeatureInfoDrawer-CnM3r4DG.js","assets/subscription-plans-_yQtFhoH.js","assets/SubscriptionPlansBottomSheet-nIXIhVkp.js","assets/_map-auth-BDsr
-  - Snippet: ,"assets/session-summary-Bkk-E_yT.js","assets/session-payment-failed-BPscH3QE.js","assets/preparing-connector-Dl-AzDQO.js","assets/pre-authorization-B9r8xpc3.js","assets/ChangeAmountBottomSheet-xa0g9wOr.js","assets/StateBanner-D0kOVRrG.js","assets/payment-D8dFjNU1.js","assets/LazyPaymentE
-  - Snippet: Cvtvg7ML.js","assets/location-D6ivoFSD.js","assets/HowToGeoLocationBottomSheet-B-GQE-xo.js","assets/connector-selection-CuEhC9yd.js","assets/coming-soon-Gb4jAkq-.js","assets/charging--g5huhDj.js","assets/subscription-details-pZKQc8xU.js","assets/setup-subscription-C9tRP1Dv.js","assets/Cou
-- Asset: https://adhoc.pwrdt.com/assets/index-B36_HfRJ.js | HTTP 200 | len 420534
-  - URL: http://www.powerdot.pt
-  - URL: http://www.powerdot.pt</Action>
-  - URL: https://api.mapbox.com/geocoding/v5/mapbox.places
-  - URL: https://api.mapbox.com/search/searchbox/v1
-  - URL: https://api.pwrdt.com
-  - URL: https://auth.powerdot.eu/realms
+  - URL: https://www.powerdot.es
+  - URL: https://www.powerdot.es</Action>
+  - Snippet:  EVen ohiko jokabideagatik.",h="Saioaren datuak kargatzen...",c={energy:"Energia",power:"Potentzia",price:"Prezioa",time:"Saioaren denbora",battery:"Bateria"},m="Xehetasunak ikusi",f={graph:{title:"Kargatzeko kurba"},title:"Saioaren xehetasunak"},E="Eskuratu saio-esteka zure posta ele
+  - Snippet: a kobratuko da.",title:"Ziur zaude zure saioa gelditu nahi duzula?"},S={overtime:{info:'Saioaren $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) minutu igaro ondoren, aparteko karguak aplikatuko dira <strong>{{overtimePriceRate}} {{currency}}/min.</strong>',minu
+  - Snippet: {overtimeLimitMinutes}} }) minutu igaro ondoren, aparteko karguak aplikatuko dira <strong>{{overtimePriceRate}} {{currency}}/min.</strong>',minutes_one:"{{count}} minutu",minutes_other:"{{count}} minutuak",reaching:'<strong>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOve
+  - Snippet: n.</strong>',minutes_one:"{{count}} minutu",minutes_other:"{{count}} minutuak",reaching:'<strong>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOvertime}} })</strong> minutu barru, $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) iritsiko zara. Apartek
+  - Snippet: g>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOvertime}} })</strong> minutu barru, $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) iritsiko zara. Aparteko karguak <strong>{{overtimePriceRate}} {{currency}}/min</strong> aplikatuko dira orduan.',runn
+- Asset: https://adhoc.pwrdt.com/assets/index-DjLGPfWV.js | HTTP 200 | len 159325
+  - URL: http://www.powerdot.es
+  - URL: http://www.powerdot.es</Action>
   - URL: https://powerdot.eu/
   - URL: https://powerdot.eu/</Action>,
-  - URL: https://www.powerdot.pt
-  - URL: https://www.powerdot.pt</Action>,
-  - Snippet: js","assets/vendor-analytics-pR5Mwgig.js","assets/NeedHelpChoosingChargerPopup-DKH4GCyf.js","assets/ConnectorUnavailablePopup-D2gccAJB.js","assets/_terminal-CwgZ5tJ7.js","assets/UnpaidDebtOverlayManager-BwX9FkjU.js","assets/TutorialPopup-BqDWCees.js","assets/LazyCountryPickerBottomSheet-j
-  - Snippet: ew2op.js","assets/vendor-payments-Dn6H7tOa.js","assets/NetworkRatesBottomSheet-CnWikIl2.js","assets/ConnectorsCount-C48C1A3n.js","assets/SectionTitle-D0KDrQOV.js","assets/InlineRateExperience-CPirSG02.js","assets/GetDiscountCodePopup-DkREnbMv.js","assets/useChargingCurveService-CSjfCjAT.j
-  - Snippet: CSjfCjAT.js","assets/terminal-charging-CACr3o-a.js","assets/SessionStateBanner-BB3_4Rp0.js","assets/PricingInfoBottomSheet-Di9ACFNL.js","assets/FeatureInfoDrawer-CnM3r4DG.js","assets/subscription-plans-_yQtFhoH.js","assets/SubscriptionPlansBottomSheet-nIXIhVkp.js","assets/_map-auth-BDsr
-  - Snippet: ,"assets/session-summary-Bkk-E_yT.js","assets/session-payment-failed-BPscH3QE.js","assets/preparing-connector-Dl-AzDQO.js","assets/pre-authorization-B9r8xpc3.js","assets/ChangeAmountBottomSheet-xa0g9wOr.js","assets/StateBanner-D0kOVRrG.js","assets/payment-D8dFjNU1.js","assets/LazyPaymentE
-  - Snippet: Cvtvg7ML.js","assets/location-D6ivoFSD.js","assets/HowToGeoLocationBottomSheet-B-GQE-xo.js","assets/connector-selection-CuEhC9yd.js","assets/coming-soon-Gb4jAkq-.js","assets/charging--g5huhDj.js","assets/subscription-details-pZKQc8xU.js","assets/setup-subscription-C9tRP1Dv.js","assets/Cou
-- Asset: https://adhoc.pwrdt.com/assets/index-B36_HfRJ.js | HTTP 200 | len 420534
-  - URL: http://www.powerdot.pt
-  - URL: http://www.powerdot.pt</Action>
-  - URL: https://api.mapbox.com/geocoding/v5/mapbox.places
-  - URL: https://api.mapbox.com/search/searchbox/v1
-  - URL: https://api.pwrdt.com
-  - URL: https://auth.powerdot.eu/realms
+  - URL: https://www.powerdot.es
+  - URL: https://www.powerdot.es</Action>
+  - Snippet:  EVen ohiko jokabideagatik.",h="Saioaren datuak kargatzen...",c={energy:"Energia",power:"Potentzia",price:"Prezioa",time:"Saioaren denbora",battery:"Bateria"},m="Xehetasunak ikusi",f={graph:{title:"Kargatzeko kurba"},title:"Saioaren xehetasunak"},E="Eskuratu saio-esteka zure posta ele
+  - Snippet: a kobratuko da.",title:"Ziur zaude zure saioa gelditu nahi duzula?"},S={overtime:{info:'Saioaren $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) minutu igaro ondoren, aparteko karguak aplikatuko dira <strong>{{overtimePriceRate}} {{currency}}/min.</strong>',minu
+  - Snippet: {overtimeLimitMinutes}} }) minutu igaro ondoren, aparteko karguak aplikatuko dira <strong>{{overtimePriceRate}} {{currency}}/min.</strong>',minutes_one:"{{count}} minutu",minutes_other:"{{count}} minutuak",reaching:'<strong>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOve
+  - Snippet: n.</strong>',minutes_one:"{{count}} minutu",minutes_other:"{{count}} minutuak",reaching:'<strong>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOvertime}} })</strong> minutu barru, $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) iritsiko zara. Apartek
+  - Snippet: g>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOvertime}} })</strong> minutu barru, $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) iritsiko zara. Aparteko karguak <strong>{{overtimePriceRate}} {{currency}}/min</strong> aplikatuko dira orduan.',runn
+- Asset: https://adhoc.pwrdt.com/assets/index-DjLGPfWV.js | HTTP 200 | len 159325
+  - URL: http://www.powerdot.es
+  - URL: http://www.powerdot.es</Action>
   - URL: https://powerdot.eu/
   - URL: https://powerdot.eu/</Action>,
-  - URL: https://www.powerdot.pt
-  - URL: https://www.powerdot.pt</Action>,
-  - Snippet: js","assets/vendor-analytics-pR5Mwgig.js","assets/NeedHelpChoosingChargerPopup-DKH4GCyf.js","assets/ConnectorUnavailablePopup-D2gccAJB.js","assets/_terminal-CwgZ5tJ7.js","assets/UnpaidDebtOverlayManager-BwX9FkjU.js","assets/TutorialPopup-BqDWCees.js","assets/LazyCountryPickerBottomSheet-j
-  - Snippet: ew2op.js","assets/vendor-payments-Dn6H7tOa.js","assets/NetworkRatesBottomSheet-CnWikIl2.js","assets/ConnectorsCount-C48C1A3n.js","assets/SectionTitle-D0KDrQOV.js","assets/InlineRateExperience-CPirSG02.js","assets/GetDiscountCodePopup-DkREnbMv.js","assets/useChargingCurveService-CSjfCjAT.j
-  - Snippet: CSjfCjAT.js","assets/terminal-charging-CACr3o-a.js","assets/SessionStateBanner-BB3_4Rp0.js","assets/PricingInfoBottomSheet-Di9ACFNL.js","assets/FeatureInfoDrawer-CnM3r4DG.js","assets/subscription-plans-_yQtFhoH.js","assets/SubscriptionPlansBottomSheet-nIXIhVkp.js","assets/_map-auth-BDsr
-  - Snippet: ,"assets/session-summary-Bkk-E_yT.js","assets/session-payment-failed-BPscH3QE.js","assets/preparing-connector-Dl-AzDQO.js","assets/pre-authorization-B9r8xpc3.js","assets/ChangeAmountBottomSheet-xa0g9wOr.js","assets/StateBanner-D0kOVRrG.js","assets/payment-D8dFjNU1.js","assets/LazyPaymentE
-  - Snippet: Cvtvg7ML.js","assets/location-D6ivoFSD.js","assets/HowToGeoLocationBottomSheet-B-GQE-xo.js","assets/connector-selection-CuEhC9yd.js","assets/coming-soon-Gb4jAkq-.js","assets/charging--g5huhDj.js","assets/subscription-details-pZKQc8xU.js","assets/setup-subscription-C9tRP1Dv.js","assets/Cou
+  - URL: https://www.powerdot.es
+  - URL: https://www.powerdot.es</Action>
+  - Snippet:  EVen ohiko jokabideagatik.",h="Saioaren datuak kargatzen...",c={energy:"Energia",power:"Potentzia",price:"Prezioa",time:"Saioaren denbora",battery:"Bateria"},m="Xehetasunak ikusi",f={graph:{title:"Kargatzeko kurba"},title:"Saioaren xehetasunak"},E="Eskuratu saio-esteka zure posta ele
+  - Snippet: a kobratuko da.",title:"Ziur zaude zure saioa gelditu nahi duzula?"},S={overtime:{info:'Saioaren $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) minutu igaro ondoren, aparteko karguak aplikatuko dira <strong>{{overtimePriceRate}} {{currency}}/min.</strong>',minu
+  - Snippet: {overtimeLimitMinutes}} }) minutu igaro ondoren, aparteko karguak aplikatuko dira <strong>{{overtimePriceRate}} {{currency}}/min.</strong>',minutes_one:"{{count}} minutu",minutes_other:"{{count}} minutuak",reaching:'<strong>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOve
+  - Snippet: n.</strong>',minutes_one:"{{count}} minutu",minutes_other:"{{count}} minutuak",reaching:'<strong>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOvertime}} })</strong> minutu barru, $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) iritsiko zara. Apartek
+  - Snippet: g>$t(tariffBanner.overtime.minutes, {"count": {{minutesUntilOvertime}} })</strong> minutu barru, $t(tariffBanner.overtime.minutes, {"count": {{overtimeLimitMinutes}} }) iritsiko zara. Aparteko karguak <strong>{{overtimePriceRate}} {{currency}}/min</strong> aplikatuko dira orduan.',runn
