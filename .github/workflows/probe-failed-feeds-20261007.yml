@@ -51,7 +51,7 @@ jobs:
           url='https://chargingservices.totalenergies.com/main.833f41fbec0463af.js'
           body=urllib.request.urlopen(url,timeout=30).read().decode('utf-8','replace')
           match=re.search(r"y=JSON\\.parse\\('([^\\n]+?)'\\)",body)
-          print('config_found',bool(match))
+          print('config_found',bool(match),'bffApiUrl_name', 'bffApiUrl' in body,'globalApiKey_name','globalApiKey' in body,'len',len(body))
           if not match: raise SystemExit(0)
           try: config=json.loads(match.group(1))
           except Exception as e:
