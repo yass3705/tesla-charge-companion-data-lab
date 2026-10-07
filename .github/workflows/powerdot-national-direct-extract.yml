@@ -1,6 +1,8 @@
 name: Powerdot national direct extract
 
 on:
+  schedule:
+    - cron: "13 1 * * *"
   workflow_dispatch:
   push:
     branches: ["main"]
@@ -276,11 +278,30 @@ jobs:
           REPORT.write_text('\n'.join(lines)+'\n',encoding='utf-8')
           print(json.dumps(payload['counts'],indent=2)); print('components',dict(component_counts)); print('energy rates',dict(sorted(energy_rates.items())))
           PY
+      - name: Validate national Powerdot direct coverage
+        run: |
+          python - <<'PY'
+          import gzip,json
+          with gzip.open('data/national/powerdot_direct_france.json.gz','rt',encoding='utf-8') as f:
+              data=json.load(f)
+          counts=data['counts']
+          assert data['source']['sourceType']=='direct_cpo_public_adhoc_api'
+          assert data['source']['roaming'] is False
+          assert data['irveSource']=='transport.data.gouv.fr PAN IRVE static consolidation'
+          assert counts['locations']>=950,counts
+          assert counts['pricedConnectors']>=6000,counts
+          assert counts['pricedConnectors']==counts['decodedConnectors'],counts
+          print(counts)
+          PY
       - name: Publish national Powerdot dataset
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/powerdot_direct_france.md data/national/powerdot_direct_france.json.gz
           git commit -m "data(powerdot): publish national direct CPO tariffs [run ${GITHUB_RUN_ID}]" || exit 0
-          git pull --rebase origin main
-          git push origin HEAD:main
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
