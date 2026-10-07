@@ -1,0 +1,28 @@
+name: Verify TotalEnergies NL PAYG runtime
+on:
+  push:
+    branches: [codex/repair-total-nl-runtime-20261007]
+    paths: [".github/workflows/verify-total-nl-20261007.yml"]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and collect official PAYG candidate
+        run: |
+          python3 -m py_compile scripts/integrate_total_nl_chargingservices.py
+          python3 scripts/integrate_total_nl_chargingservices.py --no-write --overlay /tmp/total-nl-overlay.json --report /tmp/total-nl-report.json
+      - name: Check exact coverage and source
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/total-nl-report.json'))
+          assert r['officialInventory']['locations'] > 10000, r['officialInventory']
+          assert r['exactPricedConnectorCount'] > 0, r
+          assert r['status']=='candidate_only', r['status']
+          assert r['apiSource']['apiKeyPersisted'] is False
+          print('official_locations',r['officialInventory']['locations'],'exact_connectors',r['exactPricedConnectorCount'])
+          PY
