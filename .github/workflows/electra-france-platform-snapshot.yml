@@ -10,7 +10,7 @@ on:
       - ".github/workflows/electra-france-platform-snapshot.yml"
   workflow_dispatch:
   schedule:
-    - cron: "47 0 * * 1"
+    - cron: "47 4 * * 1"
 permissions:
   contents: write
 concurrency:
@@ -24,22 +24,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/checkout@v4
-        with:
-          repository: yass3705/tesla-charge-companion-stable
-          ref: 0a6d2c3415504397310d3dc92fae40be843b2435
-          path: stable
-          persist-credentials: false
-          sparse-checkout: |
-            v9-production-runtime/data/v9/france-static/all.json.gz
-          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Build exact national-EVSE Electra platform overlay
         run: |
           rm -rf data/platforms/electra/france
-          node scripts/electra_france_platform_snapshot.mjs data/platforms/electra/france stable/v9-production-runtime/data/v9/france-static/all.json.gz
+          node scripts/electra_france_platform_snapshot.mjs data/platforms/electra/france data/national/france-irve-static-v9/all.json.gz
       - name: Persist validated overlay
         run: |
           git config user.name 'github-actions[bot]'

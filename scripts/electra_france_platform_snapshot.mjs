@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 
 const OUT=process.argv[2]||'data/platforms/electra/france';
-const NATIONAL=process.argv[3]||'stable/v9-production-runtime/data/v9/france-static/all.json.gz';
+const NATIONAL=process.argv[3]||'data/national/france-irve-static-v9/all.json.gz';
 const ASSOCIATIONS=process.argv[4]||'data/platforms/electra/irve-associations-batch-01.json';
 const ASSOCIATION_DIR=process.argv[5]||'data/platforms/electra/irve-association-batches';
 const URL='https://emsp.go-electra.com/graphql';
