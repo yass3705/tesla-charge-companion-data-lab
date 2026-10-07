@@ -5,6 +5,7 @@ on:
   schedule:
     - cron: "47 3 * * 4"
   push:
+    branches: [main]
     paths:
       - "scripts/greenspot/extract_greenspot.py"
       - ".github/workflows/greenspot-france-extract.yml"
@@ -22,6 +23,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
