@@ -258,3 +258,87 @@ def main():
     compile_cache={}; selection_cache={}; rows=[]
     for st in stations:
         co=st.get('coordinates') or {}; lat=fnum(co.get('latitude')); lon=fnum(co.get('longitude'))
+        if lat is None or lon is None or not in_nl_bounds(lat,lon):
+            stats['outOfBoundsStations']+=1
+            stats['outOfBoundsByParty'][str(st.get('partyId') or 'UNKNOWN')]+=1
+            continue
+        station_id=str(st.get('stationId') or '')
+        if not station_id: continue
+        groups={}
+        last_updated=str(st.get('lastUpdated') or '')
+        for evse in st.get('evses') or []:
+            last_updated=max(last_updated,str(evse.get('lastUpdated') or ''))
+            for conn in evse.get('connectors') or []:
+                stats['connectors']+=1
+                last_updated=max(last_updated,str(conn.get('lastUpdated') or ''))
+                tariff_key,rules,reason=choose_tariff(conn.get('tariffKeys') or [],tariffs,today,stats,compile_cache,selection_cache)
+                if tariff_key:
+                    stats['exactPricedConnectors']+=1
+                else:
+                    stats['unpricedConnectors']+=1
+                power=fnum(conn.get('powerKw')) or 11.0
+                power=round(max(0.1,power),1)
+                connector_kind=kind(conn)
+                signature=(connector_kind,power,tariff_key or '')
+                if signature not in groups:
+                    groups[signature]={'evses':set(),'rules':rules or []}
+                groups[signature]['evses'].add(str(evse.get('evseId') or evse.get('uid') or ''))
+        if not groups: continue
+        configs=[]
+        for index,((connector_kind,power,tariff_key),group) in enumerate(sorted(groups.items(),key=lambda x:(x[0][0],x[0][1],x[0][2]))):
+            stall_count=len(group['evses']) or 1
+            config_id=f'dotnl-{index}-{connector_kind.lower()}-{str(power).replace(".","_")}'
+            label=f'DOT-NL public · {connector_kind} {power:g} kW'
+            rules=group['rules']
+            configs.append([config_id,label,connector_kind,power,stall_count,rules])
+            stats['configs']+=1
+            if rules:
+                stats['pricedConfigs']+=1
+                if any(rule[12] for rule in rules): stats['durationBandConfigs']+=1
+        address=', '.join(str(st.get(key) or '').strip() for key in ('address','postalCode','city') if st.get(key))
+        stalls=sum(config[4] for config in configs)
+        rows.append([station_id,st.get('name') or address,address,round(lat,6),round(lon,6),
+                     st.get('operatorName') or st.get('partyId') or 'DOT-NL',stalls,None,configs,
+                     last_updated or generated,st.get('serviceStatus') or 'UNKNOWN'])
+
+    args.out_dir.mkdir(parents=True,exist_ok=True)
+    _,all_bytes=gz_write(args.out_dir/'all.json.gz',rows)
+    all_sha=hashlib.sha256((args.out_dir/'all.json.gz').read_bytes()).hexdigest()
+    tiled=collections.defaultdict(list)
+    for row in rows:
+        tile,lo_lat,lo_lon=tile_id(row[3],row[4])
+        tiled[(tile,lo_lat,lo_lon)].append(row)
+    tiles=[]
+    for (tile,lo_lat,lo_lon),fragment in sorted(tiled.items()):
+        file=f'{tile}.json.gz'
+        _,gz_bytes=gz_write(args.out_dir/file,fragment)
+        tiles.append({'id':tile,'file':file,'count':len(fragment),'bytes':gz_bytes,
+                      'sha256':hashlib.sha256((args.out_dir/file).read_bytes()).hexdigest(),
+                      'minLat':lo_lat,'maxLat':lo_lat+.5,'minLon':lo_lon,'maxLon':lo_lon+.5})
+    manifest={
+        'schemaVersion':2,'dataset':'netherlands-non-tesla-runtime',
+        'generatedAt':generated,'effectiveTariffDate':today.isoformat(),
+        'stationCount':len(rows),'configurationCount':stats['configs'],
+        'pricedConfigurationCount':stats['pricedConfigs'],
+        'durationBandConfigurationCount':stats['durationBandConfigs'],
+        'tileSizeDegrees':.5,'tileCount':len(tiles),'allFile':'all.json.gz',
+        'allBytes':all_bytes,'allSha256':all_sha,'tiles':tiles,
+        'scope':{'countryCode':'NL','teslaExcluded':True,'strictTariffCompiler':True,
+                 'ocpiDurationBands':True,'ocpiOpeningTimes':False,
+                 'ocpiParkingRestrictions':False,'publishedToTcc':False,
+                 'europeanNetherlandsBounds':list(NL_BOUNDS)}
+    }
+    (args.out_dir/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    report={
+        'dataset':'dotnl-netherlands-runtime-report','generatedAt':generated,
+        'stationCount':len(rows),'metrics':{**stats,'unsupportedReasons':dict(stats['unsupportedReasons']),
+                                          'outOfBoundsByParty':dict(stats['outOfBoundsByParty'])},
+        'coveragePct':{'exactTariffConnectors':round(100*stats['exactPricedConnectors']/max(1,stats['connectors']),3),
+                       'pricedConfigurations':round(100*stats['pricedConfigs']/max(1,stats['configs']),3)}
+    }
+    args.report_json.parent.mkdir(parents=True,exist_ok=True)
+    args.report_json.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    print(json.dumps({'stationCount':len(rows),'metrics':report['metrics'],
+                      'coveragePct':report['coveragePct']},ensure_ascii=False))
+
+if __name__=='__main__': main()
