@@ -52,6 +52,8 @@ jobs:
           body=urllib.request.urlopen(url,timeout=30).read().decode('utf-8','replace')
           match=re.search(r"y=JSON\\.parse\\('([^\\n]+?)'\\)",body)
           print('config_found',bool(match),'bffApiUrl_name', 'bffApiUrl' in body,'globalApiKey_name','globalApiKey' in body,'len',len(body))
+          candidates=re.findall(r"JSON\\.parse\\('([^']+)'\\)",body)
+          print('parse_candidates',len(candidates),'candidate_with_fields',sum('bffApiUrl' in c and 'globalApiKey' in c for c in candidates))
           if not match: raise SystemExit(0)
           try: config=json.loads(match.group(1))
           except Exception as e:
