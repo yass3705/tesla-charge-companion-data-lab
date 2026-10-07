@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import errno
 import hashlib
 import json
 import re
 import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -113,7 +115,21 @@ def main() -> None:
     args = parser.parse_args()
 
     generated = now()
-    checks = {"sourceStatus": "previously_verified_official_source"} if args.skip_live_check else fetch_official_markers()
+    try:
+        checks = {"sourceStatus": "previously_verified_official_source"} if args.skip_live_check else fetch_official_markers()
+    except urllib.error.URLError as exc:
+        if getattr(exc.reason, "errno", None) != errno.ENETUNREACH:
+            raise
+        report = {
+            "schemaVersion": 1, "generatedAt": generated,
+            "status": "official_source_network_unreachable",
+            "partyId": PARTY, "source": SOURCE, "exactPricedConnectorCount": 0,
+            "policy": "No StellaPower tariff promoted without current official source verification",
+        }
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(report))
+        return
     data = read_normalized(args.normalized)
     key, obj = tariff()
     matches = []
