@@ -1,0 +1,52 @@
+name: Connected Kerb UK full app tariff collection
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/uk_connected_kerb_app_collect.py
+      - .github/workflows/uk-connected-kerb-app-refresh.yml
+      - triggers/uk-connected-kerb-app-refresh.txt
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: uk-connected-kerb-app-refresh
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Collect every public operator location via guest app details
+        run: python -u scripts/uk_connected_kerb_app_collect.py
+      - name: Publish complete and partial results
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(data/national/uk_connected_kerb_app_details.json.gz data/national/uk_connected_kerb_app_direct_offers.json.gz reports/uk/connected-kerb-app-collection-latest.json)
+          for p in "${files[@]}"; do test -f "$p" || exit 1; done
+          checkpoint="$(mktemp -d)"
+          for p in "${files[@]}"; do
+            mkdir -p "$checkpoint/$(dirname "$p")"
+            cp "$p" "$checkpoint/$p"
+          done
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            for p in "${files[@]}"; do
+              mkdir -p "$(dirname "$p")"
+              cp "$checkpoint/$p" "$p"
+            done
+            git add "${files[@]}"
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data(uk): Connected Kerb full guest app tariff collection [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$((attempt * 2))"
+          done
+          exit 1
