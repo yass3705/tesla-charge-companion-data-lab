@@ -10,7 +10,7 @@ on:
       secret_name:
         description: Existing Actions secret name (never the token value)
         required: false
-        default: UBITRICITY_TOKEN
+        default: UBITRICITY_UK_TOKEN
 permissions:
   contents: write
 concurrency:
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Collect operator-supplied feed
         env:
-          UBITRICITY_PCPR_TOKEN: ${{ secrets[inputs.secret_name || 'UBITRICITY_TOKEN'] || secrets.UBITRICITY_PCPR_TOKEN || secrets.UBITRICITY_UK_PCPR_API_KEY || secrets.UBITRICITY_API_KEY }}
+          UBITRICITY_PCPR_TOKEN: ${{ secrets[inputs.secret_name || 'UBITRICITY_UK_TOKEN'] || secrets.UBITRICITY_PCPR_TOKEN || secrets.UBITRICITY_UK_PCPR_API_KEY || secrets.UBITRICITY_API_KEY }}
         run: python -u scripts/uk_ubitricity_pcpr_collect.py
       - name: Persist collected evidence
         shell: bash
