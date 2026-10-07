@@ -16,13 +16,13 @@ const browser=await chromium.launch({executablePath,headless:true,args:['--no-sa
 const context=await browser.newContext({locale:'fr-FR',userAgent:'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',viewport:{width:1280,height:900}});
 const page=await context.newPage();
 
-let apiHeaders=null;
+let apiHeaders=null,observedMapUrl=null;
 page.on('request',async req=>{
   if(apiHeaders||!req.url().includes('api.monta.app/api/v1/charge_points/map')) return;
   const h=await req.allHeaders();
   const keep=['authorization','operator','application','application-version','accept','accept-language'];
   const picked=Object.fromEntries(keep.filter(k=>h[k]).map(k=>[k,h[k]]));
-  if(picked.authorization) apiHeaders=picked;
+  if(picked.authorization){ apiHeaders=picked; observedMapUrl=req.url(); }
 });
 
 // Exact bootstrap already validated by the browser-capture workflow.
@@ -42,6 +42,13 @@ async function fetchJson(url){
     }catch(e){return {status:0,data:null,text:String(e)}}
   },{url,headers:apiHeaders});
 }
+const observed=await fetchJson(observedMapUrl);
+const [firstLat,firstLng]=stations[0].coordinates;
+const probeParams=new URLSearchParams({top:String(firstLat+.012),bottom:String(firstLat-.012),left:String(firstLng-.018),right:String(firstLng+.018),zoom:'15',center_lat:String(firstLat),center_lng:String(firstLng),segmented:'1',busy_all:'1',busy_queue:'1',passive:'1'});
+const custom=await fetchJson('https://api.monta.app/api/v1/charge_points/map?'+probeParams);
+console.log(JSON.stringify({observedMapUrl,observedStatus:observed.status,observedError:observed.text?.slice(0,300),customStatus:custom.status,customError:custom.text?.slice(0,300)}));
+await browser.close();
+process.exit(0);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const norm=s=>String(s??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const isWaat=s=>/WAAT|FR\*?WA2/i.test(String(s??''));
