@@ -54,11 +54,17 @@ jobs:
           print('config_found',bool(match),'bffApiUrl_name', 'bffApiUrl' in body,'globalApiKey_name','globalApiKey' in body,'len',len(body))
           candidates=re.findall(r"JSON\\.parse\\('([^']+)'\\)",body)
           print('parse_candidates',len(candidates),'candidate_with_fields',sum('bffApiUrl' in c and 'globalApiKey' in c for c in candidates))
-          if not match: raise SystemExit(0)
-          try: config=json.loads(match.group(1))
-          except Exception as e:
-              print('config_parse_error',type(e).__name__)
-              raise SystemExit(0)
+          if match:
+              try: config=json.loads(match.group(1))
+              except Exception as e:
+                  print('config_parse_error',type(e).__name__)
+                  raise SystemExit(0)
+          else:
+              base_match=re.search(r'bffApiUrl:[\"\\\']([^\"\\\']+)',body)
+              key_match=re.search(r'globalApiKey:[\"\\\']([^\"\\\']+)',body)
+              print('literal_base_found',bool(base_match),'literal_key_found',bool(key_match))
+              if not base_match or not key_match: raise SystemExit(0)
+              config={'bffApiUrl':base_match.group(1),'globalApiKey':key_match.group(1)}
           print('api_base_present',bool(config.get('bffApiUrl')),'public_key_present',bool(config.get('globalApiKey')))
           if not config.get('bffApiUrl') or not config.get('globalApiKey'): raise SystemExit(0)
           params=urllib.parse.urlencode({'countryCode':'NL','pageNumber':'0','pageSize':'5','language':'nl-NL'})
