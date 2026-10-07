@@ -7,14 +7,14 @@ UA='TeslaChargeCompanion/9 UK-open-data collector'
 # SmartCharging note: final page size must not exceed remaining rows advertised by meta.total.
 SOURCES=[
 {'name':'MFG EV Power','party_ids':['MFL'],'locations':'https://opendata.motorfuelgroup.net/locations','tariffs':'https://opendata.motorfuelgroup.net/tariffs','mode':'single'},
-{'name':'char.gy','party_ids':['CHG'],'locations':'https://char.gy/open-ocpi/locations','tariffs':'https://char.gy/open-ocpi/tariffs','mode':'offset'},
+{'name':'char.gy','party_ids':['CGY'],'locations':'https://char.gy/open-ocpi/locations','tariffs':'https://char.gy/open-ocpi/tariffs','mode':'offset'},
 {'name':'Clenergy EV','party_ids':['CEV'],'locations':'https://api.clenergy.online/development/pcpr/locations','tariffs':'https://api.clenergy.online/development/pcpr/tariffs','mode':'single'},
 {'name':'Dragon Charging','party_ids':['DGN'],'locations':'https://api.dragoncharging.online/development/pcpr/locations','tariffs':'https://api.dragoncharging.online/development/pcpr/tariffs','mode':'single'},
 {'name':'PoGo Charge','party_ids':['POG'],'locations':'https://info.smartcharging.uk/public_feed/locations/4009','tariffs':'https://info.smartcharging.uk/public_feed/locations/4009/tariffs','mode':'pogo_hybrid'},
 {'name':'Arnold Clark Charge','party_ids':['ACC'],'locations':'https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/location','tariffs':'https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/tariff','mode':'single'},
 {'name':'ScottishPower Recharge','party_ids':[],'locations':'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/location','tariffs':'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/tariff','mode':'single'},
 {'name':'Mer UK','party_ids':[],'locations':'https://uk.mer.eco/wp-json/ozev/v1/data','tariffs':None,'mode':'mer_combined'},
-{'name':'Go Zero','party_ids':[],'locations':'https://cpo-api.gozerocharge.com/api/v1/ocpi/2.2.1/locations','tariffs':'https://cpo-api.gozerocharge.com/api/v1/ocpi/2.2.1/tariffs','mode':'single'},
+{'name':'Go Zero','party_ids':['GOZ'],'locations':'https://api.gozerocharge.com/api/v1/ocpi/2.2.1/locations','tariffs':'https://api.gozerocharge.com/api/v1/ocpi/2.2.1/tariffs','mode':'single'},
 {'name':'Urban Fox Networks','party_ids':['UFX'],'locations':'https://api.urbanfox.network/api/opendata/locations','tariffs':'https://api.urbanfox.network/api/opendata/tariffs','mode':'offset'},
 {'name':'ChargePlace Scotland','party_ids':['CPS'],'locations':'https://info.smartcharging.uk/public_feed/locations/2463','tariffs':'https://info.smartcharging.uk/public_feed/locations/2463/tariffs','mode':'offset'},
 {'name':'Evolt Network','party_ids':['SSM','PO2','CP2','SS2'],'locations':'https://info.smartcharging.uk/public_feed/locations/3666','tariffs':'https://info.smartcharging.uk/public_feed/locations/3666/tariffs','mode':'offset'}]
@@ -52,7 +52,7 @@ def add_query(url,**params):
     p=urllib.parse.urlsplit(url); q=dict(urllib.parse.parse_qsl(p.query)); q.update({k:str(v) for k,v in params.items() if v is not None})
     return urllib.parse.urlunsplit((p.scheme,p.netloc,p.path,urllib.parse.urlencode(q),p.fragment))
 
-def fetch_offset(url,page_size=50):
+def fetch_offset(url,page_size=50,pause_seconds=0):
     rows=[]; offset=0; guard=0; total=None
     while True:
         current_limit=page_size if total is None else min(page_size,max(1,total-offset))
@@ -67,6 +67,7 @@ def fetch_offset(url,page_size=50):
         if not batch or (total is not None and len(rows)>=total) or (len(batch)<current_limit and total is None): break
         offset+=len(batch)
         if guard>1000: raise RuntimeError(f'pagination guard hit for {url}')
+        if pause_seconds: time.sleep(pause_seconds)
     return rows
 
 
@@ -154,10 +155,11 @@ def fetch_source(src):
         locations,tariffs,audit=fetch_pogo_hybrid(src)
         return locations,tariffs,audit
     if src['mode']=='offset':
-        page_size=20 if src['name']=='char.gy' else 50
-        locations=fetch_offset(src['locations'],page_size)
+        page_size=50
+        pause=0.4 if src['name']=='char.gy' else 0
+        locations=fetch_offset(src['locations'],page_size,pause)
         time.sleep(2.0 if src['name']=='char.gy' else 1.0)
-        tariffs=fetch_offset(src['tariffs'],page_size)
+        tariffs=fetch_offset(src['tariffs'],page_size,pause)
         return locations,tariffs,None
     locations=array_from_payload(request_json(src['locations'])[0])
     if src['name']=='Arnold Clark Charge':
