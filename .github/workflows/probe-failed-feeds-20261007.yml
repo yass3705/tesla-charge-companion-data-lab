@@ -43,3 +43,29 @@ jobs:
             head -c 120 /tmp/probe-body | tr '\n' ' ' || true
             printf '\n'
           done
+      - name: Probe Total public runtime configuration without logging key
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error
+          url='https://chargingservices.totalenergies.com/main.833f41fbec0463af.js'
+          body=urllib.request.urlopen(url,timeout=30).read().decode('utf-8','replace')
+          match=re.search(r"y=JSON\\.parse\\('([^\\n]+?)'\\)",body)
+          print('config_found',bool(match))
+          if not match: raise SystemExit(0)
+          try: config=json.loads(match.group(1))
+          except Exception as e:
+              print('config_parse_error',type(e).__name__)
+              raise SystemExit(0)
+          print('api_base_present',bool(config.get('bffApiUrl')),'public_key_present',bool(config.get('globalApiKey')))
+          if not config.get('bffApiUrl') or not config.get('globalApiKey'): raise SystemExit(0)
+          params=urllib.parse.urlencode({'countryCode':'NL','pageNumber':'0','pageSize':'5','language':'nl-NL'})
+          endpoint=config['bffApiUrl']+'/v3/infrastructure/locations?'+params
+          req=urllib.request.Request(endpoint,headers={'Accept':'application/json','User-Agent':'Mozilla/5.0','x-apif-apikey':config['globalApiKey'],'marketplace-evp':'tcseu'})
+          try:
+              with urllib.request.urlopen(req,timeout=60) as r:
+                  data=json.load(r)
+                  print('api_status',r.status,'array',isinstance(data,list),'rows',len(data) if isinstance(data,list) else None)
+          except urllib.error.HTTPError as e: print('api_status',e.code)
+          except Exception as e: print('api_error',type(e).__name__)
+          PY
