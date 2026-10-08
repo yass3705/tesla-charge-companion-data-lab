@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 2 * * *"
+    - cron: "17 3 * * *" # dynamic-only recovery slot after PAN outage
   push:
     branches: [main]
     paths:
@@ -30,6 +31,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download current PAN static IRVE source
+        if: github.event.schedule != '17 3 * * *'
         id: static
         shell: bash
         run: |
@@ -79,13 +81,25 @@ jobs:
             --source-retrieved-at "$(cat "$RUNNER_TEMP/france-irve/static.retrieved-at")"
 
       - name: Download latest dynamic snapshot for exact-ID verification
-        if: steps.static.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'schedule'
+        id: dynamic
         shell: bash
         run: |
           set -euo pipefail
-          curl -fL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 --max-time 300 \
+          mkdir -p "$RUNNER_TEMP/france-irve"
+          # The national dynamic feed is a separate, intermittently unavailable beta source.
+          # Its HTTP 503 must not block a validated static refresh or overwrite last good data.
+          if ! curl -fL --retry 6 --retry-all-errors --retry-delay 15 --retry-max-time 180 --connect-timeout 30 --max-time 300 \
             -o "$RUNNER_TEMP/france-irve/dynamic.csv" \
-            'https://proxy.transport.data.gouv.fr/resource/consolidation-nationale-irve-dynamique'
+            'https://proxy.transport.data.gouv.fr/resource/consolidation-nationale-irve-dynamique'; then
+            rm -f "$RUNNER_TEMP/france-irve/dynamic.csv"
+            test -s data/national/france-irve-dynamic-status-v9.json.gz
+            test -s reports/france/irve/irve-residual-crosswalk-latest.json
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=PAN IRVE dynamic unavailable::Upstream download failed; retained previous validated dynamic snapshot and residual audit. Static refresh remains independent."
+            echo "### ⚠️ IRVE dynamique indisponible" >> "$GITHUB_STEP_SUMMARY"
+            echo "Le téléchargement PAN a échoué. Snapshot dynamique et audit antérieurs conservés **sans les présenter comme actualisés**. Nouvelle tentative au prochain créneau." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           test -s "$RUNNER_TEMP/france-irve/dynamic.csv"
           python scripts/france/build_france_irve_dynamic_status_v9.py \
             --static-all data/national/france-irve-static-v9/all.json.gz \
@@ -97,9 +111,10 @@ jobs:
             --dynamic-csv "$RUNNER_TEMP/france-irve/dynamic.csv" \
             --residuals data/platforms/electra/france/residuals.json.gz \
             --out reports/france/irve/irve-residual-crosswalk-latest.json
+          echo "available=true" >> "$GITHUB_OUTPUT"
 
       - name: Publish refreshed Data Lab base and CPO manifest
-        if: steps.static.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'schedule'
+        if: steps.static.outputs.changed == 'true' || steps.dynamic.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
