@@ -6,6 +6,28 @@ const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='reports/electroverse/numeric-residual-analysis.json';
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+const geoCpoEvidence=m=>{
+  const source=m?.electroverse||{},target=m?.irve||{};
+  const sLat=Number(source.lat),sLon=Number(source.lon),tLat=Number(target.lat),tLon=Number(target.lon);
+  const hasCoords=[sLat,sLon,tLat,tLon].every(Number.isFinite)&&Math.abs(sLat)<=90&&Math.abs(tLat)<=90&&Math.abs(sLon)<=180&&Math.abs(tLon)<=180;
+  let meters=null;
+  if(hasCoords){
+    const rad=x=>x*Math.PI/180,dLat=rad(tLat-sLat),dLon=rad(tLon-sLon);
+    const h=Math.sin(dLat/2)**2+Math.cos(rad(sLat))*Math.cos(rad(tLat))*Math.sin(dLon/2)**2;
+    meters=Math.round(12742000*Math.asin(Math.min(1,Math.sqrt(h))));
+  }
+  const value=v=>typeof v==='object'?(v?.name??v?.label??null):v;
+  const sourceCpo=value(source.cpo??source.operator??m?.cpo??null);
+  const nationalCpo=value(target.cpo??target.operator??null);
+  const cpoComparable=Boolean(sourceCpo&&nationalCpo),cpoEqual=cpoComparable?norm(sourceCpo)===norm(nationalCpo):null;
+  return {
+    sourceLat:Number.isFinite(sLat)?sLat:null,sourceLon:Number.isFinite(sLon)?sLon:null,
+    irveLat:Number.isFinite(tLat)?tLat:null,irveLon:Number.isFinite(tLon)?tLon:null,
+    sourceCpo:sourceCpo??null,irveCpo:nationalCpo??null,distanceMeters:meters,
+    cpoMatch:cpoEqual,confidence:meters!=null&&meters<=50&&cpoEqual===true?'geo_cpo_supporting_evidence_only':'insufficient_geo_cpo_evidence',
+    noAutomaticPricingFromProximity:true
+  };
+};
 
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
@@ -72,6 +94,7 @@ for(const sh of cman.shards||[]){
     groups.push({
       electroverseLocationPk:String(row.electroverseLocationPk),
       irveStationId:m?.irveStationId??row.irveStationId??null,
+      geoCpoEvidence:geoCpoEvidence(m),
       numericResidualCount:numeric.length,
       ordinals:numeric.map(e=>({
         evsePk:e.pk,
@@ -157,7 +180,7 @@ const out={
   uniquelySolvableLocations:solvable.length,
   topSolvableGroups:solvable.sort((a,b)=>b.numericResidualCount-a.numericResidualCount).slice(0,100),
   ambiguousSamples:groups.filter(g=>g.duplicateSourceOrdinals||g.exactCandidateCount!==1).slice(0,100),
-  policy:'Diagnostic only. Uses currently unpublished numeric source EVSEs and currently unpublished national targets. Unique suffix-ordinal bijection only; globally unique PDCs required; no proximity inference.'
+  policy:'Strict numeric suffix/ordinal bijection only. Geolocation and CPO evidence are recorded as a secondary check; no proximity-only inference and no station-level tariff flattening.'
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
