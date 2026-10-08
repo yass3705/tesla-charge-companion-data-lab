@@ -1,0 +1,39 @@
+name: Audit FR IRVE x Electra Electroverse identifiers
+on:
+  push:
+    branches:
+      - audit/fr-irve-alphanumeric-mismatches-20261008
+    paths:
+      - "scripts/france/audit_irve_emsp_alphanumeric_residuals.mjs"
+      - ".github/workflows/audit-fr-irve-emsp-alphanumeric.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: audit-fr-irve-emsp-alphanumeric
+  cancel-in-progress: true
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate audit script syntax
+        run: node --check scripts/france/audit_irve_emsp_alphanumeric_residuals.mjs
+      - name: Reconcile every residual EVSE by strict alphanumeric identity
+        run: node --max-old-space-size=6144 scripts/france/audit_irve_emsp_alphanumeric_residuals.mjs
+      - name: Persist case-by-case evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/irve/alphanumeric-residual-audit-2026-10-08.json reports/france/irve/alphanumeric-residual-cases-2026-10-08.json.gz
+          if ! git diff --cached --quiet; then
+            git commit -m 'audit: list every Electra Electroverse alphanumeric IRVE residual'
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

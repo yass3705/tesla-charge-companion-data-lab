@@ -4,6 +4,9 @@ on:
     branches: [main]
     paths:
       - "scripts/build_electroverse_france_evse_overlay.mjs"
+      - "data/electroverse/tariff_cache/manifest.json"
+      - "data/electroverse/irve_location_mapping.json"
+      - "data/national/france-irve-static-v9/manifest.json"
       - "data/platforms/electroverse/validated-mappings/p01-structured-residual.json"
       - "data/platforms/electroverse/validated-mappings/b-residual.json"
       - "data/platforms/electroverse/validated-mappings/sae-structured-residual.json"
@@ -22,6 +25,7 @@ concurrency:
   group: electroverse-france-evse-overlay
   cancel-in-progress: true
 jobs:
+  # Rebuild when the source cache advances; identity-matching audit 2026-10-08.
   # rebuild marker: generic small-bucket ledger
   # rebuild marker: ADP structured ledger persisted
   # rebuild marker: H01 structured ledger persisted

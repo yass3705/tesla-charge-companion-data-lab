@@ -1,0 +1,1620 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-08T17:55:06.636Z",
+  "description": "Strict alphanumeric normalization and identity evidence only; review candidates, no automatic joins or inferred tariff. Every unresolved case appears in separate gz.",
+  "inputs": {
+    "nationalPdcCount": 170568,
+    "electraSnapshotAt": "2026-10-08T16:49:17.161Z",
+    "electroverseSnapshotAt": "2026-10-05T01:47:23.394Z",
+    "cacheAt": "2026-10-06T21:19:16.691Z"
+  },
+  "policy": {
+    "normalization": "NFKD+uppercase+retain [A-Z0-9]; strip * / backslash ; separators",
+    "exactMatch": "full normalized EVSE ID; no suffix, ordinal-only or proximity joins",
+    "electra": "national identifier unique; secondary identifier unique over source; no conflicting full-ID source; location <=15m; all EVSEs map bijectively to one IRVE station; review required before promoting",
+    "electroverse": "source ref globally unique, local exact unique national identifier, unused PDC, source EVSE not already published; review required before promoting"
+  },
+  "stats": {
+    "electra": {
+      "sourceResidualLocations": 12271,
+      "noNationalEvse": 6626,
+      "matchedExactSecondaryFullLocations": 0,
+      "matchedPartialLocations": 0,
+      "pendingNoSafeMatch": 6626,
+      "byOutcome": {
+        "no_unique_exact_alphanumeric_match": 6626
+      }
+    },
+    "electroverse": {
+      "cacheResidualEvse": 4936,
+      "reviewReadyDistinctCandidates": 2,
+      "reasons": {
+        "normalized_id_absent_from_local_irve": 1659,
+        "multiple_source_evse_claims_same_target": 54,
+        "generic_or_incomplete_source_reference": 3217,
+        "multiple_national_station_owners": 4,
+        "review_ready_strict_unpublished_evse": 2
+      }
+    },
+    "national": {
+      "distinctNormalizedEvseIds": 170568,
+      "ambiguousNormalizedIds": 0
+    }
+  },
+  "reviewCandidates": {
+    "electra": [],
+    "electroverse": [
+      {
+        "source": "Electroverse",
+        "locationPk": "821499",
+        "sourceEvsePk": "1132692",
+        "physicalReference": "FR*LDL*E00003246",
+        "normalizedReference": "FRLDLE00003246",
+        "irveStationId": "FRLDLPLFR3233EVCP",
+        "candidateIrvePdc": "FRLDLE00003246",
+        "reason": "review_ready_strict_unpublished_evse"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "821499",
+        "sourceEvsePk": "1133128",
+        "physicalReference": "FR*LDL*E00003245",
+        "normalizedReference": "FRLDLE00003245",
+        "irveStationId": "FRLDLPLFR3233EVCP",
+        "candidateIrvePdc": "FRLDLE00003245",
+        "reason": "review_ready_strict_unpublished_evse"
+      }
+    ]
+  },
+  "firstCases": {
+    "electra": [
+      {
+        "source": "Electra",
+        "electraLocationId": "ebf664ee-7a21-46a0-a3ae-4ae2c2d4fa9d",
+        "name": "03001790",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234761628*1",
+            "physicalReference": "03001790",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "ce2cdb38-661a-45b3-a55f-42d84dc76637",
+        "name": "0157 - Flavy-le-Martel - Rue de la Gare",
+        "cpo": "USEDA",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 2,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR*S02*EV*DAVY2",
+            "physicalReference": null,
+            "reason": "no_unique_alphanumeric_target"
+          },
+          {
+            "id": "FR*S02*EV*DAVY1",
+            "physicalReference": null,
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "56e63dac-edd2-4a20-bd69-012d4de32268",
+        "name": "0170 - Hirson - Rue Charles de Gaulle",
+        "cpo": "USEDA",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 2,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR*S02*EV*DAHB1",
+            "physicalReference": null,
+            "reason": "no_unique_alphanumeric_target"
+          },
+          {
+            "id": "FR*S02*EV*DAHB2",
+            "physicalReference": null,
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "efdec7a0-10e6-464a-a099-58d4fbb4a615",
+        "name": "0172 - Parking Piscine - FRESNOY-LE-GRAND",
+        "cpo": "USEDA",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 2,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR*S02*EV*DAKZ1",
+            "physicalReference": null,
+            "reason": "no_unique_alphanumeric_target"
+          },
+          {
+            "id": "FR*S02*EV*DAKZ2",
+            "physicalReference": null,
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "84b1a650-c0da-4246-a455-e0525055c862",
+        "name": "0173 - Parking Communauté de Communes- Ruelle d'Oulchy la ville",
+        "cpo": "USEDA",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 2,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR*S02*EV*DAET1",
+            "physicalReference": null,
+            "reason": "no_unique_alphanumeric_target"
+          },
+          {
+            "id": "FR*S02*EV*DAET2",
+            "physicalReference": null,
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "bc623549-92e8-46a6-b5e8-312c7a41267a",
+        "name": "03011381",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234766842*1",
+            "physicalReference": "03011381",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "facc4f20-39bf-4962-ace5-d5f5d5b15537",
+        "name": "03011393",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234785447*1",
+            "physicalReference": "03011393",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "927bbe28-c094-4321-91d3-e128a5b59ad7",
+        "name": "03011515",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234769771*1",
+            "physicalReference": "03011515",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "f6d019c0-b53f-4789-95c4-23babf310b91",
+        "name": "03011517",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234791598*1",
+            "physicalReference": "03011517",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "522a53ad-c445-4aea-b395-8ae11ade8d78",
+        "name": "03011521",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234769234*1",
+            "physicalReference": "03011521",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "dd2e7b07-39b3-4b94-8bcc-6aea3b60cfed",
+        "name": "03011524",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234767442*1",
+            "physicalReference": "03011524",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "aff704db-13c6-4704-bb4b-12909d0b402f",
+        "name": "03011525",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234767542*1",
+            "physicalReference": "03011525",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "7a5884cc-1ed7-4d0c-b50b-94fef401435a",
+        "name": "03011526",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234767727*1",
+            "physicalReference": "03011526",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "e5e5d59a-62ac-4133-b18b-be1b82bf0b5b",
+        "name": "03011527",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234764669*1",
+            "physicalReference": "03011527",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "bd248bda-ae41-4564-82ff-9e9e9ce607b5",
+        "name": "03011528",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234842224*1",
+            "physicalReference": "03011528",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "811de0f6-9f7d-47a7-8d13-88ac9c176e84",
+        "name": "03011529",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234768122*1",
+            "physicalReference": "03011529",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "17e99f5d-1e7e-4c2d-a992-6352863d1cb6",
+        "name": "03011530",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234842964*1",
+            "physicalReference": "03011530",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "38e26dc7-9e4a-47c4-b7eb-54bb5bc8e782",
+        "name": "03011867",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234765017*1",
+            "physicalReference": "03011867",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "f10e30a1-ad7d-44ff-9446-d0faeb62a4f5",
+        "name": "03011868",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234766165*1",
+            "physicalReference": "03011868",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "5390323b-5f42-41c2-9573-4c43b439a9e5",
+        "name": "03011871",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234867575*1",
+            "physicalReference": "03011871",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "f68314e3-fbb2-40ac-81f0-f4b8cbc79a13",
+        "name": "03012224",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234749635*1",
+            "physicalReference": "03012224",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "a5e78840-d05d-46e8-a104-e83d3d4dff44",
+        "name": "03012439",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234767441*1",
+            "physicalReference": "03012439",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "dd759204-37f6-4c46-8f0d-fabbf36f7db9",
+        "name": "03012448",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234766501*1",
+            "physicalReference": "03012448",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "7fdf4bc2-8056-449d-b0d4-73043612b27e",
+        "name": "03012668",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234760873*1",
+            "physicalReference": "03012668",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "23b96ef0-6412-4e56-9623-4df6c25da6bf",
+        "name": "03012670",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234760937*1",
+            "physicalReference": "03012670",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "663a3222-bf63-4142-ac8c-cc5297bbeb81",
+        "name": "03012699",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234766582*1",
+            "physicalReference": "03012699",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "97e09d11-6fa7-4775-b3dc-523d70c678f6",
+        "name": "03013140",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234760541*1",
+            "physicalReference": "03013140",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "9a4dae2e-d918-4a63-ab43-e0c733b97467",
+        "name": "03013156",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234754834*1",
+            "physicalReference": "03013156",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "953cf559-4773-44b0-9b02-218d381aa424",
+        "name": "04001402",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234768715*1",
+            "physicalReference": "04001402",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "b7fd68c9-ea57-4813-b568-4b46a1d142e6",
+        "name": "07910076",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234785173*1",
+            "physicalReference": "07910076",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "4660169d-e8f8-499d-bf36-25049596153c",
+        "name": "07910108",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234784525*1",
+            "physicalReference": "07910108",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "7e5bf904-8250-47a0-9d65-c332a311d4f3",
+        "name": "07910188",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234781078*1",
+            "physicalReference": "07910188",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "8551c28a-3b47-4755-96ba-c9a889dcb8e4",
+        "name": "07910195",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234784455*1",
+            "physicalReference": "07910195",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "0ad6cbb9-b92b-4e24-aa9c-14ab9e3a387e",
+        "name": "07910270",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234781180*1",
+            "physicalReference": "07910270",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "e552ef84-bd9e-4962-9963-b8c275b9a9d6",
+        "name": "07910349",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234790940*1",
+            "physicalReference": "07910349",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "46ea0ab7-a399-4d65-9a1e-43761e9da767",
+        "name": "07910518",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234762159*1",
+            "physicalReference": "07910518",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "91e2bb45-8afb-49a4-ba4e-e05d4553f1ea",
+        "name": "07940101",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234757903*1",
+            "physicalReference": "07940101",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "74b0bf31-b6c8-49c1-ad66-a7a2f43e8bdf",
+        "name": "07990023",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234791494*1",
+            "physicalReference": "07990023",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "2828beeb-2239-4876-9802-750a8521cf6b",
+        "name": "07990283",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234843262*1",
+            "physicalReference": "07990283",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "99d26693-4676-4335-aee3-97a263027f19",
+        "name": "08911887",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234830855*1",
+            "physicalReference": "08911887",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "32632eef-e902-4603-a3c1-0203d37949b8",
+        "name": "08911889",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 3,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234831435*1",
+            "physicalReference": "08911889",
+            "reason": "no_unique_alphanumeric_target"
+          },
+          {
+            "id": "FR505E1234813843*1",
+            "physicalReference": "09910970",
+            "reason": "no_unique_alphanumeric_target"
+          },
+          {
+            "id": "FR505E1234813843*2",
+            "physicalReference": "09910970",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "f4c130c2-4e8d-4f37-95ec-21ad5c29f6ce",
+        "name": "08911987",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234766052*1",
+            "physicalReference": "08911987",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "3abd411d-496e-4bd4-ace7-e33350c3f35b",
+        "name": "08912101",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234767459*1",
+            "physicalReference": "08912101",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "022abec9-d630-4e81-91e9-7e0d74dcc89a",
+        "name": "08912107",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234766738*1",
+            "physicalReference": "08912107",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "b6623d8e-5002-4efb-a717-c8f1788fb46e",
+        "name": "08912186",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234825927*1",
+            "physicalReference": "08912186",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "90d54996-5276-489e-a911-cfcd663b384d",
+        "name": "08912233",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 2,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234867500*2",
+            "physicalReference": "08912233",
+            "reason": "no_unique_alphanumeric_target"
+          },
+          {
+            "id": "FR505E1234867500*1",
+            "physicalReference": "08912233",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "d6ccfcf8-7a34-4696-9df6-35325caf851e",
+        "name": "08912263",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234831449*1",
+            "physicalReference": "08912263",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "e5246b4e-0f38-4b0a-8484-4543be9094db",
+        "name": "08912264",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234830310*1",
+            "physicalReference": "08912264",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "845b9726-261e-40d4-8bd3-7e25197516e0",
+        "name": "08912284",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 2,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234867119*1",
+            "physicalReference": "08912284",
+            "reason": "no_unique_alphanumeric_target"
+          },
+          {
+            "id": "FR505E1234867119*2",
+            "physicalReference": "08912284",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      },
+      {
+        "source": "Electra",
+        "electraLocationId": "570c242c-5f1d-4872-9481-695069695ce8",
+        "name": "08912285",
+        "cpo": "Threeforce",
+        "reason": "no_national_evse",
+        "outcome": "no_unique_exact_alphanumeric_match",
+        "evseCount": 1,
+        "matches": [],
+        "unmatched": [
+          {
+            "id": "FR505E1234768273*1",
+            "physicalReference": "08912285",
+            "reason": "no_unique_alphanumeric_target"
+          }
+        ],
+        "obstacles": []
+      }
+    ],
+    "electroverse": [
+      {
+        "source": "Electroverse",
+        "locationPk": "426051",
+        "sourceEvsePk": "2230759",
+        "physicalReference": "FR*S56*EGVHJ*1",
+        "normalizedReference": "FRS56EGVHJ1",
+        "irveStationId": "FRS56PATFAFZ",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "426051",
+        "sourceEvsePk": "2833296",
+        "physicalReference": "FR*S56*EGURG*2",
+        "normalizedReference": "FRS56EGURG2",
+        "irveStationId": "FRS56PATFAFZ",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "426051",
+        "sourceEvsePk": "2833297",
+        "physicalReference": "FR*S56*EGURG*1",
+        "normalizedReference": "FRS56EGURG1",
+        "irveStationId": "FRS56PATFAFZ",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "608172",
+        "sourceEvsePk": "3569192",
+        "physicalReference": "FR*S63*E63345*B*B1*D*CCS",
+        "normalizedReference": "FRS63E63345BB1DCCS",
+        "irveStationId": "FRS63P63345B",
+        "candidateIrvePdc": "FRS63E63345BB1DCCS",
+        "reason": "multiple_source_evse_claims_same_target"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "608172",
+        "sourceEvsePk": "3569197",
+        "physicalReference": "FR*S63*E63345*B*B1*D*CHADEMO",
+        "normalizedReference": "FRS63E63345BB1DCHADEMO",
+        "irveStationId": "FRS63P63345B",
+        "candidateIrvePdc": "FRS63E63345BB1DCHADEMO",
+        "reason": "multiple_source_evse_claims_same_target"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "608172",
+        "sourceEvsePk": "824718",
+        "physicalReference": "FR*S63*E63345*B*B1*D*CCS",
+        "normalizedReference": "FRS63E63345BB1DCCS",
+        "irveStationId": "FRS63P63345B",
+        "candidateIrvePdc": "FRS63E63345BB1DCCS",
+        "reason": "multiple_source_evse_claims_same_target"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "608172",
+        "sourceEvsePk": "824733",
+        "physicalReference": "FR*S63*E63345*B*B1*D*CHADEMO",
+        "normalizedReference": "FRS63E63345BB1DCHADEMO",
+        "irveStationId": "FRS63P63345B",
+        "candidateIrvePdc": "FRS63E63345BB1DCHADEMO",
+        "reason": "multiple_source_evse_claims_same_target"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "763467",
+        "sourceEvsePk": "4191773",
+        "physicalReference": "FR*ISE*EINOUID*HOTEL*CREQUI*2",
+        "normalizedReference": "FRISEEINOUIDHOTELCREQUI2",
+        "irveStationId": "FRISEEINOUIDCREQUI",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4185253",
+        "sourceEvsePk": "3461051",
+        "physicalReference": "FR*SSD*E21102A00020601*P1",
+        "normalizedReference": "FRSSDE21102A00020601P1",
+        "irveStationId": "FRSSDPMAURINFORD741001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4185253",
+        "sourceEvsePk": "3461053",
+        "physicalReference": "FR*SSD*E21102A00020601*P2",
+        "normalizedReference": "FRSSDE21102A00020601P2",
+        "irveStationId": "FRSSDPMAURINFORD741001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "435505",
+        "sourceEvsePk": "1778742",
+        "physicalReference": "FR*MBI*EV*BITB2",
+        "normalizedReference": "FRMBIEVBITB2",
+        "irveStationId": "FRMBIPVBHSE",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "435505",
+        "sourceEvsePk": "1778752",
+        "physicalReference": "FR*MBI*EV*BITB1",
+        "normalizedReference": "FRMBIEVBITB1",
+        "irveStationId": "FRMBIPVBHSE",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "1735014",
+        "sourceEvsePk": "2290081",
+        "physicalReference": "FR*M06*ENICE*381*1*2",
+        "normalizedReference": "FRM06ENICE38112",
+        "irveStationId": "FRM06PNICE469",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "1735014",
+        "sourceEvsePk": "2290097",
+        "physicalReference": "FR*M06*ENICE*381*1*1",
+        "normalizedReference": "FRM06ENICE38111",
+        "irveStationId": "FRM06PNICE469",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4184924",
+        "sourceEvsePk": "3460907",
+        "physicalReference": "FR*SSD*E11342*P1",
+        "normalizedReference": "FRSSDE11342P1",
+        "irveStationId": "FRSSDPHESSPEUGEOT080001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4184924",
+        "sourceEvsePk": "3460909",
+        "physicalReference": "FR*SSD*E11342*P2",
+        "normalizedReference": "FRSSDE11342P2",
+        "irveStationId": "FRSSDPHESSPEUGEOT080001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4185207",
+        "sourceEvsePk": "3461187",
+        "physicalReference": "FR*SSD*E11171*P1",
+        "normalizedReference": "FRSSDE11171P1",
+        "irveStationId": "FRSSDPSIBLU344102",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4185207",
+        "sourceEvsePk": "3461188",
+        "physicalReference": "FR*SSD*E11171*P2",
+        "normalizedReference": "FRSSDE11171P2",
+        "irveStationId": "FRSSDPSIBLU344102",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497037",
+        "physicalReference": "FR*LE2*ERQHU*2",
+        "normalizedReference": "FRLE2ERQHU2",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497038",
+        "physicalReference": "FR*LE2*EZYGZ*1",
+        "normalizedReference": "FRLE2EZYGZ1",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497039",
+        "physicalReference": "FR*LE2*EZXWP*1",
+        "normalizedReference": "FRLE2EZXWP1",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497040",
+        "physicalReference": "FR*LE2*ERNLW*2",
+        "normalizedReference": "FRLE2ERNLW2",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497041",
+        "physicalReference": "FR*LE2*ESAZB*2",
+        "normalizedReference": "FRLE2ESAZB2",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497042",
+        "physicalReference": "FR*LE2*EZZPR*1",
+        "normalizedReference": "FRLE2EZZPR1",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497043",
+        "physicalReference": "FR*LE2*ERQHU*1",
+        "normalizedReference": "FRLE2ERQHU1",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497044",
+        "physicalReference": "FR*LE2*ERNLW*1",
+        "normalizedReference": "FRLE2ERNLW1",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497045",
+        "physicalReference": "FR*LE2*ERFVZ*1",
+        "normalizedReference": "FRLE2ERFVZ1",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497046",
+        "physicalReference": "FR*LE2*ERNGN*2",
+        "normalizedReference": "FRLE2ERNGN2",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497047",
+        "physicalReference": "FR*LE2*ESAZB*1",
+        "normalizedReference": "FRLE2ESAZB1",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497048",
+        "physicalReference": "FR*LE2*ERFVZ*2",
+        "normalizedReference": "FRLE2ERFVZ2",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4497049",
+        "physicalReference": "FR*LE2*ERNGN*1",
+        "normalizedReference": "FRLE2ERNGN1",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4599311",
+        "physicalReference": "FR*LE2*ERPWC*2",
+        "normalizedReference": "FRLE2ERPWC2",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4334661",
+        "sourceEvsePk": "4599313",
+        "physicalReference": "FR*LE2*ERPWC*1",
+        "normalizedReference": "FRLE2ERPWC1",
+        "irveStationId": "FRLE2P8139816761004806001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4492163",
+        "sourceEvsePk": "4585746",
+        "physicalReference": "FR*WII*E494931648*1",
+        "normalizedReference": "FRWIIE4949316481",
+        "irveStationId": "FRWIIP5711826864505956389",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4492163",
+        "sourceEvsePk": "4585747",
+        "physicalReference": "FR*WII*E494931648*2",
+        "normalizedReference": "FRWIIE4949316482",
+        "irveStationId": "FRWIIP5711826864505956389",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "398289",
+        "sourceEvsePk": "4349399",
+        "physicalReference": "FR*M06*ENICE*294*2*1",
+        "normalizedReference": "FRM06ENICE29421",
+        "irveStationId": "FRM06PNICE294",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "398289",
+        "sourceEvsePk": "4349401",
+        "physicalReference": "FR*M06*ENICE*294*2*2",
+        "normalizedReference": "FRM06ENICE29422",
+        "irveStationId": "FRM06PNICE294",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "548459",
+        "sourceEvsePk": "3649619",
+        "physicalReference": "FR*S14*ETAO2143*2",
+        "normalizedReference": "FRS14ETAO21432",
+        "irveStationId": "FRS14PET211",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "548459",
+        "sourceEvsePk": "3649624",
+        "physicalReference": "FR*S14*ETAO2143*1",
+        "normalizedReference": "FRS14ETAO21431",
+        "irveStationId": "FRS14PET211",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "571302",
+        "sourceEvsePk": "3733193",
+        "physicalReference": "FR*M38*E38185*001*2*1",
+        "normalizedReference": "FRM38E3818500121",
+        "irveStationId": "FRM38P38185001",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1131083",
+        "physicalReference": "FR*CG0*E001772",
+        "normalizedReference": "FRCG0E001772",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1131084",
+        "physicalReference": "FR*CG0*E001770",
+        "normalizedReference": "FRCG0E001770",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1131085",
+        "physicalReference": "FR*CG0*E001771",
+        "normalizedReference": "FRCG0E001771",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1136627",
+        "physicalReference": "FR*CG0*E001765",
+        "normalizedReference": "FRCG0E001765",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1136628",
+        "physicalReference": "FR*CG0*E001767",
+        "normalizedReference": "FRCG0E001767",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1136629",
+        "physicalReference": "FR*CG0*E001766",
+        "normalizedReference": "FRCG0E001766",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1136630",
+        "physicalReference": "FR*CG0*E001764",
+        "normalizedReference": "FRCG0E001764",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1136631",
+        "physicalReference": "FR*CG0*E001763",
+        "normalizedReference": "FRCG0E001763",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1136632",
+        "physicalReference": "FR*CG0*E001761",
+        "normalizedReference": "FRCG0E001761",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "820313",
+        "sourceEvsePk": "1136633",
+        "physicalReference": "FR*CG0*E001762",
+        "normalizedReference": "FRCG0E001762",
+        "irveStationId": "FRCG0P1649169768035436934",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4605433",
+        "sourceEvsePk": "4585773",
+        "physicalReference": "FR*LE2*ELLZJ*2",
+        "normalizedReference": "FRLE2ELLZJ2",
+        "irveStationId": "FRLE2P389813092525429227",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "4605433",
+        "sourceEvsePk": "4585776",
+        "physicalReference": "FR*LE2*ELLZJ*1",
+        "normalizedReference": "FRLE2ELLZJ1",
+        "irveStationId": "FRLE2P389813092525429227",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "608155",
+        "sourceEvsePk": "3569377",
+        "physicalReference": "FR*S63*E63124*B*B1*D*CCS",
+        "normalizedReference": "FRS63E63124BB1DCCS",
+        "irveStationId": "FRS63P63124A",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "608155",
+        "sourceEvsePk": "3569381",
+        "physicalReference": "FR*S63*E63124*B*B1*D*CHADEMO",
+        "normalizedReference": "FRS63E63124BB1DCHADEMO",
+        "irveStationId": "FRS63P63124A",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "608155",
+        "sourceEvsePk": "3569384",
+        "physicalReference": "FR*S63*E63124*B*B1*G*T2",
+        "normalizedReference": "FRS63E63124BB1GT2",
+        "irveStationId": "FRS63P63124A",
+        "candidateIrvePdc": null,
+        "reason": "normalized_id_absent_from_local_irve"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "1991854",
+        "sourceEvsePk": "3568499",
+        "physicalReference": "FR*MGP*E94015*A*B1*P1",
+        "normalizedReference": "FRMGPE94015AB1P1",
+        "irveStationId": "FRMGPP94015A",
+        "candidateIrvePdc": "FRMGPE94015AB1P1",
+        "reason": "multiple_source_evse_claims_same_target"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "1991854",
+        "sourceEvsePk": "3568504",
+        "physicalReference": "FR*MGP*E94015*A*B1*P2",
+        "normalizedReference": "FRMGPE94015AB1P2",
+        "irveStationId": "FRMGPP94015A",
+        "candidateIrvePdc": "FRMGPE94015AB1P2",
+        "reason": "multiple_source_evse_claims_same_target"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "1991854",
+        "sourceEvsePk": "3568510",
+        "physicalReference": "FR*MGP*E94015*A*B1*P3",
+        "normalizedReference": "FRMGPE94015AB1P3",
+        "irveStationId": "FRMGPP94015A",
+        "candidateIrvePdc": "FRMGPE94015AB1P3",
+        "reason": "multiple_source_evse_claims_same_target"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "1991854",
+        "sourceEvsePk": "3568514",
+        "physicalReference": "FR*MGP*E94015*A*B1*P4",
+        "normalizedReference": "FRMGPE94015AB1P4",
+        "irveStationId": "FRMGPP94015A",
+        "candidateIrvePdc": "FRMGPE94015AB1P4",
+        "reason": "multiple_source_evse_claims_same_target"
+      },
+      {
+        "source": "Electroverse",
+        "locationPk": "1991854",
+        "sourceEvsePk": "951893",
+        "physicalReference": "FR*MGP*E94015*A*B1*P1",
+        "normalizedReference": "FRMGPE94015AB1P1",
+        "irveStationId": "FRMGPP94015A",
+        "candidateIrvePdc": "FRMGPE94015AB1P1",
+        "reason": "multiple_source_evse_claims_same_target"
+      }
+    ]
+  },
+  "caseArchive": {
+    "path": "reports/france/irve/alphanumeric-residual-cases-2026-10-08.json.gz",
+    "electraCases": 6626,
+    "electroverseCases": 4936
+  }
+}
