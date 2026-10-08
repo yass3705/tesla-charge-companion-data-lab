@@ -56,7 +56,9 @@ jobs:
           print(f'Collect due={due}; previous validated feed age={age_hours} hours')
           PYTHON
       - name: Collect operator-supplied feed
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && steps.freshness.outputs.due != 'false')
+        # A specifically tagged workflow change can trigger one real API collection for validation.
+        # Ordinary push validation and bot data commits do not contact the provider.
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && steps.freshness.outputs.due != 'false') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[collect-ubitricity-pcpr-once]'))
         env:
           UBITRICITY_PCPR_TOKEN: ${{ secrets[inputs.secret_name || 'UBITRICITY_UK_TOKEN'] || secrets.UBITRICITY_PCPR_TOKEN || secrets.UBITRICITY_UK_PCPR_API_KEY || secrets.UBITRICITY_API_KEY }}
         run: python -u scripts/uk_ubitricity_pcpr_collect.py
