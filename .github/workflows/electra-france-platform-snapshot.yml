@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "scripts/electra_france_platform_snapshot.mjs"
+      - "tests/electra-france-evse-power-scope.test.mjs"
       - "data/platforms/electra/irve-associations-batch-01.json"
       - "data/platforms/electra/irve-association-batches/**"
       - ".github/workflows/electra-france-platform-snapshot.yml"
@@ -29,6 +30,8 @@ jobs:
           node-version: 22
       - name: Regression SOC80 et formats de tarif eMSP
         run: node tests/electra-france-congestion-soc80.test.mjs
+      - name: Regression per-EVSE / same-power attribution
+        run: node tests/electra-france-evse-power-scope.test.mjs
       - name: Build exact national-EVSE Electra platform overlay
         run: |
           rm -rf data/platforms/electra/france
