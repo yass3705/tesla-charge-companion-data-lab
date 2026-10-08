@@ -68,11 +68,18 @@ jobs:
           d=json.load(open(p,encoding="utf-8"))
           assert d["country"]=="CH"
           assert d["operatorId"]=="CH*AVI"
-          assert d["counts"]["pricedConnectors"]>=583, d["counts"]
-          assert d["counts"]["uniquePricedEvses"]>=583, d["counts"]
           r=json.load(open("docs/switzerland-avia-guest-reconciliation-2026-09-29.json",encoding="utf-8"))
-          assert r["counts"]["nationalEvseCount"]==583, r["counts"]
-          assert r["counts"]["missingNationalEvseCount"]<=1, r["counts"]
+          # Validate against the current Swiss national inventory, never a frozen 583-EVSE count.
+          # A new national EVSE must be covered; legitimate national additions/removals must not break the run.
+          national=r["counts"]["nationalEvseCount"]
+          matched=r["counts"]["matchedNationalEvseCount"]
+          missing=r["counts"]["missingNationalEvseCount"]
+          assert national>0, r["counts"]
+          assert matched+missing==national, r["counts"]
+          assert missing<=1, r["counts"]
+          assert d["counts"]["uniquePricedEvses"]>=matched, d["counts"]
+          assert d["counts"]["pricedConnectors"]>=d["counts"]["uniquePricedEvses"], d["counts"]
+          assert r["counts"]["guestPricedEvseCount"]<=d["counts"]["uniquePricedEvses"], r["counts"]
           # Accepted final state may retain exactly one stale national EVSE id
           # that is closed by the deterministic successor alias overlay.
           if r["counts"]["missingNationalEvseCount"]==1:
