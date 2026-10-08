@@ -2,9 +2,10 @@ name: Audit Electra FR residual tariff scenarios
 on:
   push:
     branches:
-      - audit/fr-electra-unresolved-pricing-20261008
+      - main
     paths:
       - "scripts/france/audit_electra_pricing_residuals.mjs"
+      - "data/platforms/electra/france/manifest.json"
       - ".github/workflows/audit-electra-france-residual-tariffs.yml"
   workflow_dispatch:
 permissions:
@@ -29,6 +30,14 @@ jobs:
           git add reports/france/irve/electra-pricing-residual-audit-2026-10-08.json reports/france/irve/electra-pricing-residual-cases-2026-10-08.json.gz
           if ! git diff --cached --quiet; then
             git commit -m 'audit: classify Electra FR unsupported and heterogeneous tariff cases'
-            git pull --rebase origin "${GITHUB_REF_NAME}"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              if git rebase origin/main && git push origin HEAD:main; then
+                exit 0
+              fi
+              git rebase --abort || true
+              sleep $((attempt * 2))
+            done
+            echo "Failed to persist Electra residual audit" >&2
+            exit 1
           fi
