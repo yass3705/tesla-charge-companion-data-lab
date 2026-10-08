@@ -15,8 +15,13 @@ assert.equal(cost.rules[0].congestionStartSoc,80);
 assert.equal(cost.rules[0].congestionThresholdSource,'default_soc80');
 const time=compileTariff({currency:'EUR',elements:[{priceComponents:[{type:'CONGESTION_TIME',price:6}],restrictions:{startTime:'08:00',endTime:'21:00'}}]});
 assert.ok(time&&time.rules.some(r=>r.scope==='timeWindow'&&r.congestionTimePerMinute===.1));
-assert.equal(compileTariff({currency:'EUR',elements:[{priceComponents:[{type:'CONGESTION_TIME',price:10}],restrictions:{minDuration:600}}]}),null,
-  'Undefined compound trigger: cannot silently guess');
+const bounded=compileTariff({currency:'EUR',elements:[{priceComponents:[{type:'CONGESTION_TIME',price:12}],restrictions:{minDuration:300,maxDuration:7800}}]});
+assert.ok(bounded,'bounded congestion must compile');
+assert.deepEqual(bounded.rules[0].ocpiCongestionDurationBands,[[300,7800,.2]]);
+assert.equal(bounded.rules[0].congestionStartSoc,80,'retain SOC 80% default');
+const windowBounded=compileTariff({currency:'EUR',elements:[{priceComponents:[{type:'CONGESTION_TIME',price:6}],restrictions:{minDuration:600,startTime:'08:00',endTime:'21:00'}}]});
+assert.ok(windowBounded&&windowBounded.rules.find(r=>r.scope==='timeWindow')?.ocpiCongestionDurationBands?.length===1);
+assert.equal(windowBounded.rules[0].ocpiCongestionDurationBands.length,0,'do not apply a time-window fee all day');
 const regression=compileTariff({currency:'EUR',elements:[{priceComponents:[{type:'ENERGY',price:.5},{type:'FLAT',price:1},{type:'TIME',price:6}]}]});
 assert.equal(regression.rules[0].pricePerKwh,.5);
 assert.equal(regression.rules[0].connectionFee,1);
