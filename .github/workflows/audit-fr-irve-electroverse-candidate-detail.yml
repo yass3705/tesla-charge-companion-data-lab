@@ -1,0 +1,34 @@
+name: Audit Electroverse alphanumeric candidate pricing
+on:
+  push:
+    branches:
+      - audit/fr-irve-alphanumeric-mismatches-20261008
+    paths:
+      - "scripts/france/investigate_alphanumeric_electroverse_candidates.mjs"
+      - ".github/workflows/audit-fr-irve-electroverse-candidate-detail.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  investigate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect exact EVSE identity and tariff signatures
+        run: node --max-old-space-size=6144 scripts/france/investigate_alphanumeric_electroverse_candidates.mjs
+      - name: Save evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/irve/electroverse-alnum-candidate-evidence-2026-10-08.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'audit: diagnose Electroverse exact candidate tariff conflicts'
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
