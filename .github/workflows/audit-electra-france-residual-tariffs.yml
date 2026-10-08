@@ -1,0 +1,34 @@
+name: Audit Electra FR residual tariff scenarios
+on:
+  push:
+    branches:
+      - audit/fr-electra-unresolved-pricing-20261008
+    paths:
+      - "scripts/france/audit_electra_pricing_residuals.mjs"
+      - ".github/workflows/audit-electra-france-residual-tariffs.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Identify root causes for every Electra residual
+        run: node --max-old-space-size=6144 scripts/france/audit_electra_pricing_residuals.mjs
+      - name: Save complete case list
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/irve/electra-pricing-residual-audit-2026-10-08.json reports/france/irve/electra-pricing-residual-cases-2026-10-08.json.gz
+          if ! git diff --cached --quiet; then
+            git commit -m 'audit: classify Electra FR unsupported and heterogeneous tariff cases'
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
