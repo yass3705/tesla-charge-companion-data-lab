@@ -56,7 +56,7 @@ function componentKind(type){
 }
 function compileTariff(t){
   const currency=String(t?.currency||'EUR').toUpperCase();
-  const base={energy:0,time:0,parking:0,flat:0,congestion:0},windows=new Map(),duration=[];
+  const base={energy:0,time:0,parking:0,flat:0,congestion:0},windows=new Map(),duration=[],congestionBands=[];
   const unsupported=[];
   for(const el of t?.elements||[]){
     const rr=el?.restrictions||{},values={energy:0,time:0,parking:0,flat:0,congestion:0},present=new Set();
@@ -67,11 +67,20 @@ function compileTariff(t){
       values[kind]+=value;present.add(kind);
     }
     if(unsupported.length)return null;
-    if(values.congestion>0&&Number(rr.minDuration)>0)return null; // complex conditional semantics not sourced
     const start=rr.startTime||null,end=rr.endTime||null;
     const minDur=Number(rr.minDuration);
     const threshold=Number.isFinite(minDur)&&minDur>0?minDur/60:0;
     const days=Array.isArray(rr.dayOfWeek)&&rr.dayOfWeek.length?rr.dayOfWeek.map(x=>weekdays[x]).filter(Number.isInteger):null;
+    // OCPI minDuration/maxDuration are seconds, not a reason to discard a valid
+    // congestion component. Preserve the bounded rate and the user's SOC 80%
+    // default; the runtime calculates the intersection of these conditions.
+    if(present.has('congestion')&&(rr.minDuration!=null||rr.maxDuration!=null)){
+      const min=rr.minDuration==null?0:Number(rr.minDuration);
+      const max=rr.maxDuration==null?null:Number(rr.maxDuration);
+      if(!Number.isFinite(min)||min<0||(max!=null&&(!Number.isFinite(max)||max<=min)))return null;
+      congestionBands.push({min,max,rate:values.congestion,start,end,days});
+      values.congestion=0;present.delete('congestion');
+    }
     if(start||end){
       const key=`${start||'00:00'}|${end||'24:00'}|${(days||[]).join(',')}`;
       let w=windows.get(key);if(!w){w={values:{...base},present:new Set(),start:start||'00:00',end:end||'24:00',days};windows.set(key,w);}
@@ -88,6 +97,9 @@ function compileTariff(t){
     scope,start,end,billing:r.energy>0?'kwh':r.time>0?'minute':'kwh',currency,
     pricePerKwh:round(r.energy),chargePerMinute:round(r.time),connectionFee:round(r.flat),idlePerMinute:round(r.parking),
     congestionTimePerMinute:round(r.congestion),congestionStartSoc:80,congestionThresholdSource:'default_soc80',
+    ocpiCongestionDurationBands:congestionBands
+      .filter(x=>scope==='allDay'?!x.start:x.start===start&&x.end===end)
+      .map(x=>[x.min,x.max,round(x.rate)]),
     afterMinutesRate:after?round(after.rate):0,afterMinutesThreshold:after?Math.round(after.threshold):0,days,ocpiDurationBands:[]
   });
   const baseAfter=duration.filter(x=>!x.start).sort((a,b)=>a.threshold-b.threshold)[0]||null;
@@ -103,8 +115,32 @@ function signature(p){return JSON.stringify(p);}
 function tileId(lat,lon){const a=Math.floor(lat/TILE),b=Math.floor(lon/TILE);return `t_${a}_${b}`;}
 
 const nationalRows=JSON.parse(zlib.gunzipSync(fss.readFileSync(NATIONAL)).toString('utf8'));
-const nationalEvse=new Set();
-for(const row of nationalRows)for(const cfg of row?.[8]||[])for(const id of Array.isArray(cfg?.[6])?cfg[6]:[])nationalEvse.add(norm(id));
+const nationalEvse=new Set(),nationalPowerByEvse=new Map();
+for(const row of nationalRows)for(const cfg of row?.[8]||[])for(const id of Array.isArray(cfg?.[6])?cfg[6]:[]){
+  const key=norm(id),power=Number(cfg?.[3]);
+  nationalEvse.add(key);
+  if(Number.isFinite(power)&&power>0){
+    const old=nationalPowerByEvse.get(key);
+    nationalPowerByEvse.set(key,old==null?power:old===power?power:null);
+  }
+}
+// In a location with several distinct tariffs, only an explicit exclusive
+// minPower/maxPower restriction proves which EVSE may use which tariff.
+// Absent such a discriminator, do not guess a tariff from the station name.
+function powerScope(t){
+  const elements=t?.elements||[];
+  if(!elements.length)return null;
+  const scopes=elements.map(e=>{
+    const r=e?.restrictions||{},min=r.minPower==null?null:Number(r.minPower),max=r.maxPower==null?null:Number(r.maxPower);
+    if(min==null&&max==null)return null;
+    if(min!=null&&(!Number.isFinite(min)||min<0))return null;
+    if(max!=null&&(!Number.isFinite(max)||max<=0))return null;
+    return {min:min??0,max:max??Infinity};
+  });
+  if(scopes.some(x=>!x))return null;
+  const min=Math.max(...scopes.map(x=>x.min)),max=Math.min(...scopes.map(x=>x.max));
+  return min<=max?{min,max}:null;
+}
 
 const first=await page(0);if(!first.data)throw new Error('first Electra page failed '+JSON.stringify(first.error));
 const total=first.data.totalCount,totalPages=Math.ceil(total/PAGE_SIZE),locations=[];
@@ -173,15 +209,40 @@ for(const x of locations){
   if(!compiled.length){reject('no_tariff');continue;}
   if(compiled.some(v=>!v)){reject('unsupported_tariff');continue;}
   const uniq=[...new Map(compiled.map(v=>[signature(v),v])).values()];
-  if(uniq.length!==1){reject('heterogeneous_location_tariffs');continue;}
+  const assigned=new Map(),tariffs=x.chargeTariffs||[];
+  if(uniq.length===1){
+    for(const id of associatedIds)assigned.set(norm(id),uniq[0]);
+  }else{
+    const scopes=tariffs.map(powerScope);
+    if(scopes.some(x=>!x)){reject('tariff_attribution_missing_evse_evidence');continue;}
+    // Multiple non-identical tariffs at the same power are a real assignment
+    // conflict; different powers are expected and do not conflict.
+    let ambiguous=false;
+    for(const id of associatedIds){
+      const power=nationalPowerByEvse.get(norm(id));
+      if(!(power>0)){ambiguous=true;break;}
+      const matches=scopes.map((b,i)=>({b,i})).filter(({b})=>power>=b.min&&power<=b.max);
+      if(matches.length!==1){ambiguous=true;break;}
+      assigned.set(norm(id),compiled[matches[0].i]);
+    }
+    if(ambiguous){reject('same_power_tariff_assignment_ambiguous');continue;}
+  }
   const lat=Number(x.coordinates?.latitude),lon=Number(x.coordinates?.longitude);
   if(!Number.isFinite(lat)||!Number.isFinite(lon)){reject('no_coordinates');continue;}
-  const offer={
-    id:`electra-platform:${x.id}`,provider:'Electra',countries:['FR'],currency:uniq[0].rules?.[0]?.currency||'EUR',priority:82,
-    evseIds:associatedIds,pricing:uniq[0],metadata:{verified:true,identityMode,associationEvidence,electraLocationId:String(x.id),cpo:x.cpo?.name||null,operator:x.operator?.name||null,source:identityMode==='exact_national_irve_evse'?'Electra eMSP GraphQL':'Electra eMSP GraphQL + curated national IRVE location crosswalk'}
-  };
   const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
-  tiles.get(id).push(offer);stats.publishedLocations++;stats.publishedEvseIds+=exact.length;stats.publishedOffers++;cs.publishedLocations++;cs.publishedEvseIds+=exact.length;
+  for(const pdc of associatedIds){
+    const pricing=assigned.get(norm(pdc));
+    const offer={
+      id:`electra-platform:${x.id}:${norm(pdc)}`,provider:'Electra',countries:['FR'],
+      currency:pricing.rules?.[0]?.currency||'EUR',priority:82,evseIds:[pdc],
+      pricing,metadata:{verified:true,verifiedScope:'exact_evse',identityMode,associationEvidence,
+      electraLocationId:String(x.id),nationalEvseId:pdc,cpo:x.cpo?.name||null,operator:x.operator?.name||null,
+      source:identityMode==='exact_national_irve_evse'?'Electra eMSP GraphQL':'Electra eMSP GraphQL + curated national IRVE location crosswalk'}
+    };
+    tiles.get(id).push(offer);stats.publishedOffers++;
+  }
+  stats.publishedLocations++;stats.publishedEvseIds+=associatedIds.length;
+  cs.publishedLocations++;cs.publishedEvseIds+=associatedIds.length;
 }
 const manifestTiles=[];
 for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
@@ -197,7 +258,7 @@ await fs.writeFile(path.join(OUT,'source-locations.json.gz'),sourceGz);
 stats.sourceLocationCount=locations.length;
 stats.sourceEvseCount=sourceEvseCount;
 stats.retainedUnmatchedLocations=residualLocations.length;
-const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),sourceArchive:{file:'source-locations.json.gz',locationCount:locations.length,evseCount:sourceEvseCount,sha256:sha(sourceGz)},associationBatches:associationDocuments.map(doc=>({batch:doc.batch,cpoCounts:doc.cpoCounts||{},candidateCount:doc.candidateCount,ambiguousExcluded:doc.ambiguousExcluded||0,collisionExcluded:doc.collisionExcluded||0,applied:batchStats.get(doc.batch)?.applied||0,conflicts:batchStats.get(doc.batch)?.conflicts||0})),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true,overlayConservation:'all compatible source locations and EVSEs are retained in source-locations.json.gz; tiles contain only matched tariff enrichments'},tiles:manifestTiles};
+const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),sourceArchive:{file:'source-locations.json.gz',locationCount:locations.length,evseCount:sourceEvseCount,sha256:sha(sourceGz)},associationBatches:associationDocuments.map(doc=>({batch:doc.batch,cpoCounts:doc.cpoCounts||{},candidateCount:doc.candidateCount,ambiguousExcluded:doc.ambiguousExcluded||0,collisionExcluded:doc.collisionExcluded||0,applied:batchStats.get(doc.batch)?.applied||0,conflicts:batchStats.get(doc.batch)?.conflicts||0})),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,evseScopedTariffOffers:true,explicitDisjointPowerRestrictionRequiredForHeterogeneousTariffs:true,unsupportedComponentsFailClosed:true,overlayConservation:'all compatible source locations and EVSEs are retained in source-locations.json.gz; tiles contain only matched tariff enrichments'},tiles:manifestTiles};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 const residualGz=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,country:'FR',generatedAt:manifest.generatedAt,locations:residualLocations})),{level:9});
 await fs.writeFile(path.join(OUT,'residuals.json.gz'),residualGz);
