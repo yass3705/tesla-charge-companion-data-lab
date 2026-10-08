@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const src=fs.readFileSync('scripts/electra_france_platform_snapshot.mjs','utf8');
+const first=src.indexOf('function powerScope(t){'),last=src.indexOf('const first=await page(0)',first);
+assert.ok(first>0&&last>first,'power-scoped assignment helper exists');
+const powerScope=new Function(src.slice(first,last)+';return powerScope;')();
+const p=(min,max)=>({elements:[{restrictions:{minPower:min,maxPower:max},priceComponents:[{type:'ENERGY',price:0.4}]}]});
+assert.deepEqual(powerScope(p(0,22)),{min:0,max:22});
+assert.deepEqual(powerScope(p(50,150)),{min:50,max:150});
+assert.equal(powerScope({elements:[{restrictions:{},priceComponents:[{type:'ENERGY',price:.5}]}]}),null,'no tariff-to-EVSE attribution from location price alone');
+assert.equal(powerScope({elements:[{restrictions:{minPower:20,maxPower:30}},{restrictions:{minPower:50,maxPower:100}}]}),null,'incompatible restrictions never guessed');
+assert.ok(src.includes("evseIds:[pdc]")&&src.includes("verifiedScope:'exact_evse'"),'one offer per EVSE, never station-level tariff');
+assert.ok(src.includes("reject('same_power_tariff_assignment_ambiguous')"),'same-power ambiguity fails closed');
+assert.ok(src.includes("reject('no_tariff')"),'missing tariff is not invented');
+console.log('PASS: Electra power-disjoint EVSE tariffs and fail-closed ambiguous station tariffs');
