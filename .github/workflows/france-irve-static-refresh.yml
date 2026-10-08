@@ -88,14 +88,22 @@ jobs:
           mkdir -p "$RUNNER_TEMP/france-irve"
           # The national dynamic feed is a separate, intermittently unavailable beta source.
           # Its HTTP 503 must not block a validated static refresh or overwrite last good data.
-          if ! curl -fL --retry 6 --retry-all-errors --retry-delay 15 --retry-max-time 180 --connect-timeout 30 --max-time 300 \
-            -o "$RUNNER_TEMP/france-irve/dynamic.csv" \
-            'https://proxy.transport.data.gouv.fr/resource/consolidation-nationale-irve-dynamique'; then
+          HTTP_STATUS_FILE="$RUNNER_TEMP/france-irve/dynamic.http-status"
+          if ! curl -fsSL --retry 6 --retry-delay 15 --retry-max-time 180 --connect-timeout 30 --max-time 300 \
+            -w '%{http_code}' -o "$RUNNER_TEMP/france-irve/dynamic.csv" \
+            'https://proxy.transport.data.gouv.fr/resource/consolidation-nationale-irve-dynamique' > "$HTTP_STATUS_FILE"; then
+            HTTP_STATUS="$(cat "$HTTP_STATUS_FILE")"
             rm -f "$RUNNER_TEMP/france-irve/dynamic.csv"
+            # Transient rate-limit/server/network outages may use the last validated snapshot.
+            # Permanent client/URL errors (400/401/403/404) must still fail visibly.
+            case "$HTTP_STATUS" in
+              000|429|5??) ;;
+              *) echo "::error title=IRVE dynamic configuration failure::HTTP $HTTP_STATUS is not a transient outage."; exit 1 ;;
+            esac
             test -s data/national/france-irve-dynamic-status-v9.json.gz
             test -s reports/france/irve/irve-residual-crosswalk-latest.json
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=PAN IRVE dynamic unavailable::Upstream download failed; retained previous validated dynamic snapshot and residual audit. Static refresh remains independent."
+            echo "::warning title=PAN IRVE dynamic unavailable::HTTP $HTTP_STATUS; previous dynamic snapshot and residual audit retained; static refresh remains independent."
             echo "### ⚠️ IRVE dynamique indisponible" >> "$GITHUB_STEP_SUMMARY"
             echo "Le téléchargement PAN a échoué. Snapshot dynamique et audit antérieurs conservés **sans les présenter comme actualisés**. Nouvelle tentative au prochain créneau." >> "$GITHUB_STEP_SUMMARY"
             exit 0
