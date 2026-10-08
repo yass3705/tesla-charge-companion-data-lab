@@ -19,36 +19,28 @@ jobs:
           node-version: 22
       - name: Analyze unpublished numeric identities
         run: node scripts/analyze_electroverse_numeric_residual.mjs
-      - name: Persist validated numeric mappings
+      - name: Persist numeric mappings and audit atomically
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/platforms/electroverse/validated-mappings/numeric-residual.json
+          git add data/platforms/electroverse/validated-mappings/numeric-residual.json reports/electroverse/numeric-residual-analysis.json
           if git diff --cached --quiet; then
-            echo "No mapping changes"
-          else
-            git commit -m "data: publish validated Electroverse numeric residual mappings"
-            for attempt in 1 2 3; do
-              git pull --rebase origin main && git push && break
-              git rebase --abort || true
-              sleep $((attempt * 2))
-            done
+            echo "No numeric audit or mapping changes"
+            exit 0
           fi
-      - name: Persist numeric residual analysis
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/electroverse/numeric-residual-analysis.json data/platforms/electroverse/validated-mappings/numeric-residual.json
-          if git diff --cached --quiet; then
-            echo "No numeric analysis changes"
-          else
-            git commit -m "data: persist Electroverse numeric residual analysis"
-            for attempt in 1 2 3; do
-              git pull --rebase origin main && git push && break
-              git rebase --abort || true
-              sleep $((attempt * 2))
-            done
-          fi
+          git commit -m "audit: persist Electroverse numeric mapping and geo-CPO evidence"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            if git rebase origin/main && git push origin HEAD:main; then
+              echo "Numeric report and mappings persisted"
+              exit 0
+            fi
+            git rebase --abort || true
+            sleep $((attempt * 2))
+          done
+          echo "ERROR: unable to persist numeric mapping and audit" >&2
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: electroverse-france-numeric-residual-analysis
