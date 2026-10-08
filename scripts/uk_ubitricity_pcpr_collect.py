@@ -101,7 +101,7 @@ def collect(endpoint, token, deadline=None):
             raise RuntimeError(f'{endpoint}: unexpected response shape')
         rows.extend(page)
         link = headers.get('Link', headers.get('link', ''))
-        match = re.search(r'<([^>]+)>;\\s*rel="?next"?', link)
+        match = re.search(r'<([^>]+)>;\s*rel="?next"?', link)
         total = headers.get('X-Total-Count', headers.get('x-total-count'))
         if match:
             url = urllib.parse.urljoin(url, match.group(1))
