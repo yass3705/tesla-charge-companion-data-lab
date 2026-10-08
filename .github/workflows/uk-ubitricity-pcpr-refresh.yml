@@ -2,11 +2,13 @@ name: Ubitricity UK authenticated PCPR refresh
 on:
   schedule:
     - cron: "37 2 * * *"
+    - cron: "37 3 * * *" # Recovery slot if the primary run hits provider 429
   push:
     branches: [main]
     paths:
       - scripts/uk_ubitricity_pcpr_collect.py
       - scripts/uk_ubitricity_pcpr_validate.py
+      - tests/test_uk_ubitricity_pcpr_collect.py
       - .github/workflows/uk-ubitricity-pcpr-refresh.yml
   workflow_dispatch:
     inputs:
@@ -25,8 +27,36 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Test rate-limit retry and pagination
+        run: python -m unittest discover -s tests -p 'test_uk_ubitricity_pcpr_collect.py' -v
+      - name: Avoid redundant provider calls on scheduled runs
+        if: github.event_name == 'schedule'
+        id: freshness
+        shell: bash
+        run: |
+          python - <<'PYTHON'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          due, age_hours = True, None
+          try:
+              source = json.loads(Path('reports/uk/ubitricity-pcpr-latest.json').read_text())
+              verified = json.loads(Path('reports/uk/ubitricity-pcpr-validation-latest.json').read_text())
+              age = (datetime.now(timezone.utc) - datetime.fromisoformat(source['collectedAt'])).total_seconds()
+              age_hours = round(age / 3600, 1)
+              if (0 <= age < 20 * 3600 and
+                  source['collectedAt'] == verified['collectedAt'] and
+                  verified.get('pricedConnectors', 0) > 0 and
+                  Path('data/national/uk_ubitricity_pcpr.json.gz').exists()):
+                  due = False
+          except (OSError, ValueError, KeyError, TypeError):
+              pass
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('due=' + str(due).lower() + '\n')
+          print(f'Collect due={due}; previous validated feed age={age_hours} hours')
+          PYTHON
       - name: Collect operator-supplied feed
-        if: github.event_name != 'push'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && steps.freshness.outputs.due != 'false')
         env:
           UBITRICITY_PCPR_TOKEN: ${{ secrets[inputs.secret_name || 'UBITRICITY_UK_TOKEN'] || secrets.UBITRICITY_PCPR_TOKEN || secrets.UBITRICITY_UK_PCPR_API_KEY || secrets.UBITRICITY_API_KEY }}
         run: python -u scripts/uk_ubitricity_pcpr_collect.py
@@ -40,8 +70,10 @@ jobs:
           assert 0 <= (datetime.now(timezone.utc)-datetime.fromisoformat(x["collectedAt"])).total_seconds() < 86400
           PYTHON
       - name: Verify PAYG and compile exact connector pricing
+        if: github.event_name != 'schedule' || steps.freshness.outputs.due != 'false'
         run: python -u scripts/uk_ubitricity_pcpr_validate.py
       - name: Persist collected evidence
+        if: github.event_name != 'schedule' || steps.freshness.outputs.due != 'false'
         shell: bash
         run: |
           set -euo pipefail
