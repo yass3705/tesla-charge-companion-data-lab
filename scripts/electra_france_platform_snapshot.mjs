@@ -56,18 +56,18 @@ function componentKind(type){
 }
 function compileTariff(t){
   const currency=String(t?.currency||'EUR').toUpperCase();
-  const base={energy:0,time:0,parking:0,flat:0},windows=new Map(),duration=[];
+  const base={energy:0,time:0,parking:0,flat:0,congestion:0},windows=new Map(),duration=[];
   const unsupported=[];
   for(const el of t?.elements||[]){
-    const rr=el?.restrictions||{},values={energy:0,time:0,parking:0,flat:0},present=new Set();
+    const rr=el?.restrictions||{},values={energy:0,time:0,parking:0,flat:0,congestion:0},present=new Set();
     for(const pc of el?.priceComponents||[]){
       const kind=componentKind(pc?.type),raw=Number(pc?.price);
       if(!kind||!Number.isFinite(raw)){unsupported.push(pc?.type||'unknown');continue;}
-      if(kind==='congestion'){unsupported.push('CONGESTION_TIME');continue;}
-      let value=raw;if(kind==='time'||kind==='parking')value/=60;
+      let value=raw;if(kind==='time'||kind==='parking'||kind==='congestion')value/=60;
       values[kind]+=value;present.add(kind);
     }
     if(unsupported.length)return null;
+    if(values.congestion>0&&Number(rr.minDuration)>0)return null; // complex conditional semantics not sourced
     const start=rr.startTime||null,end=rr.endTime||null;
     const minDur=Number(rr.minDuration);
     const threshold=Number.isFinite(minDur)&&minDur>0?minDur/60:0;
@@ -87,6 +87,7 @@ function compileTariff(t){
   const rule=(scope,start,end,r,days=null,after=null)=>({
     scope,start,end,billing:r.energy>0?'kwh':r.time>0?'minute':'kwh',currency,
     pricePerKwh:round(r.energy),chargePerMinute:round(r.time),connectionFee:round(r.flat),idlePerMinute:round(r.parking),
+    congestionTimePerMinute:round(r.congestion),congestionStartSoc:80,congestionThresholdSource:'default_soc80',
     afterMinutesRate:after?round(after.rate):0,afterMinutesThreshold:after?Math.round(after.threshold):0,days,ocpiDurationBands:[]
   });
   const baseAfter=duration.filter(x=>!x.start).sort((a,b)=>a.threshold-b.threshold)[0]||null;

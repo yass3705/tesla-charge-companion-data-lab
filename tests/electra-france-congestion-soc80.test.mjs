@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const source=fs.readFileSync('scripts/electra_france_platform_snapshot.mjs','utf8');
+const first=source.indexOf('function componentKind(type)');
+const last=source.indexOf('function signature(p)',first);
+assert.ok(first>0&&last>first);
+const round=x=>Number(Number(x).toFixed(6));
+const weekdays={SUNDAY:0,MONDAY:1,TUESDAY:2,WEDNESDAY:3,THURSDAY:4,FRIDAY:5,SATURDAY:6};
+const compileTariff=new Function('round','weekdays',source.slice(first,last)+'\nreturn compileTariff;')(round,weekdays);
+const cost=compileTariff({currency:'EUR',elements:[{priceComponents:[{type:'ENERGY',price:.49},{type:'CONGESTION_TIME',price:12}]}]});
+assert.ok(cost&&cost.rules.length===1);
+assert.equal(cost.rules[0].pricePerKwh,.49);
+assert.equal(cost.rules[0].congestionTimePerMinute,.2);
+assert.equal(cost.rules[0].congestionStartSoc,80);
+assert.equal(cost.rules[0].congestionThresholdSource,'default_soc80');
+const time=compileTariff({currency:'EUR',elements:[{priceComponents:[{type:'CONGESTION_TIME',price:6}],restrictions:{startTime:'08:00',endTime:'21:00'}}]});
+assert.ok(time&&time.rules.some(r=>r.scope==='timeWindow'&&r.congestionTimePerMinute===.1));
+assert.equal(compileTariff({currency:'EUR',elements:[{priceComponents:[{type:'CONGESTION_TIME',price:10}],restrictions:{minDuration:600}}]}),null,
+  'Undefined compound trigger: cannot silently guess');
+const regression=compileTariff({currency:'EUR',elements:[{priceComponents:[{type:'ENERGY',price:.5},{type:'FLAT',price:1},{type:'TIME',price:6}]}]});
+assert.equal(regression.rules[0].pricePerKwh,.5);
+assert.equal(regression.rules[0].connectionFee,1);
+assert.equal(regression.rules[0].chargePerMinute,.1);
+console.log('Electra eMSP FR congestion SOC80 + regression pricing: pass');
