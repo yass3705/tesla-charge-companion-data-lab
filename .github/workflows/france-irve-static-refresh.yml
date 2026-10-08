@@ -109,6 +109,7 @@ jobs:
             exit 0
           fi
           test -s "$RUNNER_TEMP/france-irve/dynamic.csv"
+          echo "retrieved_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           python scripts/france/build_france_irve_dynamic_status_v9.py \
             --static-all data/national/france-irve-static-v9/all.json.gz \
             --dynamic-csv "$RUNNER_TEMP/france-irve/dynamic.csv" \
@@ -124,19 +125,59 @@ jobs:
       - name: Publish refreshed Data Lab base and CPO manifest
         if: steps.static.outputs.changed == 'true' || steps.dynamic.outputs.available == 'true'
         shell: bash
+        env:
+          STATIC_CHANGED: ${{ steps.static.outputs.changed }}
+          DYNAMIC_AVAILABLE: ${{ steps.dynamic.outputs.available }}
+          DYNAMIC_RETRIEVED_AT: ${{ steps.dynamic.outputs.retrieved_at }}
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/national/france-irve-static-v9 data/national/france-irve-dynamic-status-v9.json.gz reports/france/irve/irve-residual-crosswalk-latest.json
-          if git diff --cached --quiet; then
-            echo 'No base or manifest changes to persist.'
-            exit 0
+
+          # Protect the newly built static tiles before rebasing on a busy main.
+          checkpoint="$(mktemp -d)"
+          if [[ "$STATIC_CHANGED" == 'true' ]]; then
+            cp -a data/national/france-irve-static-v9 "$checkpoint/static"
           fi
-          git commit -m 'data(france): refresh national IRVE static base and residual manifest'
-          for attempt in 1 2 3; do
-            git pull --rebase origin main
-            if git push origin HEAD:main; then exit 0; fi
-            sleep $((attempt * 2))
+
+          # Recompute derived outputs against the newest main on EVERY attempt:
+          # never rebase binary gzip or an old residual audit across concurrent writes.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            if [[ "$STATIC_CHANGED" == 'true' ]]; then
+              rm -rf data/national/france-irve-static-v9
+              cp -a "$checkpoint/static" data/national/france-irve-static-v9
+              git add -A data/national/france-irve-static-v9
+            fi
+
+            if [[ "$DYNAMIC_AVAILABLE" == 'true' ]]; then
+              python scripts/france/build_france_irve_dynamic_status_v9.py \
+                --static-all data/national/france-irve-static-v9/all.json.gz \
+                --dynamic-csv "$RUNNER_TEMP/france-irve/dynamic.csv" \
+                --retrieved-at "$DYNAMIC_RETRIEVED_AT" \
+                --out data/national/france-irve-dynamic-status-v9.json.gz
+              python scripts/france/audit_france_irve_residuals.py \
+                --static-all data/national/france-irve-static-v9/all.json.gz \
+                --static-manifest data/national/france-irve-static-v9/manifest.json \
+                --dynamic-csv "$RUNNER_TEMP/france-irve/dynamic.csv" \
+                --residuals data/platforms/electra/france/residuals.json.gz \
+                --out reports/france/irve/irve-residual-crosswalk-latest.json
+              git add data/national/france-irve-dynamic-status-v9.json.gz reports/france/irve/irve-residual-crosswalk-latest.json
+            fi
+
+            if git diff --cached --quiet; then
+              echo 'No base or manifest changes to persist.'
+              exit 0
+            fi
+            git commit -m "data(france): refresh national IRVE base and residual audit [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then
+              echo "IRVE publication succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning title=IRVE Git main advanced::Push race on attempt $attempt; refetching and recomputing exact-ID audit."
+            sleep "$((attempt * 2))"
           done
+          echo "::error title=IRVE persistence failed::Main advanced during all 5 optimistic retries."
           exit 1
