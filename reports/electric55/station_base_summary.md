@@ -9,4 +9,4 @@
 - Lignes source hors CPO E55C exclues : **0**
 - Statuts dynamiques : **non inclus** (jointure TCC via Electroverse/Electra).
 - Tarifs eMSP tiers / itinérance : **non inclus**.
-- Empreinte IRVE statique : `b8eb3b7d88a57589730bad33589db50237ea04d7b58d639f17ce763a6baeb525`
+- Empreinte IRVE statique : `2f9c9f90cc2f1a4525d751696a2b293ef2fbed5eb19eb16cdb037b6244ef9270`
