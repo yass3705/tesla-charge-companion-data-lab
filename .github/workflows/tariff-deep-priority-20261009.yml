@@ -1,0 +1,91 @@
+name: PRIORITY tariff deep review Tesla and France
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tariff-deep-priority-20261009.yml'
+      - 'scripts/tesla_global_tariff_inventory_20261009.py'
+      - 'scripts/tesla_complete_config_pricing_audit_20261009.cjs'
+      - 'scripts/tesla_source_selection_audit_20261009.py'
+      - 'scripts/tariff_after_minutes_candidate_20261009.cjs'
+permissions:
+  contents: write
+concurrency:
+  group: tariff-deep-priority-main
+  cancel-in-progress: false
+jobs:
+  deep-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Freeze production engine and Tesla adapter for read-only comparison
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --retry 3 "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/38ac26e029ba1c4779d4d8fa43e7d5d300858624/v9-production-runtime/assets/v9/pricing-engine.js" -o /tmp/tcc-v9-pinned-pricing-engine.js
+          curl --fail --location --silent --show-error --retry 3 "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/38ac26e029ba1c4779d4d8fa43e7d5d300858624/v9-production-runtime/assets/v9/adapters/tesla-json.js" -o /tmp/tcc-v9-pinned-tesla-adapter.js
+          test -s /tmp/tcc-v9-pinned-pricing-engine.js
+          test -s /tmp/tcc-v9-pinned-tesla-adapter.js
+      - name: Tesla all-country source-age and tariff-window census
+        run: python scripts/tesla_global_tariff_inventory_20261009.py
+      - name: Tesla per-station 10-day precedence with Morocco excluded
+        run: python scripts/tesla_source_selection_audit_20261009.py
+      - name: Tesla full-configuration pricing regression
+        env:
+          TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
+        run: node scripts/tesla_complete_config_pricing_audit_20261009.cjs /tmp/tcc-v9-pinned-pricing-engine.js /tmp/tcc-v9-pinned-tesla-adapter.js
+      - name: France 84 after-minute tariffs and night caps
+        run: node scripts/tariff_after_minutes_candidate_20261009.cjs /tmp/tcc-v9-pinned-pricing-engine.js
+      - name: Validate Tesla and France results
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('reports/tariff-scenarios')
+          read=lambda n:json.loads((p/n).read_text())
+          source=read('tesla-global-inventory-latest.json')
+          deep=read('tesla-complete-config-pricing-audit-latest.json')
+          freshness=read('tesla-source-selection-audit-latest.json')
+          french=read('france-after-minutes-candidate-latest.json')
+          assert set(source['scopeCountries'])==set(deep['byCountry'])==set(freshness['scopeCountries'])
+          assert all(x['pass'] for x in deep['checks'])
+          assert freshness['macStationsAudited']>=1100
+          assert freshness['countries']['MA'].get('suc_charge_tariff_only_pending_source_reconciliation',0)==0
+          assert french['status']=='staging_checks_pass'
+          assert french['summary']['offers']>=84
+          print('DEEP_AUDIT_VALIDATED',deep['fixtureConfigurations'],freshness['macStationsAudited'],french['summary'])
+          PY
+      - name: Independently preserve full deep analysis
+        run: |
+          set -euo pipefail
+          mkdir -p reports/tariff-scenarios/deep-review
+          for f in tesla-global-inventory-latest.json tesla-global-complete-config-fixtures.json tesla-complete-config-pricing-audit-latest.json tesla-source-selection-audit-latest.json tesla-source-selection-station-detail-latest.json france-after-minutes-candidate-latest.json; do
+            cp "reports/tariff-scenarios/$f" "reports/tariff-scenarios/deep-review/$f"
+          done
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/tariff-scenarios/deep-review
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "reports: focused Tesla and French price analysis $GITHUB_RUN_ID"
+          for i in 1 2 3 4; do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              exit 1
+            fi
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$((i*2))"
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tcc-tariff-deep-analysis
+          path: reports/tariff-scenarios/deep-review/
+          retention-days: 90
