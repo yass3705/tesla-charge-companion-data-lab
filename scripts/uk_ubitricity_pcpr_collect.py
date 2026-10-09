@@ -48,7 +48,7 @@ def retry_delay(error, attempt):
 def collect(endpoint, token, deadline=None):
     """Fetch an all-or-nothing snapshot, using bounded 429/5xx retries."""
     rows, seen = [], set()
-    authorization = token if token.startswith('Token ') else 'Token ' + token
+    authorization = token
     url = BASE + endpoint + '?limit=1000&offset=0'
     requests, retries = 0, 0
     if deadline is None:
@@ -71,6 +71,9 @@ def collect(endpoint, token, deadline=None):
                 retries = 0
                 break
             except urllib.error.HTTPError as error:
+                if error.code == 401 and authorization == token and not token.startswith('Token '):
+                    authorization = 'Token ' + token
+                    continue
                 if error.code in (429, 500, 502, 503, 504):
                     wait = retry_delay(error, retries) if error.code == 429 else min(30 * 2 ** min(retries, 3), 240)
                     remaining = deadline - time.monotonic()
