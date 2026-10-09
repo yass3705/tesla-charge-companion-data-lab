@@ -114,6 +114,8 @@ def main():
                 elif billing == "minute":
                     if rule.get("chargePerMinute") is None:
                         issues[cc + "/minute_rate_missing"] += 1
+                    elif rule.get("pricePerMinute") is None:
+                        issues[cc + "/adapter_may_double_count_minute_rate"] += 1
                 else:
                     issues[cc + "/unknown_billing_mode"] += 1
                 if currency not in ("EUR", "UNDECLARED"):
