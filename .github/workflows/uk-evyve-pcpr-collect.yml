@@ -1,0 +1,56 @@
+name: UK Evyve PCPR collect
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/uk-evyve-pcpr-collect.yml
+      - scripts/uk_evyve_pcpr_collect.py
+      - tests/test_uk_evyve_pcpr_collect.py
+  schedule:
+    - cron: "17 3 * * *" # 04:17 CET / 05:17 CEST
+permissions:
+  contents: write
+concurrency:
+  group: uk-evyve-pcpr-collect
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate Evyve PCPR conversion logic
+        run: python3 -m unittest discover -s tests -p 'test_uk_evyve_pcpr_collect.py' -v
+      - name: Collect CPO-only Evyve UK locations and exact connector tariffs
+        env:
+          BLINK_PCPR_TOKEN: ${{ secrets.BLINK_PCPR_TOKEN }}
+        run: python3 -u scripts/uk_evyve_pcpr_collect.py
+      - name: Persist staged evidence (no automatic V9 activation)
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(data/national/uk_evyve_pcpr.json.gz data/national/uk_evyve_pcpr_v9.json.gz reports/uk/evyve-pcpr-latest.json)
+          checkpoint="$(mktemp -d)"
+          for path in "${files[@]}"; do
+            mkdir -p "$checkpoint/$(dirname "$path")"
+            cp "$path" "$checkpoint/$path"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            for path in "${files[@]}"; do
+              mkdir -p "$(dirname "$path")"
+              cp "$checkpoint/$path" "$path"
+            done
+            git add "${files[@]}"
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data(uk): refresh Evyve PCPR connector evidence [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$((attempt * 2))"
+          done
+          exit 1
