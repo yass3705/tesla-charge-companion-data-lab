@@ -75,8 +75,10 @@ def main():
     suc=json.loads(SUC.read_text(encoding='utf-8'))
     meta=json.loads(META.read_text(encoding='utf-8'))
     batches=batch_publications()
+    # Morocco's 7-Oct "publish" commit was an empty/no-price-change commit,
+    # excluded by GitHub's commits?path= filter. MA never uses SuC regardless.
     # Prevent silently trusting SuC just because an October country batch could not be fetched.
-    if not all(x in batches for x in ('FR','IT','CH','ES','NL','UK','BE','MA')):
+    if not all(x in batches for x in ('FR','IT','CH','ES','NL','UK','BE')):
         raise SystemExit('Missing recent country-batch provenance: cannot decide Mac/SuC precedence')
     evidence=ROOT/'reports/tesla/tesla-dataset-provenance-audit-latest.json'
     if evidence.is_file():
