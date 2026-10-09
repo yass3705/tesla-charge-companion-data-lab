@@ -61,8 +61,8 @@ def batch_publications():
             'User-Agent':'TCC-Tesla-Price-Provenance/1.0','Accept':'application/vnd.github+json'}),
             timeout=30) as response:
             commit=json.load(response)
-        msg=commit['commit']['message'].split('\\n',1)[0]
-        if re.fullmatch(r'chore\\(stations\\): publish morocco automated lot update #\\d+',msg):
+        msg=commit['commit']['message'].splitlines()[0]
+        if msg.startswith('chore(stations): publish morocco automated lot update #'):
             stamp=time_or_none(commit['commit']['committer']['date'])
             if stamp:
                 batches['MA']={'publishedAt':stamp.isoformat(),'commitSha':commit['sha'],
