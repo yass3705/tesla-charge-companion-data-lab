@@ -48,7 +48,7 @@ def retry_delay(error, attempt):
 def collect(endpoint, token, deadline=None):
     """Fetch an all-or-nothing snapshot, using bounded 429/5xx retries."""
     rows, seen = [], set()
-    authorization = token
+    authorization = token if token.startswith('Token ') else 'Token ' + token
     url = BASE + endpoint + '?limit=1000&offset=0'
     requests, retries = 0, 0
     if deadline is None:
@@ -71,10 +71,6 @@ def collect(endpoint, token, deadline=None):
                 retries = 0
                 break
             except urllib.error.HTTPError as error:
-                if error.code == 401 and authorization == token and not token.startswith('Token '):
-                    print(f'{endpoint}: raw Authorization rejected (401); trying documented Token scheme fallback', flush=True)
-                    authorization = 'Token ' + token
-                    continue
                 if error.code in (429, 500, 502, 503, 504):
                     wait = retry_delay(error, retries) if error.code == 429 else min(30 * 2 ** min(retries, 3), 240)
                     remaining = deadline - time.monotonic()
@@ -101,7 +97,8 @@ def collect(endpoint, token, deadline=None):
         if not isinstance(page, list):
             raise RuntimeError(f'{endpoint}: unexpected response shape')
         if not page and not rows:
-            print(f'{endpoint}: HTTP 200 OCPI 1000 but first page is empty; snapshot unchanged', flush=True)
+            safe_headers = {k.lower(): str(v)[:160] for k, v in headers.items() if k.lower() in ('x-total-count', 'x-limit', 'x-offset', 'x-ratelimit-remaining', 'retry-after')}
+            print(json.dumps({'endpoint': endpoint, 'httpStatus': 200, 'ocpiStatus': payload.get('status_code') if isinstance(payload, dict) else None, 'pageSize': 0, 'pagination': safe_headers, 'hasNextLink': bool(headers.get('Link', headers.get('link'))), 'diagnosticOnly': True}), flush=True)
         rows.extend(page)
         link = headers.get('Link', headers.get('link', ''))
         match = re.search(r'<([^>]+)>;\s*rel="?next"?', link)
@@ -124,11 +121,11 @@ def main():
     deadline = time.monotonic() + 20 * 60  # Shared retry allowance across both endpoints.
     locations, location_requests = collect('locations', token, deadline)
     if not locations:
-        raise RuntimeError(
-            f'Empty location feed after {location_requests} location request(s); '
-            'tariff endpoint not called; existing PAYG overlay retained. '
-            'Check token scope and provider response metadata.'
-        )
+        # One independent tariff probe helps distinguish an empty location scope
+        # from a globally empty PCPR account. No snapshot is written on failure.
+        tariffs, tariff_requests = collect('tariffs', token, deadline)
+        print(json.dumps({'diagnosticOnly': True, 'locationCount': 0, 'locationRequests': location_requests, 'tariffCount': len(tariffs), 'tariffRequests': tariff_requests, 'snapshotPreserved': True}), flush=True)
+        raise RuntimeError('Empty location feed; provider scope requires investigation; existing PAYG overlay retained')
     tariffs, tariff_requests = collect('tariffs', token, deadline)
     connectors = [c for loc in locations for e in loc.get('evses', []) for c in e.get('connectors', [])]
     refs = {str(t) for c in connectors for t in c.get('tariff_ids', [])}
