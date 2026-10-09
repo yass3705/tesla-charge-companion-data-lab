@@ -25,6 +25,25 @@ jobs:
           fetch-depth: 0
       - name: Validate Evyve PCPR conversion logic
         run: python3 -m unittest discover -s tests -p 'test_uk_evyve_pcpr_collect.py' -v
+      - name: Verify Evyve token is not the Blink token (no token values exposed)
+        shell: bash
+        env:
+          EVYVE_CREDENTIAL: ${{ secrets.EVYVE_PCPR_TOKEN }}
+          BLINK_CREDENTIAL: ${{ secrets.BLINK_PCPR_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import hmac,os
+          e=os.environ.get('EVYVE_CREDENTIAL','').strip()
+          b=os.environ.get('BLINK_CREDENTIAL','').strip()
+          if not e:
+              raise SystemExit('EVYVE_PCPR_TOKEN absent; create the Evyve-specific GitHub Actions secret.')
+          if not b:
+              print('BLINK_PCPR_TOKEN missing; distinctness comparison unavailable. Strict operator validation remains enabled.')
+          elif hmac.compare_digest(e.encode(),b.encode()):
+              raise SystemExit('EVYVE_PCPR_TOKEN equals BLINK_PCPR_TOKEN. Both return Blink-only inventory. Replace EVYVE_PCPR_TOKEN with the separate Evyve-issued credential.')
+          else:
+              print('Evyve and Blink secret values differ. Checking Evyve operator entitlement via the API.')
+          PY
       - name: Collect CPO-only Evyve UK locations and exact connector tariffs
         env:
           EVYVE_PCPR_TOKEN: ${{ secrets.EVYVE_PCPR_TOKEN }}
