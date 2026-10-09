@@ -2,13 +2,15 @@ name: France EVSE tariff coverage - permanent archive
 on:
   workflow_dispatch:
   schedule:
-    # Daily after IRVE dynamic refresh; also triggered on successful validations.
-    - cron: '43 3 * * *'
+    # Recovery check AFTER IRVE's 02:17/03:17 UTC publication windows.
+    # Normal run starts immediately when the IRVE refresh workflow completes.
+    - cron: '17 4 * * *'
   push:
     branches: [main]
     paths:
       - '.github/workflows/france-irve-tariff-coverage-archive.yml'
       - 'scripts/france/archive_irve_tariff_coverage.py'
+      - 'scripts/france/check_irve_tariff_review_gate.py'
       - 'scripts/audit_fr_tariff_left_join_20261009.py'
       - 'scripts/audit_fr_two_level_tariff_join_20261009.py'
       - 'scripts/audit_fr_three_priority_match_20261009.py'
@@ -53,7 +55,20 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: true
+      - name: Check new published IRVE dynamic version and review eligibility
+        id: review_gate
+        env:
+          REVIEW_TRIGGER: ${{ github.event_name }}
+          UPSTREAM_WORKFLOW: ${{ github.event.workflow_run.name || '' }}
+        run: |
+          set -euo pipefail
+          python scripts/france/check_irve_tariff_review_gate.py \
+            --dynamic data/national/france-irve-dynamic-status-v9.json.gz \
+            --latest reports/france/tariff-coverage/latest.json \
+            --trigger "$REVIEW_TRIGGER" \
+            --upstream "$UPSTREAM_WORKFLOW"
       - name: Recalculate all P1 exact, P2 verified overlays, P3 audited GPS candidates and archive every EVSE
+        if: steps.review_gate.outputs.run == 'true'
         env:
           PYTHONUNBUFFERED: '1'
         run: |
@@ -63,6 +78,7 @@ jobs:
             --run-id "${{ github.run_id }}" \
             --trigger "${{ github.event_name }}"
       - name: Check permanent report presence, integrity, per-EVSE cardinality and audit provenance
+        if: steps.review_gate.outputs.run == 'true'
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -71,6 +87,9 @@ jobs:
           latest=json.loads((root/'latest.json').read_text(encoding='utf8'))
           counts=latest['metrics']
           assert counts['irveActiveEVSE']>=90000
+          assert latest['provenance']['irveDynamic']['sourceSha256']
+          assert latest['provenance']['irveDynamic']['snapshotSha256']
+          assert 'reviewDelta' in latest
           assert counts['oneOrMoreTariff']+counts['noValidTariff']==counts['irveActiveEVSE']
           assert sum(latest['levels']['P1_P2']['coverage'].values())==counts['irveActiveEVSE']
           assert sum(latest['levels']['P1_P2']['fourBuckets'].values())==counts['cpoDirectEVSE']
@@ -83,6 +102,7 @@ jobs:
           print('Archive validated:',counts)
           PY
       - name: Persist latest, source evidence and append-only verification history to Data Lab main
+        if: steps.review_gate.outputs.run == 'true'
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -109,7 +129,7 @@ jobs:
           echo 'Archive commit not persisted' >&2
           exit 1
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.review_gate.outputs.run == 'true'
         with:
           name: france-evse-tariff-coverage-${{ github.run_id }}
           path: reports/france/tariff-coverage/
