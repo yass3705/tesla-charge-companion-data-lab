@@ -1,0 +1,91 @@
+name: UK Source EV PCPR collect
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "43 3 * * *"  # UK daily, inside Paris 00:00-06:00 window
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/uk-source_ev-pcpr-collect.yml"
+      - "scripts/uk_pcpr_cpo_collect.py"
+      - "tests/test_uk_pcpr_cpo_collect.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-source_ev-pcpr-collect
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate CPO isolation and connector tariff rules
+        run: python3 -m unittest discover -s tests -p 'test_uk_pcpr_cpo_collect.py' -v
+
+  collect:
+    if: github.event_name != 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SOURCE_EV_PCPR_TOKEN: ${{ secrets.SOURCE_EV_PCPR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require provider-specific secret
+        id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$SOURCE_EV_PCPR_TOKEN" ]]; then
+            if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+              echo "ready=false" >> "$GITHUB_OUTPUT"
+              echo "Daily collection skipped: secret SOURCE_EV_PCPR_TOKEN not configured"
+              exit 0
+            fi
+            echo "Missing Actions secret SOURCE_EV_PCPR_TOKEN" >&2
+            exit 1
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Collect Source EV CPO-only locations and exact connector tariffs
+        if: steps.check.outputs.ready == 'true'
+        run: python3 -u scripts/uk_pcpr_cpo_collect.py source_ev
+
+      - name: Save sanitized PCPR inventory and V9 review staging
+        if: steps.check.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            data/national/uk_source_ev_pcpr.json.gz
+            data/national/uk_source_ev_pcpr_v9.json.gz
+            reports/uk/source_ev-pcpr-latest.json
+          )
+          checkpoint="$(mktemp -d)"
+          for path in "${files[@]}"; do
+            mkdir -p "$checkpoint/$(dirname "$path")"
+            cp "$path" "$checkpoint/$path"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            for path in "${files[@]}"; do
+              mkdir -p "$(dirname "$path")"
+              cp "$checkpoint/$path" "$path"
+            done
+            git add "${files[@]}"
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data(uk): stage Source EV PCPR evidence [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$((attempt * 2))"
+          done
+          exit 1
