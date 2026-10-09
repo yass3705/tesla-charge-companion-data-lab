@@ -158,81 +158,152 @@ OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({"counts":out["rawCounts"],"pricing":out["pricing"],"identity":out["identity"],"publicAccess":out["publicAccess"],"activationReadiness":out["activationReadiness"]},ensure_ascii=False,indent=2))
 
-# Staged V9 inventory, intentionally NOT rankable until operator identity,
-# direct/ad-hoc channel and tax rules are independently demonstrated.
-# Preserve the original full PCPR source separately for future reconciliation.
+# V9 direct CPO PCPR conversion. Platform-scoped PCPR access returns an OCPI
+# CPO feed, not a roaming/eMSP tariff catalogue. Keep declared CPO as ChargePoint.
+# The public chargepoint VAT rate is 20% (UK HMRC, 2026); OCPI 2.2.1
+# PriceComponent.price excludes VAT. Explicit VAT rates, when present, win.
+# This is a V9-local derived dataset: component prices are stored INCLUSIVE of
+# VAT, tagged accordingly to prevent re-applying VAT downstream.
 import copy
+from decimal import Decimal, InvalidOperation
+from collections import Counter
+
+source_tariffs={text(t.get("id")):t for t in tariffs}
+included_tariffs={}
+excluded_tariffs={}
+included_connector_count=0
+unpriced_connector_count=0
+excluded_stations=Counter()
+excluded_evses=Counter()
+source_refs=Counter()
+tax_defaults=Counter()
+tax_explicit=Counter()
+blocked_tariffs=Counter()
 safe_locations=[]
-excluded=collections.Counter()
-source_tariff_refs=collections.Counter()
+SUPPORTED_RESTRICTIONS={"start_time","end_time","day_of_week","min_duration","max_duration",
+                        "min_power","max_power","start_date","end_date"}
+SUPPORTED_COMPONENTS={"ENERGY","TIME","PARKING_TIME","FLAT"}
+def convert(t):
+    if text(t.get("currency")).upper()!="GBP":
+        return None,"non_GBP_currency"
+    if not rows(t.get("elements")):
+        return None,"missing_tariff_elements"
+    transformed=copy.deepcopy(t)
+    transformed["tccPriceBasis"]="GBP_including_public_UK_VAT"
+    transformed["tccSourcePriceBasis"]="OCPI_2.2.1_excluding_VAT"
+    for el in transformed["elements"]:
+        restrictions=el.get("restrictions") or {}
+        if not isinstance(restrictions,dict) or any(k not in SUPPORTED_RESTRICTIONS for k in restrictions):
+            return None,"unsupported_restrictions"
+        if not rows(el.get("price_components")):
+            return None,"missing_components"
+        for component in el["price_components"]:
+            kind=text(component.get("type")).upper()
+            if kind not in SUPPORTED_COMPONENTS:
+                return None,"unsupported_component"
+            try:
+                original=Decimal(str(component["price"]))
+                explicit=component.get("vat")
+                pct=Decimal(str(explicit)) if explicit is not None else Decimal("20")
+                step=Decimal(str(component.get("step_size",1)))
+            except (KeyError,InvalidOperation,TypeError,ValueError):
+                return None,"invalid_price_or_vat_or_step"
+            if original<0 or pct<0 or pct>100 or step<=0:
+                return None,"invalid_component_value"
+            component["sourcePriceExVat"]=float(original)
+            component["tccVatRateAppliedPct"]=float(pct)
+            component["tccVatOrigin"]="explicit_OCPI" if explicit is not None else "HMRC_UK_public_20_default"
+            component["price"]=float((original*(Decimal("1")+pct/Decimal("100"))).quantize(Decimal("0.000001")))
+            component["vat"]=None
+            if explicit is None:tax_defaults[kind]+=1
+            else:tax_explicit[kind]+=1
+    return transformed,None
+
+# Only tariffs genuinely referenced by a connector can enter the V9 dataset.
+for tid in refs:
+    candidates=tid_map.get(tid,[])
+    if len(candidates)!=1:
+        excluded_tariffs[tid]="tariff_id_missing_or_ambiguous"
+        continue
+    transformed,why=convert(candidates[0])
+    if why:excluded_tariffs[tid]=why
+    else:included_tariffs[tid]=transformed
 for loc in locations:
+    lid=text(loc.get("id"))
     if loc.get("publish") is not True:
-        excluded["not_publicly_published"]+=1
-        continue
+        excluded_stations["not_published"]+=1;continue
     if text(loc.get("country")).upper() not in {"GB","GBR"}:
-        excluded["wrong_country"]+=1
-        continue
+        excluded_stations["not_UK"]+=1;continue
     try:
-        latitude=float(loc["coordinates"]["latitude"])
-        longitude=float(loc["coordinates"]["longitude"])
+        lat=float(loc["coordinates"]["latitude"])
+        lon=float(loc["coordinates"]["longitude"])
     except (KeyError,TypeError,ValueError):
-        excluded["missing_location_coordinates"]+=1
-        continue
-    if not (49 <= latitude <= 61 and -9 <= longitude <= 3):
-        excluded["outside_uk_bounds"]+=1
-        continue
+        excluded_stations["missing_coordinates"]+=1;continue
+    if not (49<=lat<=61 and -9<=lon<=3):
+        excluded_stations["outside_UK_geobounds"]+=1;continue
     cp=copy.deepcopy(loc)
-    # Preserve the CPO/operator and owner identities exactly as declared
-    # in the official PCPR feed. ChargePoint is both a possible CPO and
-    # the CMS provider to other CPOs; third-party ownership is not inferred.
     cp["tccPcprAttribution"]={
         "declaredOperator":label(loc.get("operator")),
         "declaredOwner":label(loc.get("owner")),
         "platform":"ChargePoint CMS",
-        "cpoVerification":"declared_in_pcpr_not_independently_verified"
+        "cpoSourceScope":"OCPI_CPO_PCPR",
+        "physicalOperatorIndependentlyConfirmed":False
     }
+    clean_evses=[]
     for evse in rows(cp.get("evses")):
+        if text(evse.get("status")).upper()=="REMOVED":
+            excluded_evses["removed"]+=1;continue
         for connector in rows(evse.get("connectors")):
-            tids=uniq_ids(connector.pop("tariff_ids", []))
-            connector["sourceTariffIdsUnverified"]=tids
-            for tid in tids:
-                source_tariff_refs[tid]+=1
+            ids=uniq_ids(connector.get("tariff_ids"))
+            source_refs.update(ids)
+            safe_ids=[tid for tid in ids if tid in included_tariffs]
+            if safe_ids:included_connector_count+=1
+            else:unpriced_connector_count+=1
+            connector["sourceTariffIds"]=ids
+            connector["tariff_ids"]=safe_ids
+        clean_evses.append(evse)
+    if not clean_evses:
+        excluded_stations["no_active_evses"]+=1;continue
+    cp["evses"]=clean_evses
     safe_locations.append(cp)
-if len(safe_locations)!=len(locations):
-    print("WARNING: PCPR UK staging excluded "+str(len(locations)-len(safe_locations))+" locations; see report.")
+used_ids={tid for loc in safe_locations for e in loc["evses"] for c in e.get("connectors",[]) for tid in c.get("tariff_ids",[])}
 v9={
-    "country":"GB",
-    "collectedAt":data.get("retrievedAt"),
-    "source":"Eco-Movement PCPR / ChargePoint CMS",
-    "integrationStatus":"inventory_stage_unverified_cpo_direct_tariffs",
+    "country":"GB","collectedAt":data.get("retrievedAt"),
+    "source":"Eco-Movement PCPR ChargePoint CPO tariffs",
+    "integrationStatus":"cpo_direct_exact_connector_vat_inclusive",
     "sources":[{
-        "id":"eco-movement-pcpr-cms-unverified",
+        "id":"eco-movement-pcpr-cpo-direct",
         "name":"ChargePoint (opérateur déclaré PCPR)",
-        "partyIdsExpected":["CPI"],
-        "country":"GB",
+        "partyIdsExpected":["CPI"],"country":"GB",
+        "pricingScope":"cpo_direct_pcpr",
         "locations":safe_locations,
-        "tariffs":[],
-        "policy":"Preserve ChargePoint as the PCPR-declared operator. ChargePoint may operate its own charge points as CPO or serve another CPO as CMS; do not invent another operator. Connector tariffs remain non-rankable until public consumer ad-hoc payment and applicable VAT are verified."
+        "tariffs":[included_tariffs[tid] for tid in sorted(used_ids)],
+        "policy":"PCPR CPO feed only; exact connector tariff_ids; GBP prices converted from OCPI excl-VAT to UK public VAT-inclusive; non-GBP/unsupported tariffs left unpriced; platform CPO attribution as declared, no third-party assumption."
     }]
 }
 staging_path=ROOT/"data/national/uk_eco_movement_pcpr_v9.json.gz"
-staging_path.parent.mkdir(parents=True,exist_ok=True)
 with gzip.open(staging_path,"wt",encoding="utf-8") as handle:
     json.dump(v9,handle,ensure_ascii=False,separators=(",",":"))
-staged_connectors=sum(len(rows(e.get("connectors"))) for loc in safe_locations for e in rows(loc.get("evses")))
+staged_connectors=sum(len(rows(e.get("connectors"))) for loc in safe_locations for e in loc["evses"])
 stage_report={
-    "generatedAt":out["generatedAt"],
-    "sourceCollectedAt":data.get("retrievedAt"),
-    "sourceLocations":len(locations),
-    "stagedPublicLocations":len(safe_locations),
-    "stagedConnectors":staged_connectors,
-    "stagedRankableDirectOffers":0,
-    "sourceTariffReferencesPreserved":sum(source_tariff_refs.values()),
-    "excluded":dict(excluded),
-    "nonRankableReasons":["ChargePoint is the operator declared by PCPR, but independently operated third-party CMS sites are not distinguished","Raw OCPI CPO tariffs do not explicitly identify ad-hoc PAYG channel","One USD tariff among GBP tariffs; tax VAT field not consistently present"],
+    "generatedAt":out["generatedAt"],"sourceCollectedAt":data.get("retrievedAt"),
+    "sourceLocations":len(locations),"stagedPublicLocations":len(safe_locations),
+    "stagedConnectors":staged_connectors,"stagedRankableDirectOffers":included_connector_count,
+    "stagedUnpricedConnectors":unpriced_connector_count,
+    "sourceTariffReferencesPreserved":sum(source_refs.values()),
+    "sourceTariffCount":len(tariffs),"GBPConvertedTariffs":len(used_ids),
+    "quarantinedTariffCount":len(excluded_tariffs),
+    "quarantinedTariffReasons":dict(Counter(excluded_tariffs.values())),
+    "quarantinedTariffIds":excluded_tariffs,
+    "excludedLocations":dict(excluded_stations),"excludedEVSEs":dict(excluded_evses),
+    "taxDefaultsAppliedByComponent":dict(tax_defaults),
+    "taxExplicitByComponent":dict(tax_explicit),
+    "taxPolicy":"UK public standard VAT 20% assumed only if OCPI VAT is missing; prices derived from OCPI prices excluding VAT, all GBP TTC",
+    "cpoPolicy":"CPO PCPR provenance (not eMSP); declared operator retained (ChargePoint); independently operated physical site identities not inferred",
     "stagedDataset":"data/national/uk_eco_movement_pcpr_v9.json.gz",
     "readyForSnapshotInventoryStage":len(safe_locations)>0 and staged_connectors>0,
-    "readyForTariffRanking":False
+    "readyForTariffRanking":included_connector_count>0,
+    "integrationStatus":"cpo_direct_exact_connector_vat_inclusive"
 }
 stage_path=ROOT/"reports/uk/eco-movement-pcpr-v9-staging.json"
 stage_path.write_text(json.dumps(stage_report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
