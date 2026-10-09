@@ -1,5 +1,18 @@
 # TCC — audit approfondi du calcul tarifaire (lot 9 pays)
 
+## Rectification critique du 10 octobre — ancienne priorité SuC invalidée
+
+**L'ancienne conclusion « 1 147 stations doivent utiliser SuC » est FAUSSE.** Elle reposait sur `lastUpdated` (date historique de fiche station, souvent juillet/septembre) à la place d'une date de collecte tarifaire. Sur **toutes les 1 178 stations de la base Tesla canonique**, `sourceObservedAt` est absent. Les commits Mac du 7–9 octobre publient pourtant de véritables changements de prix dans sept pays : BE 27, CH 37, ES 103, FR 146, GB 191, IT 105, NL 53 stations modifiées par rapport à septembre; DE 0, MA 0 (ce dernier a malgré tout un commit de publication du 7 octobre). La date de commit prouve **la publication**, pas la collecte de chaque station.
+
+Plus grave, **V9 en exploitation charge `v9-production-runtime/data/tesla_stations.json`**, qui contient **1 167 stations** et un ancien snapshot, alors que **`data/tesla_stations.json`** en contient **1 178** avec les mises à jour récentes. Les deux fichiers ne sont pas identiques. La copie `v9-test/data/tesla_stations.json` est elle aussi identique à l'ancienne base V9.
+
+La vraie règle de fraîcheur exige `sourceObservedAt` **par station** ; en son absence, un batch récent empêche de préférer SuC sur la seule base du vieux `lastUpdated`, mais n'atteste pas automatiquement la fraîcheur individuelle. L'Allemagne sans batch récent doit rester **à confirmer sur les preuves de collecte**; le Maroc reste Mac exclusivement.
+
+Rapport vérifié du run #37998374030 : [audit de provenance](../reports/tesla/tesla-dataset-provenance-audit-latest.json). Le workflow d'élection corrigé remplace le classement périmé et conserve les cas insuffisamment sourcés explicitement.
+
+---
+
+
 Statut : validation GitHub en cours. **Lecture seule pour le moteur et la publication V9.** Le fichier `reports/tariff-scenarios/review-latest.json` est l'état daté validé du workflow mondial; `deep-review/` contient les diagnostics approfondis du workflow prioritaire.
 
 ## Résultats du pilote précédent et correctifs d'analyse
