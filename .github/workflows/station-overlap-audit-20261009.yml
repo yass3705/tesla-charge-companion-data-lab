@@ -5,6 +5,7 @@ on:
       - audit/stations-irve-emsp-20261009
     paths:
       - scripts/audit_irve_electra_electroverse_stations.py
+      - scripts/probe_station_gps_schema.py
       - .github/workflows/station-overlap-audit-20261009.yml
   workflow_dispatch:
 permissions:
@@ -15,6 +16,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Inspect coordinate source schema
+        run: python scripts/probe_station_gps_schema.py
       - name: Count station IDs with strict IRVE PDC evidence
         run: python scripts/audit_irve_electra_electroverse_stations.py
       - uses: actions/upload-artifact@v4
