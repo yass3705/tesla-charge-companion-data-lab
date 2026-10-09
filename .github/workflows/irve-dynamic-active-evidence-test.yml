@@ -1,0 +1,18 @@
+name: TEST — IRVE EVSE dynamic active proof
+on:
+  workflow_dispatch:
+  push:
+    branches: [audit/stations-irve-emsp-20261009]
+    paths:
+      - scripts/france/build_france_irve_dynamic_status_v9.py
+      - tests/test_irve_dynamic_active_evidence.py
+      - .github/workflows/irve-dynamic-active-evidence-test.yml
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python tests/test_irve_dynamic_active_evidence.py
