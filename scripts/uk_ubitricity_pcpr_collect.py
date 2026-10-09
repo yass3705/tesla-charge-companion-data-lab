@@ -72,6 +72,7 @@ def collect(endpoint, token, deadline=None):
                 break
             except urllib.error.HTTPError as error:
                 if error.code == 401 and authorization == token and not token.startswith('Token '):
+                    print(f'{endpoint}: raw Authorization rejected (401); trying documented Token scheme fallback', flush=True)
                     authorization = 'Token ' + token
                     continue
                 if error.code in (429, 500, 502, 503, 504):
@@ -94,11 +95,13 @@ def collect(endpoint, token, deadline=None):
                 retries += 1
                 print(f'{endpoint}: connection retry {retries} in {wait:.0f}s', flush=True)
                 time.sleep(wait)
-        if isinstance(payload, dict) and payload.get('status_code', 1000) != 1000:
+        if isinstance(payload, dict) and payload.get('status_code') != 1000:
             raise RuntimeError(f'{endpoint}: unsuccessful OCPI response')
         page = payload.get('data') if isinstance(payload, dict) else payload
         if not isinstance(page, list):
             raise RuntimeError(f'{endpoint}: unexpected response shape')
+        if not page and not rows:
+            print(f'{endpoint}: HTTP 200 OCPI 1000 but first page is empty; snapshot unchanged', flush=True)
         rows.extend(page)
         link = headers.get('Link', headers.get('link', ''))
         match = re.search(r'<([^>]+)>;\s*rel="?next"?', link)
@@ -120,13 +123,13 @@ def main():
         raise SystemExit('No configured Ubitricity secret matched. Supply the secret name, never its value.')
     deadline = time.monotonic() + 20 * 60  # Shared retry allowance across both endpoints.
     locations, location_requests = collect('locations', token, deadline)
-    tariffs, tariff_requests = collect('tariffs', token, deadline)
     if not locations:
         raise RuntimeError(
             f'Empty location feed after {location_requests} location request(s); '
-            f'tariffs endpoint returned {len(tariffs)} row(s) in {tariff_requests} request(s); '
-            'existing PAYG overlay retained. Check provider token scope and OCPI response metadata.'
+            'tariff endpoint not called; existing PAYG overlay retained. '
+            'Check token scope and provider response metadata.'
         )
+    tariffs, tariff_requests = collect('tariffs', token, deadline)
     connectors = [c for loc in locations for e in loc.get('evses', []) for c in e.get('connectors', [])]
     refs = {str(t) for c in connectors for t in c.get('tariff_ids', [])}
     tids = {str(t['id']) for t in tariffs}
