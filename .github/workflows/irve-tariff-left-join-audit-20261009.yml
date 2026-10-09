@@ -1,0 +1,30 @@
+name: AUDIT — FR IRVE tariff left join by EVSE
+on:
+  push:
+    branches: [audit/irve-tariff-left-join-20261009]
+    paths:
+      - scripts/audit_fr_tariff_source_probe_20261009.py
+      - scripts/audit_fr_tariff_left_join_20261009.py
+      - .github/workflows/irve-tariff-left-join-audit-20261009.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  join:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Probe operator-direct EVSE pricing sources
+        run: python scripts/audit_fr_tariff_source_probe_20261009.py
+      - name: Compute active IRVE EVSE source join
+        if: ${{ hashFiles('scripts/audit_fr_tariff_left_join_20261009.py') != '' }}
+        run: python scripts/audit_fr_tariff_left_join_20261009.py
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('reports/france/irve-tariff-left-join-20261009.json') != '' }}
+        with:
+          name: irve-tariff-left-join-by-evse
+          path: reports/france/irve-tariff-left-join-20261009.json
+          retention-days: 30
