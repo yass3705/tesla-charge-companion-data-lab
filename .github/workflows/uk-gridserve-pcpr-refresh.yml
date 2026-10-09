@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     paths:
       - "scripts/uk_gridserve_pcpr_collect.py"
+      - "scripts/uk_gridserve_v9_prepare.py"
       - ".github/workflows/uk-gridserve-pcpr-refresh.yml"
   workflow_dispatch:
   schedule:
@@ -31,6 +32,9 @@ jobs:
       - name: Collect GRIDSERVE PCPR data
         run: python scripts/uk_gridserve_pcpr_collect.py
 
+      - name: Prepare public-only V9 Gridserve connector crosswalk
+        run: python scripts/uk_gridserve_v9_prepare.py
+
       - name: Validate output
         run: |
           python - <<'PY'
@@ -49,6 +53,19 @@ jobs:
           t=json.load(gzip.open("data/national/uk_gridserve_pcpr_tariffs.json.gz","rt",encoding="utf-8"))
           assert len(l["locations"])==r["locations"]["count"]
           assert len(t["tariffs"])==r["tariffs"]["count"]
+          pub=json.load(open("reports/uk/gridserve-v9-integration-latest.json",encoding="utf-8"))
+          assert pub["status"]=="validated_public_connector_exact" and pub["validatedForV9"] is True
+          assert pub["publicLocations"]<=r["locations"]["count"]
+          assert pub["publicConnectors"]<=r["locations"]["connectors"]
+          assert pub["exactPricedConnectors"]+pub["unpricedPublicConnectors"]==pub["publicConnectors"]
+          assert pub["publicUnmappedTariffReferences"]==[]
+          canon=json.load(gzip.open("data/national/uk_gridserve_v9.json.gz","rt",encoding="utf-8"))
+          xwalk=json.load(gzip.open("reports/uk/gridserve-v9-connector-crosswalk.json.gz","rt",encoding="utf-8"))
+          assert len(canon["sources"])==1 and canon["sources"][0]["id"]=="gridserve-pcpr-direct"
+          assert len(canon["sources"][0]["locations"])==pub["publicLocations"]
+          assert len(xwalk["links"])==pub["publicConnectors"]
+          assert all(l["priceVerified"]==bool(l["tariffIds"]) for l in xwalk["links"])
+          print("Gridserve V9 exact public connector crosswalk validated", pub["publicConnectors"])
           print(json.dumps({
             "locations":r["locations"]["count"],
             "evses":r["locations"]["evses"],
@@ -63,7 +80,13 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add             data/national/uk_gridserve_pcpr_locations.json.gz             data/national/uk_gridserve_pcpr_tariffs.json.gz             reports/uk/gridserve-pcpr-latest.json
+          git add \
+            data/national/uk_gridserve_pcpr_locations.json.gz \
+            data/national/uk_gridserve_pcpr_tariffs.json.gz \
+            data/national/uk_gridserve_v9.json.gz \
+            reports/uk/gridserve-pcpr-latest.json \
+            reports/uk/gridserve-v9-integration-latest.json \
+            reports/uk/gridserve-v9-connector-crosswalk.json.gz
           git commit -m "data(uk): publish GRIDSERVE PCPR snapshot [run ${GITHUB_RUN_ID}]" || exit 0
           for attempt in 1 2 3 4; do
             git pull --rebase origin main
