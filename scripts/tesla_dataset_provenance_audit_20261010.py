@@ -18,7 +18,7 @@ SOURCES={
  'mac_canonical_main':'main/data/tesla_stations.json',
  'v9_production_snapshot':'main/v9-production-runtime/data/tesla_stations.json',
  'v9_test_snapshot':'main/v9-test/data/tesla_stations.json',
- 'before_october_update':'b2eeeeeee9/data/tesla_stations.json',
+ 'before_october_update':'b2eeeeeee90563a34d8314ee779ac22bc21ac5ec/data/tesla_stations.json',
 }
 COUNTRIES=['FR','IT','CH','DE','ES','NL','GB','MA','BE']
 def download(suffix):
