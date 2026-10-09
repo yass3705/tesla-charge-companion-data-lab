@@ -94,6 +94,7 @@ const report={
  fixtureCount:fixtures.length,checks,issues,issueExamples:examples,
  warnings:[
   'Only structural Tesla fixtures: no claim of exhaustive real-session tariff accuracy.',
+  'Each record isolates one time-window rule. no_matching_time_rule on these records is a FIXTURE ARTIFACT, not an assertion that the full station has missing coverage. Refer to the complete-configuration audit.',
   'Never compare displayed model EUR directly with MAD until currency handling and FX are proven.',
   'An offer with powerMinute based on rated charger power is NOT a valid dynamic charging power calculation.',
   'Model-computed amounts with unmodelled fields must remain unvalidated, not published to V9.'
