@@ -9,6 +9,7 @@ on:
       - ".github/workflows/uk-allego_uk-pcpr-collect.yml"
       - "scripts/uk_pcpr_cpo_collect.py"
       - "tests/test_uk_pcpr_cpo_collect.py"
+      - "scripts/uk_allego_pcpr_validate.py"
 
 permissions:
   contents: write
@@ -57,6 +58,10 @@ jobs:
         if: steps.check.outputs.ready == 'true'
         run: python3 -u scripts/uk_pcpr_cpo_collect.py allego_uk
 
+      - name: Independently verify exact connector, operator and VAT prices
+        if: steps.check.outputs.ready == 'true'
+        run: python3 -u scripts/uk_allego_pcpr_validate.py
+
       - name: Save sanitized PCPR inventory and V9 review staging
         if: steps.check.outputs.ready == 'true'
         shell: bash
@@ -66,6 +71,7 @@ jobs:
             data/national/uk_allego_uk_pcpr.json.gz
             data/national/uk_allego_uk_pcpr_v9.json.gz
             reports/uk/allego_uk-pcpr-latest.json
+            reports/uk/allego_uk-pcpr-validation-latest.json
           )
           checkpoint="$(mktemp -d)"
           for path in "${files[@]}"; do
