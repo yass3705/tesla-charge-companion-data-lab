@@ -7,6 +7,8 @@ on:
       - "scripts/uk_gridserve_pcpr_collect.py"
       - ".github/workflows/uk-gridserve-pcpr-refresh.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"  # 04:17 CET / 05:17 CEST
 
 permissions:
   contents: write
@@ -20,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      GRIDSERVE_PCPR_API_KEY: ${{ secrets.GRIDSERVE_PCPR_API_KEY }}
+      GRIDSERVE_PCPR_API_KEY: ${{ secrets.GRIDSERVE_API_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,6 +41,10 @@ jobs:
           assert r["locations"]["count"]>0
           assert r["tariffs"]["count"]>0
           assert r["secretValuePersisted"] is False
+          # Known residual references are retired, non-public or unresolved (no invented pricing).
+          known_residual={"A0-GBP","GS1","GS3","GS9"}
+          unresolved=set(r["join"]["missingReferencedTariffIds"])
+          assert not (unresolved-known_residual), f"New unresolved Gridserve tariff IDs: {sorted(unresolved-known_residual)}"
           l=json.load(gzip.open("data/national/uk_gridserve_pcpr_locations.json.gz","rt",encoding="utf-8"))
           t=json.load(gzip.open("data/national/uk_gridserve_pcpr_tariffs.json.gz","rt",encoding="utf-8"))
           assert len(l["locations"])==r["locations"]["count"]
