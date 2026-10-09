@@ -163,7 +163,7 @@ if(require.main===module){
   }
   sigeifNight('sigeif_day_uncapped','2026-10-10T09:00:00+02:00',300,6);
   sigeifNight('sigeif_night_capped','2026-10-10T17:00:00+02:00',600,4);
-  sigeifNight('sigeif_day_night_split','2026-10-10T14:00:00+02:00',600,Math.round((3+4)*1e6)/1e6);
+  sigeifNight('sigeif_day_night_split','2026-10-10T14:00:00+02:00',600,13);
   const real=runPilot(engine,source);
   const report={generatedAt:new Date().toISOString(),status:checks.every(x=>x.pass)&&!real.summary.regressionMismatch
     ?'staging_checks_pass':'staging_checks_failed',
