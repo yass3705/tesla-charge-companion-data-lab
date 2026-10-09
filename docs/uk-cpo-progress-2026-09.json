@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-09T09:09:46.074859+00:00",
+  "updatedAt": "2026-10-09",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -105,8 +105,8 @@
       "name": "GRIDSERVE",
       "status": "complete",
       "access": "official_pcpr_api_key",
-      "evidence": "Validated GRIDSERVE PCPR Open Data API integration in Data Lab. Successful authenticated collection recovered 237 locations, 2701 EVSEs, 2918 connectors and 7 published GBP tariffs. Live EVSE statuses are present. Connector tariff references are parsed from tariff_ids. Residual IDs GS1 and GS9 are entirely REMOVED at the synthetic retired-stations location; GS3 is retired except one UNKNOWN 22 kW IVER HQ connector; A0-GBP appears on testing, Network Rail and Electric Freightway depot/fleet contexts and is intentionally not mapped to a public retail tariff. No missing public tariff is inferred.",
-      "next": "Complete for V9 public-network scope. Daily PCPR refresh configured at 03:17 UTC using GRIDSERVE_API_KEY; fail closed on new missing public connector tariff references. Exclude retired and non-public sites.",
+      "evidence": "Official authenticated GRIDSERVE PCPR, refreshed 2026-10-09. Public-only V9 audit: 237 incoming locations, 205 published consumer-accessible locations, 32 excluded (23 not explicitly published; 9 retired, fleet/depot, test or HQ), 2,569 public connectors with 2,569 exact EVSE+connector tariff links. Five distinct GBP first-party direct tariffs (GS12/GS13/GS18/GS22/GS5). Zero unresolved public connector tariffs. Raw feed excluded from V9 deployment.",
+      "next": "Gridserve V9 public-only exact connector dataset is enabled in production runtime preview, with daily PCPR refresh and fail-closed guard. Rebuild preview after future Data Lab updates.",
       "baseUrl": "https://api.gridserve.com/ocpi/v1/",
       "locationsEndpoint": "https://api.gridserve.com/ocpi/v1/locations",
       "tariffsEndpoint": "https://api.gridserve.com/ocpi/v1/tariffs",
@@ -118,13 +118,21 @@
       "datasetTariffs": "data/national/uk_gridserve_pcpr_tariffs.json.gz",
       "report": "reports/uk/gridserve-pcpr-latest.json",
       "residualAudit": "reports/uk/gridserve-missing-tariff-diagnostic-latest.json",
-      "validatedAt": "2026-10-02",
+      "validatedAt": "2026-10-09",
       "validatedCounts": {
         "locations": 237,
-        "evses": 2701,
-        "connectors": 2918,
-        "publishedTariffs": 7
-      }
+        "evses": 2707,
+        "connectors": 2924,
+        "publishedTariffs": 7,
+        "publicLocations": 205,
+        "excludedLocations": 32,
+        "publicConnectors": 2569,
+        "exactPricedConnectors": 2569,
+        "publicTariffs": 5
+      },
+      "v9Dataset": "data/national/uk_gridserve_v9.json.gz",
+      "v9Audit": "reports/uk/gridserve-v9-integration-latest.json",
+      "v9Crosswalk": "reports/uk/gridserve-v9-connector-crosswalk.json.gz"
     },
     {
       "name": "MFG EV Power",
