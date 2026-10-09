@@ -1,4 +1,4 @@
-"""Non-network regression tests for Ubitricity UK PCPR quota handling."""
+"""Non-network regression tests for Ubitricity UK PCPR quota and authentication handling."""
 import io
 import json
 import sys
