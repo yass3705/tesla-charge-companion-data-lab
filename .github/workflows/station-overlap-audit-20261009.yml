@@ -1,0 +1,24 @@
+name: AUDIT — IRVE Electra Electroverse station intersections
+on:
+  push:
+    branches:
+      - audit/stations-irve-emsp-20261009
+    paths:
+      - scripts/audit_irve_electra_electroverse_stations.py
+      - .github/workflows/station-overlap-audit-20261009.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  count-stations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Count station IDs with strict IRVE PDC evidence
+        run: python scripts/audit_irve_electra_electroverse_stations.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: irve-electra-electroverse-station-overlap
+          path: reports/station-overlap-irve-electra-electroverse-20261009.json
+          retention-days: 30
