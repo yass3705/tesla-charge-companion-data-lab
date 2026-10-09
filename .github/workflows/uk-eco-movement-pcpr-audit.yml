@@ -1,0 +1,46 @@
+name: UK Eco-Movement PCPR connector audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/uk_eco_movement_pcpr_audit.py
+      - .github/workflows/uk-eco-movement-pcpr-audit.yml
+      - data/national/uk_eco_movement_pcpr.json.gz
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-eco-movement-pcpr-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Audit exact connector-to-tariff references and operator scope
+        run: python3 scripts/uk_eco_movement_pcpr_audit.py
+      - name: Publish sanitized audit (no activation before evidence review)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp reports/uk/eco-movement-pcpr-connector-audit.json /tmp/eco-movement-audit.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/eco-movement-audit.json reports/uk/eco-movement-pcpr-connector-audit.json
+            git add reports/uk/eco-movement-pcpr-connector-audit.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "audit(uk): validate Eco-Movement PCPR connector scope [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
