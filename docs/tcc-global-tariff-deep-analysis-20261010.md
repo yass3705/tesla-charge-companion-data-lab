@@ -49,3 +49,8 @@ Les étapes de calcul et de contrôle sont passées ; la persistance GitHub a re
 | Maroc | **6/6 Mac exclusivement** malgré 6 entrées MA dans le snapshot comparatif SuC |
 
 **Attention aux conclusions :** le niveau « calculé » ici atteste du comportement sur les profils testés, pas d'une source fraîche, d'une correspondance EVSE prouvée ni de la validation des conditions commerciales eMSP. Les quatre anomalies UK sont des configurations sans règles tarifaires dans la source et non un défaut de couverture horaire démontré. **V9 production reste inchangée.**
+
+
+## Résolution de l'unique défaut Tesla UK du banc d'essai
+
+Les quatre simulations incomplètes ne concernent **qu'une station**, `tesla-dartford-uk-tesla-service-centre`. Sa configuration `main` est dépourvue de règles tarifaires dans le catalogue Mac. Le site officiel Tesla indique pourtant que **Dartford UK – Tesla Service Centre** est un Supercharger **ouvert au public et accessible 24 h/24** : https://www.tesla.com/findus/location/supercharger/30168. Sa dénomination « Service Centre » ne justifie donc **pas** l'exclusion comme concession privée. Statut TCC correct tant qu'aucune source tarifaire comparée n'est validée : **station conservée, tarif indisponible**.
