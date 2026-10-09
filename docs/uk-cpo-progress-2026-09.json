@@ -251,12 +251,13 @@
     },
     {
       "name": "evyve",
-      "status": "set_aside_external_request",
-      "access": "official_pcpr_request_via_eco_movement",
-      "evidence": "Evyve's official location pages expose a PCPR Open Data Request form. Evyve states requests are reviewed and data is provided in a suitable format within 48 hours; support is pcpr@eco-movement.com. No anonymous machine-readable endpoint was surfaced.",
-      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "status": "partial_token_received_github_secret_pending",
+      "access": "official_pcpr_token_received_not_yet_provisioned",
+      "evidence": "User received Evyve PCPR token 2026-10-09. The existing BLINK_PCPR_TOKEN was explicitly tested and returned only 869 Blink Charging locations, so it cannot collect EVYVE. Never label Blink results as Evyve.",
+      "next": "Create Actions secret EVYVE_PCPR_TOKEN containing the Evyve-specific token, then run UK Evyve PCPR collect and validate exact connector tariffs and non-public access before promotion to V9.",
       "requestStatus": "submitted_2026-10-02",
-      "requestSubmittedAt": "2026-10-02"
+      "requestSubmittedAt": "2026-10-02",
+      "workflow": ".github/workflows/uk-evyve-pcpr-collect.yml"
     },
     {
       "name": "Source EV",
@@ -648,13 +649,23 @@
     },
     {
       "name": "Blink",
-      "status": "set_aside_external_request",
-      "access": "official_pcpr_request_via_eco_movement",
-      "evidence": "Resolved route 2026-10-01: Blink's official UK Open Data Request page states PCPR data is supplied in API format after request and that requests are shared with Eco-Movement. The linked Google form asks for email, name, organisation and planned use and states a response within 5 working days. Eco-Movement PCPR OCPI 2.2.1 locations and tariffs endpoints are documented at open-chargepoints.com and both return HTTP 401 anonymously, confirming token-gated access rather than a missing public route.",
-      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
-      "report": "reports/uk/blink-eco-movement-pcpr-latest.json",
+      "status": "complete",
+      "access": "authenticated_blink_eco_movement_pcpr_operator_scope",
+      "evidence": "2026-10-09 Blink-only Eco-Movement PCPR token verified: 869 public UK Blink charging locations, 3,599 exact connector GBP/VAT-inclusive direct CPO offers, 55 tariffs, zero unresolved connector references, independently audited with no CPO contamination; classified complete for validated token scope.",
+      "next": "Blink UK collector refresh daily; production V9 uses independently audited UK Blink PCPR dataset only after exact snapshot integrity gates. EVYVE requires its own separate token.",
+      "report": "reports/uk/blink-pcpr-validation-latest.json",
       "requestStatus": "submitted_2026-10-02",
-      "requestSubmittedAt": "2026-10-02"
+      "requestSubmittedAt": "2026-10-02",
+      "dataset": "data/national/uk_blink_pcpr_v9.json.gz",
+      "workflow": ".github/workflows/uk-blink-pcpr-collect.yml",
+      "validatedAt": "2026-10-09",
+      "validatedCounts": {
+        "locations": 869,
+        "connectors": 3599,
+        "pricedConnectors": 3599,
+        "unpricedConnectors": 0,
+        "tariffs": 55
+      }
     },
     {
       "name": "JOLT",
