@@ -295,6 +295,7 @@ stage_report={
     "quarantinedTariffCount":len(excluded_tariffs),
     "quarantinedTariffReasons":dict(Counter(excluded_tariffs.values())),
     "quarantinedTariffIds":excluded_tariffs,
+    "quarantinedComponentSamples":[{"id":tid,"currency":t.get("currency"),"components":[{"type":p.get("type"),"price":p.get("price"),"step_size":p.get("step_size"),"vat":p.get("vat")} for e in rows(t.get("elements")) for p in rows(e.get("price_components"))]} for tid,t in source_tariffs.items() if tid in excluded_tariffs],
     "excludedLocations":dict(excluded_stations),"excludedEVSEs":dict(excluded_evses),
     "taxDefaultsAppliedByComponent":dict(tax_defaults),
     "taxExplicitByComponent":dict(tax_explicit),
