@@ -31,13 +31,17 @@ jobs:
         run: |
           set -euo pipefail
           cp reports/uk/eco-movement-pcpr-connector-audit.json /tmp/eco-movement-audit.json
+          cp reports/uk/eco-movement-pcpr-v9-staging.json /tmp/eco-movement-staging.json
+          cp data/national/uk_eco_movement_pcpr_v9.json.gz /tmp/eco-movement-v9.json.gz
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           for attempt in 1 2 3 4; do
             git fetch origin main
             git reset --hard origin/main
             cp /tmp/eco-movement-audit.json reports/uk/eco-movement-pcpr-connector-audit.json
-            git add reports/uk/eco-movement-pcpr-connector-audit.json
+            cp /tmp/eco-movement-staging.json reports/uk/eco-movement-pcpr-v9-staging.json
+            cp /tmp/eco-movement-v9.json.gz data/national/uk_eco_movement_pcpr_v9.json.gz
+            git add reports/uk/eco-movement-pcpr-connector-audit.json reports/uk/eco-movement-pcpr-v9-staging.json data/national/uk_eco_movement_pcpr_v9.json.gz
             if git diff --cached --quiet; then exit 0; fi
             git commit -m "audit(uk): validate Eco-Movement PCPR connector scope [run ${GITHUB_RUN_ID}]"
             if git push origin HEAD:main; then exit 0; fi
