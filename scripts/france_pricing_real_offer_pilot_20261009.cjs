@@ -9,7 +9,10 @@ Requires pinned engine .js file as argv[2].
 const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const engine=require(path.resolve(process.argv[2]||'/tmp/tcc-v9-pinned-pricing-engine.js'));
-const samples=JSON.parse(fs.readFileSync(path.join(root,'reports/tariff-scenarios/france-real-offer-fixtures.json'),'utf8'));
+const publishedSamples=JSON.parse(fs.readFileSync(path.join(root,'reports/tariff-scenarios/france-real-offer-fixtures.json'),'utf8'));
+const runtimeFile=path.join(root,'reports/tariff-scenarios/france-runtime-offer-fixtures.json');
+const compiledSamples=fs.existsSync(runtimeFile)?JSON.parse(fs.readFileSync(runtimeFile,'utf8')):[];
+const samples=[...publishedSamples,...compiledSamples];
 const profile={energyKwh:25,durationMinutes:50,chargingMinutes:45,totalChargingMinutes:45,
  powerKw:22,arrivalSoc:30,targetSoc:85,vehicleSoc:30,includeCongestionFees:true,
  postChargeMinutes:5,startAt:'2026-10-10T11:00:00+02:00',timeZone:'Europe/Paris'};
