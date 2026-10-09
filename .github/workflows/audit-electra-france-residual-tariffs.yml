@@ -8,10 +8,19 @@ on:
       - "data/platforms/electra/france/manifest.json"
       - ".github/workflows/audit-electra-france-residual-tariffs.yml"
   workflow_dispatch:
+  # Commits pushed with GITHUB_TOKEN do not trigger other push workflows.
+  # Run this audit after the Electra rebuild has completed and persisted.
+  workflow_run:
+    workflows: ["Build France Electra platform overlay"]
+    types: [completed]
 permissions:
   contents: write
 jobs:
   analyze:
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    concurrency:
+      group: electra-france-pricing-audit-main
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
