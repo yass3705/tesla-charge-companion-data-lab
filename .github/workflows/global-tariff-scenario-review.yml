@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/global-tariff-scenario-review.yml'
       - 'scripts/tariff_global_inventory_20261009.py'
+      - 'scripts/tesla_global_tariff_inventory_20261009.py'
       - 'scripts/france_runtime_offer_fixtures_20261009.py'
       - 'scripts/france_pricing_real_offer_pilot_20261009.cjs'
       - 'scripts/archive_global_tariff_scenario_review.py'
@@ -27,6 +28,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Audit Tesla worldwide official-catalogue structures by all nine TCC countries
+        env:
+          TCC_TESLA_SOURCE_REF: main
+        run: python scripts/tesla_global_tariff_inventory_20261009.py
       - name: All-country source schema inventory and true France eMSP offer census
         run: python scripts/tariff_global_inventory_20261009.py
       - name: Download frozen V9 production pricing engine
@@ -54,13 +59,18 @@ jobs:
           p=pathlib.Path('reports/tariff-scenarios')
           inv=json.loads((p/'global-inventory-latest.json').read_text())
           pilot=json.loads((p/'france-pricing-pilot-latest.json').read_text())
+          tesla=json.loads((p/'tesla-global-inventory-latest.json').read_text())
+          assert set(inv['scopeCountries'])==set(tesla['scopeCountries'])
+          assert tesla['sourceTotalStations']>0
+          assert inv['sourceScope']['externalTeslaCatalogue']['sha256']==tesla['sourceSha256']
+          assert 'MA' in tesla['countries'] and 'FR' in tesla['countries']
           assert set(('FR','IT','CH','DE','ES','NL','UK','MA','BE'))<=set(inv['scopeCountries'])
           assert inv['sourceFilesScanned']>=100
           assert pilot['samplesTested']>200
           assert len(pilot['syntheticCases'])==17 and all(x['pass'] for x in pilot['syntheticCases'])
           assert isinstance(pilot['incompleteReasons'],dict)
           assert isinstance(pilot['unmodeledLegacyFields'],dict)
-          print('Global scenario audit integrity OK:',inv['sourceFilesScanned'],'source files and',pilot['samplesTested'],'real France tariff samples')
+          print('Global scenario audit integrity OK:',inv['sourceFilesScanned'],'Data Lab source files +',tesla['sourceTotalStations'],'Tesla global stations, and',pilot['samplesTested'],'real France tariff samples')
           PY
       - name: Version results, provenance and historical comparison
         run: python scripts/archive_global_tariff_scenario_review.py
