@@ -5,6 +5,7 @@ on:
     paths:
       - scripts/audit_fr_tariff_source_probe_20261009.py
       - scripts/audit_fr_tariff_left_join_20261009.py
+      - scripts/audit_fr_gps_evse_probe_20261009.py
       - .github/workflows/irve-tariff-left-join-audit-20261009.yml
   workflow_dispatch:
 permissions:
@@ -19,6 +20,8 @@ jobs:
           fetch-depth: 0
       - name: Probe operator-direct EVSE pricing sources
         run: python scripts/audit_fr_tariff_source_probe_20261009.py
+      - name: Audit GPS and EVSE identity source modes
+        run: python scripts/audit_fr_gps_evse_probe_20261009.py
       - name: Compute active IRVE EVSE source join
         if: ${{ hashFiles('scripts/audit_fr_tariff_left_join_20261009.py') != '' }}
         run: python scripts/audit_fr_tariff_left_join_20261009.py
