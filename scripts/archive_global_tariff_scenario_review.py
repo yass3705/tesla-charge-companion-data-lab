@@ -13,12 +13,14 @@ def main():
  runtime=read('france-runtime-offers-inventory.json')
  tesla=read('tesla-global-inventory-latest.json')
  tesla_pilot=read('tesla-global-pricing-pilot-latest.json')
+ duration_candidate=read('france-after-minutes-candidate-latest.json')
+ if duration_candidate['status']!='staging_checks_pass':raise SystemExit('Unvalidated duration-fee candidate')
  if fr['status']!='synthetic_regressions_pass':raise SystemExit('Synthetic regression suite must pass before archive')
  if not global_data['sourceFilesScanned'] or not fr['samplesTested']:raise SystemExit('Empty inventory or regression')
  files=['global-inventory-latest.json','source-shapes-latest.json','france-real-offer-fixtures.json',
         'france-runtime-offer-fixtures.json','france-runtime-offers-inventory.json','france-pricing-pilot-latest.json',
         'tesla-global-inventory-latest.json','tesla-global-real-rule-fixtures.json',
-        'tesla-global-pricing-pilot-latest.json']
+        'tesla-global-pricing-pilot-latest.json','france-after-minutes-candidate-latest.json']
  for f in files:
   if not (OUT/f).is_file():raise SystemExit('Missing '+f)
  timestamp=dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H-%M-%SZ')
@@ -45,6 +47,8 @@ def main():
   'francePricingTypes':fr['pricingTypes'],
   'franceIncompleteReasons':fr['incompleteReasons'],
   'francePotentiallyUnmodeledFields':fr.get('unmodeledLegacyFields',{}),
+  'franceAfterMinutesCandidate':duration_candidate['summary'],
+  'franceAfterMinutesCandidateStatus':duration_candidate['status'],
   'sourceOutputSha256':{f:sha(f) for f in files},
   'policy':'Read-only structural country inventory and unchanged V9 pricing regression, not proof all EVSE have verified prices'}
  prior_file=OUT/'review-latest.json'
