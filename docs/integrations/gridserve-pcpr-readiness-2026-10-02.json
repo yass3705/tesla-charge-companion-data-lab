@@ -2,12 +2,12 @@
   "provider": "GRIDSERVE",
   "country": "GB",
   "protocol": "OCPI-style PCPR Open Data API",
-  "status": "awaiting_subscription_key",
+  "status": "validated_live_collection_key_configured",
   "documentedAt": "2026-10-02",
   "baseUrl": "https://api.gridserve.com/ocpi/v1/",
   "authentication": {
     "header": "ec-subscription-key",
-    "secret": "GRIDSERVE_PCPR_API_KEY"
+    "secret": "GRIDSERVE_API_KEY"
   },
   "endpoints": {
     "locations": {
@@ -49,12 +49,27 @@
     ]
   },
   "integrationPlan": [
-    "Validate /locations and /tariffs with the issued subscription key.",
-    "Confirm EVSE/connector nesting and live-status fields from real responses before final parser mapping.",
-    "Join tariff references at EVSE/connector level without inferring missing prices.",
-    "Persist raw response provenance plus normalized UK canonical snapshot.",
-    "Add scheduled refresh only after a successful validation run."
+    "Authenticated /locations and /tariffs collection previously validated.",
+    "Resolve connector tariff_ids against /tariffs at connector level; never infer missing price.",
+    "Use GRIDSERVE_API_KEY in the existing workflow; persist data without the key.",
+    "Run scheduled daily refresh at 03:17 UTC; fail closed for newly missing tariff IDs.",
+    "Exclude removed and non-public/closed-to-public EVSE from consumer view."
   ],
-  "currentBlocker": "Official subscription key not yet available in Data Lab.",
-  "nextUserAction": "Provide the GRIDSERVE key when received; store it as GRIDSERVE_PCPR_API_KEY."
+  "currentBlocker": null,
+  "nextUserAction": "No additional secret needed. Existing workflow uses GRIDSERVE_API_KEY and refreshes daily at 03:17 UTC.",
+  "validationEvidence": {
+    "collectedAt": "2026-10-02T09:35:43.367156+00:00",
+    "locations": 237,
+    "evses": 2701,
+    "connectors": 2918,
+    "publishedTariffs": 7,
+    "remainingKnownUnmappedTariffRefs": [
+      "A0-GBP",
+      "GS1",
+      "GS3",
+      "GS9"
+    ],
+    "source": "reports/uk/gridserve-pcpr-latest.json",
+    "detail": "docs/uk-cpo-progress-2026-09.json"
+  }
 }
