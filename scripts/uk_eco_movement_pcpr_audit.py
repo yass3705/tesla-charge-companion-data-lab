@@ -208,7 +208,7 @@ def convert(t):
                 step=Decimal(str(component.get("step_size",1)))
             except (KeyError,InvalidOperation,TypeError,ValueError):
                 return None,"invalid_price_or_vat_or_step"
-            if original<0 or pct<0 or pct>100 or step<=0:
+            if original<0 or pct<0 or pct>100 or (step<=0 and kind!='FLAT') or (step<0):
                 return None,"invalid_component_value"
             component["sourcePriceExVat"]=float(original)
             component["tccVatRateAppliedPct"]=float(pct)
