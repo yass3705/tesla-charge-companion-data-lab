@@ -9,6 +9,7 @@ on:
       - scripts/probe_station_technical_schema.py
       - scripts/audit_station_technical_overlap_20261009.py
       - scripts/audit_station_dc15_overlap_20261009.py
+      - scripts/audit_irve_dynamic_state_probe_20261009.py
       - scripts/audit_station_gps_overlap_20261009.py
       - .github/workflows/station-overlap-audit-20261009.yml
   workflow_dispatch:
@@ -20,6 +21,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Inspect dynamic IRVE status and verified coverage
+        run: python scripts/audit_irve_dynamic_state_probe_20261009.py
       - name: Inspect coordinate source schema
         run: python scripts/probe_station_gps_schema.py
       - name: Probe per-station power and count availability
