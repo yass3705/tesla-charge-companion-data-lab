@@ -2,7 +2,7 @@
 """Read-only per-station Tesla Mac/SuC precedence audit. Never publishes tariffs."""
 from __future__ import annotations
 import collections,datetime as dt,hashlib,json,pathlib,sys
-import tariff_global_inventory_20261009 as inv
+import tesla_global_tariff_inventory_20261009 as inv
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent/'suc_tracker'))
 from core import mac_key,station_schedule,parse_date
 ROOT=pathlib.Path(__file__).resolve().parents[1]
