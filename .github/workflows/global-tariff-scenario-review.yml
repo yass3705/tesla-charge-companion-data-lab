@@ -7,6 +7,7 @@ on:
       - '.github/workflows/global-tariff-scenario-review.yml'
       - 'scripts/tariff_global_inventory_20261009.py'
       - 'scripts/tesla_global_tariff_inventory_20261009.py'
+      - 'scripts/tesla_global_pricing_real_rule_pilot_20261009.cjs'
       - 'scripts/france_runtime_offer_fixtures_20261009.py'
       - 'scripts/france_pricing_real_offer_pilot_20261009.cjs'
       - 'scripts/archive_global_tariff_scenario_review.py'
@@ -43,6 +44,14 @@ jobs:
             "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/${TCC_V9_PRICING_SHA}/v9-production-runtime/assets/v9/pricing-engine.js" \
             -o /tmp/tcc-v9-pinned-pricing-engine.js
           test -s /tmp/tcc-v9-pinned-pricing-engine.js
+      - name: Download frozen Tesla V9 adapter
+        env:
+          TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
+        run: |
+          curl -fsSL --connect-timeout 20 --max-time 90 --retry 3 \
+            "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/${TCC_V9_PRICING_SHA}/v9-production-runtime/assets/v9/adapters/tesla-json.js" \
+            -o /tmp/tcc-v9-pinned-tesla-adapter.js
+          test -s /tmp/tcc-v9-pinned-tesla-adapter.js
       - name: Extract genuine France compiled direct CPO and subscription offer examples
         env:
           TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
@@ -51,6 +60,10 @@ jobs:
         env:
           TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
         run: node scripts/france_pricing_real_offer_pilot_20261009.cjs /tmp/tcc-v9-pinned-pricing-engine.js
+      - name: Tesla all-country real rule formats and power-band regression
+        env:
+          TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
+        run: node scripts/tesla_global_pricing_real_rule_pilot_20261009.cjs /tmp/tcc-v9-pinned-pricing-engine.js /tmp/tcc-v9-pinned-tesla-adapter.js
       - name: Validate inventory and regression evidence
         run: |
           set -euo pipefail
@@ -60,6 +73,9 @@ jobs:
           inv=json.loads((p/'global-inventory-latest.json').read_text())
           pilot=json.loads((p/'france-pricing-pilot-latest.json').read_text())
           tesla=json.loads((p/'tesla-global-inventory-latest.json').read_text())
+          tesla_pilot=json.loads((p/'tesla-global-pricing-pilot-latest.json').read_text())
+          assert all(x['pass'] for x in tesla_pilot['checks'])
+          assert tesla_pilot['fixtureCount']>0
           assert set(inv['scopeCountries'])==set(tesla['scopeCountries'])
           assert tesla['sourceTotalStations']>0
           assert inv['sourceScope']['externalTeslaCatalogue']['sha256']==tesla['sourceSha256']
