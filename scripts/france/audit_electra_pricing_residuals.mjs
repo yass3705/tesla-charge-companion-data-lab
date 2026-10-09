@@ -21,9 +21,10 @@ const tariffPowerScope=t=>{
 const count=(map,key)=>map[key]=(map[key]||0)+1;
 const compType=x=>String(x?.type||'MISSING').toUpperCase();
 const supported=new Set(['ENERGY','TIME','FLAT','PARKING_TIME','CONGESTION_TIME']);
-const cases=[],blockedBy={},components={},restrictions={},heteroReasons={};
+const cases=[],blockedBy={},components={},restrictions={},heteroReasons={},reasons={};
 for(const row of residual.locations||[]){
   if(!['unsupported_tariff','heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous'].includes(row.reason))continue;
+  count(reasons,row.reason);
   const loc=locById.get(String(row.electraLocationId));
   const tariff=loc?.chargeTariffs||[],issues=new Set(),types=new Set(),restrictionFields=new Set(),tariffSignatures=new Set(),tariffDetails=[];
   for(const t of tariff){
@@ -67,7 +68,7 @@ for(const row of residual.locations||[]){
   for(const [kwLabel,evseIds] of Object.entries(knownPowerGroups)){
     if(kwLabel==='unknown'){missingPowerEvidence=true;continue;}
     const power=Number(kwLabel),hits=scopes.map((v,i)=>({v,i})).filter(x=>x.v&&power>=x.v.lo&&power<=x.v.hi);
-    const distinct=new Set(hits.map(x=>[...tariffSignatures][x.i]));
+    const distinct=new Set(hits.map(x=>JSON.stringify((tariff[x.i]?.elements||[]).map(e=>({r:e.restrictions||{},p:(e.priceComponents||[]).map(p=>[compType(p),Number(p.price)])})))));
     if(evseIds.length>=2&&distinct.size>1)provenSamePowerConflict=true;
   }
   // No EVSE -> tariff linkage is exposed by the location-based source.
@@ -88,10 +89,12 @@ const summary={schemaVersion:1,generatedAt:new Date().toISOString(),sourceGenera
     evidenceRequired:cases.filter(x=>x.missingPowerEvidence).length,
     trueSamePowerConflicts:cases.filter(x=>x.provenSamePowerConflict).length,
     congestionDurationSupported:cases.filter(x=>x.issues.includes('congestion_duration_band_supported')).length},
+  residualReasonCounts:manifest.rejected||{},auditedReasonCounts:reasons,
+  snapshotStats:{publishedLocations:manifest.stats?.publishedLocations,publishedEvseIds:manifest.stats?.publishedEvseIds,publishedOffers:manifest.stats?.publishedOffers,retainedUnmatchedLocations:manifest.stats?.retainedUnmatchedLocations},
   unresolvedKinds:blockedBy,componentTypes:components,restrictionFields:restrictions,
   heterogeneousPatterns:heteroReasons,
   sampleUnsupported:cases.filter(x=>x.reason==='unsupported_tariff').slice(0,30),
-  sampleHeterogeneous:cases.filter(x=>x.reason==='heterogeneous_location_tariffs').slice(0,20),
+  sampleHeterogeneous:cases.filter(x=>['heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous'].includes(x.reason)).slice(0,20),
   caseArchive:'reports/france/irve/electra-pricing-residual-cases-2026-10-08.json.gz',
   decisionPolicy:'Tariffs belong to exact EVSE; different prices across distinct powers in the same station are expected. Count a same-power conflict only where explicit EVSE-to-tariff evidence proves it. SOC80 congestion and explicit duration bounds are supported; retain fail-closed unknown associations.'
 };
