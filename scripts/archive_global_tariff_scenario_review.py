@@ -13,6 +13,8 @@ def main():
  runtime=read('france-runtime-offers-inventory.json')
  tesla=read('tesla-global-inventory-latest.json')
  tesla_pilot=read('tesla-global-pricing-pilot-latest.json')
+ tesla_deep=read('tesla-complete-config-pricing-audit-latest.json')
+ if not all(x.get('pass') for x in tesla_deep['checks']):raise SystemExit('Tesla full-configuration checks failed')
  duration_candidate=read('france-after-minutes-candidate-latest.json')
  if duration_candidate['status']!='staging_checks_pass':raise SystemExit('Unvalidated duration-fee candidate')
  if fr['status']!='synthetic_regressions_pass':raise SystemExit('Synthetic regression suite must pass before archive')
@@ -20,7 +22,8 @@ def main():
  files=['global-inventory-latest.json','source-shapes-latest.json','france-real-offer-fixtures.json',
         'france-runtime-offer-fixtures.json','france-runtime-offers-inventory.json','france-pricing-pilot-latest.json',
         'tesla-global-inventory-latest.json','tesla-global-real-rule-fixtures.json',
-        'tesla-global-pricing-pilot-latest.json','france-after-minutes-candidate-latest.json']
+        'tesla-global-pricing-pilot-latest.json','france-after-minutes-candidate-latest.json',
+        'tesla-global-complete-config-fixtures.json','tesla-complete-config-pricing-audit-latest.json']
  for f in files:
   if not (OUT/f).is_file():raise SystemExit('Missing '+f)
  timestamp=dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H-%M-%SZ')
@@ -38,6 +41,10 @@ def main():
   'sourceFamilyCensus':global_data['globalFamilySourceCounts'],
   'teslaRealRulesSampled':tesla_pilot['fixtureCount'],
   'teslaCalculationRiskCounts':tesla_pilot['issues'],
+  'teslaCompleteConfigurationAudit':{'configurations':tesla_deep['fixtureConfigurations'],
+    'countries':tesla_deep['byCountry'],'reasons':tesla_deep['reasons']},
+  'teslaSourceAgeBuckets':{k:v.get('sourceAgeBuckets',{}) for k,v in tesla['countries'].items()},
+  'teslaTimeScopeAudit':{k:v.get('timeScopeAudit',{}) for k,v in tesla['countries'].items()},
   'franceOverlayOfferRows':{
     k:v for k,v in global_data['franceRealOfferRows'].items() if '/offer_rows' in k},
   'franceActualOffersSampled':fr['samplesTested'],
