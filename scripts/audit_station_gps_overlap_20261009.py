@@ -48,7 +48,7 @@ for row in national:
    if key(pdc):pdcowners[key(pdc)].add(sid)
  if ll:grid[(math.floor(ll[0]/CELL),math.floor(ll[1]/CELL))].append(sid)
 pdc_unique={k:next(iter(ids)) for k,ids in pdcowners.items() if len(ids)==1}
-radii=[15,30,50]
+radii=[5,10,15,30,50]
 def candidates(ll,max_m=50):
  if ll is None:return []
  a,b=ll;ia,ib=math.floor(a/CELL),math.floor(b/CELL)
