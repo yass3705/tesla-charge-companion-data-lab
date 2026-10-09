@@ -51,6 +51,23 @@ def batch_publications():
         if stamp:batches[cc]={
             'publishedAt':stamp.isoformat(),'commitSha':item['sha'],
             'commitMessage':msg,'provenance':'GitHub commit for published country batch; NOT station-specific observation'}
+    # Morocco October 7 batch was published as a Git commit with NO changes to
+    # data/tesla_stations.json. GitHub path-filtered commit history omits it.
+    # Prove the separately recorded batch commit instead of pretending no run occurred.
+    if 'MA' not in batches:
+        ref='ebe3a2f23aefcaf398f625cedbfe78b568cabe97'
+        url='https://api.github.com/repos/yass3705/tesla-charge-companion-stable/commits/'+ref
+        with urllib.request.urlopen(urllib.request.Request(url,headers={
+            'User-Agent':'TCC-Tesla-Price-Provenance/1.0','Accept':'application/vnd.github+json'}),
+            timeout=30) as response:
+            commit=json.load(response)
+        msg=commit['commit']['message'].split('\\n',1)[0]
+        if re.fullmatch(r'chore\\(stations\\): publish morocco automated lot update #\\d+',msg):
+            stamp=time_or_none(commit['commit']['committer']['date'])
+            if stamp:
+                batches['MA']={'publishedAt':stamp.isoformat(),'commitSha':commit['sha'],
+                    'commitMessage':msg,'noChangesToTeslaFile':True,
+                    'provenance':'GitHub batch commit without changed file; validates publication event but not price observation'}
     return batches
 
 def main():
