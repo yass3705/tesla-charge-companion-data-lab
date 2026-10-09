@@ -71,6 +71,7 @@ def rows(directory):
 def classify(outsrc):
  exact=set()
  groups=collections.defaultdict(list)
+ full_price_signatures=collections.defaultdict(set)
  non_exact=collections.Counter()
  for offer in rows('data/platforms/'+outsrc+'/france' if outsrc=='electra' else 'data/platforms/electroverse/france-evse'):
   pricing=offer.get('pricing') or {}
@@ -78,7 +79,6 @@ def classify(outsrc):
   ids={n(x) for x in offer.get('evseIds') or []}
   if len(ids)!=1:continue
   k=next(iter(ids))
-  if k not in active:continue
   m=offer.get('metadata') or {}
   mode=m.get('identityMode')
   physical=[m.get('physicalReference')]
@@ -89,14 +89,16 @@ def classify(outsrc):
   else:
    direct=any(n(pr)==k and bool(n(pr)) for pr in physical)
    pk=str(m.get('electroverseLocationPk') or '')
+  if pk:full_price_signatures[pk].add(json.dumps(pricing,sort_keys=True,separators=(',',':')))
+  if k not in active:continue
   if direct:
    exact.add(k)
   else:
    non_exact[str(mode)]+=1
    groups[pk].append((k,offer))
- return exact,groups,non_exact
-Eexact,Eg,Emodes=classify('electra')
-Vexact,Vg,Vmodes=classify('electroverse')
+ return exact,groups,non_exact,full_price_signatures
+Eexact,Eg,Emodes,EallSignatures=classify('electra')
+Vexact,Vg,Vmodes,VallSignatures=classify('electroverse')
 assert Eexact<=base['electra'] and Vexact<=base['electroverse']
 # Extract operational location evidence for derived-only offers
 electra_source={str(x['id']):x for x in load('data/platforms/electra/france/source-locations.json.gz')['locations']}
@@ -154,8 +156,8 @@ def accepted(mode,groups):
   if not power_ok(peak,target['maxp'],srcKind,target['kind']):diagnostics[mode]['powerMismatch']+=1;continue
   # Equal price for all derived PDCs within a station gives safe one-to-many broadcast,
   # otherwise per-EVSE cross-attribution requires extra proof (held back).
-  tariffs={json.dumps(o.get('pricing'),sort_keys=True,separators=(',',':')) for k,o in offers}
-  if len(tariffs)!=1:diagnostics[mode]['heterogeneousTariffAmbiguous']+=1;continue
+  all_source_tariffs=(EallSignatures if mode=='electra' else VallSignatures).get(pk,set())
+  if len(all_source_tariffs)!=1:diagnostics[mode]['heterogeneousTariffAmbiguous']+=1;continue
   preliminary[sid].append((pk,target_ids,near[0],n_source))
   diagnostics[mode]['candidateSourceLocations']+=1
  # Avoid two nearby sources being assigned to same target with different tariffs
