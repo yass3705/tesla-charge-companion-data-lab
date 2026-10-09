@@ -41,8 +41,8 @@ ROOTS=[
  'data/adhoc_payment','data/tariff_history','data/qovoltis','data/zewatt',
  'data/publish','data/tcc_v9','v9-production-runtime/data/v9'
 ]
-MAX_DECOMPRESSED=120_000_000
-MAX_VISIT=25000
+MAX_DECOMPRESSED=75_000_000
+MAX_VISIT=8000
 MAX_SAMPLES_PER_FAMILY=80
 def jdump(obj):return json.dumps(obj,ensure_ascii=False,indent=2,default=str)+'\n'
 def norm(v):return re.sub('[^a-z0-9]','',str(v or '').lower())
@@ -181,7 +181,7 @@ def main():
  OUT.mkdir(parents=True,exist_ok=True)
  rows=[];bycountry=collections.defaultdict(lambda:collections.Counter())
  globalfamilies=collections.Counter(); skipped=collections.Counter()
- for path in source_rows():
+ for file_index,path in enumerate(source_rows()):
   rel=path_key(path);doc,error=load(path)
   if error:
    result={'file':rel,'sizeBytes':path.stat().st_size,'status':'unreadable_or_skipped','reason':error,
@@ -204,7 +204,7 @@ def main():
     bycountry[cc]['source_files_with_'+fam]+=1
   for fam in result['structuralScan']['families']:globalfamilies[fam]+=1
   del doc
-  gc.collect()
+  if file_index%25==0:gc.collect()
  samples,frstats,samplecounts=france_samples()
  (OUT/'france-real-offer-fixtures.json').write_text(jdump(samples),encoding='utf8')
  (OUT/'source-shapes-latest.json').write_text(jdump(rows),encoding='utf8')
