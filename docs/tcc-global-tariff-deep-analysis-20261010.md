@@ -29,3 +29,23 @@ Statut : validation GitHub en cours. **Lecture seule pour le moteur et la public
 Une correction ne peut être publiée que si la source est prouvée, la granularité (borne/EVSE) préservée, les variantes temporelles et abonnements séparés, la devise conservée et les paramètres nécessaires connus. Les `computed` expérimentaux restent **non validés pour publication**, en particulier Electra eMSP multi-créneaux. Tout statut manquant/ambigu reste signalé, sans montant inventé.
 
 **Ces audits sont des tests de compatibilité du moteur sur les sources disponibles, pas une preuve que tous les tarifs CPO nationaux sont déjà connus ou que tous les prix observés sont actuels.**
+
+
+## Résultats des calculs approfondis (run #37997213907, tests réussis, archivage relancé)
+
+Les étapes de calcul et de contrôle sont passées ; la persistance GitHub a rencontré un problème de rebase des fichiers de travail et est relancée via le workflow prioritaire.
+
+| Domaine | Résultat vérifié |
+|---|---|
+| Tarifs France après durée | **84 offres × 7 profils = 588 calculs expérimentaux**, 588 calculés, 0 incomplet, 0 régression |
+| Plafond SIGEIF | Tests jour (6 €), nuit (4 €), jour/nuit (13 €) validés selon la limite de 4 € sur frais nocturnes |
+| Tesla configurations complètes | 151 configurations représentatives × 4 horaires = 604 profils, **600 calculés**, 4 incomplets UK faute de règles tarifaires source |
+| Tesla devises | 68 écarts de devise en Suisse, 96 UK, 20 Maroc dans les profils d'essai de l'ancien adaptateur |
+| Tesla calcul à la minute | Un test montre 40 au lieu de 20 avec l'ancien adaptateur ; le calcul expérimental facture 20 une seule fois |
+| Tesla Maroc | Cas de courbe : 10 min à 50 kW + 10 min à 120 kW = **25 MAD** en tarification dynamique expérimentale ; sans courbe, calcul incomplet |
+| Tesla Mac / SuC, 9 pays | 1 167 stations Mac inspectées ; 1 147 désignent SuC plus récent **comme candidat tarif de charge**, 20 conservent Mac |
+| Différences entre relevés | **451 écarts tarifaires** à réconcilier : FR 129, DE 315, IT 2, CH 1, NL 1, UK 3 |
+| Références SuC non réconciliées | 11 entrées (FR 2, DE 3, IT 4, UK 2) ; aucune publication par inférence |
+| Maroc | **6/6 Mac exclusivement** malgré 6 entrées MA dans le snapshot comparatif SuC |
+
+**Attention aux conclusions :** le niveau « calculé » ici atteste du comportement sur les profils testés, pas d'une source fraîche, d'une correspondance EVSE prouvée ni de la validation des conditions commerciales eMSP. Les quatre anomalies UK sont des configurations sans règles tarifaires dans la source et non un défaut de couverture horaire démontré. **V9 production reste inchangée.**
