@@ -29,6 +29,32 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test rate-limit retry and pagination
         run: python -m unittest discover -s tests -p 'test_uk_ubitricity_pcpr_collect.py' -v
+      - name: One-request PCPR diagnostics
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[probe-ubitricity-once]')
+        env:
+          UBITRICITY_TOKEN: ${{ secrets.UBITRICITY_UK_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request, urllib.error
+          token = os.environ.get('UBITRICITY_TOKEN', '').strip()
+          if not token:
+              raise SystemExit('UBITRICITY_UK_TOKEN missing')
+          url = 'https://open-chargepoints.com/api/ocpi/cpo/2.2.1/locations?limit=1&offset=0'
+          req = urllib.request.Request(url, headers={'Authorization':token, 'Accept':'application/json'})
+          try:
+              with urllib.request.urlopen(req, timeout=40) as response:
+                  payload, headers, status = json.load(response), response.headers, response.status
+          except urllib.error.HTTPError as error:
+              print(json.dumps({'httpStatus':error.code,'retryAfter':error.headers.get('Retry-After')}))
+              raise SystemExit(1)
+          data = payload.get('data') if isinstance(payload,dict) else None
+          print(json.dumps({'httpStatus':status,'ocpiStatus':payload.get('status_code') if isinstance(payload,dict) else None,
+              'statusMessage':str(payload.get('status_message',''))[:100] if isinstance(payload,dict) else None,
+              'rows':len(data) if isinstance(data,list) else None,
+              'totalCount':headers.get('X-Total-Count'),'hasNextLink':bool(headers.get('Link'))}))
+          if not isinstance(data,list) or not data:
+              raise SystemExit('Empty probe response; validated snapshot unchanged')
+          PY
       - name: Avoid redundant provider calls on scheduled runs
         if: github.event_name == 'schedule'
         id: freshness
