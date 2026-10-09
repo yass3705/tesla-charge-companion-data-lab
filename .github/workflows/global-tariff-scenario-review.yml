@@ -8,6 +8,7 @@ on:
       - 'scripts/tariff_global_inventory_20261009.py'
       - 'scripts/tesla_global_tariff_inventory_20261009.py'
       - 'scripts/tesla_global_pricing_real_rule_pilot_20261009.cjs'
+      - 'scripts/tariff_after_minutes_candidate_20261009.cjs'
       - 'scripts/france_runtime_offer_fixtures_20261009.py'
       - 'scripts/france_pricing_real_offer_pilot_20261009.cjs'
       - 'scripts/archive_global_tariff_scenario_review.py'
@@ -60,6 +61,10 @@ jobs:
         env:
           TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
         run: node scripts/france_pricing_real_offer_pilot_20261009.cjs /tmp/tcc-v9-pinned-pricing-engine.js
+      - name: Pilot French duration-after-threshold fees in staging only
+        env:
+          TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
+        run: node scripts/tariff_after_minutes_candidate_20261009.cjs /tmp/tcc-v9-pinned-pricing-engine.js
       - name: Tesla all-country real rule formats and power-band regression
         env:
           TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
@@ -74,6 +79,10 @@ jobs:
           pilot=json.loads((p/'france-pricing-pilot-latest.json').read_text())
           tesla=json.loads((p/'tesla-global-inventory-latest.json').read_text())
           tesla_pilot=json.loads((p/'tesla-global-pricing-pilot-latest.json').read_text())
+          after=json.loads((p/'france-after-minutes-candidate-latest.json').read_text())
+          assert after['status']=='staging_checks_pass'
+          assert after['summary']['offers']>0
+          assert after['summary']['regressionMismatch']==0
           assert all(x['pass'] for x in tesla_pilot['checks'])
           assert tesla_pilot['fixtureCount']>0
           assert set(inv['scopeCountries'])==set(tesla['scopeCountries'])
