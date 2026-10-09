@@ -7,6 +7,7 @@ on:
       - scripts/audit_irve_electra_electroverse_stations.py
       - scripts/probe_station_gps_schema.py
       - scripts/probe_station_technical_schema.py
+      - scripts/audit_station_technical_overlap_20261009.py
       - scripts/audit_station_gps_overlap_20261009.py
       - .github/workflows/station-overlap-audit-20261009.yml
   workflow_dispatch:
@@ -24,6 +25,8 @@ jobs:
         run: python scripts/probe_station_technical_schema.py
       - name: Count GPS candidate overlaps at 5 10 15 30 50 meters
         run: python scripts/audit_station_gps_overlap_20261009.py
+      - name: Refine 5m and 10m station matches by EVSE count and power
+        run: python scripts/audit_station_technical_overlap_20261009.py
       - name: Count station IDs with strict IRVE PDC evidence
         run: python scripts/audit_irve_electra_electroverse_stations.py
       - uses: actions/upload-artifact@v4
@@ -32,4 +35,5 @@ jobs:
           path: |
             reports/station-overlap-irve-electra-electroverse-20261009.json
             reports/station-overlap-gps-sensitivity-20261009.json
+            reports/station-overlap-power-count-sensitivity-20261009.json
           retention-days: 30
