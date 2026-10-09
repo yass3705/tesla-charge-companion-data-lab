@@ -1,0 +1,29 @@
+name: AUDIT — France active IRVE EVSE station match
+on:
+  workflow_dispatch:
+  push:
+    branches: [audit/stations-irve-emsp-20261009]
+    paths:
+      - scripts/audit_station_active_only_dc15_20261009.py
+      - .github/workflows/irve-active-only-station-audit-20261009.yml
+permissions:
+  contents: read
+jobs:
+  count-only-confirmed-active:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read latest Data Lab main IRVE dynamic evidence
+        run: |
+          git fetch origin main
+          git checkout origin/main -- data/national/france-irve-dynamic-status-v9.json.gz
+      - name: Only explicitly en_service EVSE; station active if at least one
+        run: python scripts/audit_station_active_only_dc15_20261009.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: station-active-only-irve-electra-electroverse
+          path: reports/station-overlap-active-only-dc15-20261009.json
+          retention-days: 30
