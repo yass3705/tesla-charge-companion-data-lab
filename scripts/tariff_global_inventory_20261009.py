@@ -231,6 +231,28 @@ def main():
    'sampling':'only France published eMSP offers fully enumerated; nested schema scan samples wide arrays and is marked sampled',
    'large_json':'oversize files listed with reason, not silently counted as scanned'},
   'outputs':{'sourceShapes':'source-shapes-latest.json','franceRealOfferFixtures':'france-real-offer-fixtures.json'}}
+ # Tesla is an external production catalogue, not a Data Lab source file.
+ # Keep source-file and physical-station denominators strictly separate.
+ tesla_report=OUT/'tesla-global-inventory-latest.json'
+ if not tesla_report.is_file():
+  raise SystemExit('Tesla global inventory missing: cannot claim all-base audit')
+ tesla=json.loads(tesla_report.read_text(encoding='utf8'))
+ if set(tesla.get('scopeCountries',[]))!=set(COUNTRIES):
+  raise SystemExit('Tesla census must explicitly cover all TCC countries')
+ summary['sourceScope']={
+  'dataLabFileCensus':{'enumerated':len(rows),'scanned':summary['sourceFilesScanned']},
+  'externalTeslaCatalogue':{'repository':tesla['sourceRepository'],'ref':tesla['sourceRef'],
+   'path':tesla['sourcePath'],'sha256':tesla['sourceSha256'],
+   'stationsWorldwide':tesla['sourceTotalStations']}}
+ summary['externalCatalogues']={'Tesla Superchargers':{
+  'sourceSha256':tesla['sourceSha256'],
+  'countries':tesla['countries'],
+  'issues':tesla['issues'],
+  'interpretation':'Tesla station/configuration/rule metrics; do not add to Data Lab source-file totals.'}}
+ for cc in COUNTRIES:
+  summary['countries'][cc]['teslaStations']=tesla['countries'][cc].get('stations',0)
+  summary['countries'][cc]['teslaChargingConfigurations']=tesla['countries'][cc].get('charging_configurations',0)
+ summary['interpretation']['tesla']='Tesla global catalogue is audited separately, with its own source provenance and 9-country coverage; price calculation still requires dedicated regressions'
  (OUT/'global-inventory-latest.json').write_text(jdump(summary),encoding='utf8')
  print('GLOBAL_TARIFF_INVENTORY='+json.dumps({'files':len(rows),'scanned':summary['sourceFilesScanned'],
   'skipped':dict(skipped),'countrySummary':{k:v.get('files_scanned',0) for k,v in countries.items()},
