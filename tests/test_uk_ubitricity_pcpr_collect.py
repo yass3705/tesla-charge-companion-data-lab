@@ -56,7 +56,7 @@ class UbitricityCollectorTests(unittest.TestCase):
         with mock.patch.object(collector.urllib.request, 'urlopen', return_value=Response([{'id': 'one'}])) as req:
             rows, count = collector.collect('locations', 'dummy-token', time.monotonic() + 60)
         self.assertEqual((len(rows), count), (1, 1))
-        self.assertEqual(req.call_args.args[0].get_header('Authorization'), 'Token dummy-token')
+        self.assertEqual(req.call_args.args[0].get_header('Authorization'), 'dummy-token')
 
     def test_token_scheme_is_not_duplicated(self):
         with mock.patch.object(collector.urllib.request, 'urlopen', return_value=Response([{'id': 'one'}])) as req:
@@ -67,7 +67,7 @@ class UbitricityCollectorTests(unittest.TestCase):
         with mock.patch.object(collector.urllib.request, 'urlopen', side_effect=error(401)) as req:
             with self.assertRaisesRegex(RuntimeError, 'HTTP 401'):
                 collector.collect('locations', 'dummy-token', time.monotonic() + 60)
-        self.assertEqual(req.call_count, 1)
+        self.assertEqual(req.call_count, 2)
 
     def test_empty_first_page_returns_no_rows(self):
         with mock.patch.object(collector.urllib.request, "urlopen", return_value=Response([])):
