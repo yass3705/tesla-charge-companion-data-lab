@@ -39,7 +39,7 @@ ROOTS=[
  'data/platforms/electroverse/france-evse','data/switzerland','data/spain_reve',
  'data/belgium','data/loadmotion','data/greenspot','data/gofast','data/atlante',
  'data/adhoc_payment','data/tariff_history','data/qovoltis','data/zewatt',
- 'data/publish','data/tcc_v9','v9-production-runtime/data/v9'
+ 'data/publish','data/tcc_v9','data/seed','reports/morocco','v9-production-runtime/data/v9'
 ]
 MAX_DECOMPRESSED=75_000_000
 MAX_VISIT=8000
@@ -68,6 +68,7 @@ def countries_for(path,obj):
 def stage(path,doc):
  s=str(path).lower()
  if 'candidate' in s or 'staging' in s or 'probe' in s or 'residual' in s:return 'candidate_or_staging'
+ if s.startswith('reports/') or s.startswith('data/seed/'):return 'research_or_manual_observation_not_tariff_validated'
  if 'manifest' in s or 'report' in s or 'status' in s or 'index' in s:return 'metadata_or_status'
  if '/platforms/' in s and '/france/' in s or '/france-evse/' in s:return 'validated_emsp_overlay'
  if '/operator_direct/' in s or 'direct' in s or 'official' in s:return 'cpo_direct_source_unconfirmed_scope'
@@ -232,7 +233,7 @@ def main():
   'outputs':{'sourceShapes':'source-shapes-latest.json','franceRealOfferFixtures':'france-real-offer-fixtures.json'}}
  (OUT/'global-inventory-latest.json').write_text(jdump(summary),encoding='utf8')
  print('GLOBAL_TARIFF_INVENTORY='+json.dumps({'files':len(rows),'scanned':summary['sourceFilesScanned'],
-  'skipped':dict(skipped),'countrySummary':{k:len(v) for k,v in countries.items()},
+  'skipped':dict(skipped),'countrySummary':{k:v.get('files_scanned',0) for k,v in countries.items()},
   'familyCounts':summary['globalFamilySourceCounts'],
   'franceRealSamples':len(samples),
   'franceOfferRows':{k:v for k,v in frstats.items() if '/offer_rows' in k},
