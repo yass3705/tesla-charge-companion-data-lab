@@ -10,6 +10,7 @@ on:
       - 'scripts/tesla_global_pricing_real_rule_pilot_20261009.cjs'
       - 'scripts/tariff_after_minutes_candidate_20261009.cjs'
       - 'scripts/tesla_complete_config_pricing_audit_20261009.cjs'
+      - 'scripts/tesla_source_selection_audit_20261009.py'
       - 'scripts/france_runtime_offer_fixtures_20261009.py'
       - 'scripts/france_pricing_real_offer_pilot_20261009.cjs'
       - 'scripts/archive_global_tariff_scenario_review.py'
@@ -35,6 +36,8 @@ jobs:
         env:
           TCC_TESLA_SOURCE_REF: main
         run: python scripts/tesla_global_tariff_inventory_20261009.py
+      - name: Tesla station-by-station Mac versus SuC date-selection policy (no merge)
+        run: python scripts/tesla_source_selection_audit_20261009.py
       - name: All-country source schema inventory and true France eMSP offer census
         run: python scripts/tariff_global_inventory_20261009.py
       - name: Download frozen V9 production pricing engine
@@ -86,6 +89,10 @@ jobs:
           tesla_pilot=json.loads((p/'tesla-global-pricing-pilot-latest.json').read_text())
           after=json.loads((p/'france-after-minutes-candidate-latest.json').read_text())
           tesla_deep=json.loads((p/'tesla-complete-config-pricing-audit-latest.json').read_text())
+          selection=json.loads((p/'tesla-source-selection-audit-latest.json').read_text())
+          assert selection['notPublishedToV9'] is True
+          assert selection['countries']['MA'].get('suc_charge_tariff_only_pending_source_reconciliation',0)==0
+          assert selection['macStationsAudited']>1000
           assert all(x['pass'] for x in tesla_deep['checks'])
           assert tesla_deep['fixtureConfigurations']>=9
           assert tesla['completeConfigurationFixtureCount']==tesla_deep['fixtureConfigurations']
