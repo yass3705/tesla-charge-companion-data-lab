@@ -28,6 +28,13 @@ def cpo_compatible(source, target):
  s=norm(source);names=[norm(target.get('operator')),norm(target.get('brand'))]
  if len(s)<4:return False
  return any(bool(x) and (x==s or (len(s)>5 and len(x)>5 and (x in s or s in x))) for x in names)
+def corroborated_postal(source,target):
+ """Independent address evidence: both provider and IRVE list same 5-digit postcode."""
+ src=' '.join(str(x or '') for x in (source.get('postalCode'),source.get('address')))
+ dst=str(target.get('address') or '')
+ src_codes=set(re.findall(r'(?<!\\d)\\d{5}(?!\\d)',src))
+ dst_codes=set(re.findall(r'(?<!\\d)\\d{5}(?!\\d)',dst))
+ return bool(src_codes and dst_codes and src_codes.intersection(dst_codes))
 def payment_signature(price):
  if not isinstance(price,dict):return None
  # Do not infer per-connector validity from partial or complex tariffs.
@@ -81,6 +88,8 @@ for pk,source in src_electra.items():
  src_cpo=(source.get('cpo') or {}).get('name')
  if not cpo_compatible(src_cpo,target):
   erej['cpo_not_independently_verified']+=1;continue
+ if not corroborated_postal(source,target):
+  erej['address_postcode_not_corroborrated']+=1;continue
  # Need independent per-EVSE assignment: station-wide tariff is identical.
  # With mixed source charging profiles, this parser rejects complex situations.
  uncovered=target['ids']&active-E2
@@ -180,9 +189,11 @@ output={'generatedAt':datetime.now(timezone.utc).isoformat(),'branch':'audit/irv
   'Electroverse':{'P1':len(V1),'P2Additional':len(V2-V1),'P3TechnicalCandidateAdditional':len(V3_possible),'P3ApprovedIndependentCpoEvidence':0,'P1P2':len(V2),'P1P2P3Candidate':len(V2|V3_possible)}},
  'levels':levels,'incrementalCandidateEvses':{'electra':len(E3),'electroverse':len(V3_possible)},
  'diagnostics':{'Electra':dict(erej),'Electroverse':dict(vrej)},'examples':{'Electra':E3examples,'Electroverse':V3_examples},
- 'policy':'Conservative audit: P3 not published. Any new EVSE candidate requires independent station CPO/address validation before moving into P2 overlay. Source CPO direct evidence list is not exhaustive of France.'}
+ 'policy':'Conservative audit: P3 not published. Electra P3 requires independent source CPO and 5-digit postal match; Electroverse P3 candidates lack independent CPO and are never automatically approved. A newly matched EVSE still requires source-level audit before publishing. Direct CPO source list is not exhaustive of France.'}
 path=R/'reports/france/irve-p1-p2-p3-tariff-correspondences-20261009.json';path.parent.mkdir(parents=True,exist_ok=True)
 path.write_text(json.dumps(output,indent=2,ensure_ascii=False)+'\n')
 print('IRVE_P123_TOTALS='+json.dumps({k:v for k,v in output.items() if k not in ('levels','examples')},ensure_ascii=False,separators=(',',':')))
 print('IRVE_P123_FOUR_BUCKETS='+json.dumps({k:v['fourBuckets'] for k,v in levels.items()},ensure_ascii=False,separators=(',',':')))
+print('IRVE_P123_ALL_BUCKETS='+json.dumps({k:v['coverage'] for k,v in levels.items()},ensure_ascii=False,separators=(',',':')))
+print('IRVE_P123_SOURCE_EXAMPLES='+json.dumps(output['examples'],ensure_ascii=False,separators=(',',':')))
 print('IRVE_P123_BY_POWER='+json.dumps({k:[x for x in v['power'] if x['total']>=400] for k,v in levels.items()},ensure_ascii=False,separators=(',',':')))
