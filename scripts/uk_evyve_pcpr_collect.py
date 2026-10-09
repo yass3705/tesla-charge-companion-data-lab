@@ -248,9 +248,9 @@ def stage(locations, tariffs, stamp):
 
 # Eco-Movement shared-secret attempt: validation below *rejects* a Blink-only feed.
 def main():
-    token = os.environ.get('BLINK_PCPR_TOKEN', '').strip()
+    token = os.environ.get('EVYVE_PCPR_TOKEN', '').strip()
     if not token:
-        raise SystemExit('Missing Actions secret BLINK_PCPR_TOKEN; never enter token in code or logs')
+        raise SystemExit('Missing Actions secret EVYVE_PCPR_TOKEN; never enter token in code or logs')
     authorization = token if token.lower().startswith(('token ', 'bearer ')) else 'Token ' + token
     locations, location_calls = collect('locations', authorization)
     tariffs, tariff_calls = collect('tariffs', authorization)
