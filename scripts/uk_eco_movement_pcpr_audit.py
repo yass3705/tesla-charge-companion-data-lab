@@ -182,11 +182,15 @@ for loc in locations:
         excluded["outside_uk_bounds"]+=1
         continue
     cp=copy.deepcopy(loc)
-    # The hosting ChargePoint CMS API always supplies "ChargePoint" as
-    # operator/owner/suboperator, which does not prove physical CPO identity.
-    cp["operator"]={"name":"CPO non identifié (ChargePoint CMS)"}
-    cp["owner"]={"name":"Propriétaire non vérifié"}
-    cp["suboperator"]={"name":"ChargePoint CMS"}
+    # Preserve the CPO/operator and owner identities exactly as declared
+    # in the official PCPR feed. ChargePoint is both a possible CPO and
+    # the CMS provider to other CPOs; third-party ownership is not inferred.
+    cp["tccPcprAttribution"]={
+        "declaredOperator":label(loc.get("operator")),
+        "declaredOwner":label(loc.get("owner")),
+        "platform":"ChargePoint CMS",
+        "cpoVerification":"declared_in_pcpr_not_independently_verified"
+    }
     for evse in rows(cp.get("evses")):
         for connector in rows(evse.get("connectors")):
             tids=uniq_ids(connector.pop("tariff_ids", []))
@@ -203,12 +207,12 @@ v9={
     "integrationStatus":"inventory_stage_unverified_cpo_direct_tariffs",
     "sources":[{
         "id":"eco-movement-pcpr-cms-unverified",
-        "name":"ChargePoint CMS (CPO non identifié)",
+        "name":"ChargePoint (opérateur déclaré PCPR)",
         "partyIdsExpected":["CPI"],
         "country":"GB",
         "locations":safe_locations,
         "tariffs":[],
-        "policy":"All connector tariffs held non-rankable pending proof of the physical CPO, consumer ad-hoc price channel and applicable VAT. The source tariff references are preserved under sourceTariffIdsUnverified; no false direct offers."
+        "policy":"Preserve ChargePoint as the PCPR-declared operator. ChargePoint may operate its own charge points as CPO or serve another CPO as CMS; do not invent another operator. Connector tariffs remain non-rankable until public consumer ad-hoc payment and applicable VAT are verified."
     }]
 }
 staging_path=ROOT/"data/national/uk_eco_movement_pcpr_v9.json.gz"
@@ -225,7 +229,7 @@ stage_report={
     "stagedRankableDirectOffers":0,
     "sourceTariffReferencesPreserved":sum(source_tariff_refs.values()),
     "excluded":dict(excluded),
-    "nonRankableReasons":["ChargePoint CMS owner/CPO identity not proven by PCPR feed","Raw OCPI CPO tariffs do not explicitly identify ad-hoc PAYG channel","One USD tariff among GBP tariffs; tax VAT field not consistently present"],
+    "nonRankableReasons":["ChargePoint is the operator declared by PCPR, but independently operated third-party CMS sites are not distinguished","Raw OCPI CPO tariffs do not explicitly identify ad-hoc PAYG channel","One USD tariff among GBP tariffs; tax VAT field not consistently present"],
     "stagedDataset":"data/national/uk_eco_movement_pcpr_v9.json.gz",
     "readyForSnapshotInventoryStage":len(safe_locations)>0 and staged_connectors>0,
     "readyForTariffRanking":False
