@@ -45,6 +45,23 @@ for(const [name,pricing,patch,expected] of cases){
  synthetic.push({name,expected,actual:value.totalEur??null,complete:value.complete===true,reason:value.reason??null,pass:good});
 }
 const counters={};const familyStats={};const typeStats={};const reasonCounts={};const sampleIssues=[];
+const unmodeledFields={};const unmodeledExamples=[];
+function legacyUnmodeledFields(offer){
+ const rules=[...(offer?.pricing?.rules||[]),...(offer?.pricing?.componentGroups||[]).flatMap(x=>x.rules||[])];
+ const result=[];
+ for(const rule of rules){
+  // Current pinned pricing-engine.js does not inspect any of these legacy fields.
+  // afterMinutesRate > 0 could materially change the payable charge.
+  if(Number(rule?.afterMinutesRate)>0){
+   result.push('afterMinutesRate');
+   if(rule.afterMinutesThreshold!=null)result.push('afterMinutesThreshold');
+   if(Number(rule.afterMinutesCap)>0)result.push('afterMinutesCap');
+   if(rule.afterMinutesCapStart!=null)result.push('afterMinutesCapStart');
+   if(rule.afterMinutesCapEnd!=null)result.push('afterMinutesCapEnd');
+  }
+ }
+ return [...new Set(result)];
+}
 for(const s of samples){
  const offer=s.offer;
  let power=Number(offer?.metadata?.powerKw??offer?.maxPowerKw??0);
@@ -52,11 +69,16 @@ for(const s of samples){
  const session={...profile,powerKw:power};
  const v=evaluate(offer,session);
  const isValid=v.complete===true&&Number.isFinite(Number(v.totalEur));
- const st=isValid?'computed':v.reason==='runtime_exception'?'exception':'incomplete';
- const provider=s.provider||'unknown';counters[provider]??={total:0,computed:0,incomplete:0,exception:0};
+ const unmodeled=legacyUnmodeledFields(offer);
+ const st=isValid?(unmodeled.length?'computed_with_unmodeled_source_fields':'computed'):v.reason==='runtime_exception'?'exception':'incomplete';
+ if(unmodeled.length){
+   for(const field of unmodeled)unmodeledFields[field]=(unmodeledFields[field]||0)+1;
+   if(unmodeledExamples.length<90)unmodeledExamples.push({offerId:offer?.id,provider:s.provider,origin:s.origin,unmodeledFields:unmodeled});
+ }
+ const provider=s.provider||'unknown';counters[provider]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};
  counters[provider].total++;counters[provider][st]++;
- typeStats[s.tariffType]??={total:0,computed:0,incomplete:0,exception:0};typeStats[s.tariffType].total++;typeStats[s.tariffType][st]++;
- for(const k of s.families||[]){familyStats[k]??={total:0,computed:0,incomplete:0,exception:0};familyStats[k].total++;familyStats[k][st]++;}
+ typeStats[s.tariffType]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};typeStats[s.tariffType].total++;typeStats[s.tariffType][st]++;
+ for(const k of s.families||[]){familyStats[k]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};familyStats[k].total++;familyStats[k][st]++;}
  if(!isValid){
   const reason=String(v.reason||'reason_missing');reasonCounts[reason]=(reasonCounts[reason]||0)+1;
   if(sampleIssues.length<150)sampleIssues.push({offerId:offer?.id,provider,tariffType:s.tariffType,signature:s.signatureId,reason,matchedRule:v.matchedRule??null});
@@ -71,9 +93,11 @@ const report={generatedAt:new Date().toISOString(),enginePin:process.env.TCC_V9_
   'Synthetic cases are deterministic regression tests; sample offers are actual unchanged published Data Lab records'],
  sessionProfile:profile,syntheticCases:synthetic,samplesTested:samples.length,
  providers:counters,pricingTypes:typeStats,families:familyStats,
- incompleteReasons:reasonCounts,sampleIssues};
+ incompleteReasons:reasonCounts,sampleIssues,
+ unmodeledLegacyFields:unmodeledFields,unmodeledExamples,
+ warnings:['computed_with_unmodeled_source_fields means engine returned a number but source billing components may be silently ignored; never treat these as validated amounts']};
 const out=path.join(root,'reports/tariff-scenarios/france-pricing-pilot-latest.json');
 fs.writeFileSync(out,JSON.stringify(report,null,2)+'\n','utf8');
 console.log('FRANCE_PRICING_PILOT='+JSON.stringify({syntheticPassed:synthetic.filter(x=>x.pass).length,syntheticTotal:synthetic.length,
-syntheticFailed:synthetic.filter(x=>!x.pass).map(x=>x.name),realSamples:samples.length,providers:counters,pricingTypes:typeStats,incompleteReasons:reasonCounts}));
+syntheticFailed:synthetic.filter(x=>!x.pass).map(x=>x.name),realSamples:samples.length,providers:counters,pricingTypes:typeStats,incompleteReasons:reasonCounts,unmodeledLegacyFields:unmodeledFields}));
 if(!synthetic.every(x=>x.pass))process.exitCode=2;
