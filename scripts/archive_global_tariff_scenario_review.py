@@ -45,7 +45,7 @@ def main():
   'teslaCalculationRiskCounts':tesla_pilot['issues'],
   'teslaCompleteConfigurationAudit':{'configurations':tesla_deep['fixtureConfigurations'],
     'countries':tesla_deep['byCountry'],'reasons':tesla_deep['reasons']},
-  'teslaSourceAgeBuckets':{k:v.get('sourceAgeBuckets',{}) for k,v in tesla['countries'].items()},
+  'teslaLegacyLastUpdatedAge_NOT_PRICE_OBSERVATION':{k:v.get('legacyLastUpdatedAgeBuckets_NOT_OBSERVATION',{}) for k,v in tesla['countries'].items()},
   'teslaFreshnessSelection':{'stationCount':selection['macStationsAudited'],
        'byCountry':selection['countries'],'unmatchedSuCRecords':selection['unmatchedSuCRecords'],
        'policy':selection['sourceSelectionPolicy']},
