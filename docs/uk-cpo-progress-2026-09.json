@@ -261,11 +261,11 @@
     },
     {
       "name": "Source EV",
-      "status": "set_aside_external_request",
-      "access": "request_via_eco_movement",
-      "evidence": "Source EV compliance page provides PCPR data by request via Eco-Movement.",
-      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
-      "requestStatus": "submitted_2026-10-02",
+      "status": "blocked_external_pcpr_auth_401",
+      "access": "authenticated_pcpr_token_secret_present_but_rejected",
+      "evidence": "2026-10-09 GitHub run 37935565549: SOURCE_EV_PCPR_TOKEN is present and passed to runner, but Eco-Movement locations endpoint returns HTTP 401. No Source EV inventory or prices staged.",
+      "next": "Check/regenerate Source EV operator-scoped API token with provider and replace only SOURCE_EV_PCPR_TOKEN GitHub secret, then rerun the UK Source EV PCPR collect workflow. Preserve fail-closed no-publication behavior.",
+      "requestStatus": "token_received_http_401_2026-10-09",
       "requestSubmittedAt": "2026-10-02"
     },
     {
@@ -279,12 +279,13 @@
     },
     {
       "name": "Allego",
-      "status": "set_aside_external_request",
-      "access": "official_charge_point_data_request",
-      "evidence": "Allego's official UK Charge Point Data page requires submission of name, company, email and planned use; it states UK PCPR charge-point data is supplied electronically after request.",
-      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
-      "requestStatus": "submitted_2026-10-02",
-      "requestSubmittedAt": "2026-10-02"
+      "status": "complete_cpo_pcpr_validated_v9_staged",
+      "access": "authenticated_official_pcpr_source",
+      "evidence": "2026-10-09 official Allego UK Eco-Movement PCPR feed: 77 public Allego stations, 240 exact connector tariff matches (240/240), 39 distinct verified GBP VAT-inclusive tariffs. Independent CPO/access/VAT/connector validation passed (GitHub run 37936012631).",
+      "next": "V9 source adapter/registry activation still needed; the source report explicitly says publishedToV9=false. Do not claim live coverage before V9 runtime acceptance test.",
+      "requestStatus": "token_received_validated_2026-10-09",
+      "requestSubmittedAt": "2026-10-02",
+      "report": "reports/uk/allego_uk-pcpr-validation-latest.json"
     },
     {
       "name": "Arnold Clark Charge",
