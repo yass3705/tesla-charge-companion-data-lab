@@ -1,0 +1,47 @@
+name: AUDIT - Global tariff inventory and France pricing pilot
+on:
+  workflow_dispatch:
+  push:
+    branches: [audit/global-tariff-scenarios-20261009]
+    paths:
+      - scripts/tariff_global_inventory_20261009.py
+      - scripts/france_pricing_real_offer_pilot_20261009.cjs
+      - .github/workflows/global-tariff-inventory-france-pilot-20261009.yml
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enumerate global CPO/eMSP source schemas and true France offer fixtures
+        run: python scripts/tariff_global_inventory_20261009.py
+      - name: Fetch immutable production pricing engine
+        env:
+          TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
+        run: |
+          set -euo pipefail
+          curl -fsSL --connect-timeout 20 --max-time 90 --retry 3 \
+            "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/${TCC_V9_PRICING_SHA}/v9-production-runtime/assets/v9/pricing-engine.js" \
+            -o /tmp/tcc-v9-pinned-pricing-engine.js
+          test -s /tmp/tcc-v9-pinned-pricing-engine.js
+      - name: Regression synthetic tariffs and real France published offers
+        env:
+          TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
+        run: node scripts/france_pricing_real_offer_pilot_20261009.cjs /tmp/tcc-v9-pinned-pricing-engine.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: global-tariff-inventory-france-pilot
+          path: |
+            reports/tariff-scenarios/global-inventory-latest.json
+            reports/tariff-scenarios/source-shapes-latest.json
+            reports/tariff-scenarios/france-real-offer-fixtures.json
+            reports/tariff-scenarios/france-pricing-pilot-latest.json
+          retention-days: 30
