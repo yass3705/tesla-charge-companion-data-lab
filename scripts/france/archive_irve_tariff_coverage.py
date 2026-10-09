@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 DEFAULT=ROOT/'reports/france/tariff-coverage'
-SCHEMA='1.0.0'
+SCHEMA='1.1.0'
 LABELS=['CPO','CPO+Electra','CPO+Electroverse','CPO+Electra+Electroverse',
         'Electra','Electroverse','Electra+Electroverse','aucun_tarif_valide']
 def dump(o):return json.dumps(o,ensure_ascii=False,separators=(',',':'),sort_keys=True,default=str)
@@ -57,7 +57,9 @@ def main():
  eManifest=ROOT/'data/platforms/electra/france/manifest.json'
  vManifest=ROOT/'data/platforms/electroverse/france-evse/manifest.json'
  provenance={'irveStatic':{'file':snapshot_path(irveSrc),'sha256':sha(irveSrc)},
-             'irveDynamic':{'file':'data/national/france-irve-dynamic-status-v9.json.gz','generatedAt':base['dynamic'].get('generatedAt')},
+             'irveDynamic':{'file':'data/national/france-irve-dynamic-status-v9.json.gz','generatedAt':base['dynamic'].get('generatedAt'),
+               'sourceSha256':base['dynamic'].get('sourceSha256'),
+               'snapshotSha256':sha(ROOT/'data/national/france-irve-dynamic-status-v9.json.gz')},
              'electraOverlay':{'file':snapshot_path(eManifest),'sha256':sha(eManifest),'generatedAt':load(snapshot_path(eManifest)).get('generatedAt')},
              'electroverseOverlay':{'file':snapshot_path(vManifest),'sha256':sha(vManifest),'generatedAt':load(snapshot_path(vManifest)).get('generatedAt')}}
  # Every priced offer, with exact published pricing JSON, identity-mode and tile provenance.
@@ -162,6 +164,11 @@ def main():
  now=dt.datetime.now(dt.timezone.utc)
  stamp=now.strftime('%Y-%m-%dT%H-%M-%SZ')
  hist_dir=out/'snapshots';hist_dir.mkdir(exist_ok=True)
+ prior_file=out/'latest.json'
+ try:
+  previous=json.loads(prior_file.read_text(encoding='utf8')) if prior_file.exists() else None
+ except (OSError,ValueError):
+  raise SystemExit('FAIL CLOSED: previous archive summary is unreadable')
  summary={
   'schemaVersion':SCHEMA,'generatedAt':now.isoformat(),'githubRunId':str(a.run_id),'trigger':a.trigger,
   'status':'validated_audit_not_v9_published','p3PublishableNewEvses':0,
@@ -190,11 +197,29 @@ def main():
    'Historical source snapshots remain recoverable via immutable Git commit SHA.']
  }
  if len(summary['levels']['P1_P2']['power'])<30:raise SystemExit('FAIL CLOSED: implausibly few power groups')
+ if previous:
+  old=previous.get('metrics',{})
+  old_categories=(previous.get('levels',{}).get('P1_P2',{}) or {}).get('coverage',{})
+  new_categories=summary['levels']['P1_P2']['coverage']
+  summary['reviewDelta']={
+   'previousReviewedAt':previous.get('generatedAt'),
+   'previousGitHubRunId':previous.get('githubRunId'),
+   'activeEVSE':summary['metrics']['irveActiveEVSE']-int(old.get('irveActiveEVSE') or 0),
+   'withAnyTariff':summary['metrics']['oneOrMoreTariff']-int(old.get('oneOrMoreTariff') or 0),
+   'withoutTariff':summary['metrics']['noValidTariff']-int(old.get('noValidTariff') or 0),
+   'cpoDirect':summary['metrics']['cpoDirectEVSE']-int(old.get('cpoDirectEVSE') or 0),
+   'electra':summary['metrics']['ElectraPublishedEVSE']-int(old.get('ElectraPublishedEVSE') or 0),
+   'electroverse':summary['metrics']['ElectroversePublishedEVSE']-int(old.get('ElectroversePublishedEVSE') or 0),
+   'byTariffCombination':{k:int(new_categories.get(k) or 0)-int(old_categories.get(k) or 0) for k in LABELS},
+   'dynamicShaChanged':summary['provenance']['irveDynamic']['sourceSha256']!=(previous.get('provenance',{}).get('irveDynamic',{}).get('sourceSha256'))
+  }
+ else:summary['reviewDelta']={'previousReviewedAt':None,'firstBaseline':True}
  (out/'latest.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
  # A compact permanent snapshot for EACH successful verification. Git history
  # preserves old full detail files by commit SHA while 'latest' stays convenient.
  historical={'generatedAt':summary['generatedAt'],'githubRunId':summary['githubRunId'],
     'trigger':summary['trigger'],'provenance':provenance,'metrics':summary['metrics'],
+    'reviewDelta':summary['reviewDelta'],
     'tiers':summary['identityTierCounts'],
     'fourCategories':{k:summary['levels'][k]['fourBuckets'] for k in ('P1','P1_P2','P1_P2_P3_allTechnicalCandidates')},
     'diagnostics':summary['matchDiagnostics'],'detailFileChecksums':summary['checksums']}
