@@ -124,6 +124,9 @@ def source_rows():
   if not d.exists():continue
   for p in sorted(d.rglob('*')):
    if not p.is_file() or not (p.name.endswith('.json') or p.name.endswith('.json.gz')):continue
+   # France Electra/Electroverse offer tiles are exhaustively read below in
+   # france_samples(). Avoid reading their 649 tiles twice for generic schemas.
+   if 'data/platforms/' in str(p) and re.fullmatch(r't_[0-9_]+\\.json\\.gz',p.name):continue
    yield p
 def path_key(path):return str(path.relative_to(ROOT))
 def france_samples():
