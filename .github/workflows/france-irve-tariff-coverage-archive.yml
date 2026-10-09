@@ -1,0 +1,116 @@
+name: France EVSE tariff coverage - permanent archive
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily after IRVE dynamic refresh; also triggered on successful validations.
+    - cron: '43 3 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/france-irve-tariff-coverage-archive.yml'
+      - 'scripts/france/archive_irve_tariff_coverage.py'
+      - 'scripts/audit_fr_tariff_left_join_20261009.py'
+      - 'scripts/audit_fr_two_level_tariff_join_20261009.py'
+      - 'scripts/audit_fr_three_priority_match_20261009.py'
+      - 'data/national/france-irve-static-v9/**'
+      - 'data/national/france-irve-dynamic-status-v9.json.gz'
+      - 'data/national/*france*.json*'
+      - 'data/operator_direct/*france*.json'
+      - 'data/operator_direct/*_fr_*.json'
+      - 'data/electroverse/tariff_cache/**'
+      - 'data/electroverse/irve_location_mapping.json'
+      - 'data/platforms/electra/france/**'
+      - 'data/platforms/electroverse/france-evse/**'
+  workflow_run:
+    workflows:
+      - 'France IRVE static refresh and residual audit'
+      - 'Build France Electra platform overlay'
+      - 'Build France Electroverse EVSE overlay'
+      - 'France Freshmile exact tariffs via ChargePoint public map'
+      - 'DRIVECO EVSE direct tariffs'
+      - 'Allego France station direct tariffs'
+      - 'Bump national public tariffs'
+      - 'Atlante direct station tariffs'
+      - 'France Stations-e exact national tariffs'
+      - 'France CITEOS exact IRVE tariffs'
+      - 'France Road E-Flux exact national tariffs'
+      - 'France e-Totem tiled exact tariffs'
+      - 'France Electra complete exact tariffs'
+    types: [completed]
+permissions:
+  contents: write
+concurrency:
+  group: france-irve-tariff-coverage-permanent-main
+  cancel-in-progress: false
+jobs:
+  archive:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Recalculate all P1 exact, P2 verified overlays, P3 audited GPS candidates and archive every EVSE
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: |
+          set -euo pipefail
+          python scripts/france/archive_irve_tariff_coverage.py \
+            --out-dir reports/france/tariff-coverage \
+            --run-id "${{ github.run_id }}" \
+            --trigger "${{ github.event_name }}"
+      - name: Check permanent report presence, integrity, per-EVSE cardinality and audit provenance
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,json,pathlib,sys
+          root=pathlib.Path('reports/france/tariff-coverage')
+          latest=json.loads((root/'latest.json').read_text(encoding='utf8'))
+          counts=latest['metrics']
+          assert counts['irveActiveEVSE']>=90000
+          assert counts['oneOrMoreTariff']+counts['noValidTariff']==counts['irveActiveEVSE']
+          assert sum(latest['levels']['P1_P2']['coverage'].values())==counts['irveActiveEVSE']
+          assert sum(latest['levels']['P1_P2']['fourBuckets'].values())==counts['cpoDirectEVSE']
+          for key in ('evse-latest.jsonl.gz','offers-latest.jsonl.gz','cpo-prices-latest.jsonl.gz'):
+           assert (root/key).stat().st_size>1000,key
+           with gzip.open(root/key,'rt',encoding='utf8') as f:
+            sample=json.loads(next(f));assert isinstance(sample,dict),key
+          history=(root/'history.jsonl').read_text(encoding='utf8').splitlines()
+          assert history and json.loads(history[-1])['githubRunId']==str(latest['githubRunId'])
+          print('Archive validated:',counts)
+          PY
+      - name: Persist latest, source evidence and append-only verification history to Data Lab main
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/tariff-coverage
+          if git diff --cached --quiet; then
+            echo 'No archive changes to persist'
+            exit 0
+          fi
+          git commit -m "reports: archive France EVSE tariff coverage P1/P2/P3 [run ${{ github.run_id }}]"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              echo 'Archive rebase conflict; refusing to overwrite previous report.' >&2
+              git rebase --abort || true
+              exit 1
+            fi
+            if git push origin HEAD:main; then
+              echo 'PERSISTED_DATA_LAB_ARCHIVE'
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          echo 'Archive commit not persisted' >&2
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: france-evse-tariff-coverage-${{ github.run_id }}
+          path: reports/france/tariff-coverage/
+          retention-days: 90
