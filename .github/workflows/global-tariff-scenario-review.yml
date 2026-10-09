@@ -9,6 +9,7 @@ on:
       - 'scripts/tesla_global_tariff_inventory_20261009.py'
       - 'scripts/tesla_global_pricing_real_rule_pilot_20261009.cjs'
       - 'scripts/tariff_after_minutes_candidate_20261009.cjs'
+      - 'scripts/tesla_complete_config_pricing_audit_20261009.cjs'
       - 'scripts/france_runtime_offer_fixtures_20261009.py'
       - 'scripts/france_pricing_real_offer_pilot_20261009.cjs'
       - 'scripts/archive_global_tariff_scenario_review.py'
@@ -69,6 +70,10 @@ jobs:
         env:
           TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
         run: node scripts/tesla_global_pricing_real_rule_pilot_20261009.cjs /tmp/tcc-v9-pinned-pricing-engine.js /tmp/tcc-v9-pinned-tesla-adapter.js
+      - name: Tesla complete source-rule windows, currency and power-curve validation
+        env:
+          TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
+        run: node scripts/tesla_complete_config_pricing_audit_20261009.cjs /tmp/tcc-v9-pinned-pricing-engine.js /tmp/tcc-v9-pinned-tesla-adapter.js
       - name: Validate inventory and regression evidence
         run: |
           set -euo pipefail
@@ -80,6 +85,11 @@ jobs:
           tesla=json.loads((p/'tesla-global-inventory-latest.json').read_text())
           tesla_pilot=json.loads((p/'tesla-global-pricing-pilot-latest.json').read_text())
           after=json.loads((p/'france-after-minutes-candidate-latest.json').read_text())
+          tesla_deep=json.loads((p/'tesla-complete-config-pricing-audit-latest.json').read_text())
+          assert all(x['pass'] for x in tesla_deep['checks'])
+          assert tesla_deep['fixtureConfigurations']>=9
+          assert tesla['completeConfigurationFixtureCount']==tesla_deep['fixtureConfigurations']
+          assert all(c in tesla_deep['byCountry'] for c in ('FR','IT','CH','DE','ES','NL','UK','MA','BE'))
           assert after['status']=='staging_checks_pass'
           assert after['summary']['offers']>0
           assert after['summary']['regressionMismatch']==0
