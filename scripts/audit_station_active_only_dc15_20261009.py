@@ -277,7 +277,7 @@ result={
                     'IRVE_inactiveOrUnverifiedStations':sum(row['activePdcCount']==0 for row in irve.values()),
                     'ElectraEMSPFranceLocations':len(el),'ElectroverseCachedLocations':len(evl)},
     'dynamicStatusEvidence':{'generatedAt':dynamic['generatedAt'],'states':dynamic['states'],
-        'withoutDynamicStatusPdc':sum(1 for row in national for cfg in row[8] for x in cfg[6] if norm(x) not in active_pdc),
+        'withoutDynamicStatusPdc':max(0,len({norm(x) for row in national for cfg in row[8] for x in cfg[6] if norm(x)})-int(dynamic.get('matchedPdc') or 0)),
         'filter':'ONLY explicit en_service PDC IDs; stations retained if >=1 en_service PDC. Unknown, hors_service, and missing statuses never receive targeted verification.',
         'staleLimitHours':72},
     'exactStationMatches':{
