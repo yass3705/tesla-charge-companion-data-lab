@@ -6,6 +6,7 @@ on:
     paths:
       - scripts/tariff_global_inventory_20261009.py
       - scripts/france_pricing_real_offer_pilot_20261009.cjs
+      - scripts/france_runtime_offer_fixtures_20261009.py
       - .github/workflows/global-tariff-inventory-france-pilot-20261009.yml
 permissions:
   contents: read
@@ -31,6 +32,10 @@ jobs:
             "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/${TCC_V9_PRICING_SHA}/v9-production-runtime/assets/v9/pricing-engine.js" \
             -o /tmp/tcc-v9-pinned-pricing-engine.js
           test -s /tmp/tcc-v9-pinned-pricing-engine.js
+      - name: Extract real France CPO direct and subscription V9 offer fixtures from pinned production snapshot
+        env:
+          TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
+        run: python scripts/france_runtime_offer_fixtures_20261009.py
       - name: Regression synthetic tariffs and real France published offers
         env:
           TCC_V9_PRICING_SHA: 38ac26e029ba1c4779d4d8fa43e7d5d300858624
@@ -44,4 +49,6 @@ jobs:
             reports/tariff-scenarios/source-shapes-latest.json
             reports/tariff-scenarios/france-real-offer-fixtures.json
             reports/tariff-scenarios/france-pricing-pilot-latest.json
+            reports/tariff-scenarios/france-runtime-offer-fixtures.json
+            reports/tariff-scenarios/france-runtime-offers-inventory.json
           retention-days: 30
