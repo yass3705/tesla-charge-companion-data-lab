@@ -37,3 +37,7 @@ Voir [reports/tariff-scenarios/](../reports/tariff-scenarios/) : inventaire fich
 4. Allemagne + Maroc + Belgique : grilles AFIR/OCPI composites, tarif par minute, sources partielles et restrictions d'accès.
 
 **Critère avant publication :** montant chiffré seulement si toutes les composantes tarifaires qui s'appliquent sont modélisées et l'attribution EVSE+puissance est validée. Sinon `incomplete` ou `ambiguous`, jamais 0 par défaut.
+
+## Rectification du périmètre Tesla — 2026-10-09
+
+Les 1 308 fichiers / 933 scénarios publiés ci-dessus décrivent **uniquement la première passe hors catalogue Tesla global**. Ils ne démontrent pas la couverture de toutes les bases. Un second audit, ajouté au workflow global, lit `tesla-charge-companion-stable/data/tesla_stations.json`, analyse ses règles **dans les neuf pays TCC**, vérifie les écarts de granularité, de devises et les tarifs dépendant de la puissance, puis archive les résultats Tesla indépendamment des statistiques françaises. `data/suc-tracker` est inclus comme **référence secondaire**, selon la règle de fraîcheur existante, et exclu pour MA. Ne pas traiter des montants calculés comme validés lorsqu'une composante manque ; aucune tarification V9 n'est modifiée.
