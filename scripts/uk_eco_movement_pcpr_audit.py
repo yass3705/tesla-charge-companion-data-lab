@@ -157,3 +157,79 @@ out = {
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({"counts":out["rawCounts"],"pricing":out["pricing"],"identity":out["identity"],"publicAccess":out["publicAccess"],"activationReadiness":out["activationReadiness"]},ensure_ascii=False,indent=2))
+
+# Staged V9 inventory, intentionally NOT rankable until operator identity,
+# direct/ad-hoc channel and tax rules are independently demonstrated.
+# Preserve the original full PCPR source separately for future reconciliation.
+import copy
+safe_locations=[]
+excluded=collections.Counter()
+source_tariff_refs=collections.Counter()
+for loc in locations:
+    if loc.get("publish") is not True:
+        excluded["not_publicly_published"]+=1
+        continue
+    if text(loc.get("country")).upper() not in {"GB","GBR"}:
+        excluded["wrong_country"]+=1
+        continue
+    try:
+        latitude=float(loc["coordinates"]["latitude"])
+        longitude=float(loc["coordinates"]["longitude"])
+    except (KeyError,TypeError,ValueError):
+        excluded["missing_location_coordinates"]+=1
+        continue
+    if not (49 <= latitude <= 61 and -9 <= longitude <= 3):
+        excluded["outside_uk_bounds"]+=1
+        continue
+    cp=copy.deepcopy(loc)
+    # The hosting ChargePoint CMS API always supplies "ChargePoint" as
+    # operator/owner/suboperator, which does not prove physical CPO identity.
+    cp["operator"]={"name":"CPO non identifié (ChargePoint CMS)"}
+    cp["owner"]={"name":"Propriétaire non vérifié"}
+    cp["suboperator"]={"name":"ChargePoint CMS"}
+    for evse in rows(cp.get("evses")):
+        for connector in rows(evse.get("connectors")):
+            tids=uniq_ids(connector.pop("tariff_ids", []))
+            connector["sourceTariffIdsUnverified"]=tids
+            for tid in tids:
+                source_tariff_refs[tid]+=1
+    safe_locations.append(cp)
+if len(safe_locations)!=len(locations):
+    print("WARNING: PCPR UK staging excluded "+str(len(locations)-len(safe_locations))+" locations; see report.")
+v9={
+    "country":"GB",
+    "collectedAt":data.get("retrievedAt"),
+    "source":"Eco-Movement PCPR / ChargePoint CMS",
+    "integrationStatus":"inventory_stage_unverified_cpo_direct_tariffs",
+    "sources":[{
+        "id":"eco-movement-pcpr-cms-unverified",
+        "name":"ChargePoint CMS (CPO non identifié)",
+        "partyIdsExpected":["CPI"],
+        "country":"GB",
+        "locations":safe_locations,
+        "tariffs":[],
+        "policy":"All connector tariffs held non-rankable pending proof of the physical CPO, consumer ad-hoc price channel and applicable VAT. The source tariff references are preserved under sourceTariffIdsUnverified; no false direct offers."
+    }]
+}
+staging_path=ROOT/"data/national/uk_eco_movement_pcpr_v9.json.gz"
+staging_path.parent.mkdir(parents=True,exist_ok=True)
+with gzip.open(staging_path,"wt",encoding="utf-8") as handle:
+    json.dump(v9,handle,ensure_ascii=False,separators=(",",":"))
+staged_connectors=sum(len(rows(e.get("connectors"))) for loc in safe_locations for e in rows(loc.get("evses")))
+stage_report={
+    "generatedAt":out["generatedAt"],
+    "sourceCollectedAt":data.get("retrievedAt"),
+    "sourceLocations":len(locations),
+    "stagedPublicLocations":len(safe_locations),
+    "stagedConnectors":staged_connectors,
+    "stagedRankableDirectOffers":0,
+    "sourceTariffReferencesPreserved":sum(source_tariff_refs.values()),
+    "excluded":dict(excluded),
+    "nonRankableReasons":["ChargePoint CMS owner/CPO identity not proven by PCPR feed","Raw OCPI CPO tariffs do not explicitly identify ad-hoc PAYG channel","One USD tariff among GBP tariffs; tax VAT field not consistently present"],
+    "stagedDataset":"data/national/uk_eco_movement_pcpr_v9.json.gz",
+    "readyForSnapshotInventoryStage":len(safe_locations)>0 and staged_connectors>0,
+    "readyForTariffRanking":False
+}
+stage_path=ROOT/"reports/uk/eco-movement-pcpr-v9-staging.json"
+stage_path.write_text(json.dumps(stage_report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+print(json.dumps(stage_report,ensure_ascii=False,indent=2))
