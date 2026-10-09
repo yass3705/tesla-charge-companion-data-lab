@@ -95,7 +95,7 @@
       "name": "Osprey Charging",
       "status": "complete",
       "access": "public_map_api_plus_official_network_pricing",
-      "evidence": "Public Osprey portal API validates 407 locations and 2819 EVSE/connectors with live statuses. Official network pricing profiles joined in Data Lab: contactless \u00a30.87/kWh, app standard \u00a30.82, weekend saver \u00a30.79, overnight saver \u00a30.69.",
+      "evidence": "Public Osprey portal API validates 407 locations and 2819 EVSE/connectors with live statuses. Official network pricing profiles joined in Data Lab: contactless £0.87/kWh, app standard £0.82, weekend saver £0.79, overnight saver £0.69.",
       "next": "validated; refresh public map plus official pricing profiles on schedule.",
       "locationsEndpoint": "https://apigw.ospreycharging.co.uk/portal/location/map/all",
       "dataset": "data/national/uk_osprey_public_map_priced.json.gz",
@@ -106,12 +106,12 @@
       "status": "complete",
       "access": "official_pcpr_api_key",
       "evidence": "Validated GRIDSERVE PCPR Open Data API integration in Data Lab. Successful authenticated collection recovered 237 locations, 2701 EVSEs, 2918 connectors and 7 published GBP tariffs. Live EVSE statuses are present. Connector tariff references are parsed from tariff_ids. Residual IDs GS1 and GS9 are entirely REMOVED at the synthetic retired-stations location; GS3 is retired except one UNKNOWN 22 kW IVER HQ connector; A0-GBP appears on testing, Network Rail and Electric Freightway depot/fleet contexts and is intentionally not mapped to a public retail tariff. No missing public tariff is inferred.",
-      "next": "Complete for V9 public-network scope. Keep scheduled PCPR refresh and fail closed if future public connector tariff references are not present in /tariffs.",
+      "next": "Complete for V9 public-network scope. Daily PCPR refresh configured at 03:17 UTC using GRIDSERVE_API_KEY; fail closed on new missing public connector tariff references. Exclude retired and non-public sites.",
       "baseUrl": "https://api.gridserve.com/ocpi/v1/",
       "locationsEndpoint": "https://api.gridserve.com/ocpi/v1/locations",
       "tariffsEndpoint": "https://api.gridserve.com/ocpi/v1/tariffs",
       "authHeader": "ec-subscription-key",
-      "plannedSecret": "GRIDSERVE_PCPR_API_KEY",
+      "plannedSecret": "GRIDSERVE_API_KEY",
       "documentation": "https://www.gridserve.com/wp-content/uploads/2024/11/GRIDSERVE-PCPR-API-Developer-Documentation.pdf",
       "documentationVerifiedAt": "2026-10-02",
       "datasetLocations": "data/national/uk_gridserve_pcpr_locations.json.gz",
@@ -159,7 +159,7 @@
       "name": "Fastned",
       "status": "complete",
       "access": "official_public_direct_sources",
-      "evidence": "Data Lab direct UK validation: 41 UK locations and 259 charging points. Current direct pricing profiles are persisted: standard \u00a30.79/kWh, app-direct \u00a30.711/kWh, Gold \u00a30.55/kWh with subscription metadata.",
+      "evidence": "Data Lab direct UK validation: 41 UK locations and 259 charging points. Current direct pricing profiles are persisted: standard £0.79/kWh, app-direct £0.711/kWh, Gold £0.55/kWh with subscription metadata.",
       "next": "validated; refresh direct UK inventory and pricing profiles on schedule.",
       "dataset": "data/national/fastned_direct_stations_uk.json.gz",
       "report": "reports/uk/fastned-direct-uk-latest.json",
@@ -179,7 +179,7 @@
       "name": "PoGo Charge",
       "status": "complete",
       "access": "anonymous_smartcharging_plus_official_pricing",
-      "evidence": "Validated UK collector run 2026-09-29 recovered all 159/159 SmartCharging locations, 799 EVSE/connectors, 2/2 direct tariff IDs resolved, no missing tariff IDs, and pricing complete via official PoGo AC/DC tariffs (\u00a30.56/kWh AC, \u00a30.65/kWh DC).",
+      "evidence": "Validated UK collector run 2026-09-29 recovered all 159/159 SmartCharging locations, 799 EVSE/connectors, 2/2 direct tariff IDs resolved, no missing tariff IDs, and pricing complete via official PoGo AC/DC tariffs (£0.56/kWh AC, £0.65/kWh DC).",
       "next": "validated; include in scheduled UK aggregation. Keep fail-closed if a future refresh loses location or tariff coverage.",
       "dataset": "data/national/uk_validated_open_feeds.json.gz",
       "report": "reports/uk/validated-open-feeds-latest.json"
@@ -233,7 +233,7 @@
       "name": "Wenea",
       "status": "complete",
       "access": "official_zip_plus_official_direct_tariff_fallback",
-      "evidence": "Official Wenea Open Data ZIP discovered via the post-request download page. Data Lab recovered 210 UK locations, 628 EVSEs and 631 connectors. Upstream references one missing tariff id, so TCC applies Wenea's current official direct PAYG prices by connector power: \u00a30.55/kWh AC <=22kW, \u00a30.75/kWh DC 30-60kW, \u00a30.85/kWh HPC 61-400kW. No connector lacks a power-band tariff.",
+      "evidence": "Official Wenea Open Data ZIP discovered via the post-request download page. Data Lab recovered 210 UK locations, 628 EVSEs and 631 connectors. Upstream references one missing tariff id, so TCC applies Wenea's current official direct PAYG prices by connector power: £0.55/kWh AC <=22kW, £0.75/kWh DC 30-60kW, £0.85/kWh HPC 61-400kW. No connector lacks a power-band tariff.",
       "next": "validated; include ZIP refresh plus official tariff-page fallback in scheduled UK aggregation.",
       "dataset": "data/national/uk_wenea_direct_priced.json.gz",
       "report": "reports/uk/wenea-direct-priced-latest.json",
@@ -375,7 +375,7 @@
       "name": "Lidl",
       "status": "complete",
       "access": "official_public_store_inventory_plus_official_pricing",
-      "evidence": "Official Lidl GB Store Finder national crawl completed 2026-09-30: 1,021/1,021 store pages parsed, 312 stores explicitly advertise EV Charging, all 312 geocoded, 0 fetch failures. Official Lidl GB pricing is bounded: Lidl Plus AC \u00a30.40/kWh and DC \u00a30.59/kWh; ad-hoc fast \u00a30.55/kWh and rapid \u00a30.74/kWh. Per TCC UK scope decision, live status is not required for completion; unavailable charger-level EVSE count/power/status remain fail-closed and are not inferred.",
+      "evidence": "Official Lidl GB Store Finder national crawl completed 2026-09-30: 1,021/1,021 store pages parsed, 312 stores explicitly advertise EV Charging, all 312 geocoded, 0 fetch failures. Official Lidl GB pricing is bounded: Lidl Plus AC £0.40/kWh and DC £0.59/kWh; ad-hoc fast £0.55/kWh and rapid £0.74/kWh. Per TCC UK scope decision, live status is not required for completion; unavailable charger-level EVSE count/power/status remain fail-closed and are not inferred.",
       "next": "Treat as complete at station level. Refresh official store inventory and pricing on schedule; leave unavailable EVSE count/power/live status empty unless a legitimate charger-level feed becomes available.",
       "pricingReport": "reports/uk/lidl-official-pricing-latest.json",
       "pricingDataset": "data/national/uk_lidl_official_pricing.json",
@@ -600,7 +600,7 @@
       "name": "Shell Recharge ubitricity",
       "status": "complete",
       "access": "authenticated_pcpr_with_independent_exact_payg_tariff_validation",
-      "evidence": "Full authenticated UK PCPR inventory: 12,424 stations / 14,077 connectors. Five of eight tariff IDs independently match public PAYG current/next-day details at two exact connectors per tariff. 13,619 connectors priced including VAT in Europe/London. 398 connectors rejected for PCPR/PAYG conflicts; 60 for missing exact PAYG tariff. All station identities retained; excluded connectors never inherit another offer. Official 7\u201322kW idle fee included with 60-minute post-charge grace in 08:00\u201320:00 window.",
+      "evidence": "Full authenticated UK PCPR inventory: 12,424 stations / 14,077 connectors. Five of eight tariff IDs independently match public PAYG current/next-day details at two exact connectors per tariff. 13,619 connectors priced including VAT in Europe/London. 398 connectors rejected for PCPR/PAYG conflicts; 60 for missing exact PAYG tariff. All station identities retained; excluded connectors never inherit another offer. Official 7–22kW idle fee included with 60-minute post-charge grace in 08:00–20:00 window.",
       "next": "Daily authenticated collection and independent PAYG validation. Resolve only three bounded rejected tariff IDs; current API token returns GB only.",
       "dataset": "data/national/uk_ubitricity_v9.json.gz",
       "overlay": "data/operator_direct/ubitricity_uk_pcpr_payg_evidence.json",
@@ -1542,7 +1542,7 @@
         "next": "No unresolved tariff IDs remain. Keep daily feed ingest plus the 10 evidence-backed tariff overrides until the upstream tariff feed republishes those IDs.",
         "locationsEndpoint": "https://info.smartcharging.uk/public_feed/locations/2463",
         "tariffsEndpoint": "https://info.smartcharging.uk/public_feed/locations/2463/tariffs",
-        "validation": "Official CPS Network Performance page links these public feeds. Live anonymous validation 2026-09-27: locations meta total=1485 and records contain party_id CPS, coordinates, EVSE status, connectors, power and tariff_ids; tariffs feed returns GBP ENERGY/FLAT components, VAT, min_price and duration restrictions. Second-pass collector 2026-09-27 found 263 connector tariff_ids, 253 present in tariff feed and 10 dangling IDs. These dangling IDs are still referenced by current location records, including both UNKNOWN and AVAILABLE/CHARGING EVSE, so CPS must remain partial until tariff values are recovered or the operator feed is corrected. 2026-09-28: four dangling tariff IDs resolved from current owner tariff policies matched to station and power category: King Street Coatbridge (NLC 22kW 40p/kWh), Pettycur Road Kinghorn (Fife 22kW 40p/kWh), Dalmuir (West Dunbartonshire 7kW 40p/kWh, \u00a31 minimum), Broomhill Lane Glasgow (GCC 7kW 40p/kWh + \u00a31 connection and applicable overstay). 2026-09-28: the six remaining dangling CPS tariff IDs were found verbatim in the current Evolt/SSM tariff feed (3666), consistent with migrated Scottish estates. All raw OCPI tariff components, VAT, restrictions and min_price values are preserved. CPS tariff coverage is therefore complete after cross-feed reconciliation. Finalized 2026-09-28: all 10 dangling tariff ids were resolved by matching each id's exact location group to the current/latest authoritative tariff published by the relevant charge point owner or ChargePlace Scotland. No tariff was inferred from a neighbouring unrelated site. Overrides are implemented in scripts/collect_uk_validated_open_feeds.py.",
+        "validation": "Official CPS Network Performance page links these public feeds. Live anonymous validation 2026-09-27: locations meta total=1485 and records contain party_id CPS, coordinates, EVSE status, connectors, power and tariff_ids; tariffs feed returns GBP ENERGY/FLAT components, VAT, min_price and duration restrictions. Second-pass collector 2026-09-27 found 263 connector tariff_ids, 253 present in tariff feed and 10 dangling IDs. These dangling IDs are still referenced by current location records, including both UNKNOWN and AVAILABLE/CHARGING EVSE, so CPS must remain partial until tariff values are recovered or the operator feed is corrected. 2026-09-28: four dangling tariff IDs resolved from current owner tariff policies matched to station and power category: King Street Coatbridge (NLC 22kW 40p/kWh), Pettycur Road Kinghorn (Fife 22kW 40p/kWh), Dalmuir (West Dunbartonshire 7kW 40p/kWh, £1 minimum), Broomhill Lane Glasgow (GCC 7kW 40p/kWh + £1 connection and applicable overstay). 2026-09-28: the six remaining dangling CPS tariff IDs were found verbatim in the current Evolt/SSM tariff feed (3666), consistent with migrated Scottish estates. All raw OCPI tariff components, VAT, restrictions and min_price values are preserved. CPS tariff coverage is therefore complete after cross-feed reconciliation. Finalized 2026-09-28: all 10 dangling tariff ids were resolved by matching each id's exact location group to the current/latest authoritative tariff published by the relevant charge point owner or ChargePlace Scotland. No tariff was inferred from a neighbouring unrelated site. Overrides are implemented in scripts/collect_uk_validated_open_feeds.py.",
         "unresolvedTariffIds": [],
         "resolvedDanglingTariffs": {
           "5a59d27e-06ff-4e4d-a7b4-3d38df625bed": {
@@ -1575,7 +1575,7 @@
               "energyGbpPerKwh": 0.4,
               "minimumFeeGbp": 1
             },
-            "evidence": "West Dunbartonshire Council tariff: slow/fast 40p/kWh, rapid 50p/kWh, minimum fee \u00a31. Feed match is 7kW."
+            "evidence": "West Dunbartonshire Council tariff: slow/fast 40p/kWh, rapid 50p/kWh, minimum fee £1. Feed match is 7kW."
           },
           "f71fc44d-bdae-44f8-9075-90433602a9ee": {
             "site": "Broomhill Lane, Glasgow",
@@ -1587,7 +1587,7 @@
               "overstayFeeGbp": 40,
               "maximumDuration": "3h between 08:00-20:00 for on-street standard chargers outside city centre"
             },
-            "evidence": "Current ChargePlace Scotland Glasgow tariff page: standard 7-22kW 40p/kWh + \u00a31 connection; \u00a340 overstay after applicable maximum duration. Broomhill is outside city centre."
+            "evidence": "Current ChargePlace Scotland Glasgow tariff page: standard 7-22kW 40p/kWh + £1 connection; £40 overstay after applicable maximum duration. Broomhill is outside city centre."
           },
           "3387a23a-0e18-4632-9edd-4038bf165d91": {
             "source": "Evolt tariff feed 3666",
