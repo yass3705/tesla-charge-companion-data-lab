@@ -76,6 +76,8 @@ if(require.main===module){
   const engine=require(path.resolve(process.argv[2]||'/tmp/tcc-v9-pinned-pricing-engine.js'));
   const root=path.resolve(__dirname,'..');
   const source=JSON.parse(fs.readFileSync(path.join(root,'reports/tariff-scenarios/france-runtime-offer-fixtures.json'),'utf8'));
+  const overlays=JSON.parse(fs.readFileSync(path.join(root,'reports/tariff-scenarios/france-real-offer-fixtures.json'),'utf8'));
+  source.push(...overlays);
   const checks=[];
   function check(name,rule,duration,expected){
     const offer={id:name,currency:'EUR',pricing:{type:'rules',rules:[{scope:'allDay',pricePerKwh:0,...rule}]}};
