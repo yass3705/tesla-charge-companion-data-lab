@@ -122,7 +122,11 @@ def main():
     locations, location_requests = collect('locations', token, deadline)
     tariffs, tariff_requests = collect('tariffs', token, deadline)
     if not locations:
-        raise RuntimeError('Empty location feed; existing PAYG overlay retained')
+        raise RuntimeError(
+            f'Empty location feed after {location_requests} location request(s); '
+            f'tariffs endpoint returned {len(tariffs)} row(s) in {tariff_requests} request(s); '
+            'existing PAYG overlay retained. Check provider token scope and OCPI response metadata.'
+        )
     connectors = [c for loc in locations for e in loc.get('evses', []) for c in e.get('connectors', [])]
     refs = {str(t) for c in connectors for t in c.get('tariff_ids', [])}
     tids = {str(t['id']) for t in tariffs}
