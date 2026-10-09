@@ -45,6 +45,7 @@ def build(static_rows, dynamic_csv, retrieved_at):
                 latest[pdc] = value
     counts.update(row["etat_pdc"] for row in latest.values())
     records = sorted((row for row in latest.values() if row["etat_pdc"] != "en_service"), key=lambda row: (row["id_station_itinerance"], row["id_pdc_itinerance"]))
+    active_pdc_ids = sorted(pdc for pdc, row in latest.items() if row["etat_pdc"] == "en_service")
     return {
         "schemaVersion": 1,
         "country": "FR",
@@ -54,10 +55,11 @@ def build(static_rows, dynamic_csv, retrieved_at):
         "sourceRows": counts["sourceRows"],
         "matchedPdc": len(latest),
         "displayExcludedPdc": len(records),
+        "enServicePdcIds": active_pdc_ids,
         "unmatchedPdc": counts["unmatchedPdc"],
         "invalidRows": counts["invalidRows"],
         "states": {state: counts[state] for state in sorted(STATES)},
-        "policy": "Dynamic state is a daily display flag; static IRVE rows are retained.",
+        "policy": "Static IRVE rows are retained; only explicitly en_service PDC IDs prove operational eligibility. Missing dynamic data is not en_service.",
         "records": records,
     }
 
