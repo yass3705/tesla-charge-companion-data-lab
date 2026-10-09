@@ -1,0 +1,56 @@
+name: Verify Tesla Mac source versus active V9
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tesla-dataset-provenance-20261010.yml'
+      - 'scripts/tesla_dataset_provenance_audit_20261010.py'
+permissions:
+  contents: write
+concurrency:
+  group: tesla-dataset-provenance
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Inspect canonical Mac, September baseline, actual V9 runtime and preview copies
+        run: python scripts/tesla_dataset_provenance_audit_20261010.py
+      - name: Validate report and highlight source mismatch
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('reports/tesla/tesla-dataset-provenance-audit-latest.json')
+          j=json.loads(p.read_text())
+          assert j['actualV9']['effectiveRepositoryPath']=='v9-production-runtime/data/tesla_stations.json'
+          assert j['sources']['mac_canonical_main']['stations']>1100
+          assert j['sources']['v9_production_snapshot']['stations']>1100
+          assert j['sources']['mac_canonical_main']['sha256']!=j['sources']['v9_production_snapshot']['sha256']
+          print('V9_TESLA_SOURCE_MISMATCH_CONFIRMED',j['actualV9'])
+          PY
+      - name: Publish provenance only (never touch live tariff databases)
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/tesla/tesla-dataset-provenance-audit-latest.json
+          git commit -m "reports: Tesla Mac versus V9 loaded snapshot and October country deltas"
+          for n in 1 2 3 4 5; do
+            git fetch origin main
+            if ! git rebase origin/main; then git rebase --abort || true; exit 1; fi
+            if git push origin HEAD:main; then echo TESLA_SOURCE_REPORT_PUBLISHED; exit 0; fi
+            sleep "$((n*2))"
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-dataset-provenance
+          path: reports/tesla/tesla-dataset-provenance-audit-latest.json
+          retention-days: 90
