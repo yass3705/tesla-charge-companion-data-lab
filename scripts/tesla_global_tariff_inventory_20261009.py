@@ -206,18 +206,20 @@ def main():
                 "billingRuleOccurrences": dict(country_billing[cc]),
                 "ruleCurrencies": dict(country_currency[cc]),
                 "sourceLabels": dict(country_source_vintage[cc]),
-                "sourceAgeBuckets": dict(age_histogram[cc]),
+                "legacyLastUpdatedAgeBuckets_NOT_OBSERVATION": dict(age_histogram[cc]),
                 "timeScopeAudit": dict(scope_audit[cc]),
             }
             for cc in SCOPE
         },
         "issues": dict(sorted(issues.items())),
+        "freshnessEvidencePolicy": "legacy lastUpdated is a station metadata date, NOT a tariff observation; use sourceObservedAt where present or separately reviewed Mac batch publication evidence",
         "fixtureExamples": sample_count,
         "completeConfigurationFixtureCount": sum(map(len,complete_configs.values())),
         "clockGapExamples": scope_gaps,
         "warnings": [
             "Global Tesla tariffs were ABSENT from the previous Data Lab source-roots census.",
             "Charging configurations and rule occurrences are NOT physical EVSE counts.",
+            "WARNING: legacy lastUpdated remains dated July/September even for October Mac price updates; it is NOT source price observation.",
             "Station/provider source timestamps are not assumed fresh from this fetch.",
             "Pricing by delivered power requires a power-over-time trace; a rated-power band is not a correct simulation.",
             "Rules without an explicit currency must not silently default to EUR.",
