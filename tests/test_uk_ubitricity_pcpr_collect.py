@@ -52,6 +52,34 @@ class UbitricityCollectorTests(unittest.TestCase):
                     collector.collect("locations", "dummy-token", time.monotonic() + 90)
         sleep.assert_not_called()
 
+    def test_401_retries_with_token_scheme(self):
+        response = Response([{"id": "one"}])
+        with mock.patch.object(collector.urllib.request, "urlopen",
+                               side_effect=[error(401), response]) as req:
+            rows, count = collector.collect("locations", "dummy-token", time.monotonic() + 60)
+        self.assertEqual(count, 2)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(req.call_args.args[0].get_header("Authorization"), "Token dummy-token")
+
+    def test_401_with_token_scheme_fails_closed(self):
+        with mock.patch.object(collector.urllib.request, "urlopen", side_effect=error(401)) as req:
+            with self.assertRaisesRegex(RuntimeError, "HTTP 401"):
+                collector.collect("locations", "dummy-token", time.monotonic() + 60)
+        self.assertEqual(req.call_count, 2)
+
+    def test_empty_first_page_returns_no_rows(self):
+        with mock.patch.object(collector.urllib.request, "urlopen", return_value=Response([])):
+            rows, count = collector.collect("locations", "dummy-token", time.monotonic() + 60)
+        self.assertEqual((rows, count), ([], 1))
+
+    def test_non_success_ocpi_status_rejected(self):
+        response = Response([])
+        response = io.BytesIO(json.dumps({"status_code": 2001, "data": []}).encode())
+        response.headers = {}
+        with mock.patch.object(collector.urllib.request, "urlopen", return_value=response):
+            with self.assertRaisesRegex(RuntimeError, "unsuccessful OCPI"):
+                collector.collect("locations", "dummy-token", time.monotonic() + 60)
+
     def test_pagination_link_follows_next_page(self):
         link = '<https://open-chargepoints.com/api/ocpi/cpo/2.2.1/locations?limit=1000&offset=1>; rel="next"'
         pages = [Response([{"id": "one"}], {"Link": link}),
