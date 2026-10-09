@@ -12,11 +12,13 @@ def main():
  fr=read('france-pricing-pilot-latest.json')
  runtime=read('france-runtime-offers-inventory.json')
  tesla=read('tesla-global-inventory-latest.json')
+ tesla_pilot=read('tesla-global-pricing-pilot-latest.json')
  if fr['status']!='synthetic_regressions_pass':raise SystemExit('Synthetic regression suite must pass before archive')
  if not global_data['sourceFilesScanned'] or not fr['samplesTested']:raise SystemExit('Empty inventory or regression')
  files=['global-inventory-latest.json','source-shapes-latest.json','france-real-offer-fixtures.json',
         'france-runtime-offer-fixtures.json','france-runtime-offers-inventory.json','france-pricing-pilot-latest.json',
-        'tesla-global-inventory-latest.json','tesla-global-real-rule-fixtures.json']
+        'tesla-global-inventory-latest.json','tesla-global-real-rule-fixtures.json',
+        'tesla-global-pricing-pilot-latest.json']
  for f in files:
   if not (OUT/f).is_file():raise SystemExit('Missing '+f)
  timestamp=dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H-%M-%SZ')
@@ -32,6 +34,8 @@ def main():
   'externalTeslaCatalogue':{'sha256':tesla['sourceSha256'],'reference':tesla['sourceRepository']+'@'+tesla['sourceRef'],
    'stationCount':tesla['sourceTotalStations'],'countries':tesla['countries'],'issues':tesla['issues']},
   'sourceFamilyCensus':global_data['globalFamilySourceCounts'],
+  'teslaRealRulesSampled':tesla_pilot['fixtureCount'],
+  'teslaCalculationRiskCounts':tesla_pilot['issues'],
   'franceOverlayOfferRows':{
     k:v for k,v in global_data['franceRealOfferRows'].items() if '/offer_rows' in k},
   'franceActualOffersSampled':fr['samplesTested'],
