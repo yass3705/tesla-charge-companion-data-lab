@@ -1,5 +1,6 @@
 {
-  "generatedAt": "2026-10-09T22:06:05.284487+00:00",
+  "schemaVersion": "2.0-provenance-corrected",
+  "generatedAt": "2026-10-09T22:23:32.267548+00:00",
   "scopeCountries": [
     "FR",
     "IT",
@@ -14,6 +15,58 @@
   "macRepository": "yass3705/tesla-charge-companion-stable@main",
   "macSourcePath": "data/tesla_stations.json",
   "macSourceSha256": "cac26eb46010c01b9cf09a82511cb9be436f1b23d3579f1ca0706ba4f6b26c7e",
+  "v9LoadedSnapshotPath": "v9-production-runtime/data/tesla_stations.json",
+  "macBatchPublicationEvidence": {
+    "UK": {
+      "publishedAt": "2026-10-09T16:20:41+00:00",
+      "commitSha": "c37e7717d4a19036b49e6c129c2bd00485b900f6",
+      "commitMessage": "chore(stations): publish united_kingdom automated lot update #18",
+      "provenance": "GitHub commit for published country batch; NOT station-specific observation"
+    },
+    "CH": {
+      "publishedAt": "2026-10-09T00:11:50+00:00",
+      "commitSha": "8c3abb3ea9d1f72d5541e0e60c5f15c267214feb",
+      "commitMessage": "chore(stations): publish switzerland automated lot update #17",
+      "provenance": "GitHub commit for published country batch; NOT station-specific observation"
+    },
+    "IT": {
+      "publishedAt": "2026-10-08T23:01:51+00:00",
+      "commitSha": "f9a9bc53d87f3881ee8a0d8b2fde77fc2d4493eb",
+      "commitMessage": "chore(stations): publish italy automated lot update #17",
+      "provenance": "GitHub commit for published country batch; NOT station-specific observation"
+    },
+    "ES": {
+      "publishedAt": "2026-10-08T19:36:14+00:00",
+      "commitSha": "d2285e2c72fe2398e7a08a9e40560f5327f344e8",
+      "commitMessage": "chore(stations): publish spain automated lot update #16",
+      "provenance": "GitHub commit for published country batch; NOT station-specific observation"
+    },
+    "NL": {
+      "publishedAt": "2026-10-07T19:53:33+00:00",
+      "commitSha": "636316691b117550aeedd96a567967ad1c875d5d",
+      "commitMessage": "chore(stations): publish netherlands automated lot update #13",
+      "provenance": "GitHub commit for published country batch; NOT station-specific observation"
+    },
+    "BE": {
+      "publishedAt": "2026-10-07T18:04:31+00:00",
+      "commitSha": "936a58d3cde77529a207d404af60119c38276498",
+      "commitMessage": "chore(stations): publish belgium automated lot update #13",
+      "provenance": "GitHub commit for published country batch; NOT station-specific observation"
+    },
+    "FR": {
+      "publishedAt": "2026-10-07T10:53:14+00:00",
+      "commitSha": "262f2c5e52b63c0b4312cb06fce40dea23e41a27",
+      "commitMessage": "chore(stations): publish france automated lot update #11",
+      "provenance": "GitHub commit for published country batch; NOT station-specific observation"
+    },
+    "MA": {
+      "publishedAt": "2026-10-07T11:18:55+00:00",
+      "commitSha": "ebe3a2f23aefcaf398f625cedbfe78b568cabe97",
+      "commitMessage": "chore(stations): publish morocco automated lot update #12",
+      "noChangesToTeslaFile": true,
+      "provenance": "GitHub batch commit without changed file; validates publication event but not price observation"
+    }
+  },
   "sucMetadata": {
     "schemaVersion": 1,
     "checkedAt": "2026-10-04T10:37:43.130127+00:00",
@@ -59,72 +112,69 @@
     "accessPolicy": "Previously verified Mac access metadata retained, no new access inferred",
     "freshness": "checkedAt is a download check; sourceGeneratedAt and sourceObservedAt are the source dates"
   },
+  "supersedesMisleadingReport": {
+    "priorClaim": "1,147 stations prefer SuC based on stale lastUpdated",
+    "verdict": "INVALID: lastUpdated is a legacy station metadata date and not price observation",
+    "fix": "separate station sourceObservedAt, country batch publication and SuC sourceObservedAt"
+  },
   "sourceSelectionPolicy": {
-    "freshMac": "source observation under 10 days, not workflow execution",
-    "oldMacAndNewerSuC": "candidate SuC price only when exact unique match, valid pricing and newer observation",
-    "oldMacAndOlderSuC": "keep Mac",
-    "Morocco": "force Mac, regardless of SuC record presence or freshness",
-    "fees": "retain operator ancillary fees; SuC does not supply them",
-    "noMatch": "do not invent a station or a tariff from unmatched ID"
+    "verifiedMacUnder10Days": "use Mac observation if available",
+    "macRecentBatchNoObservedAt": "retain Mac provisionally; batch commit does not prove station-level observation",
+    "oldVerifiedMacNewerSuC": "consider exact, valid, newer SuC price ONLY after reconciliation",
+    "unverifiedOldMac": "needs_freshness_evidence; do NOT blindly choose SuC",
+    "Morocco": "always Mac; SuC never eligible",
+    "fees": "retain CPO ancillary fees; SuC lacks them"
   },
   "countries": {
     "FR": {
       "stations": 278,
-      "suc_charge_tariff_only_pending_source_reconciliation": 278,
-      "mac_over_10_days_suc_price_observation_newer": 278,
+      "mac": 278,
+      "recent_mac_country_batch_publication_station_observation_missing": 278,
       "same_tariff": 149,
       "different_tariff": 129
     },
     "IT": {
       "stations": 108,
-      "suc_charge_tariff_only_pending_source_reconciliation": 106,
-      "mac_over_10_days_suc_price_observation_newer": 106,
+      "mac": 108,
+      "recent_mac_country_batch_publication_station_observation_missing": 108,
       "same_tariff": 105,
       "different_tariff": 2,
-      "mac": 2,
-      "no_validated_suc_comparator": 1,
-      "not_compared": 1,
-      "mac_source_observation_under_10_days": 1
+      "not_compared": 1
     },
     "CH": {
       "stations": 39,
-      "suc_charge_tariff_only_pending_source_reconciliation": 38,
-      "mac_over_10_days_suc_price_observation_newer": 38,
+      "mac": 39,
+      "recent_mac_country_batch_publication_station_observation_missing": 39,
       "same_tariff": 38,
-      "different_tariff": 1,
-      "mac": 1,
-      "mac_source_observation_under_10_days": 1
+      "different_tariff": 1
     },
     "DE": {
       "stations": 326,
-      "suc_charge_tariff_only_pending_source_reconciliation": 326,
-      "mac_over_10_days_suc_price_observation_newer": 326,
+      "needs_freshness_evidence": 326,
+      "no_station_observation_no_recent_batch_suc_candidate_only": 326,
       "different_tariff": 315,
       "same_tariff": 11
     },
     "ES": {
       "stations": 105,
-      "suc_charge_tariff_only_pending_source_reconciliation": 105,
-      "mac_over_10_days_suc_price_observation_newer": 105,
+      "mac": 105,
+      "recent_mac_country_batch_publication_station_observation_missing": 105,
       "same_tariff": 105
     },
     "NL": {
       "stations": 54,
-      "suc_charge_tariff_only_pending_source_reconciliation": 54,
-      "mac_over_10_days_suc_price_observation_newer": 54,
+      "mac": 54,
+      "recent_mac_country_batch_publication_station_observation_missing": 54,
       "same_tariff": 53,
       "different_tariff": 1
     },
     "UK": {
       "stations": 224,
-      "suc_charge_tariff_only_pending_source_reconciliation": 213,
-      "mac_over_10_days_suc_price_observation_newer": 213,
+      "mac": 224,
+      "recent_mac_country_batch_publication_station_observation_missing": 224,
       "same_tariff": 215,
-      "mac": 11,
-      "no_validated_suc_comparator": 4,
       "not_compared": 6,
-      "different_tariff": 3,
-      "mac_source_observation_under_10_days": 7
+      "different_tariff": 3
     },
     "MA": {
       "stations": 6,
@@ -134,8 +184,8 @@
     },
     "BE": {
       "stations": 27,
-      "suc_charge_tariff_only_pending_source_reconciliation": 27,
-      "mac_over_10_days_suc_price_observation_newer": 27,
+      "mac": 27,
+      "recent_mac_country_batch_publication_station_observation_missing": 27,
       "same_tariff": 27
     }
   },
