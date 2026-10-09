@@ -7,6 +7,7 @@ on:
       - scripts/audit_fr_tariff_left_join_20261009.py
       - scripts/audit_fr_gps_evse_probe_20261009.py
       - scripts/audit_fr_two_level_tariff_join_20261009.py
+      - scripts/audit_fr_three_priority_match_20261009.py
       - .github/workflows/irve-tariff-left-join-audit-20261009.yml
   workflow_dispatch:
 permissions:
@@ -28,6 +29,8 @@ jobs:
         run: python scripts/audit_fr_tariff_left_join_20261009.py
       - name: Compute exact versus GPS/technical two-tier EVSE joins
         run: python scripts/audit_fr_two_level_tariff_join_20261009.py
+      - name: Recalculate all P1, P2, P3 matches and deduplicated four-source tariffs
+        run: python scripts/audit_fr_three_priority_match_20261009.py
       - uses: actions/upload-artifact@v4
         if: ${{ hashFiles('reports/france/irve-tariff-left-join-20261009.json') != '' }}
         with:
@@ -35,4 +38,5 @@ jobs:
           path: |
             reports/france/irve-tariff-left-join-20261009.json
             reports/france/irve-tariff-two-level-left-join-20261009.json
+            reports/france/irve-p1-p2-p3-tariff-correspondences-20261009.json
           retention-days: 30
