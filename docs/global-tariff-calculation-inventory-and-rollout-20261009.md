@@ -4,7 +4,7 @@ Date de cadrage : 2026-10-09. **Audit en lecture seule**, sans remplacer le mote
 
 ## Objectif
 
-Identifier et classer **tous les schémas de facturation** rencontrés dans les sources Data Lab des neuf pays TCC : **FR, IT, CH, DE, ES, NL, UK, MA, BE**. Tester d'abord en France avec les offres eMSP publiées et les offres CPO/abonnements réellement compilées, puis étendre les tests nationaux selon la maturité des données. Ne jamais confondre inventaire des *formats* et nombre d'EVSE avec prix validé.
+Identifier et classer **tous les schémas de facturation**, **Tesla inclus**, dans les sources Data Lab et les catalogues de production des neuf pays TCC : **FR, IT, CH, DE, ES, NL, UK, MA, BE**. Tester d'abord en France avec les offres eMSP publiées et les offres CPO/abonnements réellement compilées, puis étendre les tests nationaux selon la maturité des données. Ne jamais confondre inventaire des *formats* et nombre d'EVSE avec prix validé.
 
 ## Périmètre des composants de calcul
 
@@ -24,6 +24,7 @@ Identifier et classer **tous les schémas de facturation** rencontrés dans les 
 ## Référentiels de base
 
 - France : `reports/france/tariff-coverage/` et SOP `docs/france-irve-tariff-coverage-frozen-sop-v1.md` (**P1 identifiant / P2 overlays / P3 GPS validé**).
+- Tesla : catalogue global canonique `tesla-charge-companion-stable/data/tesla_stations.json` (configs de charge, règles par pays, puissance délivrée, tarif minute/kWh, MAD/EUR/CHF/GBP, créneaux, congestion). Le snapshot `data/suc-tracker/` du Data Lab est une source de comparaison distincte (jamais substituée au Maroc), pas un tarif CPO certifié.
 - Formats des sources : `data/operator_direct/`, `data/national/`, `data/switzerland/`, `data/spain_reve/`, `data/belgium/`, `data/platforms/electra/france/`, `data/platforms/electroverse/france-evse/`, `v9-production-runtime/data/v9/` et autres sources explicitement listées dans l'inventaire.
 - Moteur de référence, inchangé : `tesla-charge-companion-stable/v9-production-runtime/assets/v9/pricing-engine.js` épinglé au commit `38ac26e029ba1c4779d4d8fa43e7d5d300858624`.
 
@@ -59,3 +60,9 @@ Identifier et classer **tous les schémas de facturation** rencontrés dans les 
 - `reports/tariff-scenarios/` : inventaire, fixtures et statistiques par cause de calcul incomplet.
 
 **Statut à ce stade :** inventaire/pilote en cours de vérification CI ; ne pas déclarer exhaustive une source structurée qui ne l'est pas.
+
+## Correctif de périmètre — Tesla / 9 pays (2026-10-09)
+
+Le premier rapport de 1 308 fichiers **n'incluait pas le catalogue Tesla global du dépôt `stable`** : les neuf pays désignaient seulement des répertoires non-Tesla parcourus. Cette lacune était contraire à la demande d'audit de *toutes* les bases. La correction est intégrée au workflow `global-tariff-scenario-review.yml` : téléchargement du catalogue Tesla actuel avec empreinte SHA256, décompte distinct par pays des stations/configurations/règles et audit des vrais exemples via l'adaptateur et le moteur V9 **épinglés au même commit**. Le snapshot SuC-Tracker est recensé séparément comme comparaison. Aucune base tarifaire V9 n'est modifiée.
+
+Le suivi garde **trois dimensions différentes** : fichiers de sources non-Tesla, configurations/règles Tesla, et offres réellement simulées. La réussite d'un pipeline n'atteste pas que tous les tarifs soient calculables : `powerMinute` doit tenir compte de la **puissance effectivement délivrée au fil du temps** ; les devises sources et règles de congestion doivent être conservées ; les champs non modélisés restent signalés. Les traitements par pays sont à exécuter ensuite pour couvrir chaque variante réelle, sans extrapolation ni publication anticipée.
