@@ -52,20 +52,22 @@ class UbitricityCollectorTests(unittest.TestCase):
                     collector.collect("locations", "dummy-token", time.monotonic() + 90)
         sleep.assert_not_called()
 
-    def test_401_retries_with_token_scheme(self):
-        response = Response([{"id": "one"}])
-        with mock.patch.object(collector.urllib.request, "urlopen",
-                               side_effect=[error(401), response]) as req:
-            rows, count = collector.collect("locations", "dummy-token", time.monotonic() + 60)
-        self.assertEqual(count, 2)
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(req.call_args.args[0].get_header("Authorization"), "Token dummy-token")
+    def test_documented_token_scheme_used_on_first_request(self):
+        with mock.patch.object(collector.urllib.request, 'urlopen', return_value=Response([{'id': 'one'}])) as req:
+            rows, count = collector.collect('locations', 'dummy-token', time.monotonic() + 60)
+        self.assertEqual((len(rows), count), (1, 1))
+        self.assertEqual(req.call_args.args[0].get_header('Authorization'), 'Token dummy-token')
 
-    def test_401_with_token_scheme_fails_closed(self):
-        with mock.patch.object(collector.urllib.request, "urlopen", side_effect=error(401)) as req:
-            with self.assertRaisesRegex(RuntimeError, "HTTP 401"):
-                collector.collect("locations", "dummy-token", time.monotonic() + 60)
-        self.assertEqual(req.call_count, 2)
+    def test_token_scheme_is_not_duplicated(self):
+        with mock.patch.object(collector.urllib.request, 'urlopen', return_value=Response([{'id': 'one'}])) as req:
+            collector.collect('locations', 'Token dummy-token', time.monotonic() + 60)
+        self.assertEqual(req.call_args.args[0].get_header('Authorization'), 'Token dummy-token')
+
+    def test_401_with_documented_scheme_fails_closed(self):
+        with mock.patch.object(collector.urllib.request, 'urlopen', side_effect=error(401)) as req:
+            with self.assertRaisesRegex(RuntimeError, 'HTTP 401'):
+                collector.collect('locations', 'dummy-token', time.monotonic() + 60)
+        self.assertEqual(req.call_count, 1)
 
     def test_empty_first_page_returns_no_rows(self):
         with mock.patch.object(collector.urllib.request, "urlopen", return_value=Response([])):
