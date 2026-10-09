@@ -39,7 +39,7 @@ ROOTS=[
  'data/platforms/electroverse/france-evse','data/switzerland','data/spain_reve',
  'data/belgium','data/loadmotion','data/greenspot','data/gofast','data/atlante',
  'data/adhoc_payment','data/tariff_history','data/qovoltis','data/zewatt',
- 'data/publish','data/tcc_v9','data/seed','reports/morocco','v9-production-runtime/data/v9'
+ 'data/publish','data/tcc_v9','data/seed','data/suc-tracker','reports/morocco','v9-production-runtime/data/v9'
 ]
 MAX_DECOMPRESSED=75_000_000
 MAX_VISIT=8000
@@ -67,6 +67,7 @@ def countries_for(path,obj):
  return sorted(result) if result else ['UNSPECIFIED']
 def stage(path,doc):
  s=str(path).lower()
+ if s.startswith('data/suc-tracker/'):return 'tesla_secondary_comparison_reference_not_direct_v9_tariff'
  if 'candidate' in s or 'staging' in s or 'probe' in s or 'residual' in s:return 'candidate_or_staging'
  if s.startswith('reports/') or s.startswith('data/seed/'):return 'research_or_manual_observation_not_tariff_validated'
  if 'manifest' in s or 'report' in s or 'status' in s or 'index' in s:return 'metadata_or_status'
@@ -227,6 +228,7 @@ def main():
   'priorityFrance':'initial calculation regression after global structural census',
   'interpretation':{'source_file_with_field':'not equal to a validated EVSE tariff',
    'overlays':'Electra/Electroverse published eMSP source, not the CPO direct price',
+   'suc_tracker':'Secondary Tesla comparison snapshot; NEVER substitute for Mac Tesla Morocco pricing; freshness policy must be checked separately',
    'stage':'candidate/staging raw rates must not be included in production comparisons',
    'sampling':'only France published eMSP offers fully enumerated; nested schema scan samples wide arrays and is marked sampled',
    'large_json':'oversize files listed with reason, not silently counted as scanned'},
