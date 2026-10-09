@@ -279,13 +279,25 @@
     },
     {
       "name": "Allego",
-      "status": "complete_cpo_pcpr_validated_v9_staged",
+      "status": "complete_v9_runtime_integrated_validated",
       "access": "authenticated_official_pcpr_source",
-      "evidence": "2026-10-09 official Allego UK Eco-Movement PCPR feed: 77 public Allego stations, 240 exact connector tariff matches (240/240), 39 distinct verified GBP VAT-inclusive tariffs. Independent CPO/access/VAT/connector validation passed (GitHub run 37936012631).",
-      "next": "V9 source adapter/registry activation still needed; the source report explicitly says publishedToV9=false. Do not claim live coverage before V9 runtime acceptance test.",
+      "evidence": "2026-10-09 Eco-Movement Allego UK 77 public stations, 240 exact connector tariff offers, 39 tariffs; UK 230V*32A AC three-phase and DC up to 1000V*300A allow maximum electrical envelope derived from actual connector voltage/current. V9 independent live dataset + engine smoke PASS run 37939237191. Parking fees after 45 minutes available as optional.",
+      "next": "TCC V9 production runtime now includes Allego first-party PCPR exact connector dataset. GitHub live-feed and engine integration tests PASS, including 240/240 priced connector offers. Monitor daily source validation and OCPI zero max_electric_power workaround based on physical voltage/amperage; mark electrical rating as derived.",
       "requestStatus": "token_received_validated_2026-10-09",
       "requestSubmittedAt": "2026-10-02",
-      "report": "reports/uk/allego_uk-pcpr-validation-latest.json"
+      "report": "reports/uk/allego_uk-pcpr-validation-latest.json",
+      "integration": {
+        "targetRepo": "yass3705/tesla-charge-companion-stable",
+        "runtimeRegistry": "v9-production-runtime/data/v9/source-registry.json",
+        "adapter": "v9-production-runtime/assets/v9/adapters/uk-pcpr.js",
+        "sourceId": "allego-uk-pcpr-direct",
+        "validationRun": 37939237191,
+        "activatedOn": "2026-10-09",
+        "sourceScoped": true,
+        "priceScope": "exact_connector_CPO_direct",
+        "reportedMaxPowerWattZero": true,
+        "powerRecovery": "from_OCPI_voltage_and_amperage"
+      }
     },
     {
       "name": "Arnold Clark Charge",
