@@ -98,11 +98,43 @@ def choose_standard(socket):
     for p in energy:
         if bool(p.get("startTime")) != bool(p.get("endTime")):
             return None, "incomplete_time_window"
+    time_of_day_recovered = False
     if len(energy) > 1 and any(not p.get("startTime") or not p.get("endTime") for p in energy):
-        return None, "multiple_energy_prices_without_windows"
+        # Connected Kerb durationEnergyToD carries the authoritative day/night
+        # boundary at specification level; the night slice is deliberately
+        # missing its explicit window in unifiedTariffs. Use the exact
+        # specification from the SAME socket; never infer network hours.
+        from datetime import datetime as _datetime
+        day_start = selected.get("dayTariffStart")
+        night_start = selected.get("nightTariffStart")
+        def valid_hhmmss(v):
+            if not isinstance(v, str):
+                return False
+            try:
+                return _datetime.strptime(v, "%H:%M:%S").strftime("%H:%M:%S") == v
+            except ValueError:
+                return False
+        if not (selected.get("type") == "durationEnergyToD" and
+                valid_hhmmss(day_start) and valid_hhmmss(night_start) and
+                day_start != night_start and len(energy) == 2 and
+                all((p.get("minDuration") in (0, None) and
+                     not p.get("dayOfWeek")) for p in energy)):
+            return None, "multiple_energy_prices_without_windows"
+        day = [p for p in energy if p.get("startTime") == day_start and p.get("endTime") == night_start]
+        night = [p for p in energy if not p.get("startTime") and not p.get("endTime")]
+        if not (len(day) == len(night) == 1 and
+                isinstance(selected.get("dayPricePerKwh"), (float,int)) and
+                isinstance(selected.get("nightPricePerKwh"), (float,int)) and
+                abs(day[0]["price"] - selected["dayPricePerKwh"]) <= .0002 and
+                abs(night[0]["price"] - selected["nightPricePerKwh"]) <= .0002 and
+                day[0].get("stepSize") == night[0].get("stepSize")):
+            return None, "multiple_energy_prices_without_windows"
+        energy = [{**day[0]}, {**night[0], "startTime":night_start, "endTime":day_start}]
+        time_of_day_recovered = True
     return {"currency": "GBP", "priceIncludesVat": True, "timeBasis": "UTC",
             "displayTimeZone": "Europe/London", "tariffOption": selected.get("tariffOption", "REGULAR"),
-            "appTariffId": selected["id"], "energySlices": energy}, None
+            "appTariffId": selected["id"], "energySlices": energy,
+            "timeOfDayWindowsRecoveredFromSameSocketSpecification":time_of_day_recovered}, None
 
 
 def main():
