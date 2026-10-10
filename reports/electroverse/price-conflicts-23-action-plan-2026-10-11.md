@@ -61,3 +61,24 @@ Demander **capture du tarif détaillé par prise et de son statut**, et la date/
 ## Décision
 
 Aucune offre ne doit être sélectionnée automatiquement sur la seule base du tarif CPO ou du fait que deux sources EVSE partagent un identifiant physique. La résolution exige une preuve Electroverse propre à chaque PK ou une règle vérifiée reproductible.
+
+## Décisions validées dans l'application (11 octobre 2026)
+
+**État : règles intégrées au constructeur, reconstruction nationale conditionnée à la complétude du registre de statuts.**
+
+- **Métropolis : 13 EVSE / 4 stations.** L'utilisateur constate effectivement deux tarifs Electroverse sur la même prise / puissance 22 kW. Si les deux PK sont `AVAILABLE` ou `CHARGING`, bloquer toute attribution de tarif sur cette prise : `Tarif incalculable`. Ne pas choisir la variante 0,08 €/min ni celle 0,10 €/min.
+- **Stations-e (Beauvais) : 2 EVSE / 1 station.** Même décision : deux tarifs contradictoires sur la même puissance. Si les deux PK demeurent éligibles, `Tarif incalculable`.
+- **Chargezy : 8 références EVSE / 4 stations.** Les deux puissances tarifées existent effectivement dans l'application sur le cas représentatif confirmé par l'utilisateur. Le cache présente la même combinaison technique/tarifaire pour les huit références :
+  - **25 kW** : **0,59 €/kWh + 2 €** de connexion ;
+  - **31 kW** : **0,69 €/kWh + 2 €** de connexion.
+  - **Décision : deux lignes de prix par puissance**, chacune liée au PK source, sans fusion sur le seul identifiant physique. Cela fait 16 variantes théoriques pour huit références EVSE, sous réserve de leur statut individuel admissible à la reconstruction.
+- **Règle transversale** : une même référence EVSE et une même puissance ne peuvent jamais publier plusieurs signatures tarifaires ; en cas de désaccord, bloquer, ne pas privilégier arbitrairement une offre.
+
+**Arbitrage :** 23 conflits initiaux = 15 véritables ambiguïtés tarifaires + 8 cas de séparation par puissance. Les 15 restent incalculables lorsque leurs deux sources admissibles sont présentes ; les 8 ne sont plus considérés ambigus **sur le critère de puissance**.
+
+**Traçabilité et tests :**
+- [registre de décision machine](../../data/platforms/electroverse/validated-mappings/price-disputes-review-2026-10-11.json) ;
+- [audit exécutable des 23 EVSE](../../scripts/audit_electroverse_user_review_price_decisions.mjs) ;
+- [audit GitHub Actions](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/workflows/electroverse-user-reviewed-price-qa.yml).
+
+**Attention :** le contrôle de correspondance de la station Chargezy représentative par l'utilisateur ne constitue pas une preuve d'ouverture de recharge pour chaque prise des autres stations. L'overlay final restera soumis au filtre dynamique `AVAILABLE` / `CHARGING` et au mapping exact IRVE.
