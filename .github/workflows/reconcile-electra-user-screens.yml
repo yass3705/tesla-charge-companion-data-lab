@@ -1,0 +1,42 @@
+name: Reconcile Electra app screenshots against source
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/manual_verification/electra_app_evidence_2026-10-10.json"
+      - "scripts/france/reconcile_electra_user_screens.mjs"
+      - ".github/workflows/reconcile-electra-user-screens.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: reconcile-electra-user-screens-main
+  cancel-in-progress: true
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with: 
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect EVSE powers and Electra tariff candidates
+        run: node --max-old-space-size=6144 scripts/france/reconcile_electra_user_screens.mjs
+      - name: Persist source-backed verification
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/user-screen-reconciliation-2026-10-10.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'audit: reconcile verified Electra app screenshots against national EVSE'
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              if git rebase -X theirs origin/main && git push origin HEAD:main; then exit 0; fi
+              git rebase --abort || true
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
