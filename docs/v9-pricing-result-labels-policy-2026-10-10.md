@@ -31,3 +31,16 @@ Preuve : `reports/electroverse/manual-evidence-bry-sur-marne-pasteur-p1-2026-10-
 5. Les filtres, classements et comparaisons n'utilisent pas un montant des offres « ambigu » ou « incalculable ».
 
 **État :** règle de produit documentée. Le déploiement dans le moteur / UI V9 nécessite un changement testé dans le code et la publication de l'artefact de production ; cette fiche ne constitue pas une preuve de déploiement.
+
+## Extension à tous les cas Electroverse identifiés — confirmation utilisateur du 10 octobre 2026
+
+L'utilisateur signale **le même constat d'affichages contradictoires dans Electroverse pour tous les autres cas précédemment cités**. En conséquence, les **27 identifiants signalés** dans l'audit Electroverse passent, à titre conservatoire, sous le libellé **« Tarif ambigu »** tant que la fiche tarifaire applicable ne peut être départagée.
+
+- **Ne pas calculer ni afficher un prix dérivé d'une variante choisie arbitrairement**, et **ne pas remplacer par « Tarif indisponible »**.
+- Garder le diagnostic source initial : 14 conflits de composants à puissance identique, 8 candidats à correspondance unique en puissance mais prix divergents, 5 cas sans puissance exacte ; **parmi ces 5, quatre ont des prix identiques dans le snapshot brut et constituent d'abord un défaut de correspondance**, malgré le signalement utilisateur. Ne pas écrire dans l'audit de provenance que ces quatre divergences chiffrées ont été observées.
+- Le seul dossier documenté avec deux captures et conditions précises reste **Bry-sur-Marne Pasteur P1** ; les autres sont des signalements utilisateur sans justificatif individuel, à examiner avant levée du gel.
+- Cette règle affecte uniquement **l'offre Electroverse de l'EVSE concerné**, et non une offre CPO directe indépendante et validée.
+
+Table exhaustive machine-readable : `reports/electroverse/ambiguity-disposition-user-confirmed-2026-10-10.json`.
+
+**Attention :** cette extension documente la décision métier, sans garantir son application immédiate dans le rendu de la V9 déployée.
