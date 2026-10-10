@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-11",
+  "purpose": "Verified first-party direct guest payment pricing rules by Netherlands CPO, not universal connector price publishing",
+  "policy": {
+    "directCpoOnly": true,
+    "emspExcluded": true,
+    "roamingExcluded": true,
+    "neverInferExactEvseFromCategory": true,
+    "notPublishedToV9": true,
+    "costClassification": "unknown exact direct price -> prix non disponible; conflicting exact price -> tarif incalculable"
+  },
+  "operators": {
+    "AGO": {
+      "operator": "Agri Go Charge (formerly AgriSnellaad)",
+      "source": "https://agrigo.nl/charge/tarieven/",
+      "payment": "QR webapp pre-authorization, bank payment, no eMSP required on equipped charging points",
+      "guestQRRate": "Pay-page amount is authoritative for exact charging point, not published category guidance",
+      "publishedIndicativeAdHocTariffsInclVat": [
+        {
+          "group": "residential neighborhood AC <=22 kW",
+          "eurPerKwh": 0.49
+        },
+        {
+          "group": "public parking AC <=22 kW",
+          "eurPerKwh": 0.52
+        },
+        {
+          "group": "DC 22–60 kW",
+          "eurPerKwh": 0.56
+        },
+        {
+          "group": "DC >=60 kW",
+          "eurPerKwh": 0.65
+        }
+      ],
+      "publishedAdditionalFeesInclVat": [
+        {
+          "site": "public parking AC",
+          "afterConnectedMinutes": 240,
+          "windowLocal": "08:00–22:00 Europe/Amsterdam",
+          "rateEurPerHour": 0.73,
+          "calculation": "Only minutes beyond 240 connected that fall within 08:00–22:00; billing step/rounding not yet verified, do not invent"
+        },
+        {
+          "site": "DC fast",
+          "afterConnectedMinutes": 60,
+          "rateEurPerMinute": 1,
+          "calculation": "Only connected time past 60 minutes; do not treat hold or authorization as charging cost"
+        }
+      ],
+      "preAuthorizationEurRange": [
+        40,
+        60
+      ],
+      "note": "Pre-authorization is a temporary hold not a charging component. QR is present on most, not necessarily all stations. Operator states actual price varies by location and may differ on portal. No blanket direct tariffs based solely on category."
+    },
+    "LNT": {
+      "operator": "Laadnet",
+      "sources": [
+        "https://laadnet.nl/veel-gestelde-vragen/",
+        "https://laadnet.nl/product/qr-code-sticker/",
+        "https://laadnet.nl/algemene-voorwaarden-ad-hoc-laden/"
+      ],
+      "payment": "Credit card through sticker QR or NFC activated by charge point owner; not all Laadnet stations have enabled stickers",
+      "tariff": "owner-defined charger-specific ad-hoc price; guest transaction charges can be borne by owner or passed through and require exact portal proof",
+      "publishedOperatorTransactionAdminEur": 0.35,
+      "transactionAdminPolicy": "Not automatically a customer fee. The operator charges the charger owner, who may pass it to guests via station tariff.",
+      "access": "Private or company charger presence in public OCPI does not automatically imply public physical access; verify each public guest enabled charger"
+    },
+    "SPA": {
+      "operator": "StellaPower",
+      "sources": [
+        "https://stellapower.eu/faq-items/wat-kost-opladen-bij-de-openbare-laadpaal/",
+        "https://stellapower.eu/faq-items/heeft-stellapower-ook-laadpassen/"
+      ],
+      "payment": "Direct credit/debit card via QR on operator public chargers; roaming cards may charge additional fees",
+      "tariff": "Posted kWh price at each physical charger + possible post-charging occupancy fee. Exact QR/physical price not available from official unauthenticated website.",
+      "notOperatorBrandedCard": true
+    },
+    "WAT": {
+      "operator": "WattHub",
+      "sources": [
+        "https://watthub.nl/locaties/",
+        "https://watthub.nl/locaties-post/watthub-rotterdam/"
+      ],
+      "payment": "booking/account-based; public unauthenticated exact direct-pay price not independently confirmed",
+      "tariff": "Dynamic per site and time slot, no generic public guest €/kWh",
+      "classification": "pricing not calculable until exact CPO guest price for time/site and eligible vehicle/public conditions"
+    }
+  }
+}
