@@ -5,6 +5,7 @@ on:
     paths:
       - "scripts/build_electroverse_france_evse_overlay.mjs"
       - "data/electroverse/tariff_cache/manifest.json"
+      - "data/electroverse/live_statuses/manifest.json"
       - "data/electroverse/irve_location_mapping.json"
       - "data/national/france-irve-static-v9/manifest.json"
       - "data/platforms/electroverse/validated-mappings/numeric-residual.json"
@@ -43,7 +44,12 @@ jobs:
         with:
           node-version: 22
       - name: Build exact EVSE-level Electroverse overlay
-        run: node scripts/build_electroverse_france_evse_overlay.mjs
+        run: |
+          if [ -s data/electroverse/live_statuses/manifest.json ]; then
+            node scripts/build_electroverse_france_evse_overlay.mjs
+          else
+            echo 'Status census not yet available — preserve current V9 overlay'
+          fi
       - name: Persist validated EVSE overlay
         run: |
           rm -rf /tmp/electroverse-france-evse
