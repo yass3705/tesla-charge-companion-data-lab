@@ -114,7 +114,7 @@ def main():
                     tariff_type = txt(tariff.get("type")).upper()
                     issuer_type[tariff_type or "MISSING"] += 1
                     if tariff_type != "AD_HOC_PAYMENT":
-                        reasons.append("ad_hoc_payment_not_explicit_in_ocpi_tariff")
+                        reasons.append("ocpi_tariff_type_unspecified_valid_for_all_sessions_not_payg_checkout_proof")
                     fields = list(tariff_components(tariff))
                     for component, restriction in fields:
                         kind = txt(component.get("type")).upper()
@@ -160,7 +160,7 @@ def main():
     for t in tariffs:
         tid = txt(t.get("id"))
         if not t.get("type"):
-            tariff_reasons["unspecified_tariff_type"] += 1
+            tariff_reasons["type_unspecified_ocpi_valid_all_sessions"] += 1
         if txt(t.get("currency")).upper() != "GBP":
             tariff_reasons["non_GBP_tariff"] += 1
         if identical_scope_conflict(t):
@@ -244,11 +244,11 @@ def main():
                 "pricedByArithmeticButNotPAYGVerified": existing["stagedRankableDirectOffers"],
                 "excludedFromArithmetic":existing["stagedUnpricedConnectors"],
                 "currentV9Activation": "not_verified_by_source_report",
-                "note": "Tariff.type absent; calculated 20% VAT is a statutory inference, not per-offer operator attestation."
+                "note": "OCPI missing Tariff.type applies to all session types; it does not prove an independent ad-hoc checkout. VAT 20% is a statutory inference, not per-offer attestation."
             },
             "guards": [
                 "Never convert a USD FLAT 0 into GBP or interpret it as confirmed free charging",
-                "Never rank missing-type prices as verified anonymous ad-hoc without independent CPO evidence",
+                "OCPI Tariff.type omitted is valid for all sessions; require separate evidence that the public price is the actual first-party ad-hoc checkout",
                 "TIME and PARKING_TIME must use charging and idle durations separately, never same elapsed minutes twice",
                 "Missing OCPI VAT must retain inferred-VAT provenance and be independently checked against customer-facing PAYG",
                 "Only exact location+EVSE+connector+tariff identity may receive a tariff",
@@ -276,7 +276,7 @@ def main():
     print("UK_CPO_AMBIGUITY_AUDIT="+json.dumps({
         "connectors":len(cases),"decision":data["chargePoint"]["connectorDisposition"],
         "vatMissing":tariff_reasons["at_least_one_vat_absent"],
-        "tariffTypesMissing":tariff_reasons["unspecified_tariff_type"],
+        "tariffTypesMissingButValidAllSessions":tariff_reasons["type_unspecified_ocpi_valid_all_sessions"],
         "ambiguousSameScopeTariffs":len(conflicted_tariffs),
         "connectedKerbExcluded":ck["unresolvedConnectors"],
         "connectedKerbTrueAmbiguity":ck_labels["tarif_ambigu"],
