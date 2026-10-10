@@ -305,7 +305,7 @@ stage_report={
     "readyForSnapshotInventoryStage":len(safe_locations)>0 and staged_connectors>0,
     "readyForTariffRanking":False,
     "candidatePriceCountBeforePaymentAndVatProof":included_connector_count,
-    "unverifiedConditions":["tariff_type_missing_in_all_145_source_tariffs","all_source_vat_missing_operator_confirmation","physical_site_cpo_scope_not_independently_verified"],
+    "unverifiedConditions":["tariff_type_omitted_ocpi_valid_all_sessions_payment_channel_not_verified","all_source_vat_missing_operator_confirmation","physical_site_cpo_scope_not_independently_verified"],
     "integrationStatus":"pcpr_cpo_arithmetic_staging_payg_and_vat_not_verified"
 }
 stage_path=ROOT/"reports/uk/eco-movement-pcpr-v9-staging.json"
