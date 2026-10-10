@@ -59,8 +59,17 @@ for(const [cpo,n] of quotas){
   chosen.push(r);pickedIds.add(r.electraLocationId);pickedCities.set(cityKey,true);count++;
  }
 }
+// The first app-check batch must cover distinct operator families, not only
+// the first CPO in the quota list. Leave the remaining cases available as P2.
+const p1Plan=[['Electra',5],['Powerdot',2],['DRIVECO',1],['Freshmile',1],['Izivia',1],['TotalEnergies',1],['Mobive',1]];
+const p1=[],p1Ids=new Set();
+for(const [name,n] of p1Plan){
+ for(const x of chosen.filter(z=>z.operator===name).slice(0,n)){p1.push(x);p1Ids.add(x.electraLocationId);}
+}
+const ordered=[...p1,...chosen.filter(x=>!p1Ids.has(x.electraLocationId))];
 let rank=0;
-for(const row of chosen){rank++;row.priority=rank<=12?'P1':'P2';row.rank=rank;delete row.score;}
+for(const row of ordered){rank++;row.priority=rank<=p1.length?'P1':'P2';row.rank=rank;delete row.score;}
+chosen.splice(0,chosen.length,...ordered);
 function csv(v){let s=str(v);return /[;"\n\r]/.test(s)?'"'+s.replaceAll('"','""')+'"':s;}
 const fields=[
  ['rank','Ordre'],['priority','Priorite'],['operator','Operateur'],['name','Nom station dans Electra'],['city','Ville'],
