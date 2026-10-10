@@ -72,7 +72,11 @@ async function one(pk){
   requests++;
   const r=await client.request(queryOne,{pk,after:null,first:10},{attempts:1});
   const loc=r.json?.data?.chargingLocation;
-  if(loc?.evses)return{ok:true,statuses:await fullPage(pk,loc)};
+  if(loc?.evses){
+   try{return{ok:true,statuses:await fullPage(pk,loc)}}catch(e){
+    if(attempt===attempts)return{ok:false,error:'pagination:'+String(e?.message||e)};
+   }
+  }
   if(attempt<attempts)await sleep(Math.max(1800,delay*3));
  }
  return{ok:false,error:'single_paged_unavailable'};
@@ -81,7 +85,11 @@ async function collect(i){
  if(!Number.isInteger(i)||i<0||i>=count)throw Error('Partition must be 0..15');
  await fs.mkdir(PARTS,{recursive:true});
  const expected=partitions[i],old=await fetchPart(i);
- const existing=old?.sourceFingerprint===cacheFingerprint&&old?.expectedLocations===expected.length?old:null;
+ // A checkpoint may only be resumed inside its observation window.
+ // Re-scan the partition next night rather than bumping the timestamp of stale EVSE statuses.
+ const observedAt=Date.parse(old?.startedAt||'');
+ const observationFresh=Number.isFinite(observedAt)&&Date.now()-observedAt<16*3600_000;
+ const existing=old?.sourceFingerprint===cacheFingerprint&&old?.expectedLocations===expected.length&&observationFresh?old:null;
  const entries=existing?.entries||{};
  const bad=existing?.errors||{};
  const started=new Date().toISOString();
@@ -140,8 +148,9 @@ async function aggregate(){
   if(!p||p.sourceFingerprint!==cacheFingerprint||p.expectedLocations!==partitions[i].length){
    issues.push({partition:i,reason:'missing_or_old_checkpoint'});continue;
   }
-  const age=Date.now()-Date.parse(p.updatedAt);
-  if(!Number.isFinite(age)||age>24*3600000)issues.push({partition:i,reason:'stale_partition',updatedAt:p.updatedAt});
+  const observedSince=Date.parse(p.startedAt);
+  const age=Date.now()-observedSince;
+  if(!Number.isFinite(age)||age>16*3600000)issues.push({partition:i,reason:'stale_partition',startedAt:p.startedAt});
   ts.push(p.updatedAt);
   for(const pk of partitions[i]){
    const found=p.entries?.[pk];
