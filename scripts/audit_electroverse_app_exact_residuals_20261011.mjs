@@ -25,6 +25,14 @@ for(const input of evidence.confirmedMatches){
  const local=byLocation.get(loc);
  const localTargets=(local?.irvePdcIds||[]).filter(p=>norm(p)===expected);
  const owners=byTarget.get(expected)||new Set();
+ const matchedOwnershipLocations=(mapping.mappings||[]).filter(m=>(m.irvePdcIds||[]).some(p=>norm(p)===expected));
+ const ownerDetails=matchedOwnershipLocations.map(m=>({
+   stationId:m.irveStationId,sourceLocationPk:String(m.electroverseLocationPk),
+   mappingSource:m.source||m.mappingMode||null,
+   name:m.electroverse?.name||m.irve?.name||m.irveStationName||null,
+   irve:m.irve||null,electroverse:m.electroverse||null,
+   mappedPdcCount:m.irvePdcIds?.length||0
+ }));
  const reportRows=(priority.extraExact||[]).filter(x=>String(x.sourcePk)===String(input.sourceEvsePk));
  const prices=reportRows.flatMap(x=>x.price||[]);
  const info={appId:input.appId,locationPk:loc,sourcePk:input.sourceEvsePk,
@@ -33,7 +41,7 @@ for(const input of evidence.confirmedMatches){
   sourceConnectorProfiles:es.flatMap(e=>(e.connectors||[]).map(c=>({kw:c.kilowatts,standard:String(c.standard?.name||c.standard||''),
    pricingDetailPresent:!!c.complexPricingDetail,hasSimplePriceComponents:Array.isArray(c.priceComponents)}))),
   exactLocalIrvePdcs:localTargets,uniqueLocalIrve:localTargets.length===1,
-  globalOwnerCount:owners.size,globalStations:[...owners],
+  globalOwnerCount:owners.size,globalStations:[...owners],ownerDetails,
   sourcePricingReport:prices.map(p=>({kw:p.kw,rateComponents:p.components,complexRestrictions:p.restrictions})),
   evidenceDisplayStatus:input.appStatus,needsNationalStatusGate:true};
  const check=info.cacheMatching&&info.uniqueLocalIrve&&owners.size===1&&owners.has(input.stationId)&&
@@ -68,6 +76,7 @@ if(errors.length){
  for(const e of errors)console.log(JSON.stringify({event:'MISMATCH',appId:e.appId,cacheEvses:e.info.cacheEvses,
  cacheRef:e.info.cacheRef,cacheMatching:e.info.cacheMatching,sourceConnectorProfiles:e.info.sourceConnectorProfiles,
  localPdcs:e.info.exactLocalIrvePdcs,globalOwnerCount:e.info.globalOwnerCount,globalStations:e.info.globalStations,
+ ownerDetails:e.info.ownerDetails,
  sourcePricingReport:e.info.sourcePricingReport?.map(p=>({kw:p.kw,rate:p.rateComponents?.filter(c=>c[0]==='ConsumptionRate')}))}));
  process.exitCode=2;
 }
