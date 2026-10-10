@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-10T10:09:12.964252+00:00",
-  "sourceCollectedAt": "2026-10-10T10:09:12.803047+00:00",
+  "generatedAt": "2026-10-10T11:39:47.796966+00:00",
+  "sourceCollectedAt": "2026-10-10T11:39:47.630183+00:00",
   "sourceLocations": 323,
   "stagedPublicLocations": 323,
   "stagedConnectors": 1142,
@@ -39,10 +39,16 @@
     "PARKING_TIME": 67
   },
   "taxExplicitByComponent": {},
-  "taxPolicy": "UK public standard VAT 20% assumed only if OCPI VAT is missing; prices derived from OCPI prices excluding VAT, all GBP TTC",
+  "taxPolicy": "20% statutory UK public electricity VAT used for arithmetic ONLY where OCPI component omits VAT; individual payment-page gross amount not yet operator-verified; cannot promote to confirmed direct PAYG",
   "cpoPolicy": "CPO PCPR provenance (not eMSP); declared operator retained (ChargePoint); independently operated physical site identities not inferred",
   "stagedDataset": "data/national/uk_eco_movement_pcpr_v9.json.gz",
   "readyForSnapshotInventoryStage": true,
-  "readyForTariffRanking": true,
-  "integrationStatus": "cpo_direct_exact_connector_vat_inclusive"
+  "readyForTariffRanking": false,
+  "candidatePriceCountBeforePaymentAndVatProof": 1035,
+  "unverifiedConditions": [
+    "tariff_type_missing_in_all_145_source_tariffs",
+    "all_source_vat_missing_operator_confirmation",
+    "physical_site_cpo_scope_not_independently_verified"
+  ],
+  "integrationStatus": "pcpr_cpo_arithmetic_staging_payg_and_vat_not_verified"
 }
