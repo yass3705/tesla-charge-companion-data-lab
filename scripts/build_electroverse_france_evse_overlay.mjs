@@ -4,6 +4,33 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 
 const CACHE='data/electroverse/tariff_cache';
+const STATUS_DIR='data/electroverse/live_statuses';
+const STATUS_ALLOWED=new Set(['AVAILABLE','CHARGING']);
+const statusManifest=JSON.parse(await fs.readFile(STATUS_DIR+'/manifest.json','utf8'));
+if(!statusManifest?.completeness?.locations||statusManifest.failedLocations!==0)
+  throw Error('Cannot publish Electroverse overlay: national EVSE status census incomplete');
+const statusData=JSON.parse(zlib.gunzipSync(await fs.readFile(STATUS_DIR+'/'+statusManifest.ledger)).toString('utf8'));
+const statusAt=Date.parse(statusData.generatedAt);
+if(!Number.isFinite(statusAt)||Date.now()-statusAt>72*3600_000)
+  throw Error('Cannot publish Electroverse overlay: live EVSE status census is older than 72 hours');
+const statusExcluded={byStatus:{},byStation:{},samples:[]};
+let statusAccepted=0,statusSourceTotal=0;
+function filterElectroverseRow(sourceRow,count=false){
+  const locPk=String(sourceRow.electroverseLocationPk??'');
+  const known=statusData.locations?.[locPk]||{};
+  const keep=[];
+  for(const e of sourceRow.tariff?.evses||[]){
+    const status=String(known[String(e?.pk??'')]||'MISSING').toUpperCase();
+    if(count)statusSourceTotal++;
+    if(STATUS_ALLOWED.has(status)){keep.push(e);if(count)statusAccepted++;}
+    else if(count){
+      statusExcluded.byStatus[status]=(statusExcluded.byStatus[status]||0)+1;
+      statusExcluded.byStation[locPk]=(statusExcluded.byStation[locPk]||0)+1;
+      if(statusExcluded.samples.length<60)statusExcluded.samples.push({locPk,evsePk:e?.pk??null,physicalReference:e?.physicalReference??null,status});
+    }
+  }
+  return {...sourceRow,tariff:{...sourceRow.tariff,evses:keep}};
+}
 const MANIFEST=CACHE+'/manifest.json';
 const MAP='data/electroverse/irve_location_mapping.json';
 const DRIVECO='data/operator_direct/driveco_evse_tariffs.json';
@@ -403,7 +430,8 @@ const p01DonorEvseByPk=new Map();
 if(p01DonorPkSet.size){
   for(const sh of manifest.shards||[]){
     const d=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
-    for(const row of Object.values(d.stations||{})){
+    for(const sourceRow of Object.values(d.stations||{})){
+      const row=filterElectroverseRow(sourceRow);
       for(const e of row?.tariff?.evses||[]){
         const pk=String(e?.pk??'');
         if(p01DonorPkSet.has(pk))p01DonorEvseByPk.set(pk,e);
@@ -481,7 +509,8 @@ function rej(k){rejected[k]=(rejected[k]||0)+1;}
 
 for(const sh of manifest.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
-  for(const row of Object.values(data.stations||{})){
+  for(const sourceRow of Object.values(data.stations||{})){
+    const row=filterElectroverseRow(sourceRow,true);
     stats.cacheLocations++;
     for(const e0 of row.tariff?.evses||[]){
       if(debugNumericSourcePks.has(String(e0?.pk??''))){
@@ -2899,6 +2928,11 @@ const out={
   tileSizeDegrees:TILE,
   tileCount:manifestTiles.length,
   stats,rejected,
+  statusGate:{generatedAt:statusData.generatedAt,allowedStatuses:[...STATUS_ALLOWED],
+    excludedStatuses:statusExcluded.byStatus,excludedByStationCount:Object.keys(statusExcluded.byStation).length,
+    excludedEvseCount:statusSourceTotal-statusAccepted,acceptedEvseCount:statusAccepted,
+    sourceEvseCount:statusSourceTotal,
+    excludedSamples:statusExcluded.samples},
   pricingDiagnostics,
   duplicateSamples,
   policy:{
