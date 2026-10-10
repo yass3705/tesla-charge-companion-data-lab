@@ -1,6 +1,9 @@
 name: UK Blink PCPR exact connector validation
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["UK Blink Charging PCPR collect"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -13,6 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   audit:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
