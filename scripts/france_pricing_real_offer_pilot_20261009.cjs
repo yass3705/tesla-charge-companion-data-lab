@@ -112,9 +112,9 @@ for(const s of samples){
    if(unmodeledExamples.length<90)unmodeledExamples.push({offerId:offer?.id,provider:s.provider,origin:s.origin,unmodeledFields:unmodeled});
  }
  const provider=s.provider||'unknown';counters[provider]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};
- counters[provider].total++;counters[provider][st]++;
- typeStats[s.tariffType]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};typeStats[s.tariffType].total++;typeStats[s.tariffType][st]++;
- for(const k of s.families||[]){familyStats[k]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};familyStats[k].total++;familyStats[k][st]++;}
+ counters[provider].total++;counters[provider][st]=(counters[provider][st]||0)+1;
+ typeStats[s.tariffType]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};typeStats[s.tariffType].total++;typeStats[s.tariffType][st]=(typeStats[s.tariffType][st]||0)+1;
+ for(const k of s.families||[]){familyStats[k]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};familyStats[k].total++;familyStats[k][st]=(familyStats[k][st]||0)+1;}
  if(!isValid){
   const reason=shadow?'parking_zero_rule_shadows_energy':String(v.reason||'reason_missing');reasonCounts[reason]=(reasonCounts[reason]||0)+1;
   if(sampleIssues.length<150)sampleIssues.push({offerId:offer?.id,provider,tariffType:s.tariffType,signature:s.signatureId,reason,matchedRule:v.matchedRule??null});
