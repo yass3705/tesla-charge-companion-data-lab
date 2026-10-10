@@ -93,30 +93,7 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             mkdir -p data/electroverse/live_statuses/parts reports/electroverse
-            node - "$part" <<'NODE'
-            const fs=require('fs');
-            const filename=process.argv[2];
-            const dst='data/electroverse/live_statuses/parts/'+filename;
-            const incoming=JSON.parse(fs.readFileSync('/tmp/electroverse-status-parts/'+filename,'utf8'));
-            let existing=null;
-            try{existing=JSON.parse(fs.readFileSync(dst,'utf8'));}catch(e){if(e.code!=='ENOENT')throw e}
-            if(existing){
-              if(existing.sourceFingerprint!==incoming.sourceFingerprint||existing.expectedLocations!==incoming.expectedLocations)throw Error('partition source drift: refusing overwrite');
-              const best=(a,b)=>Date.parse(a.updatedAt)>=Date.parse(b.updatedAt)?a:b;
-              const latest=best(existing,incoming);
-              const entries={...(existing.entries||{}),...(incoming.entries||{})};
-              if(latest===existing){Object.assign(entries,existing.entries||{});}
-              const errors={...(existing.errors||{}),...(incoming.errors||{})};
-              for(const key of Object.keys(entries))delete errors[key];
-              incoming.entries=entries;
-              incoming.errors=errors;
-              incoming.startedAt=[existing.startedAt,incoming.startedAt].filter(Boolean).sort()[0];
-              incoming.updatedAt=[existing.updatedAt,incoming.updatedAt].filter(Boolean).sort().at(-1);
-            }
-            fs.mkdirSync('data/electroverse/live_statuses/parts',{recursive:true});
-            fs.writeFileSync(dst,JSON.stringify(incoming,null,2)+'\n');
-            console.log(JSON.stringify({partition:incoming.partition,mergedGood:Object.keys(incoming.entries).length,pending:incoming.expectedLocations-Object.keys(incoming.entries).length}));
-            NODE
+            node scripts/electroverse_merge_status_partitions.mjs "/tmp/electroverse-status-parts/$part" "data/electroverse/live_statuses/parts/$part"
             cp /tmp/electroverse-status-partition-report.json reports/electroverse/status-partition-latest.json
             git add "data/electroverse/live_statuses/parts/$part" reports/electroverse/status-partition-latest.json
             if git diff --cached --quiet; then ok=1; break; fi
