@@ -23,7 +23,7 @@ const compType=x=>String(x?.type||'MISSING').toUpperCase();
 const supported=new Set(['ENERGY','TIME','FLAT','PARKING_TIME','CONGESTION_TIME']);
 const cases=[],blockedBy={},components={},restrictions={},heteroReasons={},reasons={};
 for(const row of residual.locations||[]){
-  if(!['unsupported_tariff','heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous'].includes(row.reason))continue;
+  if(!['unsupported_tariff','heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous','verified_app_partial_attribution_pending'].includes(row.reason))continue;
   count(reasons,row.reason);
   const loc=locById.get(String(row.electraLocationId));
   const tariff=loc?.chargeTariffs||[],issues=new Set(),types=new Set(),restrictionFields=new Set(),tariffSignatures=new Set(),tariffDetails=[];
@@ -51,14 +51,15 @@ for(const row of residual.locations||[]){
       sections:tsign.slice(0,8),components:[...types]});
   }
   if(row.reason==='unsupported_tariff'&&issues.size===0)issues.add('other_compiler_restriction');
-  if(['heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous'].includes(row.reason)){
+  if(['heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous','verified_app_partial_attribution_pending'].includes(row.reason)){
     if(tariff.length>1&&tariffSignatures.size>1)count(heteroReasons,'different_tariff_rules_at_location');
     else if(tariff.length>1)count(heteroReasons,'same_raw_tariff_different_compilation');
     else count(heteroReasons,'single_tariff_compilation_mismatch');
   }
   for(const issue of issues)if(issue!=='congestion_duration_band_supported')count(blockedBy,issue);
   const knownPowerGroups={};
-  for(const id of (loc?.evses||[]).map(e=>e.evseId).filter(Boolean)){
+  const pendingEVSEs=row.reason==='verified_app_partial_attribution_pending'?(row.evses||[]):(loc?.evses||[]);
+  for(const id of pendingEVSEs.map(e=>e.evseId).filter(Boolean)){
     const kw=powerByEvse.get(norm(id));const label=kw==null?'unknown':String(kw);
     (knownPowerGroups[label]??=[]).push(id);
   }
@@ -76,10 +77,10 @@ for(const row of residual.locations||[]){
   const verdict=provenSamePowerConflict?'same_power_tariff_conflict_evidenced':
       missingPowerEvidence?'tariff_evse_attribution_not_proven':'power_scoped_tariffs_pending_final_validation';
   const item={locationId:String(row.electraLocationId),name:row.name,cpo:row.cpo,powerGroups:knownPowerGroups,samePowerVerdict:verdict,provenSamePowerConflict,missingPowerEvidence,
-    reason:row.reason,evseCount:loc?.evses?.length??row.evses?.length??0,
+    reason:row.reason,evseCount:pendingEVSEs.length,
     tariffCount:tariff.length,tariffSignatureCount:tariffSignatures.size,
     components:[...types].sort(),restrictionFields:[...restrictionFields].sort(),issues:[...issues],
-    evseIds:(loc?.evses||row.evses||[]).map(e=>e.evseId).filter(Boolean),
+    evseIds:pendingEVSEs.map(e=>e.evseId).filter(Boolean),
     examples:tariffDetails.slice(0,3)};
   // Triage by observed station/EVSE evidence. These diagnostics must never
   // substitute a price-to-EVSE attribution when the platform omits that link.
@@ -136,20 +137,23 @@ for(const item of cases){
 const rankedCpo=Object.fromEntries(Object.entries(triageByCpo).sort((a,b)=>b[1].total-a[1].total));
 const summary={schemaVersion:2,generatedAt:new Date().toISOString(),sourceGeneratedAt:manifest.generatedAt,
   counts:{total:cases.length,unsupported:cases.filter(x=>x.reason==='unsupported_tariff').length,
-    heterogeneous:cases.filter(x=>['heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous'].includes(x.reason)).length,
+    heterogeneous:cases.filter(x=>['heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous','verified_app_partial_attribution_pending'].includes(x.reason)).length,
     evidenceRequired:cases.filter(x=>x.missingPowerEvidence).length,
+    verifiedPartialLocations:cases.filter(x=>x.reason==='verified_app_partial_attribution_pending').length,
+    verifiedAppPublishedEvseOffers:manifest.stats?.verifiedAppEvseOffers??0,
     trueSamePowerConflicts:cases.filter(x=>x.provenSamePowerConflict).length,
     congestionDurationSupported:cases.filter(x=>x.issues.includes('congestion_duration_band_supported')).length},
   residualReasonCounts:manifest.rejected||{},auditedReasonCounts:reasons,
   snapshotStats:{publishedLocations:manifest.stats?.publishedLocations,publishedEvseIds:manifest.stats?.publishedEvseIds,publishedOffers:manifest.stats?.publishedOffers,retainedUnmatchedLocations:manifest.stats?.retainedUnmatchedLocations},
   unresolvedKinds:blockedBy,componentTypes:components,restrictionFields:restrictions,
   triage:{classificationCounts:triageCounts,variationCounts:variantCounts,
-    eligibleForAutomaticPublication:0,reason:'Source location chargeTariffs have no proven EVSE-to-tariff association in these residuals; no power-only guess.'},
+    eligibleForAutomaticPublication:0,alreadyPublishedThroughVerifiedAppEvidence:manifest.stats?.verifiedAppEvseOffers??0,
+    reason:'Remaining unmatched EVSE have no proven tariff assignment; manually verified EVSE counted separately.'},
   triageByCpo:rankedCpo,
   sampleTriage:cases.slice(0,24).map(({locationId,name,cpo,triage})=>({locationId,name,cpo,triage})),
   heterogeneousPatterns:heteroReasons,
   sampleUnsupported:cases.filter(x=>x.reason==='unsupported_tariff').slice(0,30),
-  sampleHeterogeneous:cases.filter(x=>['heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous'].includes(x.reason)).slice(0,20),
+  sampleHeterogeneous:cases.filter(x=>['heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous','verified_app_partial_attribution_pending'].includes(x.reason)).slice(0,20),
   caseArchive:'reports/france/irve/electra-pricing-residual-cases-2026-10-08.json.gz',
   decisionPolicy:'Tariffs belong to exact EVSE; different prices across distinct powers in the same station are expected. Count a same-power conflict only where explicit EVSE-to-tariff evidence proves it. SOC80 congestion and explicit duration bounds are supported; retain fail-closed unknown associations.'
 };
