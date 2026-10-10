@@ -79,7 +79,7 @@ for(const row of residual.locations||[]){
     reason:row.reason,evseCount:loc?.evses?.length??row.evses?.length??0,
     tariffCount:tariff.length,tariffSignatureCount:tariffSignatures.size,
     components:[...types].sort(),restrictionFields:[...restrictionFields].sort(),issues:[...issues],
-    evseIds:(loc?.evses||row.evses||[]).map(e=>e.evseId).filter(Boolean).slice(0,12),
+    evseIds:(loc?.evses||row.evses||[]).map(e=>e.evseId).filter(Boolean),
     examples:tariffDetails.slice(0,3)};
   // Triage by observed station/EVSE evidence. These diagnostics must never
   // substitute a price-to-EVSE attribution when the platform omits that link.
