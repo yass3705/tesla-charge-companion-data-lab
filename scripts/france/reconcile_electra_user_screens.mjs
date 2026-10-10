@@ -53,6 +53,27 @@ for(const verify of evidence.stations){
  });
  const fees=(verify.fees||[]).map(f=>({type:f.kind,value:f.eurPerMinute??f.eurPerHour,
   unit:f.eurPerMinute!=null?'EUR/min':'EUR/hour',condition:f.condition??f.trigger}));
+ // A price-per-kWh match is insufficient when parking/time components differ.
+ // Location-level app fees may not apply to every power or every tariff.
+ const stationParkingFee=fees.find(v=>v.type==='parking'&&v.unit==='EUR/hour')?.value??null;
+ const feeComparisons=checks.map(c=>{
+  const options=tariff.filter(t=>c.possibleTariffIds.includes(t.id)).map(t=>{
+   const relevant=t.components.filter(p=>p.type==='TIME'||p.type==='PARKING_TIME')
+     .map(p=>({type:p.type,amountPerHour:Number(p.value),restrictions:p.restriction||{}}));
+   const kinds=[...new Set(relevant.map(x=>x.type))];
+   const matchingAppFee=stationParkingFee==null?null:relevant.some(x=>Math.abs(x.amountPerHour-stationParkingFee)<0.001);
+   const rateConflict=stationParkingFee==null?false:relevant.length>0&&!matchingAppFee;
+   const potentialDoubleCharge=kinds.includes('TIME')&&kinds.includes('PARKING_TIME')&&
+     relevant.some(x=>relevant.some(y=>x!==y&&x.type!==y.type&&x.amountPerHour===y.amountPerHour&&x.amountPerHour>0));
+   return {tariffId:t.id,sourceHourlyComponents:relevant,stationParkingRateMatchesAtLeastOne:matchingAppFee,
+     conflictsWithStationDisplayedRate:rateConflict,potentialDoubleCharge};
+  });
+  return {powerKw:c.powerKw,appRate:c.appRate,stationParkingFeeEurPerHour:stationParkingFee,options,
+    verdict:options.some(x=>x.conflictsWithStationDisplayedRate)?'station_fee_conflict_needs_connector_scope':
+      options.some(x=>x.potentialDoubleCharge)?'parallel_time_and_parking_risk':
+      options.length&&stationParkingFee!=null&&!options.some(x=>x.sourceHourlyComponents.length)?'app_station_fee_not_in_selected_tariff':
+      'no_additional_rate_conflict_observed'};
+ });
  const mismatches=checks.filter(c=>['ambiguous_tariff_identification','technical_power_mismatch'].includes(c.status));
  const missing=pdc.filter(e=>e.technicalPowerStatus!=='one_national_power');
  const unresolved={technicalMismatches:mismatches.length,unknownTechnicalEVSEs:missing.length,sourceTariffs:tariff.length,
@@ -60,7 +81,7 @@ for(const verify of evidence.stations){
    possibleSourceMappingUnique:checks.filter(c=>c.possibleTariffIds.length===1).length};
  out.stations.push({locationId:verify.locationId,name:verify.name,cpo:verify.cpo,validation:verify.confidence,
   appObserved:verify.observations||[],appFees:fees,sourceTariffs:tariff,nationalEvsePowers:pdc,
-  perPowerChecks:checks,unresolved,
+  perPowerChecks:checks,feeComparisons,unresolved,
   finalDisposition:verify.status==='not_found_in_app_to_recheck'?'app_absent_unverified_keep_unpublished':
    'evidence_supports_per_power_rules_not_exact_all_evse_and_temporal_applicability',
   crossChannelWarning:'Electra eMSP only. Do not override direct CPO tariffs.'});
@@ -69,7 +90,9 @@ out.summary={checkedStations:out.stations.length,appPresent:out.stations.filter(
  appAbsent:out.stations.filter(x=>x.finalDisposition==='app_absent_unverified_keep_unpublished').length,
  matchedRateAndPowerCandidates:out.stations.reduce((n,x)=>n+(x.perPowerChecks||[]).filter(z=>z.status==='per_power_candidate_requires_live_tariff_refresh').length,0),
  sourceTariffAmbiguous:out.stations.reduce((n,x)=>n+(x.perPowerChecks||[]).filter(z=>z.status==='ambiguous_tariff_identification').length,0),
- powerMismatches:out.stations.reduce((n,x)=>n+(x.perPowerChecks||[]).filter(z=>z.status==='technical_power_mismatch').length,0)};
+ powerMismatches:out.stations.reduce((n,x)=>n+(x.perPowerChecks||[]).filter(z=>z.status==='technical_power_mismatch').length,0),
+ feeConflictGroups:out.stations.reduce((n,x)=>n+(x.feeComparisons||[]).filter(z=>z.verdict==='station_fee_conflict_needs_connector_scope').length,0),
+ potentialDoubleChargeGroups:out.stations.reduce((n,x)=>n+(x.feeComparisons||[]).filter(z=>z.verdict==='parallel_time_and_parking_risk').length,0)};
 const path='reports/france/electra/user-screen-reconciliation-2026-10-10.json';
 await fs.mkdir('reports/france/electra',{recursive:true});
 await fs.writeFile(path,JSON.stringify(out,null,2)+'\n');
