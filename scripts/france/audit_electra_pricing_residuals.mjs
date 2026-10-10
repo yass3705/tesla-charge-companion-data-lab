@@ -91,8 +91,10 @@ for(const row of residual.locations||[]){
     .map(pc=>[compType(pc),Number(pc.price)]).filter(([k])=>k==='ENERGY')).sort());
   const nonEnergyFingerprint=t=>JSON.stringify((t.elements||[]).flatMap(el=>(el.priceComponents||[])
     .map(pc=>[compType(pc),Number(pc.price)]).filter(([k])=>k!=='ENERGY')).sort());
+  const restrictionFingerprint=t=>JSON.stringify((t.elements||[]).map(el=>el.restrictions||{}).map(r=>JSON.stringify(r)).sort());
   const energyVariantCount=new Set(tariff.map(componentFingerprint)).size;
   const ancillaryVariantCount=new Set(tariff.map(nonEnergyFingerprint)).size;
+  const restrictionVariantCount=new Set(tariff.map(restrictionFingerprint)).size;
   const scopeCoverage=scopes.filter(Boolean).length;
   const exclusivePowerAssignment=scopeCoverage===tariff.length&&matchedSourceEvses>0&&
     unknownPowerEvses===0&&Object.entries(knownPowerGroups).every(([kw])=>{
@@ -108,21 +110,25 @@ for(const row of residual.locations||[]){
     knownPowerCount:matchedSourceEvses-unknownPowerEvses,unknownPowerCount:unknownPowerEvses,
     distinctKnownPowers:validPowers.map(Number).sort((a,b)=>a-b),
     energyPriceVariation:energyVariantCount>1,ancillaryPriceVariation:ancillaryVariantCount>1,
+    restrictionVariation:restrictionVariantCount>1,
     distinctEnergyFingerprints:energyVariantCount,distinctAncillaryFingerprints:ancillaryVariantCount,
+    distinctRestrictionFingerprints:restrictionVariantCount,
     tariffPowerScopeCount:scopeCoverage,exclusivePowerAssignment,
     missingSourceEvseTariffLink:true,decision:'hold_electra_emsp_price_unattributed',
     nextEvidence:'operator EVSE/connector-to-chargeTariffId linkage or documented exclusive tariff power restriction'};
   cases.push(item);
 }
-const triageCounts={},triageByCpo={},variantCounts={energyPriceVariation:0,ancillaryPriceVariation:0,exclusivePowerAssignment:0,singleEvse:0,unknownPowerEvses:0,sourceEvseIds:0};
+const triageCounts={},triageByCpo={},variantCounts={energyPriceVariation:0,ancillaryPriceVariation:0,restrictionVariation:0,exclusivePowerAssignment:0,singleEvse:0,unknownPowerEvses:0,sourceEvseIds:0};
 for(const item of cases){
   const x=item.triage,cls=x.class;
   count(triageCounts,cls);
-  const c=triageByCpo[item.cpo]??={total:0,classes:{},energyPriceVariation:0,ancillaryPriceVariation:0,unknownPowerEvses:0};
+  const c=triageByCpo[item.cpo]??={total:0,classes:{},energyPriceVariation:0,ancillaryPriceVariation:0,restrictionVariation:0,unknownPowerEvses:0};
   c.total++;count(c.classes,cls);
   if(x.energyPriceVariation){c.energyPriceVariation++;variantCounts.energyPriceVariation++;}
   if(x.ancillaryPriceVariation){c.ancillaryPriceVariation++;variantCounts.ancillaryPriceVariation++;}
+  if(x.restrictionVariation){c.restrictionVariation++;variantCounts.restrictionVariation++;}
   if(x.exclusivePowerAssignment)variantCounts.exclusivePowerAssignment++;
+  c.unknownPowerEvses+=x.unknownPowerCount;
   if(x.sourceEvseCount===1)variantCounts.singleEvse++;
   variantCounts.unknownPowerEvses+=x.unknownPowerCount;
   variantCounts.sourceEvseIds+=x.sourceEvseCount;
