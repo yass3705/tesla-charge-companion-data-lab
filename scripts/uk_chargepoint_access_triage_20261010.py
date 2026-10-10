@@ -79,7 +79,7 @@ def main():
         if not public_flag:
             category="operator_not_public"
             reason="PCPR publish flag is false; not eligible for public V9"
-        elif re.search(r"\\b(?:residents\\s+only|employees\\s+only|staff\\s+only|members\\s+only)\\b",text,re.I):
+        elif re.search(r"\b(?:residents\s+only|employees\s+only|staff\s+only|members\s+only)\b",text,re.I):
             category="nonpublic_explicit_onsite_rules"
             reason="Source location directions explicitly restrict access to residents, employees, staff or members; exclude from general-public charging"
         elif lid in confirmed:
