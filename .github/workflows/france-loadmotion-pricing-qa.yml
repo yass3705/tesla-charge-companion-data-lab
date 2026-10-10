@@ -1,0 +1,32 @@
+name: France Load Motion YES55 / Révéo pricing QA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/france_loadmotion_pricing_qa_20261010.cjs'
+      - 'scripts/loadmotion/compile_loadmotion_v9_offers.mjs'
+      - 'v9-production-runtime/data/v9/france-loadmotion-offers.json'
+      - '.github/workflows/france-loadmotion-pricing-qa.yml'
+permissions:
+  contents: read
+jobs:
+  price-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Retrieve immutable production pricing engine
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 --max-time 60 "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/38ac26e029ba1c4779d4d8fa43e7d5d300858624/v9-production-runtime/assets/v9/pricing-engine.js" -o /tmp/tcc-v9-pinned-pricing-engine.js
+      - name: Assert Data Lab current direct offers
+        run: node tests/france_loadmotion_pricing_qa_20261010.cjs /tmp/tcc-v9-pinned-pricing-engine.js v9-production-runtime/data/v9/france-loadmotion-offers.json
+      - name: Assert stable current production catalogue
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 --max-time 60 "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/main/v9-production-runtime/data/v9/france-loadmotion-offers.json" -o /tmp/france-loadmotion-stable-offers.json
+          node tests/france_loadmotion_pricing_qa_20261010.cjs /tmp/tcc-v9-pinned-pricing-engine.js /tmp/france-loadmotion-stable-offers.json
