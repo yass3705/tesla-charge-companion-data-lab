@@ -44,5 +44,15 @@ jobs:
             echo "No generated changes"
           else
             git commit -m "data(uk-midhope): persist DST-neutral validated local-time offers"
-            git push
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                echo "Source committed after replaying concurrent Data Lab updates"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Repeated non-fast-forward rejections" >&2
+            exit 1
           fi
