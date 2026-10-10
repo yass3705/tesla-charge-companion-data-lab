@@ -127,12 +127,61 @@ jobs:
             exit 0
           fi
           git commit -m "reports: global tariff scenario audit and France regression [run ${{ github.run_id }}]"
+          # This job writes derived audit reports only. Concurrent Tesla source
+          # collectors may refresh the same derived files during our census.
+          changed="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+          if printf '%s\n' "$changed" | grep -v '^reports/tariff-scenarios/' | grep -q .; then
+            echo 'Unsafe non-report modification; refusing to publish' >&2
+            exit 1
+          fi
           for attempt in 1 2 3 4; do
             git fetch origin main
-            if ! git rebase origin/main; then
-              echo 'Conflict: refusing to overwrite saved report data.' >&2
+            # Never replace a newer fully published audit with this older run.
+            if ! python - <<'PY'
+          import datetime,json,subprocess,sys
+          def report(rev):
+              try:
+                  content=subprocess.check_output(['git','show',f'{rev}:reports/tariff-scenarios/review-latest.json'])
+                  return datetime.datetime.fromisoformat(json.loads(content)['reviewedAt'].replace('Z','+00:00'))
+              except Exception:
+                  return None
+          local,remote=report('HEAD'),report('origin/main')
+          if local and remote and remote>local:
+              print('AUDIT_SUPERSEDED_BY_NEWER_REPORT: remote',remote,'local',local)
+              sys.exit(1)
+          PY
+            then
+              exit 0
+            fi
+            # Capture both append-only audit histories before conflict resolution.
+            git show origin/main:reports/tariff-scenarios/history.jsonl > /tmp/tcc-remote-audit-history.jsonl || true
+            git show HEAD:reports/tariff-scenarios/history.jsonl > /tmp/tcc-local-audit-history.jsonl || true
+            # During rebase, 'theirs' is THIS validated report commit. It wins
+            # generated report conflicts, but never source/pricing files.
+            if ! GIT_EDITOR=true git rebase -X theirs origin/main; then
+              echo 'Unexpected rebase conflict; no unsafe overwrite' >&2
               git rebase --abort || true
               exit 1
+            fi
+            python - <<'PY'
+          import json,pathlib
+          paths=[pathlib.Path('/tmp/tcc-remote-audit-history.jsonl'),pathlib.Path('/tmp/tcc-local-audit-history.jsonl')]
+          rows={}
+          for p in paths:
+              if not p.exists(): continue
+              for line in p.read_text(encoding='utf-8').splitlines():
+                  if not line.strip(): continue
+                  doc=json.loads(line)
+                  key=(str(doc.get('runId')),str(doc.get('reviewedAt')))
+                  rows[key]=doc
+          if rows:
+              ordered=sorted(rows.values(),key=lambda d:str(d.get('reviewedAt','')))
+              pathlib.Path('reports/tariff-scenarios/history.jsonl').write_text(
+                  ''.join(json.dumps(d,ensure_ascii=False,separators=(',',':'))+'\\n' for d in ordered),encoding='utf-8')
+          PY
+            git add reports/tariff-scenarios/history.jsonl
+            if ! git diff --cached --quiet; then
+              git commit --amend --no-edit
             fi
             if git push origin HEAD:main; then
               echo 'GLOBAL_TARIFF_SCENARIOS_PERSISTED'
