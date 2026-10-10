@@ -65,6 +65,10 @@ def main():
     allego = load("reports/uk/allego_uk-pcpr-validation-latest.json")
     blink = load("reports/uk/blink-pcpr-validation-latest.json")
     grid = load("reports/uk/gridserve-v9-integration-latest.json")
+    runtime_path = REPORTS / "midhope-runtime-test-result-2026-10-10.json"
+    runtime_qa = json.loads(runtime_path.read_text(encoding="utf8")) if runtime_path.exists() else {}
+    runtime_blockers = runtime_qa.get("blockers",[])
+
 
     locations = seq(raw.get("locations"))
     tariffs = seq(raw.get("tariffs"))
@@ -295,7 +299,12 @@ def main():
                     "summerUtcWindow":"07:30-17:00 Monday-Saturday",
                     "summerStationLocalWindow":"08:30-18:00 Europe/London",
                     "summerUserDeviceFranceWindow":"09:30-19:00 Europe/Paris",
-                    "disposition":"source_rates_resolved_await_runtime_phase_and_dst_qa",
+                    "disposition":"source_rates_resolved_runtime_activation_blocked" if runtime_blockers else "source_rates_resolved_await_runtime_phase_and_dst_qa",
+                    "runtimeTestStatus":runtime_qa.get("status","pending"),
+                    "runtimeTestsPassed":runtime_qa.get("passedCount",0),
+                    "runtimeActivationReady":runtime_qa.get("activationReady",False),
+                    "runtimeTestReport":"reports/uk/midhope-runtime-test-result-2026-10-10.json",
+                    "runtimeBlockerNames":[item.get("name") for item in runtime_blockers],
                     "documentedConnectorCount":midhope_documented,
                     "unresolvedConnectorsInThisGroup":midhope_conflicts
                 }},
