@@ -270,12 +270,12 @@ used_ids={tid for loc in safe_locations for e in loc["evses"] for c in e.get("co
 v9={
     "country":"GB","collectedAt":data.get("retrievedAt"),
     "source":"Eco-Movement PCPR ChargePoint CPO tariffs",
-    "integrationStatus":"cpo_direct_exact_connector_vat_inclusive",
+    "integrationStatus":"pcpr_cpo_arithmetic_staging_payg_and_vat_not_verified",
     "sources":[{
         "id":"eco-movement-pcpr-cpo-direct",
         "name":"ChargePoint (opérateur déclaré PCPR)",
         "partyIdsExpected":["CPI"],"country":"GB",
-        "pricingScope":"cpo_direct_pcpr",
+        "pricingScope":"cpo_pcpr_adhoc_attribution_pending",
         "locations":safe_locations,
         "tariffs":[included_tariffs[tid] for tid in sorted(used_ids)],
         "policy":"PCPR CPO feed only; exact connector tariff_ids; GBP prices converted from OCPI excl-VAT to UK public VAT-inclusive; non-GBP/unsupported tariffs left unpriced; platform CPO attribution as declared, no third-party assumption."
@@ -299,12 +299,14 @@ stage_report={
     "excludedLocations":dict(excluded_stations),"excludedEVSEs":dict(excluded_evses),
     "taxDefaultsAppliedByComponent":dict(tax_defaults),
     "taxExplicitByComponent":dict(tax_explicit),
-    "taxPolicy":"UK public standard VAT 20% assumed only if OCPI VAT is missing; prices derived from OCPI prices excluding VAT, all GBP TTC",
+    "taxPolicy":"20% statutory UK public electricity VAT used for arithmetic ONLY where OCPI component omits VAT; individual payment-page gross amount not yet operator-verified; cannot promote to confirmed direct PAYG",
     "cpoPolicy":"CPO PCPR provenance (not eMSP); declared operator retained (ChargePoint); independently operated physical site identities not inferred",
     "stagedDataset":"data/national/uk_eco_movement_pcpr_v9.json.gz",
     "readyForSnapshotInventoryStage":len(safe_locations)>0 and staged_connectors>0,
-    "readyForTariffRanking":included_connector_count>0,
-    "integrationStatus":"cpo_direct_exact_connector_vat_inclusive"
+    "readyForTariffRanking":False,
+    "candidatePriceCountBeforePaymentAndVatProof":included_connector_count,
+    "unverifiedConditions":["tariff_type_missing_in_all_145_source_tariffs","all_source_vat_missing_operator_confirmation","physical_site_cpo_scope_not_independently_verified"],
+    "integrationStatus":"pcpr_cpo_arithmetic_staging_payg_and_vat_not_verified"
 }
 stage_path=ROOT/"reports/uk/eco-movement-pcpr-v9-staging.json"
 stage_path.write_text(json.dumps(stage_report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
