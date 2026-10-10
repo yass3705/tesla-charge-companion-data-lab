@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-09T22:27:58.672Z",
+  "generatedAt": "2026-10-10T10:55:18.062Z",
   "enginePin": "38ac26e029ba1c4779d4d8fa43e7d5d300858624",
   "status": "synthetic_regressions_pass",
   "mode": "FRANCE_PILOT_REAL_PUBLISHED_EMSP_OFFERS_NON_EXHAUSTIVE_SAMPLE",
   "caveats": [
-    "Real-offer results use a single illustrative session, not end-user cost or a claim about all session profiles",
+    "Real-offer results use one illustrative session per offer (night-only Révéo at 23:30), not end-user cost or a claim about all session profiles",
     "A result marked incomplete is not evidence that the physical charging point is inactive",
     "Engine gaps and missing session context must be separately reviewed before changing pricing rules",
     "Synthetic cases are deterministic regression tests; sample offers are actual unchanged published Data Lab records"
@@ -193,10 +193,11 @@
     },
     "CPO direct — YES55 direct": {
       "total": 60,
-      "computed": 50,
-      "incomplete": 10,
+      "computed": 55,
+      "incomplete": 0,
       "exception": 0,
-      "computed_with_unmodeled_source_fields": 0
+      "computed_with_unmodeled_source_fields": 0,
+      "computed_with_unsafe_legacy_shadow": null
     },
     "CPO direct — Load Stations direct": {
       "total": 22,
@@ -207,8 +208,8 @@
     },
     "CPO direct — Révéo direct 11": {
       "total": 10,
-      "computed": 8,
-      "incomplete": 2,
+      "computed": 10,
+      "incomplete": 0,
       "exception": 0,
       "computed_with_unmodeled_source_fields": 0
     },
@@ -447,10 +448,11 @@
   "pricingTypes": {
     "rules": {
       "total": 909,
-      "computed": 813,
-      "incomplete": 12,
+      "computed": 820,
+      "incomplete": 0,
       "exception": 0,
-      "computed_with_unmodeled_source_fields": 84
+      "computed_with_unmodeled_source_fields": 84,
+      "computed_with_unsafe_legacy_shadow": null
     },
     "kwh": {
       "total": 24,
@@ -477,24 +479,27 @@
     },
     "energy": {
       "total": 877,
-      "computed": 781,
-      "incomplete": 12,
+      "computed": 788,
+      "incomplete": 0,
       "exception": 0,
-      "computed_with_unmodeled_source_fields": 84
+      "computed_with_unmodeled_source_fields": 84,
+      "computed_with_unsafe_legacy_shadow": null
     },
     "other_complex": {
       "total": 909,
-      "computed": 813,
-      "incomplete": 12,
+      "computed": 820,
+      "incomplete": 0,
       "exception": 0,
-      "computed_with_unmodeled_source_fields": 84
+      "computed_with_unmodeled_source_fields": 84,
+      "computed_with_unsafe_legacy_shadow": null
     },
     "parking_idle": {
       "total": 552,
-      "computed": 458,
-      "incomplete": 10,
+      "computed": 463,
+      "incomplete": 0,
       "exception": 0,
-      "computed_with_unmodeled_source_fields": 84
+      "computed_with_unmodeled_source_fields": 84,
+      "computed_with_unsafe_legacy_shadow": null
     },
     "session_fixed": {
       "total": 593,
@@ -505,10 +510,11 @@
     },
     "tax_currency": {
       "total": 711,
-      "computed": 615,
-      "incomplete": 12,
+      "computed": 622,
+      "incomplete": 0,
       "exception": 0,
-      "computed_with_unmodeled_source_fields": 84
+      "computed_with_unmodeled_source_fields": 84,
+      "computed_with_unsafe_legacy_shadow": null
     },
     "tiered_duration": {
       "total": 536,
@@ -533,8 +539,7 @@
     }
   },
   "incompleteReasons": {
-    "post_charge_exemption_requires_start_time": 10,
-    "no_matching_time_rule": 2
+    "parking_zero_rule_shadows_energy": 5
   },
   "sampleIssues": [
     {
@@ -542,96 +547,167 @@
       "provider": "CPO direct — YES55 direct",
       "tariffType": "rules",
       "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
+      "reason": "parking_zero_rule_shadows_energy",
+      "matchedRule": {
+        "scope": "timeWindow",
+        "start": "08:00",
+        "end": "20:00",
+        "billing": "kwh",
+        "currency": "EUR",
+        "pricePerKwh": 0
+      }
     },
     {
       "offerId": "loadmotion-yes55-profile-22",
       "provider": "CPO direct — YES55 direct",
       "tariffType": "rules",
       "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
+      "reason": "parking_zero_rule_shadows_energy",
+      "matchedRule": {
+        "scope": "timeWindow",
+        "start": "09:00",
+        "end": "21:00",
+        "billing": "kwh",
+        "currency": "EUR",
+        "pricePerKwh": 0
+      }
     },
     {
       "offerId": "loadmotion-yes55-profile-24",
       "provider": "CPO direct — YES55 direct",
       "tariffType": "rules",
       "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
+      "reason": "parking_zero_rule_shadows_energy",
+      "matchedRule": {
+        "scope": "timeWindow",
+        "start": "07:00",
+        "end": "23:59",
+        "billing": "kwh",
+        "currency": "EUR",
+        "pricePerKwh": 0
+      }
     },
     {
       "offerId": "loadmotion-yes55-profile-25",
       "provider": "CPO direct — YES55 direct",
       "tariffType": "rules",
       "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
+      "reason": "parking_zero_rule_shadows_energy",
+      "matchedRule": {
+        "scope": "timeWindow",
+        "start": "10:00",
+        "end": "20:00",
+        "billing": "kwh",
+        "currency": "EUR",
+        "pricePerKwh": 0
+      }
     },
     {
       "offerId": "loadmotion-yes55-profile-30",
       "provider": "CPO direct — YES55 direct",
       "tariffType": "rules",
       "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
-    },
-    {
-      "offerId": "loadmotion-reveo-11-078560e5",
-      "provider": "CPO direct — Révéo direct 11",
-      "tariffType": "rules",
-      "signature": "a137d90facaf",
-      "reason": "no_matching_time_rule",
-      "matchedRule": null
-    },
+      "reason": "parking_zero_rule_shadows_energy",
+      "matchedRule": {
+        "scope": "timeWindow",
+        "start": "06:00",
+        "end": "23:59",
+        "billing": "kwh",
+        "currency": "EUR",
+        "pricePerKwh": 0.36
+      }
+    }
+  ],
+  "sessionContextAdjustments": {
+    "yes55PostChargeTime": 25,
+    "reveoNightWindow": 3
+  },
+  "historicalPricingShadowWarnings": [
     {
       "offerId": "loadmotion-yes55-profile-21",
+      "origin": "stable_v9/france-loadmotion-offers.json",
       "provider": "CPO direct — YES55 direct",
-      "tariffType": "rules",
-      "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
+      "reason": "parking_zero_rule_shadows_energy"
     },
     {
       "offerId": "loadmotion-yes55-profile-22",
+      "origin": "stable_v9/france-loadmotion-offers.json",
       "provider": "CPO direct — YES55 direct",
-      "tariffType": "rules",
-      "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
+      "reason": "parking_zero_rule_shadows_energy"
     },
     {
       "offerId": "loadmotion-yes55-profile-24",
+      "origin": "stable_v9/france-loadmotion-offers.json",
       "provider": "CPO direct — YES55 direct",
-      "tariffType": "rules",
-      "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
+      "reason": "parking_zero_rule_shadows_energy"
     },
     {
       "offerId": "loadmotion-yes55-profile-25",
+      "origin": "stable_v9/france-loadmotion-offers.json",
       "provider": "CPO direct — YES55 direct",
-      "tariffType": "rules",
-      "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
+      "reason": "parking_zero_rule_shadows_energy"
     },
     {
       "offerId": "loadmotion-yes55-profile-30",
+      "origin": "stable_v9/france-loadmotion-offers.json",
       "provider": "CPO direct — YES55 direct",
-      "tariffType": "rules",
-      "signature": "b583e99ee74d",
-      "reason": "post_charge_exemption_requires_start_time",
-      "matchedRule": null
+      "reason": "parking_zero_rule_shadows_energy"
+    }
+  ],
+  "contextRegression": [
+    {
+      "offerId": "loadmotion-yes55-profile-21",
+      "expected": 12.24,
+      "actual": 12.24,
+      "pass": true,
+      "reason": null,
+      "startAt": "2026-10-10T11:00:00+02:00",
+      "postChargeStartAt": "2026-10-10T09:45:00.000Z"
+    },
+    {
+      "offerId": "loadmotion-yes55-profile-22",
+      "expected": 12.24,
+      "actual": 12.24,
+      "pass": true,
+      "reason": null,
+      "startAt": "2026-10-10T11:00:00+02:00",
+      "postChargeStartAt": "2026-10-10T09:45:00.000Z"
+    },
+    {
+      "offerId": "loadmotion-yes55-profile-24",
+      "expected": 15.84,
+      "actual": 15.84,
+      "pass": true,
+      "reason": null,
+      "startAt": "2026-10-10T11:00:00+02:00",
+      "postChargeStartAt": "2026-10-10T09:45:00.000Z"
+    },
+    {
+      "offerId": "loadmotion-yes55-profile-25",
+      "expected": 15.312,
+      "actual": 15.312,
+      "pass": true,
+      "reason": null,
+      "startAt": "2026-10-10T11:00:00+02:00",
+      "postChargeStartAt": "2026-10-10T09:45:00.000Z"
+    },
+    {
+      "offerId": "loadmotion-yes55-profile-30",
+      "expected": 9.3,
+      "actual": 9.3,
+      "pass": true,
+      "reason": null,
+      "startAt": "2026-10-10T11:00:00+02:00",
+      "postChargeStartAt": "2026-10-10T09:45:00.000Z"
     },
     {
       "offerId": "loadmotion-reveo-11-078560e5",
-      "provider": "CPO direct — Révéo direct 11",
-      "tariffType": "rules",
-      "signature": "a137d90facaf",
-      "reason": "no_matching_time_rule",
-      "matchedRule": null
+      "expected": 10.0002,
+      "actual": 10.0002,
+      "pass": true,
+      "reason": null,
+      "startAt": "2026-10-10T23:30:00+02:00",
+      "postChargeStartAt": null
     }
   ],
   "unmodeledLegacyFields": {
