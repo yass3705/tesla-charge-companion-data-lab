@@ -37,3 +37,18 @@ Les offres sont désormais prévues dans le moteur et la source V9 construite, m
 `MIDHOPE_4_EVSE_BLINK_3599_PUBLISHED_TO_V9_PAGES__UBITRICITY_SUPPORT_HOLD`
 
 Le workflow GitHub Pages confirme le déploiement. L'URL publique n'a pas été relue depuis cet environnement réseau après déploiement ; tests de navigateur sur artefact du workflow réussis. La réactivation Ubitricity nécessite des données fraîches et une validation explicite. L'heure d'hiver Midhope nécessite une nouvelle observation tarifaire client.
+
+
+## 10 octobre 2026 — publication V9 finalement validée
+
+- Production GitHub Pages **déployée** : [run 38059294144](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38059294144), étapes de build et de déploiement `success`.
+- URL publique : https://yass3705.github.io/tesla-charge-companion-production/v9-production-shell/
+- `shell-config.json` servi sur Pages : `snapshotId = 2026-10-10-r38059294144`.
+- Registre `source-registry.json` relu directement depuis Pages après déploiement :
+  - `uk-connected-kerb-midhope-guest-verified` **active=true, optional=false** : uniquement 4 EVSE/sockets exacts, tarifs invités validés en été ; garde hiver.
+  - `uk-blink-pcpr-direct` **active=true, optional=false** : nouvelle collecte PCPR 2026-10-10T14:10:35Z, audit indépendant réussi, 869 stations publiques et 3 599 connecteurs tarifés / 55 tarifs.
+  - `uk-ubitricity-pcpr-payg` **active=false, optional=true** : exclu provisoirement à la demande utilisateur en attendant la réponse du support (ancien fichier conservé à titre de preuve uniquement).
+  - `uk-eco-movement-pcpr-cpo-direct` **active=false, optional=true** : attribution PAYG et TVA non encore prouvées.
+- Toute mention plus haut d'une « V9 non déployée » ou de « blocages Ubitricity/Blink empêchant le déploiement » décrit l'état intermédiaire **avant** le run réussi 38059294144. Ce statut est remplacé par la présente vérification.
+- L'interface GitHub Pages a été chargée et identifiée comme `Tesla Charge Companion V9`, avec le même ID de snapshot en ligne.
+- La validité limitée au 24 octobre 2026 de Midhope n'est **pas** une validation hivernale. Les périodes ultérieures doivent rester non calculables tant que le CPO n'a pas fourni les horaires d'hiver.
