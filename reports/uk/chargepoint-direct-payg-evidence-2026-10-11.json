@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-11",
+  "scope": "25 ChargePoint UK locations with documented physical guest/visitor site access; direct card or guest checkout evidence only; no station-level universal tariff",
+  "policy": "ChargePoint driver app account access removed for unaffiliated Europe drivers on 30 June 2026. A PCPR tariff and a publicly visible price do NOT certify a payable guest direct-CPO checkout. Payment device vs site entry vs energy/parking VAT are independent.",
+  "ChargePointAccessChange": "https://www.chargepoint.com/fr-fr/drivers/support/driver-app-access-change-faqs",
+  "ChargePointOldHelpCaution": "https://www.chargepoint.com/en-gb/drivers/support/faqs/can-i-use-chargepoint-station-without-card-or-account",
+  "groups": [
+    {
+      "group": "evielife_confirmed_contactless_exact_charger",
+      "locationIds": [
+        "GBCPIL7324735",
+        "GBCPIL7324635",
+        "GBCPIL7351735",
+        "GBCPIL7315475",
+        "GBCPIL7369685",
+        "GBCPIL7215305"
+      ],
+      "paymentClassification": "operator_direct_contactless_hardware_verified_exact_guest_checkout_amount_missing",
+      "firstPartySources": [
+        "https://www.evie-life.com/case-studies"
+      ],
+      "basis": "EvieLife directly describes physical ChargePoint or operator-managed contactless at Powdermills (4), Garner (2), Mill End (2), Marine Hotel (2), Heywood Spa (2); counts/power aligned within PCPR. Confirm no guest app needed; tariff per connector and charges still unverified.",
+      "priceProof": "No first-party live price, no verified CPO guest card checkout amount or station-fee rules."
+    },
+    {
+      "group": "bristol_airport_multi_storey_app_only_conflict",
+      "locationIds": [
+        "GBCPIL7379125",
+        "GBCPIL7379275",
+        "GBCPIL7379175"
+      ],
+      "paymentClassification": "official_payg_rate_but_app_only_channel_conflict",
+      "firstPartySources": [
+        "https://www.bristolairport.co.uk/parking/multi-storey-car-park",
+        "https://www.bristolairport.co.uk/parking/terms-and-conditions"
+      ],
+      "basis": "Bristol Airport publishes 20 22kW outlets, PAYG GBP 0.45/kWh and says payment easily via ChargePoint app, while ChargePoint Europe removes unrelated consumer app authorization. Independent physical card/QR payment not verified. Airport parking costs apply separately; max 2h EV bay usage.",
+      "officialGrossAmountPerKwhUnverifiedVat": 0.45
+    },
+    {
+      "group": "harbour_hotels_app_only_conflict",
+      "locationIds": [
+        "GBCPIL7430095",
+        "GBCPIL7379715"
+      ],
+      "paymentClassification": "hotel_exact_rate_and_cap_but_app_only_channel_conflict",
+      "firstPartySources": [
+        "https://www.harbourhotels.co.uk/our-hotels/sussex/harbour-hotel-chichester/faqs/ev-charging",
+        "https://www.harbourhotels.co.uk/our-hotels/devon/harbour-beach-club-hotel-spa/faqs/ev-charging"
+      ],
+      "basis": "Both Harbour Hotel direct pages show ChargePoint app instructions, GBP 0.684/kWh inc VAT, max GBP 45/session and no overstay charges 22:30–09:30. Consumer app closure means direct payment cannot be assumed. Group pages show 4 chargers at Chichester while PCPR only 2 connectors; exact membership and per-EVSE match must be checked.",
+      "officialGrossRateGbpPerKwh": 0.684,
+      "officialSessionCapGbp": 45
+    },
+    {
+      "group": "rowhill_grange_user_guest_price_portal",
+      "locationIds": [
+        "GBCPIL7379475"
+      ],
+      "paymentClassification": "portal_guest_tariff_visible_no_verified_payment_authorization",
+      "firstPartySources": [
+        "https://driver.chargepoint.com",
+        "https://alexanderhotels.co.uk/rowhill-grange/about-us/rg-faqs/"
+      ],
+      "basis": "User-provided driver portal screenshot displays guest fee zero, GBP 1.50/session, GBP 0.69/kWh, GBP 8.40/h station time fee after 30min stopped within 11:00-20:00, min GBP3 excluding taxes/fees, VAT included 20%. No proof that guest unaffiliated account can authorize payment; exact timezone of time window also unverified.",
+      "screenshotProvidedAt": "2026-10-10T23:35+02:00",
+      "grossVatScreenshot": "20% VAT (Included)"
+    }
+  ],
+  "invariant": {
+    "advertisedPaygWithoutWorkingMethod": "not_activate",
+    "firstPartyHardwareContactlessWithoutExactFee": "payment_channel_confirmed_price_unavailable",
+    "pcprVatMissing": "do_not_promote_guessed_gross",
+    "sourceTariffComplexity": "Use per EVSE exact tariff and follow restrictions/threshold/caps, NEVER treat source currency as price authority if operator screenshot conflicts",
+    "v9DirectPricePromotion": false
+  }
+}
