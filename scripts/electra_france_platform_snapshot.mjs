@@ -222,7 +222,7 @@ for(const x of locations){
     if(!pricing)continue;
     pricing.priceSelectionBasis='session_start_local_time';
     pricing.tariffStartLockEvidence='electra_official_2026-10-10';
-    for(const rule of pricing.rules||[])rule.congestionFeeCapEur=50;
+    for(const rule of pricing.rules||[])rule.electraCongestionPolicy={requiresSaturation:true,startsAtSoc:80,graceMinutes:5,rateEurPerMinute:0.40,capEur:50,dcOnly:true};
   }
   if(!compiled.length){reject('no_tariff');continue;}
   if(compiled.some(v=>!v)){reject('unsupported_tariff');continue;}
