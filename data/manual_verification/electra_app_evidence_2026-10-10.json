@@ -10,7 +10,8 @@
     "Require exact EVSE-to-power match and unambiguous source chargeTariffId fit before publication.",
     "Use 80% SOC congestion only when station saturated, according to user screenshot; saturation unavailable means condition unresolved.",
     "No inference for 50 kW CHAdeMO connector when only 60 kW CCS fast price is visible.",
-    "Preserve differing nominal slow power 7 kW vs national IRVE 22.1 kW until reconciled."
+    "Preserve differing nominal slow power 7 kW vs national IRVE 22.1 kW until reconciled.",
+    "Screenshot evidence is observational; a visible station-wide fee does not prove per-EVSE application or that TIME and PARKING_TIME should be summed."
   ],
   "stations": [
     {
@@ -70,7 +71,30 @@
       ],
       "confidence": "direct_app_screen_per_power",
       "sourceDiscrepancy": "app labels slow 7 kW while IRVE inventory groups at 22.1 kW",
-      "remaining": "7 kW versus 22.1 kW requires connector-level reconciliation; other parking fee candidate 18 EUR/h remains unexplained"
+      "remaining": "Repeat app confirmation: +12 EUR/hour shown for station; live source fast tariff includes 18 EUR/hour after 15 minutes while slow tariff includes 12 EUR/hour. Do not apply source fast 18 EUR/hour unless resolved; 7kW app versus IRVE 22.1kW discrepancy remains. Trigger not shown.",
+      "additionalScreenshots": [
+        {
+          "file": "IMG_8103.png",
+          "sha256": "0056ebe04f0fbc8537769ab42cf9ef8ca5a8d633775066c3a7c111a3b11e68d3",
+          "clockLocal": "14:05",
+          "description": "app consistently displays rapid 200 kW 0.59, slow 7 kW 0.44, parking surcharge +12 EUR/h"
+        }
+      ],
+      "discrepancies": [
+        {
+          "kind": "parking_fee_rate",
+          "appEurPerHour": 12,
+          "sourceFastEurPerHour": 18,
+          "sourceSlowEurPerHour": 12,
+          "status": "confirmed_app_vs_source_fast_conflict"
+        },
+        {
+          "kind": "slow_power",
+          "appKw": 7,
+          "irveKw": 22.1,
+          "status": "unresolved_technical_mismatch"
+        }
+      ]
     },
     {
       "locationId": "01df2390-d20f-4199-9b15-b2b6c95c94c3",
@@ -120,8 +144,11 @@
         {
           "label": "Lent",
           "maxPowerKw": 22,
-          "energyEurPerKwh": null,
-          "pricing": "tab_exists_no_visible_rate"
+          "energyEurPerKwh": 0.49,
+          "pricing": "flat_all_day_in_app_chart",
+          "shownTime": "14h",
+          "screenshot": "IMG_8104.png",
+          "screenshotSha256": "6562e93b96c63bea0f1ec3f37fc879ae5e248701012a49cd1f6c17105315e5f7"
         }
       ],
       "fees": [
@@ -132,8 +159,16 @@
           "condition": "only_if_station_saturated"
         }
       ],
-      "confidence": "direct_app_screen_dynamic_fast_only",
-      "remaining": "slow rate needs screenshot; exact time-window boundary and load-level require live source"
+      "confidence": "direct_app_screen_fast_dynamic_and_slow_flat",
+      "remaining": "slow 22 kW source flat 0.49 matches; fast 200 kW dynamic 0.39/0.49/0.61; station congestion only after SOC 80% AND saturation, applicability to slow and fee threshold not fully proven. Avoid global-price assignment.",
+      "additionalScreenshots": [
+        {
+          "file": "IMG_8104.png",
+          "sha256": "6562e93b96c63bea0f1ec3f37fc879ae5e248701012a49cd1f6c17105315e5f7",
+          "clockLocal": "14:06",
+          "description": "slow 22kW all-day 0.49 EUR/kWh; location-level conditional congestion 0.40 EUR/min"
+        }
+      ]
     },
     {
       "locationId": "04a04882-7e07-40b2-bf67-3f757548054d",
@@ -177,11 +212,31 @@
       "locationId": "0a05897d-13f9-44ee-a64e-5d4ec1422239",
       "name": "Albi, Jardinerie Tarnaise Fonlabour",
       "cpo": "Freshmile",
-      "screenshot": null,
-      "observation": "User reports no station discoverable in Electra app search",
-      "confidence": "user_negative_discovery",
-      "status": "not_found_in_app_to_recheck",
-      "remaining": "Do not delete source station without cross-checking identifiers, geolocation and public access"
+      "screenshot": "IMG_8101.jpeg",
+      "confidence": "direct_app_screen_per_power",
+      "remaining": "Station found in app; 50 kW 0.55 and 22 kW 0.46 confirmed. 25 kW tariff not shown in price panel. Parking +6 EUR/h shown station-wide; applicability to 22 kW tariff and source TIME/PARKING_TIME double-component semantics must be clarified before full price publication.",
+      "sha256": "6062cf37498f3b523b753a23696cbefd3b337a837547296272fa9a577f8e3406",
+      "screenshotClock": "14:02",
+      "observations": [
+        {
+          "label": "Rapide",
+          "maxPowerKw": 50,
+          "energyEurPerKwh": 0.55
+        },
+        {
+          "label": "Lent",
+          "maxPowerKw": 22,
+          "energyEurPerKwh": 0.46
+        }
+      ],
+      "fees": [
+        {
+          "kind": "parking",
+          "eurPerHour": 6,
+          "trigger": "not specified in screenshot"
+        }
+      ]
     }
-  ]
+  ],
+  "latestEvidenceDate": "2026-10-10"
 }
