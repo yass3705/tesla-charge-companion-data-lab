@@ -8,6 +8,12 @@ const manifest=JSON.parse(await fs.readFile('data/electroverse/tariff_cache/mani
 const norm=v=>String(v??'').replace(/[^A-Z0-9]/ig,'').toUpperCase();
 const errors=[],matches=[],unverified=[],unmatchedAppScreenshots=[];
 const byLocation=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
+const distanceMeters=(a,b)=>{
+ const n=[a?.lat,a?.lon,b?.lat,b?.lon].map(Number);
+ if(n.some(x=>!Number.isFinite(x)))return null;
+ const [la1,lo1,la2,lo2]=n.map(x=>x*Math.PI/180),dlat=la2-la1,dlon=lo2-lo1;
+ return 2*6371000*Math.asin(Math.sqrt(Math.sin(dlat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dlon/2)**2));
+};
 const byTarget=new Map();
 for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
  const k=norm(p);const a=byTarget.get(k)||new Set();a.add(m.irveStationId);byTarget.set(k,a);
@@ -33,6 +39,16 @@ for(const input of evidence.confirmedMatches){
    irve:m.irve||null,electroverse:m.electroverse||null,
    mappedPdcCount:m.irvePdcIds?.length||0
  }));
+ const scoredOwners=ownerDetails.map(o=>({
+  stationId:o.stationId,sourceLocationPk:o.sourceLocationPk,
+  metersToIrve:distanceMeters(cache.row?local?.electroverse:null,o.irve),
+  isCanonical:o.stationId===input.stationId&&o.sourceLocationPk===loc
+ }));
+ const canonicalScores=scoredOwners.filter(o=>o.isCanonical&&o.metersToIrve!==null&&o.metersToIrve<=10);
+ const otherScores=scoredOwners.filter(o=>!o.isCanonical);
+ const deterministicGpsOwner=canonicalScores.length===1&&otherScores.length>0&&otherScores.every(o=>
+  o.metersToIrve!==null&&o.metersToIrve>20
+ );
  const reportRows=(priority.extraExact||[]).filter(x=>String(x.sourcePk)===String(input.sourceEvsePk));
  const prices=reportRows.flatMap(x=>x.price||[]);
  const info={appId:input.appId,locationPk:loc,sourcePk:input.sourceEvsePk,
@@ -42,9 +58,11 @@ for(const input of evidence.confirmedMatches){
    pricingDetailPresent:!!c.complexPricingDetail,hasSimplePriceComponents:Array.isArray(c.priceComponents)}))),
   exactLocalIrvePdcs:localTargets,uniqueLocalIrve:localTargets.length===1,
   globalOwnerCount:owners.size,globalStations:[...owners],ownerDetails,
+  scoredOwners,deterministicGpsOwner,geoRule:'Canonical exact source location within 10m of IRVE and all other national ownership sites >20m away',
   sourcePricingReport:prices.map(p=>({kw:p.kw,rateComponents:p.components,complexRestrictions:p.restrictions})),
   evidenceDisplayStatus:input.appStatus,needsNationalStatusGate:true};
- const check=info.cacheMatching&&info.uniqueLocalIrve&&owners.size===1&&owners.has(input.stationId)&&
+ const check=info.cacheMatching&&info.uniqueLocalIrve&&owners.has(input.stationId)&&
+  (owners.size===1||deterministicGpsOwner)&&
   es.some(e=>(e.connectors||[]).some(c=>Math.abs(Number(c.kilowatts)-input.maxKw)<.001))&&
   prices.length&&prices.every(p=>p.kw===input.maxKw&&
      p.components.some(c=>c[0]==='ConsumptionRate'&&String(c[1]).includes('€'+input.eurPerKwh.toFixed(2))) );
@@ -76,7 +94,7 @@ if(errors.length){
  for(const e of errors)console.log(JSON.stringify({event:'MISMATCH',appId:e.appId,cacheEvses:e.info.cacheEvses,
  cacheRef:e.info.cacheRef,cacheMatching:e.info.cacheMatching,sourceConnectorProfiles:e.info.sourceConnectorProfiles,
  localPdcs:e.info.exactLocalIrvePdcs,globalOwnerCount:e.info.globalOwnerCount,globalStations:e.info.globalStations,
- ownerDetails:e.info.ownerDetails,
+ scoredOwners:e.info.scoredOwners,deterministicGpsOwner:e.info.deterministicGpsOwner,
  sourcePricingReport:e.info.sourcePricingReport?.map(p=>({kw:p.kw,rate:p.rateComponents?.filter(c=>c[0]==='ConsumptionRate')}))}));
  process.exitCode=2;
 }
