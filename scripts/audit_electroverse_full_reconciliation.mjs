@@ -27,6 +27,16 @@ const asArray=v=>Array.isArray(v)?v:[];
 const count=(o,k)=>{o[k]=(o[k]||0)+1};
 const csv=s=>'"'+String(s??'').replace(/"/g,'""').replace(/\r?\n/g,' ')+'"';
 const csvLine=o=>Object.values(o).map(csv).join(',');
+function semanticConnectorPrice(v){
+ const base=asArray(v.components).filter(a=>a[0]!=='VAT').map(a=>[a[0],a[1]]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+ const baseSet=new Set(base.map(a=>JSON.stringify(a)));
+ const restrictions=asArray(v.restrictions).filter(r=>{
+  const unrestricted=!asArray(r.kinds).length&&!r.time&&!r.days&&!r.duration&&!r.date;
+  const entirelyRestatesBase=asArray(r.components).length>0&&asArray(r.components).every(c=>baseSet.has(JSON.stringify(c)));
+  return !(unrestricted&&entirelyRestatesBase);
+ }).map(r=>({...r,components:asArray(r.components).slice().sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))}));
+ return {free:v.free,currency:v.currency,components:base,restrictions:restrictions.sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))};
+}
 
 await fs.mkdir(ROOT,{recursive:true});
 const [sm,om,mm,irve,userHold]=await Promise.all([
@@ -110,9 +120,7 @@ for(const sh of asArray(sm.shards)){
    })).sort((a,b)=>a.kw-b.kw||a.plug.localeCompare(b.plug));
    const signature=hash(values);
    // Separate price semantics from charger hardware/power variants.
-   const tariffSignature=hash([...new Set(values.map(v=>JSON.stringify({
-    free:v.free,currency:v.currency,components:v.components,restrictions:v.restrictions
-   })))].sort());
+   const tariffSignature=hash([...new Set(values.map(v=>JSON.stringify(semanticConnectorPrice(v))))].sort());
    sigSeen.add(signature);
    if(new Set(values.map(v=>v.kw+'|'+v.plug)).size>1)counters.sourceMultiConnectorPower++;
    if(values.some(v=>v.restrictions.length))counters.sourceRestrictedConnectors++;
@@ -236,7 +244,9 @@ const extraExact=urgent.filter(r=>r.priority===4).map(r=>({
  sourcePk:r.sourcePk,locPk:r.locPk,stationId:r.stationId,stationName:r.stationName,stationAddress:r.stationAddress,
  evse:r.physicalReference,connectors:r.connectorSummary,price:r.sourcePriceComponents,
  fetchedAt:r.cacheFetchedAt,
- reason:'exact local IRVE ID present but Electroverse offer not published; investigate exclusion / identity and CPO direct priority',
+ targetAlreadyCovered:publishedTarget.has(r.normalizedRef),
+ targetOfferIds:[...(publishedOffersById.get(r.normalizedRef)||[])].slice(0,12),
+ reason:'exact local IRVE ID present but source PK not in overlay; check whether target is already covered by another offer, plus access and CPO direct priority',
  status:'EVIDENCE_ONLY_DO_NOT_PROMOTE'
 }));
 const rawGroupWarnings=[];
@@ -272,7 +282,9 @@ const summary={
   newPotentialDuplicateConflictIds:[...new Set(newConflictCases)].filter(k=>!hold27.has(k)).length,
   diagnosticNote:'New source price variants are evidence flags, not app-confirmed tariff contradictions; reconcile exact station/EVSE identity before manual inspection.',
   parentTechnicalUniqueLeads:parentProposal.filter(p=>p.powerMatchCandidateCount===1).length,
-  extraExactIdentitiesToInvestigate:extraExact.length,rawPotentialPriceConflictGroups:rawGroupWarnings.length,
+  extraExactIdentitiesToInvestigate:extraExact.length,
+  extraExactTargetsAlreadyCovered:extraExact.filter(x=>x.targetAlreadyCovered).length,
+  rawPotentialPriceConflictGroups:rawGroupWarnings.length,
   distinctUnpublishedIdentities:new Set(cases.filter(x=>!x.published).map(x=>x.locPk+'|'+x.normalizedRef)).size,
   categories:categoryStats,byPriority:priorityStats,
   topOperatorCounts:Object.entries(byOperator).sort((a,b)=>b[1]-a[1]).slice(0,30),
