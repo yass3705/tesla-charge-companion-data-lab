@@ -1,0 +1,48 @@
+name: Rebuild UK Midhope verified local-time tariff source
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/uk_midhope_build_verified_runtime.py
+      - reports/uk/connected-kerb-midhope-verified-2026-10-10.json
+      - .github/workflows/uk-midhope-local-time-rebuild.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rebuild four public exact-socket offers
+        run: python scripts/uk_midhope_build_verified_runtime.py
+      - name: Confirm DST-neutral London civil time and exact EVSE scope
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          with gzip.open("data/national/uk_connected_kerb_midhope_verified_v9.json.gz","rt",encoding="utf8") as f:
+              doc=json.load(f)
+          offers=[c["validatedV9Offer"] for loc in doc["sources"][0]["locations"]
+                  for evse in loc["evses"] for c in evse["connectors"]]
+          assert len(offers)==4 and len({o["evseIds"][0] for o in offers})==4
+          assert all("validThrough" not in o for o in offers)
+          assert all(o["metadata"]["pricingTimeZone"]=="Europe/London" for o in offers)
+          assert all(o["metadata"]["tariffObservedAt"]=="2026-10-10" for o in offers)
+          print("MIDHOPE_DST_LOCAL_TIME_REBUILT",len(offers))
+          PY
+      - name: Persist rebuilt source and audit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_connected_kerb_midhope_verified_v9.json.gz reports/uk/connected-kerb-midhope-runtime-stage-2026-10-10.json
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+          else
+            git commit -m "data(uk-midhope): persist DST-neutral validated local-time offers"
+            git push
+          fi
