@@ -12,6 +12,7 @@ on:
       - 'scripts/tesla_dataset_provenance_audit_20261010.py'
       - 'scripts/tesla_global_tariff_inventory_20261009.py'
       - 'scripts/tesla_source_selection_audit_20261009.py'
+      - 'scripts/tesla_mac_batch_history.py'
 permissions:
   contents: write
 concurrency:
@@ -20,7 +21,7 @@ concurrency:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -76,12 +77,17 @@ jobs:
           print('TESLA_ALL_COUNTRIES_AUDIT_VALIDATED', canonical['stations'], expected,
                 'status=', provenance['auditStatus'])
           PY
+      - name: Restore immutable historical country-batch audits (including 8 and 9 October)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/tesla_mac_batch_history.py
       - name: Persist reports even when Mac and V9 mirrors have drifted
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- reports/tesla/history
           git add -- reports/tesla/tesla-dataset-provenance-audit-latest.json \
             reports/tariff-scenarios/tesla-global-inventory-latest.json \
             reports/tariff-scenarios/tesla-global-real-rule-fixtures.json \
@@ -124,6 +130,7 @@ jobs:
           name: tesla-all-countries-audit-${{ github.run_id }}
           path: |
             reports/tesla/tesla-dataset-provenance-audit-latest.json
+            reports/tesla/history/
             reports/tariff-scenarios/tesla-global-inventory-latest.json
             reports/tariff-scenarios/tesla-source-selection-audit-latest.json
             reports/tariff-scenarios/tesla-source-selection-station-detail-latest.json
