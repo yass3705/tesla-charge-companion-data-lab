@@ -34,7 +34,17 @@ function ruleFromDefinition(def){
 }
 function bundleFromDefinitions(defs){
   const mapped=defs.map(ruleFromDefinition),fees=mapped.map(x=>x.postChargeFee).filter(Boolean),unique=[...new Set(fees.map(x=>JSON.stringify(x)))];
-  return{rules:mapped.map(x=>x.rule),postChargeFee:unique.length===1?JSON.parse(unique[0]):null,ambiguousPostCharge:unique.length>1,mapped};
+  // Parking-only definitions supply postChargeFee, NOT another energy price.
+  // A time-restricted zero-kWh parking rule would otherwise shadow the genuine
+  // energy rule in PricingEngine.matchingRuleDetailed() and underprice a charge.
+  const energyRules=mapped.filter((x,i)=>{
+    const dims=defs[i]?.dimensions||{};
+    const parkingOnly=dims.parkingTime?.active===true &&
+      !Object.entries(dims).some(([name,value])=>name!=='parkingTime'&&value?.active===true);
+    return !parkingOnly;
+  }).map(x=>x.rule);
+  // A legitimately parking-only tariff still needs a zero-cost energy base rule.
+  return{rules:energyRules.length?energyRules:[baseRule()],postChargeFee:unique.length===1?JSON.parse(unique[0]):null,ambiguousPostCharge:unique.length>1,mapped};
 }
 function offer(id,provider,bundle,extra={}){
   const b=Array.isArray(bundle)?{rules:bundle}:bundle,pricing={type:'rules',rules:b.rules};
