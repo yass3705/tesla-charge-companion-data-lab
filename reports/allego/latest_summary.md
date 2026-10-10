@@ -9,4 +9,4 @@
 - Official Allego App France pricing parse: **not_retrieved**
 - Exact station price lookup remains required because Allego explicitly allows location/tender variation.
 - Official French station samples checked: **3**
-- Fingerprint: `85c56cbcc852877236bd8a7b031b77851efe8ad8d105f431f721a7c39f65b1fc`
+- Fingerprint: `2d1f54fc3cac381f4921cfc3a94b094d740aa56c67c9f4757c3147d6dd8e605d`
