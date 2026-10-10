@@ -15,13 +15,21 @@ assert.ok(src.includes("reject('no_tariff')"),'missing tariff is not invented');
 
 const verified=JSON.parse(fs.readFileSync('data/platforms/electra/verified-app-evse-tariff-map.json','utf8'));
 assert.equal(verified.schemaVersion,1,'evidence ledger validated');
-assert.equal(verified.verifiedLinks.length,1,'only validated station published');
+assert.equal(verified.verifiedLinks.length,2,'Jarville and Saint-Arnoult are the only manual screenshot sites');
 const jarville=verified.verifiedLinks[0];
 assert.equal(jarville.cpo,'Powerdot');
 assert.equal(jarville.mappings.length,2,'only 22 and 60 kW EVSEs proven');
 assert.deepEqual(jarville.mappings.map(x=>x.powerKw).sort((a,b)=>a-b),[22,60]);
 assert.ok(!jarville.mappings.some(x=>x.evseId.endsWith('*1')),'unverified 50kW CHAdeMO excluded');
 assert.ok(jarville.mappings.every(x=>x.components.length===1&&x.components[0]==='ENERGY'),'no uncertain session fee');
+const saint=verified.verifiedLinks.find(x=>x.locationId==='a15ba9c9-aeca-41c3-8825-43a71a53ddd2');
+assert.ok(saint&&saint.cpo==='Powerdot','Saint-Arnoult verified independently of Jarville');
+assert.equal(saint.mappings.length,3,'two 50kW and one 22kW EVSE proven');
+assert.deepEqual(saint.mappings.map(x=>x.powerKw).sort((a,b)=>a-b),[22,50,50]);
+assert.ok(saint.mappings.every(x=>x.rateEurPerKwh===(x.powerKw===22?.49:.62)));
+assert.ok(saint.mappings.every(x=>x.components.length===1&&x.components[0]==='ENERGY'),'Saint-Arnoult has no time or parking fee in source');
+assert.ok(saint.screenshotSha256&&saint.manualEvidenceFile,'price proof traceable to uploaded screenshot');
+
 assert.ok(src.includes("verified_app_tariff_link_invalid"),'mismatched source tariff ID must fail closed');
 assert.ok(src.includes("verified_app_partial_attribution_pending"),'unverified sibling EVSE remains pending');
 assert.ok(src.includes("if(!pricing)continue;"),'partially attributed locations only publish proven EVSEs');
