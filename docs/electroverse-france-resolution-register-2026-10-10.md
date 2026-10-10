@@ -35,5 +35,25 @@
 ## Collecte GraphQL ciblée
 La requête de contrôle direct via l'API de l'application Electroverse est implémentée par `scripts/electroverse_live_priority_price_probe.mjs`, exécutée via `audit-electroverse-live-priority-prices.yml`. Rapport attendu : `reports/electroverse/live-priority-price-probe-2026-10-10.json`. Les cas en échec ou non retournés par l'API restent à vérifier dans l'application ; aucun écran de l'application n'a été simulé.
 
+## Contrôle en direct de l'application Electroverse — terminé le 10 octobre 2026
+L'appel GraphQL `chargingLocation` paginé, avec la version Android `2026.09.08`, s'est exécuté **avec succès** : **28 stations** examinées, **133 identifiants physiques sur 133** récupérés, **aucun échec**.
+
+Les 133 identifiants ont été classés dans [le registre individuel des décisions](../reports/electroverse/live-priority-decisions-2026-10-10.json) :
+
+| Classe et décision | EVSE distincts | Preuve / suite |
+|---|---:|---|
+| **Tarif ambigu — deux signatures tarifaires présentes simultanément dans l'API en direct** | **31** | Les 27 EVSE précédents + 4 à Saint-Affrique-les-Montagnes : ne sélectionner aucun tarif |
+| **Correspondance parente ↔ PDC indéterminée** | **90** | Les tarifs sources sont univoques ; relier physiquement et sans réutilisation les connecteurs aux PDC IRVE, avec validation des 23 pistes techniques |
+| **Identité exacte IRVE, offre source univoque, non publiée** | **4** | Deux Allego Au Bureau Soissons : 150 kW, **0,59 €/kWh Electroverse** ; deux Lidl Château-Gontier-sur-Mayenne : 120 kW, **0,39 €/kWh Electroverse** ; confirmer le périmètre public/éligibilité avant de publier |
+| **Référence source complète réutilisée sur plusieurs sites** | **8** | Tarif source univoque mais attribution station ↔ EVSE à confirmer |
+
+La preuve GraphQL complète : [live-priority-price-probe-2026-10-10.json](../reports/electroverse/live-priority-price-probe-2026-10-10.json). Les 31 signatures multiples sont **présentes dans une même réponse actuelle de l'API**, elles ne sont pas seulement un écart entre les vieux snapshots. Bry-sur-Marne Pasteur P1 conserve par exemple deux PK sources : `951893` = 0,53 €/kWh et 0,08 €/min inactivité non conditionné dans la réponse ; `3568499` = 0,53 €/kWh et 0,10 €/min après **600 s**, comme les deux captures utilisateur. S81 renvoie également les versions **avec et sans 0,03 €/min à partir de quatre heures** pour chacune des quatre références.
+
+Les **20 anciens faux conflits** LE2/P01 correspondent à des composantes tarifaires identiques représentées par une règle simple et/ou une règle globale redondante ; après normalisation des règles, **ils ne sont pas comptés comme conflits de prix**.
+
+**Attention :** une fiche source univoque dans l'API ne suffit pas à autoriser la publication, surtout si elle est mal appariée à l'IRVE. Les eMSP Electroverse restent distincts des tarifs CPO directs.
+
+**Statut de publication :** constat et décision en lecture seule, aucune modification de tarif, de correspondance ou d'affichage V9 au titre de cette vérification.
+
 ## Procédure de clôture
 Chaque cas clôturé doit conserver : station IRVE, EVSE IRVE normalisé, Electroverse Location PK et Source EVSE PK, opérateur, connecteur/puissance, intégralité des composantes et restrictions, horodatage source, origine de la preuve, décision `validated` / `ambiguous` / `incalculable` / `unavailable`, et références d'éventuels tests de non-régression avant publication.
