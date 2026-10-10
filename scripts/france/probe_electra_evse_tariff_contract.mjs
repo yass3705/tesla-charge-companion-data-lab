@@ -34,6 +34,32 @@ if(names.length){
 const sampleId='81f45fef-3f7d-49c5-bf74-06327e73952c';
 const one=await request('query LocationTariffSample($id:ID!){location(id:$id){id name maxPower cpo{name} evses{id evseId physicalReference connectors{id}} chargeTariffs{chargeTariffId currentPricePerKwh currency elements{restrictions{minPower maxPower minDuration maxDuration startTime endTime dayOfWeek} priceComponents{type price}}}}}',{id:sampleId});
 out.sample={requestedLocationId:sampleId,httpStatus:one.httpStatus,errors:one.errors||one.error||[],station:one.data?.location??null};
+const candidates=[
+ ['evse.tariffs','evses{tariffs{chargeTariffId}}'],
+ ['evse.chargeTariffs','evses{chargeTariffs{chargeTariffId}}'],
+ ['evse.tariffId','evses{tariffId}'],
+ ['evse.tariffIds','evses{tariffIds}'],
+ ['evse.chargeTariffId','evses{chargeTariffId}'],
+ ['evse.currentPricePerKwh','evses{currentPricePerKwh}'],
+ ['evse.maxPower','evses{maxPower}'],
+ ['evse.power','evses{power}'],
+ ['connector.tariffId','evses{connectors{tariffId}}'],
+ ['connector.tariffs','evses{connectors{tariffs{chargeTariffId}}}'],
+ ['connector.power','evses{connectors{power}}'],
+ ['connector.maxPower','evses{connectors{maxPower}}'],
+ ['tariff.evseIds','chargeTariffs{evseIds}'],
+ ['tariff.evses','chargeTariffs{evses{id}}'],
+ ['tariff.connectorIds','chargeTariffs{connectorIds}'],
+ ['tariff.minPower','chargeTariffs{minPower}'],
+ ['tariff.maxPower','chargeTariffs{maxPower}'],
+ ['location.tariffLinks','tariffLinks{evseId chargeTariffId}']
+];
+out.guessedFields=[];
+for(const [label,selection] of candidates){
+ const r=await request('query ContractGuess($id:ID!){location(id:$id){id '+selection+'}}',{id:sampleId});
+ out.guessedFields.push({label,httpStatus:r.httpStatus,accepted:!r.errors?.length&&Boolean(r.data?.location),errors:r.errors||r.error||[],sample:r.data?.location?.evses?.slice(0,2)??null});
+ await sleep(200);
+}
 const typeFields=Object.values(out.types||{});
 const possibleLinks=[];
 for(const t of typeFields){for(const f of t.fields||[]){if(/tariff|price|evse|connector|power|rate|product|group|offer|restriction/i.test(f.name))possibleLinks.push({type:t.name,field:f.name,shape:f.type});}}
