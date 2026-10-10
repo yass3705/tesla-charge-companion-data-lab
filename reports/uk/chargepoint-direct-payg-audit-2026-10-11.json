@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-10-10T23:46:56.765684+00:00",
+  "collectedAt": "2026-10-10T11:40:53.549601+00:00",
+  "country": "GB",
+  "source": "Eco-Movement PCPR (ChargePoint CPO physical public access subset)",
+  "scope": {
+    "stations": 25,
+    "connectors": 84
+  },
+  "paymentEvidenceByType": {
+    "no_independent_payment_channel_evidence": {
+      "stations": 13,
+      "connectors": 44
+    },
+    "operator_direct_contactless_hardware_verified_exact_guest_checkout_amount_missing": {
+      "stations": 6,
+      "connectors": 12
+    },
+    "official_payg_rate_but_app_only_channel_conflict": {
+      "stations": 3,
+      "connectors": 20
+    },
+    "hotel_exact_rate_and_cap_but_app_only_channel_conflict": {
+      "stations": 2,
+      "connectors": 6
+    },
+    "portal_guest_tariff_visible_no_verified_payment_authorization": {
+      "stations": 1,
+      "connectors": 2
+    }
+  },
+  "sourceTariffIssueConnectorCounts": {
+    "pcpr_vat_unspecified_connector": 84,
+    "tariff_has_time_or_parking": 28,
+    "multi_element_tariff": 38,
+    "tariff_type_unspecified": 84
+  },
+  "exactConnectorPricePromoted": 0,
+  "sourceTariffGrossVATVerified": false,
+  "operatorProof": "reports/uk/chargepoint-direct-payg-evidence-2026-10-11.json",
+  "fullConnectorAudit": "reports/uk/chargepoint-direct-payg-exact-connectors-2026-10-11.csv",
+  "decisionRules": {
+    "contactless_hardware": "first-party statement confirms method at installation but tariff and checkout need validation; do not activate",
+    "operator_rate_app_only_conflict": "retail PAYG price known, but ChargePoint passenger app limited to connected business/leasing program after 30 Jun 2026; confirm working card/QR method",
+    "pcpr_vat": "Do not automatically mark all source VAT absent as exact gross guest fare; reconcile against actual operator quote",
+    "operator_caps_minimum_time": "Time, caps, parking, minimum session fees and schedule require explicit tariff model; do not omit or double bill.",
+    "direct_tariff": "No promotion to V9 until exact connector price including taxes AND independent accessible guest payment path are verified."
+  },
+  "policy": "No source tariff default, no invented prices, no changes to production V9; source inventory remains available in quarantine."
+}
