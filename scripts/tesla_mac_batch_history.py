@@ -375,7 +375,7 @@ def verify_oct07_sync(events):
         if existing["syncEvidence"]["canonicalSha256"] != mac_sha:
             raise RuntimeError("Frozen Oct 7 retrospective conflicts with source data")
         return
-    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf8")
+    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
 
 
 def main():
