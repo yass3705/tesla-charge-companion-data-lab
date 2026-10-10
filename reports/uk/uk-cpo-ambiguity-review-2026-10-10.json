@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-10T11:39:37.697156+00:00",
+  "generatedAt": "2026-10-10T11:40:43.059169+00:00",
   "scope": "UK CPO DIRECT; independent evidence review; no V9 activation or price rewriting",
   "chargePoint": {
-    "sourceCollectedAt": "2026-10-10T10:09:12.803047+00:00",
+    "sourceCollectedAt": "2026-10-10T11:39:47.630183+00:00",
     "locations": 323,
     "connectors": 1142,
     "tariffs": 145,
@@ -12,12 +12,12 @@
       "verification_requise_ne_pas_promouvoir_comme_payg_valide": 1035
     },
     "connectorEvidenceIssues": {
-      "ad_hoc_payment_not_explicit_in_ocpi_tariff": 1142,
       "foreign_currency_tariff": 107,
+      "ocpi_tariff_type_unspecified_valid_for_all_sessions_not_payg_checkout_proof": 1142,
       "ocpi_vat_unspecified_20pct_derivation_not_operator_verified": 1142
     },
     "tariffEvidenceIssues": {
-      "unspecified_tariff_type": 145,
+      "type_unspecified_ocpi_valid_all_sessions": 145,
       "at_least_one_vat_absent": 145,
       "both_charge_time_and_idle_time": 32,
       "non_GBP_tariff": 1
@@ -41,11 +41,11 @@
       "pricedByArithmeticButNotPAYGVerified": 1035,
       "excludedFromArithmetic": 107,
       "currentV9Activation": "not_verified_by_source_report",
-      "note": "Tariff.type absent; calculated 20% VAT is a statutory inference, not per-offer operator attestation."
+      "note": "OCPI missing Tariff.type applies to all session types; it does not prove an independent ad-hoc checkout. VAT 20% is a statutory inference, not per-offer attestation."
     },
     "guards": [
       "Never convert a USD FLAT 0 into GBP or interpret it as confirmed free charging",
-      "Never rank missing-type prices as verified anonymous ad-hoc without independent CPO evidence",
+      "OCPI Tariff.type omitted is valid for all sessions; require separate evidence that the public price is the actual first-party ad-hoc checkout",
       "TIME and PARKING_TIME must use charging and idle durations separately, never same elapsed minutes twice",
       "Missing OCPI VAT must retain inferred-VAT provenance and be independently checked against customer-facing PAYG",
       "Only exact location+EVSE+connector+tariff identity may receive a tariff",
