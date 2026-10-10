@@ -64,4 +64,10 @@ const outfile='reports/electroverse/app-extra-exact-evidence-audit-2026-10-11.js
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(outfile,JSON.stringify(output,null,2)+'\n');
 console.log(JSON.stringify({event:'RESULT',report:outfile,coverage:output.coverage,errorCount:errors.length,other:unmatchedAppScreenshots}));
-if(errors.length)process.exitCode=2;
+if(errors.length){
+ for(const e of errors)console.log(JSON.stringify({event:'MISMATCH',appId:e.appId,cacheEvses:e.info.cacheEvses,
+ cacheRef:e.info.cacheRef,cacheMatching:e.info.cacheMatching,sourceConnectorProfiles:e.info.sourceConnectorProfiles,
+ localPdcs:e.info.exactLocalIrvePdcs,globalOwnerCount:e.info.globalOwnerCount,globalStations:e.info.globalStations,
+ sourcePricingReport:e.info.sourcePricingReport?.map(p=>({kw:p.kw,rate:p.rateComponents?.filter(c=>c[0]==='ConsumptionRate')}))}));
+ process.exitCode=2;
+}
