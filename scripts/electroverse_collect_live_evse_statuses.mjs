@@ -14,6 +14,11 @@ const cfg={batchSize:Math.min(5,Math.max(1,Number(process.env.ELECTROVERSE_STATU
  concurrency:Math.min(8,Math.max(1,Number(process.env.ELECTROVERSE_STATUS_CONCURRENCY||5))),
  pageSize:15,maxPages:120,attempts:2};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const maxFailedLocations=Math.max(4,Number(process.env.ELECTROVERSE_STATUS_MAX_FAILED_LOCATIONS||24));
+const delayMs=Math.max(400,Number(process.env.ELECTROVERSE_STATUS_DELAY_MS||1000));
+let abortedByErrorBudget=false;
+let totalFailedLocations=0;
+function failLocation(f){failures.push(f);totalFailedLocations+=(Array.isArray(f.pks)?f.pks.length:1);if(totalFailedLocations>=maxFailedLocations)abortedByErrorBudget=true;}
 const manifest=JSON.parse(await fs.readFile(SOURCE+'/manifest.json','utf8'));
 const cachePK=new Map();
 for(const sh of manifest.shards||[]){
@@ -61,21 +66,21 @@ async function saveLocation(pk,loc){
  entries[pk]=item;completed++;
 }
 async function work(){
- while(state.next<groups.length){
+ while(state.next<groups.length && !abortedByErrorBudget){
   const batch=groups[state.next++];if(!batch)break;
   requests++;
   const reply=await client.request(statusQuery(batch),{},{attempts:cfg.attempts});
   if(reply.status!==200||!reply.json?.data){
-    failures.push({pks:batch,code:reply.status,reason:'batch HTTP/GraphQL failure'});
+    failLocation({pks:batch,code:reply.status,reason:'batch HTTP/GraphQL failure'});
     continue;
   }
   for(const [i,pk] of batch.entries()){
    const loc=reply.json.data['s'+i];
-   if(!loc?.evses){failures.push({pk,reason:'missing location in batch',errors:reply.json.errors?.map(e=>e.message)});continue;}
-   try{await saveLocation(pk,loc)}catch(e){failures.push({pk,reason:String(e.message||e)})}
+   if(!loc?.evses){failLocation({pk,reason:'missing location in batch',errors:reply.json.errors?.map(e=>e.message)});continue;}
+   try{await saveLocation(pk,loc)}catch(e){failLocation({pk,reason:String(e.message||e)})}
   }
   if(completed%2000<cfg.batchSize)console.log(JSON.stringify({completed,total:keys.length,requests,paged,failures:failures.length}));
-  await sleep(150);
+  await sleep(delayMs);
  }
 }
 await Promise.all(Array.from({length:cfg.concurrency},work));
@@ -84,7 +89,8 @@ const sample=limit>0;
 const totalSource=[...cachePK.values()].reduce((a,v)=>a+v.size,0);
 const summary={
  schemaVersion:1,generatedAt:runAt,sample,sourceCacheAt:manifest.generatedAt,
- cacheLocations:cachePK.size,requestedLocations:keys.length,completedLocations:completed,failedLocations:failures.length,
+ cacheLocations:cachePK.size,requestedLocations:keys.length,completedLocations:completed,failedLocations:totalFailedLocations,
+ skippedLocations:keys.length-completed-totalFailedLocations,abortedByErrorBudget,rateBudget:maxFailedLocations,
  expectedCachedSourceEvses:totalSource,observedEvses:Object.values(statuses).reduce((a,b)=>a+b,0),
  missingCachedSourceEvses:missingSource.length,httpRequests:requests,paginationRequests:paged,
  statuses,allowedStatuses:['AVAILABLE','CHARGING'],
@@ -93,7 +99,7 @@ const summary={
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(sample?'reports/electroverse/live-status-preflight-2026-10-10.json':REPORT,JSON.stringify(summary,null,2)+'\n');
-if(failures.length>0||completed!==keys.length){
+if(totalFailedLocations>0||completed!==keys.length){
  console.log(JSON.stringify({ERROR:'incomplete census; ledger not published',summary}));
  process.exitCode=2;
 }else if(sample){
