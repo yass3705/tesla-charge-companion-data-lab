@@ -1,56 +1,130 @@
-name: Verify Tesla Mac source versus active V9
+name: Refresh Tesla Mac provenance and tariff source audit (all countries)
 on:
   workflow_dispatch:
+  schedule:
+    # Cross-repository Mac pushes cannot directly trigger this workflow with GITHUB_TOKEN.
+    # Poll every hour; changes in any country are reflected at the next scheduled run.
+    - cron: '29 * * * *'
   push:
     branches: [main]
     paths:
       - '.github/workflows/tesla-dataset-provenance-20261010.yml'
       - 'scripts/tesla_dataset_provenance_audit_20261010.py'
+      - 'scripts/tesla_global_tariff_inventory_20261009.py'
+      - 'scripts/tesla_source_selection_audit_20261009.py'
 permissions:
   contents: write
 concurrency:
-  group: tesla-dataset-provenance
+  group: tesla-dataset-provenance-main
   cancel-in-progress: false
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
-      - name: Inspect canonical Mac, September baseline, actual V9 runtime and preview copies
+          persist-credentials: true
+      - name: Pin one Mac commit for every source and mirror comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(git ls-remote https://github.com/yass3705/tesla-charge-companion-stable.git refs/heads/main | cut -f1)"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "Unable to pin Mac repository"; exit 1; }
+          echo "TCC_TESLA_SOURCE_REF=$sha" >> "$GITHUB_ENV"
+          echo "Pinned Tesla source: $sha"
+      - name: Inspect canonical Mac and actual V9 production and test mirrors
         run: python scripts/tesla_dataset_provenance_audit_20261010.py
-      - name: Validate report and highlight source mismatch
+      - name: Rebuild tariff-rule inventory for all nine TCC countries
+        run: python scripts/tesla_global_tariff_inventory_20261009.py
+      - name: Recompute Mac versus SuC Tracker preference for every TCC country
+        run: python scripts/tesla_source_selection_audit_20261009.py
+      - name: Validate completeness, provenance, and consistent input hashes
         run: |
           python - <<'PY'
-          import json,pathlib
-          p=pathlib.Path('reports/tesla/tesla-dataset-provenance-audit-latest.json')
-          j=json.loads(p.read_text())
-          assert j['actualV9']['effectiveRepositoryPath']=='v9-production-runtime/data/tesla_stations.json'
-          assert j['sources']['mac_canonical_main']['stations']>1100
-          assert j['sources']['v9_production_snapshot']['stations']>1100
-          assert j['sources']['mac_canonical_main']['sha256']!=j['sources']['v9_production_snapshot']['sha256']
-          print('V9_TESLA_SOURCE_MISMATCH_CONFIRMED',j['actualV9'])
+          import json, os, pathlib
+          root = pathlib.Path('reports')
+          provenance = json.loads((root/'tesla/tesla-dataset-provenance-audit-latest.json').read_text())
+          p = root/'tariff-scenarios'
+          inventory = json.loads((p/'tesla-global-inventory-latest.json').read_text())
+          selection = json.loads((p/'tesla-source-selection-audit-latest.json').read_text())
+          canonical = provenance['sources']['mac_canonical_main']
+          expected = canonical['sha256']
+          assert provenance['actualV9']['effectiveRepositoryPath']=='v9-production-runtime/data/tesla_stations.json'
+          assert provenance['actualV9']['sourceRef']==os.environ['TCC_TESLA_SOURCE_REF']
+          assert provenance['macPublication']['canonicalSha256']==expected
+          assert provenance['macPublication']['stationCount']==canonical['stations']
+          assert inventory['sourceSha256']==expected
+          assert selection['macSourceSha256']==expected
+          assert inventory['sourceTotalStations']==canonical['stations']
+          assert selection['macStationsAudited']>1000
+          countries=('FR','IT','CH','DE','ES','NL','UK','MA','BE')
+          assert set(countries)==set(selection['countries'])
+          assert set(countries)==set(inventory['countries'])
+          for cc in countries:
+              mac_cc = 'GB' if cc=='UK' else cc
+              n = canonical['countries'][mac_cc]['stations']
+              assert inventory['countries'][cc]['stations']==n, cc
+              assert selection['countries'][cc]['stations']==n, cc
+              assert provenance['macPublication']['countryBatchPublicationEvidence'][mac_cc]['stationCount']==n, cc
+          assert selection['countries']['MA']['preferredTariffSource']=='Mac'
+          assert selection['notPublishedToV9'] is True
+          assert provenance['comparisons']['v9_test_vs_v9_production_identical_bytes']==(
+              provenance['sources']['v9_test_snapshot']['sha256']==provenance['sources']['v9_production_snapshot']['sha256'])
+          print('TESLA_ALL_COUNTRIES_AUDIT_VALIDATED', canonical['stations'], expected,
+                'status=', provenance['auditStatus'])
           PY
-      - name: Publish provenance only (never touch live tariff databases)
+      - name: Persist reports even when Mac and V9 mirrors have drifted
+        shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add reports/tesla/tesla-dataset-provenance-audit-latest.json
-          git commit -m "reports: Tesla Mac versus V9 loaded snapshot and October country deltas"
-          for n in 1 2 3 4 5; do
+          git add -- reports/tesla/tesla-dataset-provenance-audit-latest.json \
+            reports/tariff-scenarios/tesla-global-inventory-latest.json \
+            reports/tariff-scenarios/tesla-global-real-rule-fixtures.json \
+            reports/tariff-scenarios/tesla-global-complete-config-fixtures.json \
+            reports/tariff-scenarios/tesla-source-selection-audit-latest.json \
+            reports/tariff-scenarios/tesla-source-selection-station-detail-latest.json
+          if git diff --cached --quiet; then
+            echo 'No report changes'
+            exit 0
+          fi
+          git commit -m "reports(tesla): refresh all countries after Mac batch [run ${{ github.run_id }}]"
+          for attempt in 1 2 3 4 5; do
             git fetch origin main
-            if ! git rebase origin/main; then git rebase --abort || true; exit 1; fi
-            if git push origin HEAD:main; then echo TESLA_SOURCE_REPORT_PUBLISHED; exit 0; fi
-            sleep "$((n*2))"
+            if ! git rebase origin/main; then
+              echo 'Concurrent report edit; preserve data and retry on next scheduled run' >&2
+              git rebase --abort || true
+              exit 1
+            fi
+            if git push origin HEAD:main; then
+              echo TESLA_ALL_COUNTRIES_AUDITS_PUBLISHED
+              exit 0
+            fi
+            sleep "$((attempt*2))"
           done
           exit 1
+      - name: Fail visibly if Mac has not reached both V9 mirrors
+        run: |
+          python - <<'PY'
+          import json
+          p='reports/tesla/tesla-dataset-provenance-audit-latest.json'
+          report=json.load(open(p,encoding='utf-8'))
+          prod=report['actualV9']['matchesMacCanonicalSource']
+          test=report['actualV9']['testMatchesMacCanonicalSource']
+          assert prod and test, f"Mac/V9 mirror drift: production={prod} test={test}; audit published for diagnosis"
+          print('TESLA_MAC_V9_PRODUCTION_AND_TEST_IN_SYNC')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: tesla-dataset-provenance
-          path: reports/tesla/tesla-dataset-provenance-audit-latest.json
+          name: tesla-all-countries-audit-${{ github.run_id }}
+          path: |
+            reports/tesla/tesla-dataset-provenance-audit-latest.json
+            reports/tariff-scenarios/tesla-global-inventory-latest.json
+            reports/tariff-scenarios/tesla-source-selection-audit-latest.json
+            reports/tariff-scenarios/tesla-source-selection-station-detail-latest.json
           retention-days: 90
