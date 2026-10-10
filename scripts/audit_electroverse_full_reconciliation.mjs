@@ -13,6 +13,7 @@ const SOURCE='data/electroverse/tariff_cache';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const norm=v=>String(v??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const txt=v=>String(v??'').trim();
+const fullId=v=>/^FR[A-Z0-9]{7,}$/.test(norm(v));
 const read=async f=>JSON.parse(await fs.readFile(f,'utf8'));
 const gzread=async f=>JSON.parse(zlib.gunzipSync(await fs.readFile(f)).toString('utf8'));
 const hash=v=>crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex').slice(0,16);
@@ -105,18 +106,22 @@ for(const sh of asArray(sm.shards)){
     }))
    })).sort((a,b)=>a.kw-b.kw||a.plug.localeCompare(b.plug));
    const signature=hash(values);
+   // Separate price semantics from charger hardware/power variants.
+   const tariffSignature=hash([...new Set(values.map(v=>JSON.stringify({
+    free:v.free,currency:v.currency,components:v.components,restrictions:v.restrictions
+   })))].sort());
    sigSeen.add(signature);
    if(new Set(values.map(v=>v.kw+'|'+v.plug)).size>1)counters.sourceMultiConnectorPower++;
    if(values.some(v=>v.restrictions.length))counters.sourceRestrictedConnectors++;
    const k=locPk+'|'+refNorm;
-   if(refNorm){let g=refGroups.get(k);if(!g){g=[];refGroups.set(k,g);}g.push({pk:srcPk,sig:signature,values});}
+   if(refNorm){let g=refGroups.get(k);if(!g){g=[];refGroups.set(k,g);}g.push({pk:srcPk,sig:signature,tariffSig:tariffSignature,values});}
    const ev={
     locPk,stationId:stId,sourceName:loc.sourceName,operator:operator(ref),
     sourcePk:srcPk,physicalReference:ref,normalizedRef:refNorm,
     published:isPublished,cacheFetchedAt:txt(row.fetchedAt),
     tariffHash:txt(row.tariffHash),connectorCount:connectors.length,
     connectorSummary:values.map(v=>v.plug+':'+v.kw+'kW').join(';'),
-    sourcePriceSignature:signature,hasPrice,hasMultiplePower:new Set(values.map(v=>v.kw+'|'+v.plug)).size>1,
+    sourcePriceSignature:tariffSignature,sourceTechnicalSignature:signature,hasPrice,hasMultiplePower:new Set(values.map(v=>v.kw+'|'+v.plug)).size>1,
     sourceRestricts:values.some(v=>v.restrictions.length),
     hasPublicIdentityMatch:localSet.has(refNorm),localPdcCount:localSet.size,
     mapped:!!mapped,locationPkClaimCount:0,localSamePrefixCandidates:0,
@@ -134,7 +139,8 @@ const categoryStats={},priorityStats={},cases=[],byOperator={},byStation={},newC
 const hold27=new Set(userConflicts.keys()),observedHold=new Set();
 for(const ev of all){
  const group=refGroups.get(ev.locPk+'|'+ev.normalizedRef)||[];
- const gs=new Set(group.map(x=>x.sig));
+ const gs=new Set(group.map(x=>x.tariffSig));
+ const techVariants=new Set(group.map(x=>x.sig));
  ev.sourceRefsSameSite=group.length;ev.uniqueSourcePricesAtSameRef=gs.size;
  ev.locationPkClaimCount=physicalOwners.get(ev.normalizedRef)?.size||0;
  const loc=locations.get(ev.locPk);
@@ -153,18 +159,20 @@ for(const ev of all){
  }
  if(ev.normalizedRef&&gs.size>1){
   reasons.push('SOURCE_DUPLICATE_DIFFERENT_PRICING');
-  if(!hold27.has(ev.normalizedRef))newConflictCases.push(ev.normalizedRef);
+  if(!hold27.has(ev.normalizedRef)&&(ev.hasPublicIdentityMatch||ev.nationalOwnerCount===1))newConflictCases.push(ev.normalizedRef);
+ }else if(ev.normalizedRef&&techVariants.size>1){
+  reasons.push('SOURCE_DUPLICATE_SAME_PRICE_TECHNICAL_VARIANT');
  }
  if(!ev.normalizedRef)reasons.push('MISSING_PHYSICAL_REFERENCE');
  if(!ev.sourcePk)reasons.push('MISSING_SOURCE_PK');
- if(ev.normalizedRef&&ev.locationPkClaimCount>1)reasons.push('SOURCE_REF_REUSED_ACROSS_LOCATIONS');
+ if(ev.normalizedRef&&fullId(ev.normalizedRef)&&ev.locationPkClaimCount>1)reasons.push('FULL_SOURCE_ID_REUSED_ACROSS_LOCATIONS');
  if(ev.normalizedRef&&ev.nationalOwnerCount>1)reasons.push('NATIONAL_EVSE_MULTIPLE_STATIONS');
  if(parentCandidates.length>1)reasons.push('AMBIGUOUS_PARENT_PDC');
  if(!ev.mapped)reasons.push('SOURCE_LOCATION_NOT_IN_IRVE_MAPPING');
  if(!ev.hasPrice)reasons.push('SOURCE_PRICE_NOT_PRESENT');
  if(!ev.connectorCount)reasons.push('SOURCE_NO_CONNECTORS');
- if(ev.hasMultiplePower)reasons.push('MULTIPLE_CONNECTOR_POWER_NEEDS_PER_CONNECTOR_MATCH');
- if(ev.sourceRestricts)reasons.push('COMPLEX_TIME_OR_DURATION_PRICING');
+ if(!ev.published&&ev.hasMultiplePower)reasons.push('MULTIPLE_CONNECTOR_POWER_NEEDS_PER_CONNECTOR_MATCH');
+ if(!ev.published&&ev.sourceRestricts)reasons.push('COMPLEX_TIME_OR_DURATION_PRICING');
  if(!ev.published){
   if(ev.hasPublicIdentityMatch)reasons.push('UNPUBLISHED_DESPITE_EXACT_LOCAL_IRVE_ID');
   else if(parentCandidates.length===1)reasons.push('UNPUBLISHED_PARENT_UNIQUE_CANDIDATE');
@@ -172,15 +180,15 @@ for(const ev of all){
   reasons.push('UNPUBLISHED_SOURCE_EVSE');
  }
  const priority=hold27.has(ev.normalizedRef)?0:
-  gs.size>1?1:
+  (!ev.published&&gs.size>1&&(ev.hasPublicIdentityMatch||ev.nationalOwnerCount===1))?1:
   (!ev.published&&parentCandidates.length>1)?2:
   (!ev.published&&ev.nationalOwnerCount>1)?3:
   (!ev.published&&ev.hasPublicIdentityMatch)?4:
-  (!ev.published&&ev.locationPkClaimCount>1)?5:
+  (!ev.published&&fullId(ev.normalizedRef)&&ev.locationPkClaimCount>1)?5:
   (!ev.published&&ev.mapped&&ev.hasPrice)?6:
   (!ev.published)?7:99;
  ev.priority=priority;ev.caseReasons=reasons;
- for(const reason of reasons)count(categoryStats,reason);
+ if(!ev.published||priority<99)for(const reason of reasons)count(categoryStats,reason);
  if(!ev.published||priority<99){
   count(priorityStats,'P'+priority);
   count(byOperator,ev.operator);
@@ -194,11 +202,11 @@ const simplified=ev=>({
   priority:ev.priority,stationId:ev.stationId,sourceName:ev.sourceName,locPk:ev.locPk,operator:ev.operator,
   sourcePk:ev.sourcePk,evse:ev.physicalReference,connectors:ev.connectorSummary,
   cacheAt:ev.cacheFetchedAt,published:ev.published,reason:ev.caseReasons.join('|'),
-  sourcePriceSignature:ev.sourcePriceSignature,nationalOwnerCount:ev.nationalOwnerCount,
+  sourcePriceSignature:ev.sourcePriceSignature,sourceTechnicalSignature:ev.sourceTechnicalSignature,nationalOwnerCount:ev.nationalOwnerCount,
   nationalStations:ev.nationalStationIds.join('|'),localPdcCount:ev.localPdcCount,
   parentCandidates:ev.localSamePrefixCandidates,refSources:ev.sourceRefsSameSite
 });
-const headers=Object.keys(simplified(cases[0]||{priority:0,stationId:'',sourceName:'',locPk:'',operator:'',sourcePk:'',evse:'',connectors:'',cacheAt:'',published:false,reason:'',sourcePriceSignature:'',nationalOwnerCount:0,nationalStations:'',localPdcCount:0,parentCandidates:0,refSources:0}));
+const headers=Object.keys(simplified(cases[0]||{priority:0,stationId:'',sourceName:'',locPk:'',operator:'',sourcePk:'',evse:'',connectors:'',cacheAt:'',published:false,reason:'',sourcePriceSignature:'',sourceTechnicalSignature:'',nationalOwnerCount:0,nationalStations:'',localPdcCount:0,parentCandidates:0,refSources:0}));
 const csvData=rows=>headers.join(',')+'\n'+rows.map(r=>csvLine(simplified(r))).join('\n')+'\n';
 const runAt=new Date().toISOString();
 const summary={
@@ -213,6 +221,7 @@ const summary={
  },
  cases:{rows:cases.length,manualReviewRows:manualRows.length,userHoldUniqueEvse:hold27.size,userHoldSeenInCache:observedHold.size,
   newPotentialDuplicateConflictIds:[...new Set(newConflictCases)].filter(k=>!hold27.has(k)).length,
+  diagnosticNote:'New source price variants are evidence flags, not app-confirmed tariff contradictions; reconcile exact station/EVSE identity before manual inspection.',
   categories:categoryStats,byPriority:priorityStats,
   topOperatorCounts:Object.entries(byOperator).sort((a,b)=>b[1]-a[1]).slice(0,30),
   topStationCounts:Object.entries(byStation).sort((a,b)=>b[1]-a[1]).slice(0,20)
@@ -234,7 +243,7 @@ await fs.writeFile(ROOT+'/all-unresolved-cases.json.gz',zlib.gzipSync(Buffer.fro
 await fs.writeFile(ROOT+'/manual-review.csv.gz',zlib.gzipSync(Buffer.from(csvData(manualRows)),{level:6}));
 await fs.writeFile(ROOT+'/evidence-by-source-evse.json.gz',zlib.gzipSync(Buffer.from(JSON.stringify({generatedAt:runAt,records:cases.map(r=>({
  sourcePk:r.sourcePk,locPk:r.locPk,stationId:r.stationId,physicalReference:r.physicalReference,
- sourcePriceSignature:r.sourcePriceSignature,connectorPrices:r.sourcePriceComponents,reason:r.caseReasons,
+ sourcePriceSignature:r.sourcePriceSignature,sourceTechnicalSignature:r.sourceTechnicalSignature,connectorPrices:r.sourcePriceComponents,reason:r.caseReasons,
  fetchedAt:r.cacheFetchedAt,tariffHash:r.tariffHash
 }))})),{level:6}));
 console.log(JSON.stringify({generatedAt:runAt,sourceEvses:counters.sourceEvses,published:counters.publishedSourceEvses,unpublished:counters.unpublishedSourceEvses,queue:cases.length,manual:manualRows.length,categoryStats,byPriority:priorityStats,excludedByOverlay:om.rejected},null,2));
