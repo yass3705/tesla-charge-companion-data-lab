@@ -171,6 +171,43 @@ def main():
         if any(c.get("vat") is None for c, _ in tariff_components(t)):
             tariff_reasons["at_least_one_vat_absent"] += 1
 
+    # Connected Kerb: preserve every excluded connector's original evidence.
+    # A real price conflict is distinct from an unidentified tariff or an
+    # unresolved correspondence. Never lift a quarantine by station average.
+    ck_rows = []
+    ck_labels = collections.Counter()
+    for item in ck_ex["excludedConnectors"]:
+        reasons = seq(item.get("reasons"))
+        reason = reasons[0] if reasons else "no_validated_app_detail"
+        if reason == "multiple_energy_prices_without_windows":
+            label, priority = "tarif_ambigu", "P1"
+        elif reason == "fee_unit_verification_pending":
+            label, priority = "tarif_incalculable", "P1"
+        elif reason == "no_unique_standard_tariff":
+            label, priority = "tarif_non_attribuable", "P2"
+        elif reason in {"no_unique_exact_socket_match", "no_unique_exact_qr_and_geo_match"}:
+            label, priority = "correspondance_non_verifiee", "P3"
+        else:
+            label, priority = "tarif_indisponible", "P4"
+        ck_labels[label] += 1
+        ck_rows.append({
+            "priority":priority, "stationName":txt(item.get("stationName")),
+            "stationId":txt(item.get("stationId")), "evseId":txt(item.get("evseId")),
+            "connectorId":txt(item.get("connectorId")), "reason":reason,
+            "classification":label, "source":txt(item.get("reasonReport")),
+        })
+    ck_csv = REPORTS / "connected-kerb-unresolved-connectors-2026-10-10.csv"
+    ck_urgent = REPORTS / "connected-kerb-priority-ambiguities-2026-10-10.csv"
+    for target, items in ((ck_csv,ck_rows), (ck_urgent,[x for x in ck_rows if x["priority"] == "P1"])):
+        with target.open("w", newline="", encoding="utf8") as out:
+            w = csv.DictWriter(out, fieldnames=list(ck_rows[0]))
+            w.writeheader()
+            w.writerows(items)
+    assert len(ck_rows) == ck_ex["excludedConnectorCount"]
+    assert ck_labels["tarif_ambigu"] == ck["unresolvedReasonCounts"]["multiple_energy_prices_without_windows"]
+    assert ck_labels["tarif_incalculable"] == ck["unresolvedReasonCounts"]["fee_unit_verification_pending"]
+    assert ck_labels["tarif_ambigu"] + ck_labels["tarif_incalculable"] == 56
+
     assert counts["total_connectors"] == 1142, "Unexpected source baseline, inspect before promoting"
     assert len(station_ids) == 323
     assert sum(1 for c in cases if c["decision"] == "tarif_indisponible") == existing["stagedUnpricedConnectors"], "Quarantine parity"
@@ -223,7 +260,11 @@ def main():
             "ConnectedKerb": {"sourceCollectedAt":ck["collectedAt"],
                 "resolvedConnectors":ck["resolvedConnectors"], "excludedConnectors":ck["unresolvedConnectors"],
                 "unresolvedReasonCounts":ck.get("unresolvedReasonCounts",{}),
-                "noUnverifiedFeesAssumed":True},
+                "noUnverifiedFeesAssumed":True,
+                "classifiedExcludedConnectors":dict(ck_labels),
+                "manualReviewAllCsv":str(ck_csv.relative_to(ROOT)),
+                "manualPriority1Csv":str(ck_urgent.relative_to(ROOT)),
+                "manualPriority1Connectors":sum(x["priority"] == "P1" for x in ck_rows)},
             "Allego":{"publicExactPricedConnectors":allego["exactPricedConnectors"],"unpricedPublicConnectors":allego["unpricedPublicConnectors"],"state":allego["status"]},
             "Blink":{"publicExactPricedConnectors":blink["exactPricedConnectors"],"unpricedPublicConnectors":blink["unpricedPublicConnectors"],"state":blink["status"]},
             "Gridserve":{"publicExactPricedConnectors":grid["exactPricedConnectors"],"unpricedPublicConnectors":grid["unpricedPublicConnectors"],"excludedLocationReasons":grid["excludedCounts"],"state":grid["status"]},
@@ -238,6 +279,8 @@ def main():
         "tariffTypesMissing":tariff_reasons["unspecified_tariff_type"],
         "ambiguousSameScopeTariffs":len(conflicted_tariffs),
         "connectedKerbExcluded":ck["unresolvedConnectors"],
+        "connectedKerbTrueAmbiguity":ck_labels["tarif_ambigu"],
+        "connectedKerbIncalculableFee":ck_labels["tarif_incalculable"],
         "allegoValidated":allego["exactPricedConnectors"],
         "blinkValidated":blink["exactPricedConnectors"],
         "gridserveValidated":grid["exactPricedConnectors"],
