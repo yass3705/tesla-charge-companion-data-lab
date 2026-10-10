@@ -1,0 +1,41 @@
+name: Electra app spot-check shortlist
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/france/build_electra_app_verification_shortlist.mjs"
+      - ".github/workflows/electra-app-verification-shortlist.yml"
+permissions:
+  contents: write
+concurrency:
+  group: electra-app-verification-shortlist-main
+  cancel-in-progress: false
+jobs:
+  shortlist:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build CPO-balanced app verification sample
+        run: node scripts/france/build_electra_app_verification_shortlist.mjs
+      - name: Persist Excel-compatible shortlist and detailed evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/app-verification-shortlist-latest.csv reports/france/electra/app-verification-shortlist-latest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'audit: shortlist Electra app checks with exact station IDs'
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              if git rebase -X theirs origin/main && git push origin HEAD:main; then exit 0; fi
+              git rebase --abort || true
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
