@@ -38,13 +38,16 @@ const [sm,om,mm,irve,userHold]=await Promise.all([
 const mapping=new Map(asArray(mm.mappings).map(m=>[txt(m.electroverseLocationPk),m]));
 const userConflicts=new Map(asArray(userHold.records).map(r=>[norm(r.normalizedIrve),r]));
 const irveById=new Map();
+const irveStationById=new Map();
 for(const st of irve){
  const stationId=txt(st?.[0]);
+ irveStationById.set(stationId,{name:txt(st?.[1]),address:txt(st?.[2]),operator:txt(st?.[5])});
  for(const cfg of asArray(st?.[8]))for(const id of asArray(cfg?.[6])){
   const k=norm(id);if(!k)continue;
   let v=irveById.get(k);
   if(!v){v={stationIds:new Set(),rawId:txt(id),name:st?.[1],power:cfg?.[3],connector:cfg?.[1]};irveById.set(k,v);}
   v.stationIds.add(stationId);
+  (v.configs??=[]).push({stationId,powerKw:Number(cfg?.[3]),connector:txt(cfg?.[1])});
  }
 }
 const publishedPk=new Set(),publishedTarget=new Set(),publishedOffersById=new Map();
@@ -78,7 +81,7 @@ for(const sh of asArray(sm.shards)){
   const locals=asArray(mapped?.irvePdcIds?.length?mapped.irvePdcIds:row.irvePdcIds).map(norm).filter(Boolean);
   const localSet=new Set(locals);
   let loc=locations.get(locPk);
-  if(!loc){loc={locPk,stId,localSet,sourceCount:0,publishedCount:0,operator:null,sourceName:txt(row?.tariff?.name||row?.tariff?.location?.name||row.name),cacheAt:txt(row.fetchedAt),mapped:!!mapped};locations.set(locPk,loc);}
+  if(!loc){loc={locPk,stId,localSet,sourceCount:0,publishedCount:0,operator:null,sourceName:txt(row?.tariff?.name||row?.tariff?.location?.name||row.name||irveStationById.get(stId)?.name),cacheAt:txt(row.fetchedAt),mapped:!!mapped};locations.set(locPk,loc);}
   for(const e of asArray(row.tariff?.evses)){
    counters.sourceEvses++;loc.sourceCount++;
    const srcPk=txt(e?.pk),ref=txt(e?.physicalReference),refNorm=norm(ref);
@@ -123,7 +126,7 @@ for(const sh of asArray(sm.shards)){
     connectorSummary:values.map(v=>v.plug+':'+v.kw+'kW').join(';'),
     sourcePriceSignature:tariffSignature,sourceTechnicalSignature:signature,hasPrice,hasMultiplePower:new Set(values.map(v=>v.kw+'|'+v.plug)).size>1,
     sourceRestricts:values.some(v=>v.restrictions.length),
-    hasPublicIdentityMatch:localSet.has(refNorm),localPdcCount:localSet.size,
+    hasPublicIdentityMatch:localSet.has(refNorm),localPdcCount:localSet.size,stationName:irveStationById.get(stId)?.name||'',stationAddress:irveStationById.get(stId)?.address||'',
     mapped:!!mapped,locationPkClaimCount:0,localSamePrefixCandidates:0,
     nationalOwnerCount:irveById.get(refNorm)?.stationIds.size||0,
     nationalStationIds:[...(irveById.get(refNorm)?.stationIds||[])].slice(0,5),
@@ -153,6 +156,17 @@ for(const ev of all){
   }
  }
  ev.localSamePrefixCandidates=parentCandidates.length;
+ ev.parentCandidates=parentCandidates.map(id=>{
+  const nat=irveById.get(id);
+  const cfgs=asArray(nat?.configs).filter(c=>c.stationId===ev.stationId);
+  const powers=[...new Set(cfgs.map(c=>Number(c.powerKw)).filter(Number.isFinite))];
+  const plugs=[...new Set(cfgs.map(c=>c.connector).filter(Boolean))];
+  const sourcePowers=[...new Set(ev.sourcePriceComponents.map(v=>Number(v.kw)).filter(Number.isFinite))];
+  const powerMatch=sourcePowers.some(s=>powers.some(p=>Math.abs(s-p)<=0.5));
+  return {targetId:id,rawId:nat?.rawId||'',powerKw:powers,connectors:plugs,powerMatch,
+    alreadyPublished:publishedTarget.has(id),nationalOwnerCount:nat?.stationIds.size||0};
+ });
+ ev.parentPowerMatchCandidates=ev.parentCandidates.filter(p=>p.powerMatch&&!p.alreadyPublished&&p.nationalOwnerCount===1).length;
  const reasons=[];
  if(hold27.has(ev.normalizedRef)){
   reasons.push('USER_CONFIRMED_AMBIGUITY');observedHold.add(ev.normalizedRef);
@@ -199,16 +213,51 @@ for(const ev of all){
 cases.sort((a,b)=>a.priority-b.priority||a.stationId.localeCompare(b.stationId)||a.locPk.localeCompare(b.locPk)||a.sourcePk.localeCompare(b.sourcePk));
 const manualRows=cases.filter(r=>r.priority<=5);
 const simplified=ev=>({
-  priority:ev.priority,stationId:ev.stationId,sourceName:ev.sourceName,locPk:ev.locPk,operator:ev.operator,
+  priority:ev.priority,stationId:ev.stationId,sourceName:ev.sourceName,stationAddress:ev.stationAddress,locPk:ev.locPk,operator:ev.operator,
   sourcePk:ev.sourcePk,evse:ev.physicalReference,connectors:ev.connectorSummary,
   cacheAt:ev.cacheFetchedAt,published:ev.published,reason:ev.caseReasons.join('|'),
   sourcePriceSignature:ev.sourcePriceSignature,sourceTechnicalSignature:ev.sourceTechnicalSignature,nationalOwnerCount:ev.nationalOwnerCount,
   nationalStations:ev.nationalStationIds.join('|'),localPdcCount:ev.localPdcCount,
-  parentCandidates:ev.localSamePrefixCandidates,refSources:ev.sourceRefsSameSite
+  parentCandidates:ev.localSamePrefixCandidates,parentPowerMatchCandidates:ev.parentPowerMatchCandidates,refSources:ev.sourceRefsSameSite
 });
-const headers=Object.keys(simplified(cases[0]||{priority:0,stationId:'',sourceName:'',locPk:'',operator:'',sourcePk:'',evse:'',connectors:'',cacheAt:'',published:false,reason:'',sourcePriceSignature:'',sourceTechnicalSignature:'',nationalOwnerCount:0,nationalStations:'',localPdcCount:0,parentCandidates:0,refSources:0}));
+const headers=Object.keys(simplified(cases[0]||{priority:0,stationId:'',sourceName:'',stationAddress:'',locPk:'',operator:'',sourcePk:'',evse:'',connectors:'',cacheAt:'',published:false,reason:'',sourcePriceSignature:'',sourceTechnicalSignature:'',nationalOwnerCount:0,nationalStations:'',localPdcCount:0,parentCandidates:0,parentPowerMatchCandidates:0,refSources:0}));
 const csvData=rows=>headers.join(',')+'\n'+rows.map(r=>csvLine(simplified(r))).join('\n')+'\n';
 const runAt=new Date().toISOString();
+const urgent=cases.filter(r=>r.priority<=5);
+const parentProposal=urgent.filter(r=>r.priority===2).map(r=>({
+ sourcePk:r.sourcePk,locPk:r.locPk,stationId:r.stationId,stationName:r.stationName,
+ physicalReference:r.physicalReference,connectors:r.connectorSummary,
+ sourcePriceSignature:r.sourcePriceSignature,targetCandidates:r.parentCandidates,
+ powerMatchCandidateCount:r.parentPowerMatchCandidates,
+ status:r.parentPowerMatchCandidates===1?'TECHNICAL_LEAD_REQUIRE_IDENTITY_PROOF':'AMBIGUOUS_MULTIPLE_OR_NONE',
+ note:'No candidate promoted until physical connector identity, full station cardinality, public access and time provenance are verified.'
+}));
+const extraExact=urgent.filter(r=>r.priority===4).map(r=>({
+ sourcePk:r.sourcePk,locPk:r.locPk,stationId:r.stationId,stationName:r.stationName,stationAddress:r.stationAddress,
+ evse:r.physicalReference,connectors:r.connectorSummary,price:r.sourcePriceComponents,
+ fetchedAt:r.cacheFetchedAt,
+ reason:'exact local IRVE ID present but Electroverse offer not published; investigate exclusion / identity and CPO direct priority',
+ status:'EVIDENCE_ONLY_DO_NOT_PROMOTE'
+}));
+const rawGroupWarnings=[];
+for(const [key,group] of refGroups){
+ if(new Set(group.map(x=>x.tariffSig)).size<=1)continue;
+ const srcRows=all.filter(x=>x.locPk+'|'+x.normalizedRef===key);
+ const representative=srcRows[0];
+ if(!representative||userConflicts.has(representative.normalizedRef))continue;
+ if(!srcRows.some(x=>x.hasPublicIdentityMatch||x.nationalOwnerCount===1))continue;
+ rawGroupWarnings.push({
+ stationId:representative.stationId,stationName:representative.stationName,locPk:representative.locPk,
+ reference:representative.physicalReference,rawSources:srcRows.map(x=>({
+  pk:x.sourcePk,published:x.published,connectors:x.connectorSummary,
+  priceSignature:x.sourcePriceSignature,connectorPrices:x.sourcePriceComponents
+ })),
+ status:'POTENTIAL_SOURCE_VERSION_CONFLICT_REQUIRE_ACTUAL_OFFER_CHECK',
+ reason:'Distinct source pricing signatures; may be stale duplicate not an active published-price conflict.'
+ });
+}
+rawGroupWarnings.sort((a,b)=>a.stationId.localeCompare(b.stationId)||a.reference.localeCompare(b.reference));
+
 const summary={
  schemaVersion:1,generatedAt:runAt,
  scope:'ALL France Electroverse cached source EVSEs, connector tariffs and current overlay; read-only, non-public not promoted',
@@ -222,6 +271,9 @@ const summary={
  cases:{rows:cases.length,manualReviewRows:manualRows.length,userHoldUniqueEvse:hold27.size,userHoldSeenInCache:observedHold.size,
   newPotentialDuplicateConflictIds:[...new Set(newConflictCases)].filter(k=>!hold27.has(k)).length,
   diagnosticNote:'New source price variants are evidence flags, not app-confirmed tariff contradictions; reconcile exact station/EVSE identity before manual inspection.',
+  parentTechnicalUniqueLeads:parentProposal.filter(p=>p.powerMatchCandidateCount===1).length,
+  extraExactIdentitiesToInvestigate:extraExact.length,rawPotentialPriceConflictGroups:rawGroupWarnings.length,
+  distinctUnpublishedIdentities:new Set(cases.filter(x=>!x.published).map(x=>x.locPk+'|'+x.normalizedRef)).size,
   categories:categoryStats,byPriority:priorityStats,
   topOperatorCounts:Object.entries(byOperator).sort((a,b)=>b[1]-a[1]).slice(0,30),
   topStationCounts:Object.entries(byStation).sort((a,b)=>b[1]-a[1]).slice(0,20)
@@ -238,6 +290,11 @@ const summary={
  ]
 };
 await fs.writeFile(ROOT+'/summary.json',JSON.stringify(summary,null,2)+'\n');
+await fs.writeFile(ROOT+'/priority-review-evidence.json',JSON.stringify({
+ generatedAt:runAt,reviewRows:urgent.map(r=>({
+  ...simplified(r),parentCandidates:r.parentCandidates,fullPrice:r.sourcePriceComponents
+ })),parentProposal,extraExact,rawGroupWarnings
+},null,2)+'\n');
 await fs.writeFile(ROOT+'/top-priority-cases.csv',csvData(cases.slice(0,3000)));
 await fs.writeFile(ROOT+'/all-unresolved-cases.json.gz',zlib.gzipSync(Buffer.from(JSON.stringify({generatedAt:runAt,total:cases.length,records:cases.map(simplified)})),{level:6}));
 await fs.writeFile(ROOT+'/manual-review.csv.gz',zlib.gzipSync(Buffer.from(csvData(manualRows)),{level:6}));
