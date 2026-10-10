@@ -8,16 +8,18 @@ import collections
 import datetime as dt
 import hashlib
 import json
+import os
 import pathlib
 import urllib.request
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 OUT=ROOT/'reports/tesla'
 REMOTE='https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable'
+STABLE_REF=os.environ.get('TCC_TESLA_SOURCE_REF','main')
 SOURCES={
- 'mac_canonical_main':'main/data/tesla_stations.json',
- 'v9_production_snapshot':'main/v9-production-runtime/data/tesla_stations.json',
- 'v9_test_snapshot':'main/v9-test/data/tesla_stations.json',
+ 'mac_canonical_main':f'{STABLE_REF}/data/tesla_stations.json',
+ 'v9_production_snapshot':f'{STABLE_REF}/v9-production-runtime/data/tesla_stations.json',
+ 'v9_test_snapshot':f'{STABLE_REF}/v9-test/data/tesla_stations.json',
  'before_october_update':'b2eeeeeee90563a34d8314ee779ac22bc21ac5ec/data/tesla_stations.json',
 }
 COUNTRIES=['FR','IT','CH','DE','ES','NL','GB','MA','BE']
@@ -29,6 +31,11 @@ def download(suffix):
     data=json.loads(raw)
     if not isinstance(data,list) or len(data)<100:raise ValueError('invalid station array: '+suffix)
     return data,hashlib.sha256(raw).hexdigest(),len(raw)
+def read_remote_json(path):
+    with urllib.request.urlopen(urllib.request.Request(REMOTE+'/'+path,headers={
+        'User-Agent':'TCC-Tesla-Provenance-20261010/2.0'}),timeout=60) as f:
+        return json.load(f)
+
 def iso_day(v):
     try:return str(v)[:10] if dt.date.fromisoformat(str(v)[:10]) else None
     except (TypeError,ValueError):return None
@@ -105,6 +112,16 @@ def main():
     current=data['mac_canonical_main']
     mirror=data['v9_production_snapshot']
     old=data['before_october_update']
+    manifest=read_remote_json(f'{STABLE_REF}/data/tesla-mac-catalogue-publication.json')
+    if manifest.get('canonicalSha256')!=source['mac_canonical_main']['sha256']:
+        raise SystemExit('Mac publication manifest does not match canonical source')
+    published_countries=manifest.get('countries',{})
+    mac_countries=source['mac_canonical_main']['countries']
+    for cc, detail in mac_countries.items():
+        if cc not in published_countries or published_countries[cc].get('stationCount')!=detail['stations']:
+            raise SystemExit(f'Mac publication manifest country count mismatch: {cc}')
+    if set(published_countries)!=set(mac_countries):
+        raise SystemExit('Mac publication manifest is missing or adds country records')
     compare={
         'mac_vs_v9_production':delta(mirror,current),
         'before_october_vs_current_mac':delta(old,current),
@@ -113,10 +130,10 @@ def main():
     }
     try:
         with urllib.request.urlopen(urllib.request.Request(
-            REMOTE+'/main/v9-production-shell/shell-config.json',headers={'User-Agent':'TCC-Provenance'}),
+            REMOTE+f'/{STABLE_REF}/v9-production-shell/shell-config.json',headers={'User-Agent':'TCC-Provenance'}),
             timeout=20) as f: shell=json.load(f)
         with urllib.request.urlopen(urllib.request.Request(
-            REMOTE+'/main/v9-production-runtime/data/v9/source-registry.json',
+            REMOTE+f'/{STABLE_REF}/v9-production-runtime/data/v9/source-registry.json',
             headers={'User-Agent':'TCC-Provenance'}),timeout=20) as f:registry=json.load(f)
         tesla_source=[s for s in registry.get('sources',[]) if s.get('id')=='tesla-global']
     except Exception as e:
@@ -129,11 +146,17 @@ def main():
         'generatedAt':dt.datetime.now(dt.timezone.utc).isoformat(),
         'scope':'publication-vs-observation-vs-V9-loaded-copy',
         'sources':source,
+        'macPublication':{'canonicalSha256':manifest['canonicalSha256'],
+            'stationCount':manifest['stationCount'],
+            'countryBatchPublicationEvidence':published_countries,
+            'note':'Mac country publishedAt is a batch publication date, not an observed price timestamp'},
         'comparisons':compare,
         'actualV9':{'shellRuntimeBase':active,'teslaSourceRegistryPath':reference,
              'effectiveRepositoryPath':active+'/'+reference,
              'matchesMacCanonicalSource':source['mac_canonical_main']['sha256']==source['v9_production_snapshot']['sha256'],
-             'sourceRef':'main'},
+             'testMatchesMacCanonicalSource':source['mac_canonical_main']['sha256']==source['v9_test_snapshot']['sha256'],
+             'sourceRef':STABLE_REF},
+        'auditStatus':('synced' if source['mac_canonical_main']['sha256']==source['v9_production_snapshot']['sha256']==source['v9_test_snapshot']['sha256'] else 'mirror_mismatch'),
         'notes':[
             'GitHub publication date is NOT Tesla charge price observation date.',
             'Mac batch commits after 2026-10-07 are independently documented in Git history.',
