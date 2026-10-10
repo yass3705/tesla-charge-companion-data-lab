@@ -1,0 +1,47 @@
+name: Electroverse status GraphQL fallback diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/electroverse_status_fallback_diagnostic.mjs
+      - .github/workflows/electroverse-status-fallback-diagnostic.yml
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare GraphQL access patterns
+        run: node scripts/electroverse_status_fallback_diagnostic.mjs
+      - name: Upload diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-status-fallback-diagnostic
+          path: reports/electroverse/status-fallback-diagnostic-2026-10-10.json
+      - name: Commit diagnostic
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cp reports/electroverse/status-fallback-diagnostic-2026-10-10.json /tmp/probe.json
+          for i in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/probe.json reports/electroverse/status-fallback-diagnostic-2026-10-10.json
+            git add reports/electroverse/status-fallback-diagnostic-2026-10-10.json
+            git diff --cached --quiet && exit 0
+            git commit -m 'audit(electroverse): record single vs batch GraphQL fallback'
+            git push origin HEAD:main && exit 0
+            sleep $((i*2))
+          done
+          exit 1
