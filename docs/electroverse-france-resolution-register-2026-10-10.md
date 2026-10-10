@@ -61,5 +61,26 @@ Les **20 anciens faux conflits** LE2/P01 correspondent à des composantes tarifa
 - **Lidl Château-Gontier-sur-Mayenne** : la [fiche officielle du supermarché, 12 avenue Ambroise-Paré](https://www.lidl.fr/s/fr-FR/supermarches/chateau-gontier/avenue-ambroise-pare-12/) mentionne des **bornes de recharge**. Les références exactes `FR*LDL*E00007048` et `...07049` sont simultanément présentes dans le cache, l'IRVE et le GraphQL live ; leurs deux offres eMSP affichent 0,39 €/kWh, 120 kW, sans composante temporelle ni fixe. **Offre tarifaire univoque et identité exacte**, sous réserve de la validité actuelle et des conditions d'accès aux deux prises ; la fiche du magasin ne prouve pas l'ouverture 24/7.
 - **Saint-Affrique-les-Montagnes / Le Plein Tarnais** : la [grille officielle](https://lepleintarnais.fr/) prévoit bien des frais supplémentaires pour certaines connexions dépassant quatre heures, mais elle précise que les tarifs des opérateurs de mobilité partenaires peuvent varier. Ainsi, les deux offres Electroverse 0,30 €/kWh avec/sans frais temporels restent **« Tarif ambigu »** tant que l'offre eMSP réellement applicable n'est pas départagée.
 
+## Règle de statut Electroverse — décision du 10 octobre 2026
+
+**Exclure de l'overlay tarifaire Electroverse tout EVSE source dont le statut GraphQL n'est pas `AVAILABLE` (disponible) ou `CHARGING` (occupé).** Les `UNKNOWN`, `OUTOFORDER`, `OFFLINE`, statuts absents et toutes autres valeurs ne peuvent pas contribuer à une offre. Appliquer **au PK EVSE source**, pas à toute la station, pour ne pas supprimer les prises valides des stations mixtes.
+
+Contrôle en direct des **28 stations prioritaires / 133 références** du 10 octobre, détaillé dans [le rapport de décision par statut](../reports/electroverse/status-filter-2026-10-10.json) :
+
+- Conflits de tarif source avant filtre : **31 EVSE**, après : **23 EVSE** (8 résolus par exclusion des variantes non admissibles).
+- **Saint-Affrique-les-Montagnes** : 4 EVSE sous tarif **0,30 €/kWh** ; chacune des fiches sans frais de durée est **`UNKNOWN`**, tandis que la fiche **`AVAILABLE`** comporte **0,03 €/min après 4 h**. Les quatre ambiguïtés de sélection de source sont levées par statut ; le calcul de frais de durée reste soumis au moteur et aux règles applicables.
+- **Alès** (1), **Foissac** (1), **Saint-Victor-la-Coste** (2) : un seul type de fiche admissible ou aucune, donc plus d'ambiguïté de sélection de prix. Une des références Saint-Victor ne conserve **aucune** offre Electroverse admissible : ne pas convertir ceci en « Tarif ambigu » ; appliquer « Tarif indisponible » pour Electroverse en l'absence d'autre offre eMSP.
+- **23 conflits confirmés même après filtre** : Métropolis 13 (Villetaneuse 4, Bry Pasteur 4, Bry Charles-de-Gaulle 4, Charenton 1) ; Chargezy 8 (4 stations × CCS/CHAdeMO) ; Beauvais Espace Nautique Canada 2. Les deux offres sources y sont toujours `AVAILABLE`/`CHARGING` : conserver « Tarif ambigu ».
+- Sur les 133 références prioritaires : 74 avec une seule signature de prix admissible, 23 avec plusieurs, 36 sans source admissible. **« Aucune source admissible » n'est pas une nouvelle ambiguïté tarifaire.**
+- Les sources écartées dans l'examen prioritaire sont 20 `UNKNOWN` et 24 `OUTOFORDER`. Ce sont des **entrées de fiche** (PK), et non un décompte de stations.
+
+### Mise en œuvre nationale
+- Collecteur : `scripts/electroverse_collect_live_evse_statuses.mjs` ; workflow [collecte nationale des statuts](../.github/workflows/electroverse-status-gated-rebuild.yml). Interrogation paginée avec la même API GraphQL authentifiée que l'application. Cadence quotidienne en fenêtre nocturne.
+- Constructeur : `scripts/build_electroverse_france_evse_overlay.mjs` applique le filtre avant toute correspondance, groupement ou déduplication tarifaire. **Aucun nouvel overlay ne doit être publié tant que la collecte n'est pas complète et âgée de moins de 72 h.**
+- Contrôle d'intégrité prépublication : `scripts/audit_electroverse_status_gate_postbuild.mjs` refuse toute offre dont la provenance EVSE source n'est pas admissible.
+- Le rapport **ciblé** valide 23 conflits résiduels. Le total **national après publication** doit être recalculé séparément depuis le manifeste de l'overlay reconstruit ; ne pas annoncer 23 comme total national sans cette étape.
+
+**État au moment de la consignation :** code et chaîne CI modifiés ; collecte nationale GitHub lancée, résultat et publication V9 à contrôler. Ne pas confondre ceci avec un déploiement déjà validé.
+
 ## Procédure de clôture
 Chaque cas clôturé doit conserver : station IRVE, EVSE IRVE normalisé, Electroverse Location PK et Source EVSE PK, opérateur, connecteur/puissance, intégralité des composantes et restrictions, horodatage source, origine de la preuve, décision `validated` / `ambiguous` / `incalculable` / `unavailable`, et références d'éventuels tests de non-régression avant publication.
