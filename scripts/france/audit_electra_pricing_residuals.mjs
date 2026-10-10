@@ -155,7 +155,26 @@ const summary={schemaVersion:2,generatedAt:new Date().toISOString(),sourceGenera
 };
 await fs.mkdir('reports/france/irve',{recursive:true});
 await fs.writeFile('reports/france/irve/electra-pricing-residual-audit-2026-10-08.json',JSON.stringify(summary,null,2)+'\n');
-await fs.writeFile(summary.caseArchive,zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,cases})),{level:9}));
+await fs.writeFile(summary.caseArchive,zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:2,cases})),{level:9}));
+// One row per blocked location for human verification (not a publishable tariff).
+// Use a UTF-8 BOM so Excel opens accented French station and CPO names correctly.
+const queuePath='reports/france/irve/electra-pricing-action-queue-latest.csv';
+const fields=['locationId','name','cpo','triageClass','sourceEvseCount','knownPowerCount','unknownPowerCount',
+ 'distinctKnownPowersKw','evseIds','tariffCount','tariffSignatureCount','energyPriceVariation',
+ 'ancillaryPriceVariation','restrictionVariation','verifiedSamePowerConflict','decision','missingEvidence'];
+const quoteCsv=x=>{const v=String(x??'');return /[",\\n\\r;]/.test(v)?'"'+v.replaceAll('"','""')+'"':v;};
+const queue=[fields.join(';')];
+for(const c of cases){const t=c.triage;const r={locationId:c.locationId,name:c.name,cpo:c.cpo,
+ triageClass:t.class,sourceEvseCount:t.sourceEvseCount,knownPowerCount:t.knownPowerCount,
+ unknownPowerCount:t.unknownPowerCount,distinctKnownPowersKw:t.distinctKnownPowers.join('|'),
+ evseIds:c.evseIds.join('|'),tariffCount:c.tariffCount,tariffSignatureCount:c.tariffSignatureCount,
+ energyPriceVariation:t.energyPriceVariation,ancillaryPriceVariation:t.ancillaryPriceVariation,
+ restrictionVariation:t.restrictionVariation,verifiedSamePowerConflict:c.provenSamePowerConflict,
+ decision:t.decision,missingEvidence:t.nextEvidence};
+ queue.push(fields.map(k=>quoteCsv(r[k])).join(';'));
+}
+if(queue.length!==cases.length+1)throw new Error('Electra queue count mismatch');
+await fs.writeFile(queuePath,'\\ufeff'+queue.join('\\n')+'\\n','utf8');
 console.log(JSON.stringify({generatedAt:summary.generatedAt,counts:summary.counts,unresolvedKinds:summary.unresolvedKinds,
  heterogeneousPatterns:heteroReasons,componentTypes:components,restrictionFields:restrictions,triage:summary.triage,topCpos:Object.entries(rankedCpo).slice(0,12),
  sampleUnsupported:summary.sampleUnsupported.slice(0,5).map(x=>({name:x.name,cpo:x.cpo,issues:x.issues,components:x.components,restrictions:x.restrictionFields}))}));
