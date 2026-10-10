@@ -46,6 +46,40 @@ for(const [name,pricing,patch,expected] of cases){
 }
 const counters={};const familyStats={};const typeStats={};const reasonCounts={};const sampleIssues=[];
 const unmodeledFields={};const unmodeledExamples=[];
+const sessionContextAdjustments={yes55PostChargeTime:0,reveoNightWindow:0};
+const historicalPricingShadowWarnings=[];
+function contextualSession(offer,powerKw){
+ const session={...profile,powerKw};
+ const fee=offer?.pricing?.postChargeFee;
+ // The simulation profile describes a connected 50-minute stay, with 45 minutes
+ // charging and 5 minutes after charge. This end-of-charge timestamp is knowable.
+ if(Array.isArray(fee?.exemptLocalWindows)&&fee.exemptLocalWindows.length&&
+    Number.isFinite(+session.durationMinutes)&&Number.isFinite(+session.postChargeMinutes)&&
+    +session.durationMinutes>=+session.postChargeMinutes&&
+    +session.durationMinutes===+session.chargingMinutes+ +session.postChargeMinutes){
+   const startMs=new Date(session.startAt).getTime();
+   if(Number.isFinite(startMs)){
+    session.postChargeStartAt=new Date(startMs+(session.durationMinutes-session.postChargeMinutes)*60000).toISOString();
+    sessionContextAdjustments.yes55PostChargeTime++;
+   }
+ }
+ // A night-only Révéo offer is correctly inapplicable at the 11:00 reference time.
+ // Test it in its official interval rather than labelling it an engine failure.
+ if(offer?.metadata?.tenant==='reveo'&&String(offer?.metadata?.definitionName||'').trim().toLowerCase()==='tarif normal nuit'){
+   const rule=offer?.pricing?.rules?.[0];
+   if(offer.pricing.rules.length===1&&rule?.scope==='timeWindow'&&rule.start==='23:01'&&rule.end==='06:59'){
+    session.startAt='2026-10-10T23:30:00+02:00';
+    sessionContextAdjustments.reveoNightWindow++;
+   }
+ }
+ return session;
+}
+function pricingShadow(offer){
+ const wins=offer?.pricing?.postChargeFee?.exemptLocalWindows||[];
+ return (offer?.pricing?.rules||[]).some(r=>r?.scope==='timeWindow'&&r?.pricePerKwh===0&&
+    wins.some(w=>w.start===r.end&&w.end===r.start)&&
+    !['sessionFeeEur','chargingTimePerMinuteEur','connectedTimePerMinuteAfterFreeEur'].some(k=>r[k]!=null));
+}
 function legacyUnmodeledFields(offer){
  const rules=[...(offer?.pricing?.rules||[]),...(offer?.pricing?.componentGroups||[]).flatMap(x=>x.rules||[])];
  const result=[];
@@ -66,11 +100,13 @@ for(const s of samples){
  const offer=s.offer;
  let power=Number(offer?.metadata?.powerKw??offer?.maxPowerKw??0);
  if(!Number.isFinite(power)||power<=0)power=22;
- const session={...profile,powerKw:power};
+ const session=contextualSession(offer,power);
  const v=evaluate(offer,session);
- const isValid=v.complete===true&&Number.isFinite(Number(v.totalEur));
+ const shadow=pricingShadow(offer);
+ if(shadow)historicalPricingShadowWarnings.push({offerId:offer?.id,origin:s.origin,provider:s.provider,reason:'parking_zero_rule_shadows_energy'});
+ const isValid=v.complete===true&&Number.isFinite(Number(v.totalEur))&&!shadow;
  const unmodeled=legacyUnmodeledFields(offer);
- const st=isValid?(unmodeled.length?'computed_with_unmodeled_source_fields':'computed'):v.reason==='runtime_exception'?'exception':'incomplete';
+ const st=shadow?'computed_with_unsafe_legacy_shadow':isValid?(unmodeled.length?'computed_with_unmodeled_source_fields':'computed'):v.reason==='runtime_exception'?'exception':'incomplete';
  if(unmodeled.length){
    for(const field of unmodeled)unmodeledFields[field]=(unmodeledFields[field]||0)+1;
    if(unmodeledExamples.length<90)unmodeledExamples.push({offerId:offer?.id,provider:s.provider,origin:s.origin,unmodeledFields:unmodeled});
@@ -80,24 +116,36 @@ for(const s of samples){
  typeStats[s.tariffType]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};typeStats[s.tariffType].total++;typeStats[s.tariffType][st]++;
  for(const k of s.families||[]){familyStats[k]??={total:0,computed:0,incomplete:0,exception:0,computed_with_unmodeled_source_fields:0};familyStats[k].total++;familyStats[k][st]++;}
  if(!isValid){
-  const reason=String(v.reason||'reason_missing');reasonCounts[reason]=(reasonCounts[reason]||0)+1;
+  const reason=shadow?'parking_zero_rule_shadows_energy':String(v.reason||'reason_missing');reasonCounts[reason]=(reasonCounts[reason]||0)+1;
   if(sampleIssues.length<150)sampleIssues.push({offerId:offer?.id,provider,tariffType:s.tariffType,signature:s.signatureId,reason,matchedRule:v.matchedRule??null});
  }
+}
+const contextRegression=[];
+const datalabOffers=new Map(compiledSamples.filter(s=>s.origin==='datalab_v9/france-loadmotion-offers.json').map(s=>[s.offer?.id,s.offer]));
+for(const [id,expected] of [['loadmotion-yes55-profile-21',12.24],['loadmotion-yes55-profile-22',12.24],['loadmotion-yes55-profile-24',15.84],['loadmotion-yes55-profile-25',15.312],['loadmotion-yes55-profile-30',9.3],['loadmotion-reveo-11-078560e5',10.0002]]){
+ const offer=datalabOffers.get(id);
+ if(!offer){contextRegression.push({offerId:id,pass:false,reason:'offer_missing'});continue;}
+ const session=contextualSession(offer,22);
+ const result=evaluate(offer,session);
+ const actual=result.complete?Number(result.totalEur):null;
+ contextRegression.push({offerId:id,expected,actual,pass:actual!==null&&!pricingShadow(offer)&&Math.abs(actual-expected)<.000001,reason:result.reason||null,
+   startAt:session.startAt,postChargeStartAt:session.postChargeStartAt||null});
 }
 const report={generatedAt:new Date().toISOString(),enginePin:process.env.TCC_V9_PRICING_SHA||'not_pinned',
  status:synthetic.every(x=>x.pass)?'synthetic_regressions_pass':'synthetic_regressions_failed',
  mode:'FRANCE_PILOT_REAL_PUBLISHED_EMSP_OFFERS_NON_EXHAUSTIVE_SAMPLE',
- caveats:['Real-offer results use a single illustrative session, not end-user cost or a claim about all session profiles',
+ caveats:['Real-offer results use one illustrative session per offer (night-only Révéo at 23:30), not end-user cost or a claim about all session profiles',
   'A result marked incomplete is not evidence that the physical charging point is inactive',
   'Engine gaps and missing session context must be separately reviewed before changing pricing rules',
   'Synthetic cases are deterministic regression tests; sample offers are actual unchanged published Data Lab records'],
  sessionProfile:profile,syntheticCases:synthetic,samplesTested:samples.length,
  providers:counters,pricingTypes:typeStats,families:familyStats,
  incompleteReasons:reasonCounts,sampleIssues,
+ sessionContextAdjustments,historicalPricingShadowWarnings,contextRegression,
  unmodeledLegacyFields:unmodeledFields,unmodeledExamples,
  warnings:['computed_with_unmodeled_source_fields means engine returned a number but source billing components may be silently ignored; never treat these as validated amounts']};
 const out=path.join(root,'reports/tariff-scenarios/france-pricing-pilot-latest.json');
 fs.writeFileSync(out,JSON.stringify(report,null,2)+'\n','utf8');
 console.log('FRANCE_PRICING_PILOT='+JSON.stringify({syntheticPassed:synthetic.filter(x=>x.pass).length,syntheticTotal:synthetic.length,
 syntheticFailed:synthetic.filter(x=>!x.pass).map(x=>x.name),realSamples:samples.length,providers:counters,pricingTypes:typeStats,incompleteReasons:reasonCounts,unmodeledLegacyFields:unmodeledFields}));
-if(!synthetic.every(x=>x.pass))process.exitCode=2;
+if(!synthetic.every(x=>x.pass)||!contextRegression.every(x=>x.pass))process.exitCode=2;
