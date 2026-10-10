@@ -1,0 +1,43 @@
+name: UK Midhope Road guest fee evidence reconciliation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/uk_midhope_guest_fee_resolution_20261010.py
+      - .github/workflows/uk-midhope-guest-fee-resolution.yml
+permissions:
+  contents: write
+concurrency:
+  group: uk-midhope-guest-fee-evidence
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Cross-check four guest sockets against operator tariff and screenshot amounts
+        run: python3 scripts/uk_midhope_guest_fee_resolution_20261010.py
+      - name: Publish validated evidence without activating runtime rates
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp reports/uk/connected-kerb-midhope-verified-2026-10-10.json /tmp/midhope-proof.json
+          cp v9-production-runtime/data/v9/uk-connected-kerb-midhope-guest.candidate.json /tmp/midhope-candidate.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/midhope-proof.json reports/uk/connected-kerb-midhope-verified-2026-10-10.json
+            cp /tmp/midhope-candidate.json v9-production-runtime/data/v9/uk-connected-kerb-midhope-guest.candidate.json
+            git add reports/uk/connected-kerb-midhope-verified-2026-10-10.json v9-production-runtime/data/v9/uk-connected-kerb-midhope-guest.candidate.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "reports(uk): verify 4 Midhope Road EVSE customer tariffs [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$((attempt*2))"
+          done
+          exit 1
