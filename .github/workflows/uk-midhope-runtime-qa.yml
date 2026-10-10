@@ -1,0 +1,58 @@
+name: UK Midhope runtime cost and DST regression
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - tests/uk-midhope-runtime-20261010.mjs
+      - .github/workflows/uk-midhope-runtime-qa.yml
+      - reports/uk/connected-kerb-midhope-verified-2026-10-10.json
+permissions:
+  contents: write
+concurrency:
+  group: uk-midhope-runtime-qa
+  cancel-in-progress: false
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Checkout actual TCC production pricing runtime read only
+        uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-production
+          ref: main
+          path: production
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run real runtime conformance, including blocked boundary cases
+        run: node tests/uk-midhope-runtime-20261010.mjs production/runtime-overrides/assets/v9/pricing-engine.js
+      - name: Publish independently verified results without activating tariff
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp reports/uk/midhope-runtime-test-result-2026-10-10.json /tmp/midhope-runtime-test-result.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/midhope-runtime-test-result.json reports/uk/midhope-runtime-test-result-2026-10-10.json
+            git add reports/uk/midhope-runtime-test-result-2026-10-10.json
+            if git diff --cached --quiet; then
+              echo MIDHOPE_RUNTIME_QA_ALREADY_CURRENT
+              exit 0
+            fi
+            git commit -m "reports(uk): Midhope runtime session and DST QA [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then
+              echo MIDHOPE_RUNTIME_QA_PUBLISHED
+              exit 0
+            fi
+            sleep "$((attempt*2))"
+          done
+          exit 1
