@@ -52,3 +52,7 @@ Le workflow GitHub Pages confirme le déploiement. L'URL publique n'a pas été 
 - Toute mention plus haut d'une « V9 non déployée » ou de « blocages Ubitricity/Blink empêchant le déploiement » décrit l'état intermédiaire **avant** le run réussi 38059294144. Ce statut est remplacé par la présente vérification.
 - L'interface GitHub Pages a été chargée et identifiée comme `Tesla Charge Companion V9`, avec le même ID de snapshot en ligne.
 - La validité limitée au 24 octobre 2026 de Midhope n'est **pas** une validation hivernale. Les périodes ultérieures doivent rester non calculables tant que le CPO n'a pas fourni les horaires d'hiver.
+
+## Rectification horaire — 10 octobre 2026
+
+La capture fournie par l’utilisateur affiche les heures en **Europe/Paris** : **09:30–19:00** ; cela correspond à **08:30–18:00 Europe/London**, en été comme en hiver puisque France et Royaume-Uni passent aux mêmes dates à l’heure d’hiver. La date de fin `2026-10-24` était une précaution saisonnière injustifiée par la seule conversion horaire et doit être retirée du contrat de l'offre source et du moteur V9. Le moteur utilise les heures locales `Europe/London` (IANA) plutôt qu’une plage UTC figée. Maintenir la provenance du prix au 10/10/2026 ; vérifier les changements de conditions à la source indépendamment du changement d’heure. Ne jamais supposer de nouvelles composantes, ni doubler des frais de stationnement. Cette correction supplante les références ci-dessus à une garde hiver automatique.
