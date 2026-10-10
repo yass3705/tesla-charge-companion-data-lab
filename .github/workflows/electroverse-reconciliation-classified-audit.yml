@@ -1,0 +1,47 @@
+name: Electroverse FR classified reconciliation audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_electroverse_reconcile_20261010.mjs"
+      - ".github/workflows/electroverse-reconciliation-classified-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: electroverse-reconciliation-classified-audit
+  cancel-in-progress: false
+jobs:
+  classify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check isolated audit script
+        run: node --check scripts/audit_electroverse_reconcile_20261010.mjs
+      - name: Replay exact overlay matching and capture every exception
+        run: node --max-old-space-size=6144 scripts/audit_electroverse_reconcile_20261010.mjs
+      - name: Persist classified cases and unmatched archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/electroverse/reconciliation-classified-2026-10-10.json reports/electroverse/reconciliation-unmatched-2026-10-10.json.gz
+          if git diff --cached --quiet; then
+            echo 'No reconciliation output changes'
+            exit 0
+          fi
+          git commit -m 'audit: persist Electroverse classified reconciliation and unmatched identity ledger'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
