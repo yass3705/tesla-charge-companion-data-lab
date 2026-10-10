@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-10-10T12:49:49.684Z",
+  "source": "first party Connected Kerb user screenshots + original guest raw source",
+  "engine": "yass3705/tesla-charge-companion-production/runtime-overrides/assets/v9/pricing-engine.js",
+  "verifiedSocketCount": 4,
+  "passedCount": 11,
+  "passed": [
+    "exact_four_public_socket_identity",
+    "VAT_and_deposit",
+    "summer_winter_timezone_conversions",
+    "weekday_charging_60",
+    "weekday_charging_15_rounds_30",
+    "sunday_free_parking",
+    "sunday_idle_fee_independent",
+    "winter_local_start",
+    "charging_phase_no_duplicate_fee",
+    "idle_phase_parking_plus_idle_fee",
+    "four_sockets_equal_simple_price"
+  ],
+  "blockers": [
+    {
+      "name": "entry_boundary_0830",
+      "expected": 2.79984,
+      "actual": 1.9998,
+      "engineComplete": true,
+      "cause": "production component_groups selects fee window at session start; crossing not segmented"
+    },
+    {
+      "name": "exit_boundary_1800",
+      "expected": 4.39968,
+      "actual": 5.99976,
+      "engineComplete": true,
+      "cause": "production component_groups selects fee window at session start; crossing not segmented"
+    },
+    {
+      "name": "rounding_across_charging_idle_phase_boundary",
+      "cause": "operator billing or receipt required"
+    },
+    {
+      "name": "winter_source_schedule_confirmed_against_app",
+      "cause": "one summer UTC capture does not prove winter clock policy"
+    },
+    {
+      "name": "public_V9_pricing_deployment",
+      "cause": "candidate not activated; no production integration check"
+    }
+  ],
+  "activationReady": false,
+  "status": "blocked_before_publishing_prices"
+}
