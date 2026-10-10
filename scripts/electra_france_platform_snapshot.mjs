@@ -136,10 +136,12 @@ for(const x of verifiedEvidence.verifiedLinks){
  if(!Array.isArray(x.mappings)||!x.mappings.length)throw new Error('Verified location without EVSE mappings');
  verifiedByLocation.set(String(x.locationId),x);
 }
-const nationalEvse=new Set(),nationalPowerByEvse=new Map();
+const nationalEvse=new Set(),nationalPowerByEvse=new Map(),nationalKindsByEvse=new Map();
 for(const row of nationalRows)for(const cfg of row?.[8]||[])for(const id of Array.isArray(cfg?.[6])?cfg[6]:[]){
   const key=norm(id),power=Number(cfg?.[3]);
   nationalEvse.add(key);
+  if(!nationalKindsByEvse.has(key))nationalKindsByEvse.set(key,new Set());
+  nationalKindsByEvse.get(key).add(String(cfg?.[2]||'').toUpperCase());
   if(Number.isFinite(power)&&power>0){
     const old=nationalPowerByEvse.get(key);
     nationalPowerByEvse.set(key,old==null?power:old===power?power:null);
@@ -161,6 +163,50 @@ function powerScope(t){
   if(scopes.some(x=>!x))return null;
   const min=Math.max(...scopes.map(x=>x.min)),max=Math.min(...scopes.map(x=>x.max));
   return min<=max?{min,max}:null;
+}
+
+const PD_AC_DC_TARIFF_IDS=new Map([
+ ['9d3380b6-bfef-4f52-a50e-11f72cff552c',0.49],
+ ['6f46ce9f-5f71-4266-a07e-0e07231670d9',0.62],
+ ['deb8f441-4306-4735-9990-3165dbeefffc',0.62]
+]);
+function matchPowerdotAcDcFamily(loc,tariffs,compiled,associatedIds,identityMode){
+ if(identityMode!=='exact_national_irve_evse')return null;
+ if(/garage|concession|concessionnaire|centre auto|automobile|porsche|mercedes|bmw|audi|citro[eë]n|peugeot|renault|volkswagen|ford|toyota|hyundai|kia|opel|nissan/i.test(String(loc.name||'')))return null;
+ if(tariffs.length<2||tariffs.length>3||tariffs.length!==compiled.length)return null;
+ const byRate=new Map();
+ for(let i=0;i<tariffs.length;i++){
+   const t=tariffs[i],price=PD_AC_DC_TARIFF_IDS.get(String(t.chargeTariffId||''));
+   if(price==null||!(t.elements||[]).length)return null;
+   for(const e of t.elements){
+     if(Object.values(e.restrictions||{}).some(v=>v!=null&&v!==''&&(!Array.isArray(v)||v.length)))return null;
+     if((e.priceComponents||[]).length!==1)return null;
+     const component=e.priceComponents[0];
+     if(component.type!=='ENERGY'||Math.abs(Number(component.price)-price)>1e-6)return null;
+   }
+   if(!byRate.has(price))byRate.set(price,[]);
+   byRate.get(price).push(compiled[i]);
+ }
+ if(byRate.size!==2||!byRate.has(0.49)||!byRate.has(0.62))return null;
+ // Identical 0.62 source IDs are economically one price only when their full
+ // compiled fee, schedule and restriction signatures are identical.
+ for(const group of byRate.values())if(new Set(group.map(signature)).size!==1)return null;
+ const expected=[...new Set((loc.evses||[]).map(e=>norm(e.evseId)).filter(Boolean))];
+ const matched=new Set(associatedIds.map(norm));
+ if(!expected.length||expected.length!==matched.size||expected.some(id=>!matched.has(id)))return null;
+ const assignments=new Map();
+ let statusExcluded=0;
+ for(const evse of loc.evses||[]){
+   const id=norm(evse.evseId),kinds=nationalKindsByEvse.get(id),power=nationalPowerByEvse.get(id);
+   if(!kinds||kinds.size!==1||!(power>0))return null;
+   const kind=[...kinds][0];
+   if(kind!=='AC'&&kind!=='DC')return null;
+   const status=String(evse.status||'').toUpperCase().replace(/[_\s-]/g,'');
+   if(!['AVAILABLE','OCCUPIED','CHARGING','BUSY'].includes(status)){statusExcluded++;continue;}
+   assignments.set(id,byRate.get(kind==='AC'?0.49:0.62)[0]);
+ }
+ if(!assignments.size)return null;
+ return {assignments,statusExcluded};
 }
 
 const first=await page(0);if(!first.data)throw new Error('first Electra page failed '+JSON.stringify(first.error));
