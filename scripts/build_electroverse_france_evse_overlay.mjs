@@ -57,6 +57,42 @@ await fs.rm(OUT,{recursive:true,force:true});
 await fs.mkdir(OUT,{recursive:true});
 
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+// Explicit user-confirmed Electroverse price decisions (not CPO tariff overrides).
+const REVIEWED_PRICE_DISPUTES='data/platforms/electroverse/validated-mappings/price-disputes-review-2026-10-11.json';
+const reviewedPriceDisputes=JSON.parse(await fs.readFile(REVIEWED_PRICE_DISPUTES,'utf8'));
+const reviewedKey=(loc,ref)=>String(loc)+'|'+norm(ref);
+const samePowerDisputesByLocation=new Map();
+for(const x of reviewedPriceDisputes.samePowerDisputes||[]){
+  const loc=String(x.locationPk);
+  const arr=samePowerDisputesByLocation.get(loc)||[];
+  arr.push(x);samePowerDisputesByLocation.set(loc,arr);
+}
+const reviewedChargezyByRef=new Map((reviewedPriceDisputes.chargezyPowerVariants||[])
+  .map(x=>[reviewedKey(x.locationPk,x.physicalReference),x]));
+const reviewedQuarantine={blockedPhysicalReferences:0,blockedSourceEvses:0,examples:[]};
+function quarantineConflictingReviewedRows(row,count=false){
+  const loc=String(row.electroverseLocationPk);
+  const policies=samePowerDisputesByLocation.get(loc)||[];
+  if(!policies.length)return row;
+  const eligible=row.tariff?.evses||[];
+  const blocked=new Set();
+  for(const rule of policies){
+    const matching=eligible.filter(e=>norm(e.physicalReference)===norm(rule.physicalReference));
+    const found=new Set(matching.map(e=>String(e.pk)));
+    // A single eligible source is priceable; two competing eligible sources are not.
+    if((rule.sourcePks||[]).length===2 && rule.sourcePks.every(pk=>found.has(String(pk))))
+      blocked.add(norm(rule.physicalReference));
+  }
+  if(!blocked.size)return row;
+  const retained=eligible.filter(e=>!blocked.has(norm(e.physicalReference)));
+  if(count){
+    reviewedQuarantine.blockedPhysicalReferences+=blocked.size;
+    reviewedQuarantine.blockedSourceEvses+=eligible.length-retained.length;
+    if(reviewedQuarantine.examples.length<30)reviewedQuarantine.examples.push({loc,physicalReferences:[...blocked],
+      blockedPks:eligible.filter(e=>blocked.has(norm(e.physicalReference))).map(e=>String(e.pk))});
+  }
+  return {...row,tariff:{...row.tariff,evses:retained}};
+}
 const text=x=>String(x??'').trim();
 const round=(x,d=6)=>Number(Number(x).toFixed(d));
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
@@ -431,7 +467,7 @@ if(p01DonorPkSet.size){
   for(const sh of manifest.shards||[]){
     const d=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
     for(const sourceRow of Object.values(d.stations||{})){
-      const row=filterElectroverseRow(sourceRow);
+      const row=quarantineConflictingReviewedRows(filterElectroverseRow(sourceRow));
       for(const e of row?.tariff?.evses||[]){
         const pk=String(e?.pk??'');
         if(p01DonorPkSet.has(pk))p01DonorEvseByPk.set(pk,e);
@@ -510,7 +546,7 @@ function rej(k){rejected[k]=(rejected[k]||0)+1;}
 for(const sh of manifest.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
   for(const sourceRow of Object.values(data.stations||{})){
-    const row=filterElectroverseRow(sourceRow,true);
+    const row=quarantineConflictingReviewedRows(filterElectroverseRow(sourceRow,true),true);
     stats.cacheLocations++;
     for(const e0 of row.tariff?.evses||[]){
       if(debugNumericSourcePks.has(String(e0?.pk??''))){
@@ -2472,6 +2508,14 @@ for(const sh of manifest.shards||[]){
         }
         continue;
       }
+      const chargezyRule=reviewedChargezyByRef.get(reviewedKey(row.electroverseLocationPk,pr));
+      const validatedChargezyPower=!!chargezyRule && !parentMode &&
+        compiled.length>0 && compiled.every(x=>Number.isFinite(Number(x.powerKw)) &&
+          String(chargezyRule.sourcePkByPowerKw[String(Number(x.powerKw))]||'')===String(e?.pk??''));
+      if(chargezyRule && !validatedChargezyPower){
+        rej('reviewed_chargezy_source_power_mismatch');
+        continue;
+      }
       stats.pricedExactEvses++;
       if(compiled.some(x=>(x.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)))stats.durationBandCandidateEvses++;
       const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
@@ -2495,7 +2539,7 @@ for(const sh of manifest.shards||[]){
         if(p01Meta?.donorElectroverseEvsePk!=null)g.donorPks.add(p01Meta.donorElectroverseEvsePk);
         continue;
       }
-      if(unique.length!==1 && !parentMode){
+      if((unique.length!==1 || validatedChargezyPower) && !parentMode){
         // V9 connector-power representation:
         // one national EVSE may legitimately expose several connector tariffs.
         // Publish one offer line per power + pricing signature while keeping the
@@ -2754,7 +2798,7 @@ for(const [tileIdKey,offers] of tiles.entries()) for(const offer of offers){
   const isPowerVariant=granularity==='connector_power'||granularity==='connector_power_alias';
   const powerKey=offer.metadata?.powerKw??offer.metadata?.sourcePowerKw??'UNKNOWN';
   const variant=isPowerVariant
-    ? '|CONNECTOR_POWER|'+String(powerKey)+'|'+pricingSig(offer.pricing)
+    ? '|CONNECTOR_POWER|'+String(powerKey)
     : '';
   const dedupeKey=target+variant;
   const arr=offersByTarget.get(dedupeKey)||[];
@@ -2928,6 +2972,10 @@ const out={
   tileSizeDegrees:TILE,
   tileCount:manifestTiles.length,
   stats,rejected,
+  reviewedDisputes:{reviewedAt:reviewedPriceDisputes.reviewedAt,
+    originalSamePowerRefs:reviewedPriceDisputes.samePowerDisputes?.length||0,
+    confirmedPowerSplitRefs:reviewedPriceDisputes.chargezyPowerVariants?.length||0,
+    quarantine:reviewedQuarantine},
   statusGate:{generatedAt:statusData.generatedAt,allowedStatuses:[...STATUS_ALLOWED],
     excludedStatuses:statusExcluded.byStatus,excludedByStationCount:Object.keys(statusExcluded.byStation).length,
     excludedEvseCount:statusSourceTotal-statusAccepted,acceptedEvseCount:statusAccepted,
