@@ -1,0 +1,61 @@
+name: UK CPO direct tariff ambiguity resolution
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/uk_pcpr_ambiguity_resolution_20261010.py
+      - .github/workflows/uk-cpo-ambiguity-resolution.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-cpo-ambiguity-resolution
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Audit 1142 connector references and UK CPO control cases
+        run: python3 scripts/uk_pcpr_ambiguity_resolution_20261010.py
+      - name: Publish reviewed evidence only (no price or V9 production changes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp reports/uk/uk-cpo-ambiguity-review-2026-10-10.json /tmp/uk-cpo-ambiguity.json
+          cp reports/uk/chargepoint-pcpr-connector-review-2026-10-10.csv /tmp/uk-cpo-connector-review.csv
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/uk-cpo-ambiguity.json reports/uk/uk-cpo-ambiguity-review-2026-10-10.json
+            cp /tmp/uk-cpo-connector-review.csv reports/uk/chargepoint-pcpr-connector-review-2026-10-10.csv
+            git add reports/uk/uk-cpo-ambiguity-review-2026-10-10.json reports/uk/chargepoint-pcpr-connector-review-2026-10-10.csv
+            if git diff --cached --quiet; then
+              echo UK_CPO_EVIDENCE_ALREADY_CURRENT
+              exit 0
+            fi
+            git commit -m "reports(uk): verify CPO connector tariffs [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then
+              echo UK_CPO_EVIDENCE_PERSISTED
+              exit 0
+            fi
+            sleep "$((attempt*2))"
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uk-cpo-ambiguity-resolution-${{ github.run_id }}
+          path: |
+            reports/uk/uk-cpo-ambiguity-review-2026-10-10.json
+            reports/uk/chargepoint-pcpr-connector-review-2026-10-10.csv
+          retention-days: 90
