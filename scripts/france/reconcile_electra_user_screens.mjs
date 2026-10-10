@@ -42,14 +42,27 @@ for(const verify of evidence.stations){
  });
  const tariff=(l.chargeTariffs||[]).map(inspectTariff);
  const checks=(verify.observations||[]).map(o=>{
-  let matches=o.energyEurPerKwh==null?[]:tariff.filter(t=>t.distinctEnergyRates.some(r=>Math.abs(r-o.energyEurPerKwh)<0.0001)).map(t=>t.id);
+  const chartRates=Array.isArray(o.otherChartRateValuesEurPerKwh)?o.otherChartRateValuesEurPerKwh:[];
+  // A single matching instantaneous price cannot distinguish fixed and dynamic
+  // Electra tariffs. Compare the full rate pattern and the all-day flat chart.
+  let matches=o.energyEurPerKwh==null?[]:tariff.filter(t=>{
+   if(!t.distinctEnergyRates.some(r=>Math.abs(r-o.energyEurPerKwh)<0.0001))return false;
+   if(o.pricing==='flat_all_day_in_app_chart')return t.energyWindows.length===1&&
+     t.energyWindows[0].start==null&&t.energyWindows[0].end==null&&
+     !(t.energyWindows[0].days||[]).length&&t.distinctEnergyRates.length===1;
+   if(o.pricing==='dynamic_by_day_time_demand'&&chartRates.length>1)return chartRates.every(r=>
+     t.distinctEnergyRates.some(x=>Math.abs(x-r)<0.0001))&&t.energyWindows.length>1;
+   return true;
+  }).map(t=>t.id);
   const exactNominalPdc=pdc.filter(p=>p.nationalPowersKw.length===1&&Math.abs(p.nationalPowersKw[0]-o.maxPowerKw)<0.5).map(p=>p.evseId);
   const status=o.energyEurPerKwh==null?'missing_app_rate':
    matches.length!==1?'ambiguous_tariff_identification':
    exactNominalPdc.length===0?'technical_power_mismatch':
    'per_power_candidate_requires_live_tariff_refresh';
   return {powerKw:o.maxPowerKw,appRate:o.energyEurPerKwh,appLabel:o.label,possibleTariffIds:matches,matchedEvseIds:exactNominalPdc,
-   status,pricing:o.pricing??'price_of_day'};
+   status,pricing:o.pricing??'price_of_day',chartRateEvidence:chartRates,
+   attributionMethod:o.pricing==='flat_all_day_in_app_chart'?'all_day_flat_curve_vs_tariff_windows':
+    o.pricing==='dynamic_by_day_time_demand'&&chartRates.length>1?'multi_rate_curve_vs_tariff_windows':'observed_instant_rate'};
  });
  const fees=(verify.fees||[]).map(f=>({type:f.kind,value:f.eurPerMinute??f.eurPerHour,
   unit:f.eurPerMinute!=null?'EUR/min':'EUR/hour',condition:f.condition??f.trigger}));
