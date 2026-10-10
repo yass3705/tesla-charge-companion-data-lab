@@ -26,7 +26,7 @@ BATCH_DIR = OUT / "mac-country-batches"
 MAC_REPO = "yass3705/tesla-charge-companion-stable"
 RAW = "https://raw.githubusercontent.com/" + MAC_REPO + "/"
 API = "https://api.github.com/repos/" + MAC_REPO
-START = "2026-10-08T00:00:00Z"
+START = "2026-10-07T00:00:00Z"
 TZ = ZoneInfo("Europe/Paris")
 COUNTRY = {
     "france": "FR", "italy": "IT", "switzerland": "CH", "germany": "DE",
@@ -35,6 +35,14 @@ COUNTRY = {
 }
 TCC = ("FR", "IT", "CH", "DE", "ES", "NL", "GB", "MA", "BE")
 PATTERN = re.compile(r"^chore\(stations\): publish ([a-z_]+) automated lot update #(\d+)$")
+OCT07_EVENTS = {
+    "262f2c5e52b63c0b4312cb06fce40dea23e41a27": ("FR", "2026-10-07"),
+    "5f0a6ca764789ce2443d91aa6256e8c2d68ff7b6": ("PT", "2026-10-07"),
+    "ebe3a2f23aefcaf398f625cedbfe78b568cabe97": ("MA", "2026-10-07"),
+}
+# The Morocco update is an empty Git commit; path-filtered history omits it.
+# Keep that historical SHA pinned even when a later batch supersedes the manifest.
+EMPTY_COMMIT_SEEDS = ("ebe3a2f23aefcaf398f625cedbfe78b568cabe97",)
 OCT_EVENTS = {
     "d2285e2c72fe2398e7a08a9e40560f5327f344e8": ("ES", "2026-10-08"),
     "f9a9bc53d87f3881ee8a0d8b2fde77fc2d4493eb": ("IT", "2026-10-09"),
@@ -140,6 +148,22 @@ def batch_history():
             break
     else:
         raise RuntimeError("Mac commit pagination exceeded; revise START")
+    # A published Mac lot may be an empty commit (e.g. Morocco #12).
+    # Enrich path-filtered history with the current country publication manifest
+    # plus permanent historical no-op seeds, verifying the actual GitHub commit.
+    commit_shas = {c["sha"] for c in commits}
+    manifest = json.loads(get(RAW + "main/data/tesla-mac-catalogue-publication.json"))
+    listed_sha = [v.get("lastMacCountryBatch", {}).get("commitSha")
+                  for v in manifest.get("countries", {}).values()]
+    for sha in dict.fromkeys([*EMPTY_COMMIT_SEEDS, *listed_sha]):
+        if not sha or sha in commit_shas:
+            continue
+        record = api_json("/commits/" + sha)
+        if record.get("sha") != sha:
+            raise RuntimeError("Unexpected GitHub Mac commit identity: " + str(sha))
+        if record["commit"]["committer"]["date"] >= START:
+            commits.append(record)
+            commit_shas.add(sha)
     matches = []
     for c in commits:
         message = (c.get("commit") or {}).get("message", "").splitlines()[0]
@@ -197,6 +221,8 @@ def process_batch(c):
                               "stationsByCountry": catalog_stats(after),
                               "tccCountries": list(TCC)},
         "parentCanonicalSha256": prior_digest,
+        "publicationChangedCanonicalBytes": digest != prior_digest,
+        "batchWithNoCatalogueChanges": digest == prior_digest,
         "countryBefore": country_stats(before, country),
         "countryAfter": country_stats(after, country),
         "delta": {"addedStations": len(new_keys - old_keys),
@@ -214,7 +240,8 @@ def process_batch(c):
             "sourceObservedAt": "Only explicit source observation timestamp is evidence of observation",
             "sourcePreference": "Mac recent-under-10-days for the updated country as of this batch; Morocco always Mac",
             "v9": "Does not assert V9 mirrors were synchronized at this instant; checked separately",
-            "suc": "SuC prices were not substituted or rewritten"},
+            "suc": "SuC prices were not substituted or rewritten",
+            "noOp": "A successful batch publication with an identical before/after catalogue is NOT a successful tariff data refresh"},
         "outputStatus": "historical_evidence_archived_not_tariff_publication",
     }
     if not row["quality"]["countryHasStations"] or not row["quality"]["allTccCountriesPresent"]:
@@ -274,6 +301,83 @@ def verify_oct_sync(events):
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
 
 
+def verify_oct07_sync(events):
+    path = OUT / "2026-10-07-retroactive-reconciliation.json"
+    rows = []
+    for sha, (country, local_day) in OCT07_EVENTS.items():
+        row = events.get(sha)
+        if row is None or (row["country"], row["localDay"]) != (country, local_day):
+            raise RuntimeError("Missing/inconsistent 7 October Mac batch: " + sha)
+        rows.append(row)
+    mac, mac_sha = catalogue(OCT_SYNC)
+    prod, prod_sha = catalogue(OCT_SYNC, "v9-production-runtime/data/tesla_stations.json")
+    test, test_sha = catalogue(OCT_SYNC, "v9-test/data/tesla_stations.json")
+    if mac_sha != prod_sha or mac_sha != test_sha:
+        raise RuntimeError("7 October Mac evidence is not synchronized in historical V9 mirrors")
+    sync_index = index(mac)
+    validations = []
+    for row in rows:
+        original, original_sha = catalogue(row["commitSha"])
+        if original_sha != row["canonicalAtCommit"]["sha256"]:
+            raise RuntimeError("Historical pinned snapshot differs from archived batch")
+        source_index = index(original)
+        cc = row["country"]
+        before_ids = {k for k in source_index if k[0] == cc}
+        after_ids = {k for k in sync_index if k[0] == cc}
+        equal = before_ids == after_ids and all(
+            source_index[k] == sync_index[k] for k in before_ids
+        )
+        if not equal:
+            raise RuntimeError("Country " + cc + " changed between Oct 7 Mac lot and V9 mirror synchronization")
+        delta = row["delta"]
+        validations.append({
+            "country": cc, "lot": row["lot"], "commitSha": row["commitSha"],
+            "publishedAtEuropeParis": row["publishedAtEuropeParis"],
+            "stationsBefore": row["countryBefore"]["stations"],
+            "stationsAfter": row["countryAfter"]["stations"],
+            "pricedConfigurations": row["countryAfter"]["pricedConfigurations"],
+            "configurationsWithoutStructuredTariff": row["countryAfter"]["configurationsWithoutStructuredTariff"],
+            "addedStations": delta["addedStations"],
+            "removedStations": delta["removedStations"],
+            "changedPricingStationRecords": delta["changedPricingStationRecords"],
+            "metadataOnlyChanges": delta["changedOtherStationMetadataOnly"],
+            "actualSourceObservedTimestampCount": row["countryAfter"]["stationsWithActualSourceObservedAt"],
+            "changedCanonicalBytes": row["publicationChangedCanonicalBytes"],
+            "batchWithNoCatalogueChanges": row["batchWithNoCatalogueChanges"],
+            "macCountryRowsRetainedExactlyAtV9Sync": equal,
+            "macAlwaysPreferred": cc == "MA",
+        })
+    assert [x["country"] for x in validations] == ["FR", "PT", "MA"]
+    assert validations[2]["batchWithNoCatalogueChanges"], "Expected historical MA no-op; inspect upstream"
+    report = {
+        "schemaVersion": 1,
+        "dateEuropeParis": "2026-10-07",
+        "scope": "Pinned Mac France/Portugal/Morocco batches versus Oct 10 V9 synchronization",
+        "countries": validations,
+        "syncEvidence": {
+            "commitSha": OCT_SYNC,
+            "committedAtEuropeParis": "2026-10-10T00:31:40+02:00",
+            "canonicalSha256": mac_sha,
+            "productionMirrorSha256": prod_sha,
+            "testMirrorSha256": test_sha,
+            "copiesByteIdentical": True,
+            "allThreeCountryRowsPreservedExactly": True
+        },
+        "notes": [
+            "Timestamp of Mac publication does not establish direct observation of every charge price.",
+            "The Morocco lot #12 was published as a no-op; no actual tariff data changed.",
+            "Portugal is audited as a Mac/V9 country even though nine-country pricing selection audit omits PT.",
+            "This report does not change tariffs, prices or sources in production."
+        ]
+    }
+    if path.exists():
+        existing = json.loads(path.read_text(encoding="utf8"))
+        if existing["syncEvidence"]["canonicalSha256"] != mac_sha:
+            raise RuntimeError("Frozen Oct 7 retrospective conflicts with source data")
+        return
+    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf8")
+
+
 def main():
     BATCH_DIR.mkdir(parents=True, exist_ok=True)
     batches = batch_history()
@@ -285,7 +389,8 @@ def main():
         if created:
             newly_created.append(batch["sha"])
     verify_oct_sync(rows)
-    for day in ("2026-10-08", "2026-10-09"):
+    verify_oct07_sync(rows)
+    for day in ("2026-10-07", "2026-10-08", "2026-10-09"):
         daily_path = OUT / (day + "-mac-country-batches.json")
         filtered = [x for x in rows.values() if x["localDay"] == day]
         summary = {
@@ -304,6 +409,7 @@ def main():
             daily_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
     print("TESLA_HISTORICAL_BATCH_BACKFILL=" + json.dumps({
         "scanned": len(batches), "new": newly_created,
+        "oct07": len([x for x in rows.values() if x["localDay"] == "2026-10-07"]),
         "oct08": len([x for x in rows.values() if x["localDay"] == "2026-10-08"]),
         "oct09": len([x for x in rows.values() if x["localDay"] == "2026-10-09"]),
         "syncVerified": True}, sort_keys=True))
