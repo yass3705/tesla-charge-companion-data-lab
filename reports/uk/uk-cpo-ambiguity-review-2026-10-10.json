@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-10T11:36:41.442041+00:00",
+  "scope": "UK CPO DIRECT; independent evidence review; no V9 activation or price rewriting",
+  "chargePoint": {
+    "sourceCollectedAt": "2026-10-10T10:09:12.803047+00:00",
+    "locations": 323,
+    "connectors": 1142,
+    "tariffs": 145,
+    "connectorDisposition": {
+      "tarif_indisponible": 107,
+      "verification_requise_ne_pas_promouvoir_comme_payg_valide": 1035
+    },
+    "connectorEvidenceIssues": {
+      "ad_hoc_payment_not_explicit_in_ocpi_tariff": 1142,
+      "foreign_currency_tariff": 107,
+      "ocpi_vat_unspecified_20pct_derivation_not_operator_verified": 1142
+    },
+    "tariffEvidenceIssues": {
+      "unspecified_tariff_type": 145,
+      "at_least_one_vat_absent": 145,
+      "both_charge_time_and_idle_time": 32,
+      "non_GBP_tariff": 1
+    },
+    "feeInterpretation": {
+      "TIME": "charging time only",
+      "PARKING_TIME": "idle/not-charging time only",
+      "separateDimensionsNotAnAutomaticConflict": true,
+      "chargingAndParkingComponentConnectorOccurrences": 222
+    },
+    "vatComponentMissing": {
+      "ENERGY": 1135,
+      "FLAT": 255,
+      "TIME": 282,
+      "PARKING_TIME": 393
+    },
+    "foreignCurrencyTariffReferenceCounts": {
+      "NLCPIT2QP*1*0": 107
+    },
+    "currentStaging": {
+      "pricedByArithmeticButNotPAYGVerified": 1035,
+      "excludedFromArithmetic": 107,
+      "currentV9Activation": "not_verified_by_source_report",
+      "note": "Tariff.type absent; calculated 20% VAT is a statutory inference, not per-offer operator attestation."
+    },
+    "guards": [
+      "Never convert a USD FLAT 0 into GBP or interpret it as confirmed free charging",
+      "Never rank missing-type prices as verified anonymous ad-hoc without independent CPO evidence",
+      "TIME and PARKING_TIME must use charging and idle durations separately, never same elapsed minutes twice",
+      "Missing OCPI VAT must retain inferred-VAT provenance and be independently checked against customer-facing PAYG",
+      "Only exact location+EVSE+connector+tariff identity may receive a tariff",
+      "Manual list is per connector, not a station-level tariff extrapolation"
+    ],
+    "manualReviewCsv": "reports/uk/chargepoint-pcpr-connector-review-2026-10-10.csv"
+  },
+  "otherUKCPO": {
+    "ConnectedKerb": {
+      "sourceCollectedAt": "2026-10-10T08:39:18.175140+00:00",
+      "resolvedConnectors": 8015,
+      "excludedConnectors": 1433,
+      "unresolvedReasonCounts": {
+        "no_physical_reference": 522,
+        "no_unique_exact_socket_match": 177,
+        "app HTTP 404": 268,
+        "no_unique_exact_qr_and_geo_match": 295,
+        "no_unique_standard_tariff": 115,
+        "multiple_energy_prices_without_windows": 52,
+        "fee_unit_verification_pending": 4
+      },
+      "noUnverifiedFeesAssumed": true
+    },
+    "Allego": {
+      "publicExactPricedConnectors": 240,
+      "unpricedPublicConnectors": 0,
+      "state": "validated_public_exact_connector"
+    },
+    "Blink": {
+      "publicExactPricedConnectors": 3599,
+      "unpricedPublicConnectors": 0,
+      "state": "validated_public_exact_connector"
+    },
+    "Gridserve": {
+      "publicExactPricedConnectors": 2569,
+      "unpricedPublicConnectors": 0,
+      "excludedLocationReasons": {
+        "known_nonpublic_or_retired_location": 9,
+        "not_explicitly_published": 23
+      },
+      "state": "validated_public_connector_exact"
+    }
+  },
+  "status": "validated_source_conflicts_quarantined_payment_scope_still_pending"
+}
