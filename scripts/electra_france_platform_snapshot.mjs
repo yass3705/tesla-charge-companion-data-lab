@@ -240,7 +240,7 @@ for(const loc of locations)for(const evse of loc.evses||[]){
   exactClaims.get(id).add(String(loc.id));
 }
 
-const tiles=new Map(),residualLocations=[],reasons={},cpoSummary=new Map(),stats={franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,curatedLocationAssociations:0,manualAssociationConflicts:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0,verifiedAppLocations:0,verifiedAppEvseOffers:0};
+const tiles=new Map(),residualLocations=[],reasons={},cpoSummary=new Map(),stats={powerdotAcDcFamilyLocations:0,powerdotAcDcFamilyEvse:0,powerdotAcDcFamilyExcludedStatuses:0,franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,curatedLocationAssociations:0,manualAssociationConflicts:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0,verifiedAppLocations:0,verifiedAppEvseOffers:0};
 for(const x of locations){
   const cpo=String(x.cpo?.name||'CPO inconnu');
   if(!cpoSummary.has(cpo))cpoSummary.set(cpo,{cpo,totalCompatibleLocations:0,locationsWithNationalEvse:0,curatedLocationAssociations:0,matchedEvseIds:0,publishedLocations:0,publishedEvseIds:0,rejected:{}});
@@ -287,6 +287,7 @@ for(const x of locations){
   const uniq=[...new Map(compiled.map(v=>[signature(v),v])).values()];
   const assigned=new Map(),tariffs=x.chargeTariffs||[];
   const manual=verifiedByLocation.get(String(x.id));
+  let familyUsed=false;
   if(manual){
     let invalid=manual.cpo!==cpo||manual.locationName!==x.name;
     const seen=new Set();
@@ -306,6 +307,18 @@ for(const x of locations){
       assigned.set(key,compiled[i]);seen.add(key);
     }
     if(invalid||assigned.size!==manual.mappings.length){reject('verified_app_tariff_link_invalid');continue;}
+  }else if(cpo==='Powerdot'&&
+    (()=>{
+      const matched=matchPowerdotAcDcFamily(x,tariffs,compiled,associatedIds,identityMode);
+      if(!matched)return false;
+      for(const [id,pricing] of matched.assignments)assigned.set(id,pricing);
+      familyUsed=true;
+      stats.powerdotAcDcFamilyLocations++;
+      stats.powerdotAcDcFamilyEvse+=matched.assignments.size;
+      stats.powerdotAcDcFamilyExcludedStatuses+=matched.statusExcluded;
+      return true;
+    })()){
+    // Price attached to exact EVSE + proven AC/DC, never to station aggregate.
   }else if(uniq.length===1){
     for(const id of associatedIds)assigned.set(norm(id),uniq[0]);
   }else{
@@ -323,9 +336,9 @@ for(const x of locations){
     }
     if(ambiguous){reject('same_power_tariff_assignment_ambiguous');continue;}
   }
-  if(manual&&assigned.size<associatedIds.length){
+  if((manual||familyUsed)&&assigned.size<associatedIds.length){
     const pending=(x.evses||[]).filter(e=>associatedIds.some(id=>norm(id)===norm(e.evseId))&&!assigned.has(norm(e.evseId)));
-    const reason='verified_app_partial_attribution_pending';
+    const reason=manual?'verified_app_partial_attribution_pending':'powerdot_acdc_excluded_nonactive_evse';
     reasons[reason]=(reasons[reason]||0)+1;
     cs.rejected[reason]=(cs.rejected[reason]||0)+1;
     residualLocations.push({electraLocationId:String(x.id),name:x.name||null,address:x.address||null,
@@ -346,7 +359,7 @@ for(const x of locations){
       pricing,metadata:{verified:true,verifiedScope:'exact_evse',identityMode,associationEvidence,
       electraLocationId:String(x.id),nationalEvseId:pdc,cpo:x.cpo?.name||null,operator:x.operator?.name||null,
       source:identityMode==='exact_national_irve_evse'?'Electra eMSP GraphQL':'Electra eMSP GraphQL + curated national IRVE location crosswalk',
-      tariffAttributionEvidence:manual?'user_electra_app_verified_per_power':null,
+      tariffAttributionEvidence:manual?'user_electra_app_verified_per_power':familyUsed?'powerdot_verified_acdc_family_exact_evse_connector_kind':null,
       screenshotSha256:manual?.screenshotSha256??null}
     };
     tiles.get(id).push(offer);stats.publishedOffers++;
@@ -369,7 +382,7 @@ await fs.writeFile(path.join(OUT,'source-locations.json.gz'),sourceGz);
 stats.sourceLocationCount=locations.length;
 stats.sourceEvseCount=sourceEvseCount;
 stats.retainedUnmatchedLocations=residualLocations.length;
-const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),sourceArchive:{file:'source-locations.json.gz',locationCount:locations.length,evseCount:sourceEvseCount,sha256:sha(sourceGz)},associationBatches:associationDocuments.map(doc=>({batch:doc.batch,cpoCounts:doc.cpoCounts||{},candidateCount:doc.candidateCount,ambiguousExcluded:doc.ambiguousExcluded||0,collisionExcluded:doc.collisionExcluded||0,applied:batchStats.get(doc.batch)?.applied||0,conflicts:batchStats.get(doc.batch)?.conflicts||0})),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,evseScopedTariffOffers:true,explicitDisjointPowerRestrictionRequiredForHeterogeneousTariffs:true,verifiedAppEvidenceForListedEVSEOnly:true,
+const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),sourceArchive:{file:'source-locations.json.gz',locationCount:locations.length,evseCount:sourceEvseCount,sha256:sha(sourceGz)},associationBatches:associationDocuments.map(doc=>({batch:doc.batch,cpoCounts:doc.cpoCounts||{},candidateCount:doc.candidateCount,ambiguousExcluded:doc.ambiguousExcluded||0,collisionExcluded:doc.collisionExcluded||0,applied:batchStats.get(doc.batch)?.applied||0,conflicts:batchStats.get(doc.batch)?.conflicts||0})),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,evseScopedTariffOffers:true,explicitDisjointPowerRestrictionRequiredForHeterogeneousTariffs:true,powerdotVerifiedAcDcFamilyScope:true,verifiedAppEvidenceForListedEVSEOnly:true,
     verifiedAppEvidenceDoesNotOverrideDirectCpo:true,verifiedAppMappingFailsClosedOnTariffChange:true,
     unsupportedComponentsFailClosed:true,overlayConservation:'all compatible source locations and EVSEs are retained in source-locations.json.gz; tiles contain only matched tariff enrichments'},tiles:manifestTiles};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
