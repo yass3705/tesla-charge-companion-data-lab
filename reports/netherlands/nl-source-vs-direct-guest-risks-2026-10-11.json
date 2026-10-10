@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-11",
+  "sourceRuntimeSnapshotAt": "2026-10-10T09:55:33.004217Z",
+  "priority": [
+    "AGO_exact_QR_tariff",
+    "SPA_REGULAR_vs_QR_conflict",
+    "LNT_exact_guest_QR_attestation",
+    "WAT_dynamic_vehicle_scope"
+  ],
+  "findings": [
+    {
+      "partyId": "SPA",
+      "urgency": "HIGH",
+      "scope": {
+        "stations": 152,
+        "connectors": 328
+      },
+      "tariffType": "REGULAR",
+      "tariffKeys": [
+        "NL:SPA:NLSPAT000006",
+        "NL:SPA:NLSPAT000007"
+      ],
+      "sample": {
+        "stationId": "NL:SPA:NL000002",
+        "evseId": "NL*SPA*E000057*1",
+        "dotnlGrossEurPerKwh": 0.471,
+        "parkingGrossEurPer900Seconds": 1.45,
+        "parkingAfterSeconds": 14400,
+        "parkingWindow": "09:00–22:00 Monday–Saturday",
+        "vatPct": null
+      },
+      "independentValidation": "StellaPower official .eu FAQ says charger-specific posted kWh rate with additional occupancy charges; debit/credit card guest QR accepted. Exact QR price not checked. Old stellapower.nl uniform tariff source currently unreachable.",
+      "risk": "REGULAR OCPI could be card/contract or different from QR guest price. Compiler stepSize=900 may be prorated instead of ceiling rounded 15-min blocks, producing an incorrect fee. Do NOT treat technical compilability as confirmed CPO direct amount.",
+      "recommendation": "Validate official station QR direct-pay amount and the step-rounding before enabling exact ranking. Keep source in separate audit; do not invent uniform national price.",
+      "sources": [
+        "https://stellapower.eu/faq-items/wat-kost-opladen-bij-de-openbare-laadpaal/",
+        "https://stellapower.eu/faq-items/heeft-stellapower-ook-laadpassen/",
+        "reports/netherlands/stellapower-direct-payg-integration-latest.json",
+        "reports/netherlands/nl-direct-price-provenance-2026-10-11.json"
+      ]
+    },
+    {
+      "partyId": "LNT",
+      "urgency": "MEDIUM",
+      "scope": {
+        "stations": 1463,
+        "totalConnectors": 5860,
+        "computed": 5356,
+        "noExactSource": 504,
+        "selectedTariffKeys": 138
+      },
+      "tariffType": "UNSPECIFIED",
+      "validity": "CPO partyId LNT, OCPI gross amount explicitly present, VAT21. Independent owner-configured QR guest price remains unconfirmed; not all installations are necessarily QR enabled or physically public.",
+      "sources": [
+        "https://laadnet.nl/veel-gestelde-vragen/",
+        "https://laadnet.nl/algemene-voorwaarden-ad-hoc-laden/",
+        "reports/netherlands/nl-direct-price-provenance-2026-10-11.json"
+      ]
+    },
+    {
+      "partyId": "AGO",
+      "urgency": "HIGH",
+      "scope": {
+        "stations": 927,
+        "connectors": 2578,
+        "missingDirect": 2578
+      },
+      "known": "Operator declares location-dependent card QR rates and publishes indicative categories but actual station guest amount shown on QR payment page. AC parking fees after four hours 08:00–22:00 0.73EUR/h; DC post-hour fee 1.00EUR/min.",
+      "nextStep": "Find exact QR guest payment endpoint/EVSE identifier and correct charging category before using any tariff.",
+      "sources": [
+        "https://agrigo.nl/charge/tarieven/",
+        "reports/netherlands/nl-cpo-unpriced-evse-inventory-2026-10-11.json"
+      ]
+    },
+    {
+      "partyId": "WAT",
+      "urgency": "LOW",
+      "scope": {
+        "locations": 3,
+        "connectors": 124,
+        "missingDirect": 124
+      },
+      "known": "booking/account and dynamic price; mostly 400kW heavy duty; check passenger-EV public access separately",
+      "sources": [
+        "https://watthub.nl/locaties/",
+        "reports/netherlands/watthub-tariff-investigation-2026-10-04.json"
+      ]
+    }
+  ],
+  "v9PricingPromotionPerformed": false,
+  "noEmspSubstitution": true
+}
