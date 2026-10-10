@@ -1,0 +1,59 @@
+name: UK ChargePoint public access batch triage
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/uk_chargepoint_access_triage_20261010.py
+      - reports/uk/chargepoint-public-access-evidence-2026-10-10.json
+      - .github/workflows/uk-chargepoint-access-triage.yml
+permissions:
+  contents: write
+concurrency:
+  group: uk-chargepoint-public-access-triage
+  cancel-in-progress: false
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect all ChargePoint CMS UK stations and EVSEs
+        run: python3 scripts/uk_chargepoint_access_triage_20261010.py
+      - name: Persist batch report safely alongside concurrent Data Lab edits
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp reports/uk/chargepoint-public-access-triage-2026-10-10.json /tmp/chargepoint-access.json
+          cp reports/uk/chargepoint-public-access-triage-2026-10-10.csv /tmp/chargepoint-access.csv
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/chargepoint-access.json reports/uk/chargepoint-public-access-triage-2026-10-10.json
+            cp /tmp/chargepoint-access.csv reports/uk/chargepoint-public-access-triage-2026-10-10.csv
+            git add reports/uk/chargepoint-public-access-triage-2026-10-10.json reports/uk/chargepoint-public-access-triage-2026-10-10.csv
+            if git diff --cached --quiet; then
+              echo CHARGEPOINT_UK_ACCESS_REPORT_CURRENT
+              exit 0
+            fi
+            git commit -m "reports(uk): ChargePoint 323-station access triage [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then
+              echo CHARGEPOINT_UK_ACCESS_REPORT_PUBLISHED
+              exit 0
+            fi
+            sleep "$((attempt*2))"
+          done
+          echo "Could not publish due to concurrent updates" >&2
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chargepoint-uk-access-triage-${{ github.run_id }}
+          path: |
+            reports/uk/chargepoint-public-access-triage-2026-10-10.json
+            reports/uk/chargepoint-public-access-triage-2026-10-10.csv
+          retention-days: 90
