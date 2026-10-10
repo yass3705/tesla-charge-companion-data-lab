@@ -36,6 +36,18 @@ for(const c of arr){
  const famKey=powerKey+' / '+rateKey;count(byFamily,famKey);count(rateGroups,rateKey);
 }
 const energy=all.filter(x=>x.kind==='energy');
+const sharedTariffIdPairs={};
+const powersByPair={};
+for(const station of all){
+ const pair=station.tariffIds.filter(Boolean).slice().sort().join('|');
+ if(!pair)continue;
+ count(sharedTariffIdPairs,pair);
+ if(!powersByPair[pair])powersByPair[pair]=new Set();
+ powersByPair[pair].add(station.powerKey);
+}
+const canonicalIds=['deb8f441-4306-4735-9990-3165dbeefffc','9d3380b6-bfef-4f52-a50e-11f72cff552c'].sort().join('|');
+const repeatedPairStations=all.filter(x=>x.tariffIds.slice().sort().join('|')===canonicalIds);
+const exactPairRateStations=repeatedPairStations.filter(x=>x.rateKey==='0.490|0.620');
 const candidate=energy.filter(x=>x.knownPowersKw.length>=2&&x.tariffCount===2&&x.pricesEurPerKwh.length===2&&
  x.knownPowersKw.some(p=>p<=22.2)&&x.knownPowersKw.some(p=>p>=50));
 function score(x){
@@ -61,6 +73,11 @@ const powerdot={
  schemaVersion:1,generatedAt:new Date().toISOString(),snapshotGeneratedAt:manifest.generatedAt,
  totalUnresolvedPowerdotLocations:all.length,variationTypes:counts,
  sourceTariffsAreAtLocationLevel:true,energyOnly:energy.length,
+ exactJarvilleTariffIdPairReusedOnStations:repeatedPairStations.length,
+ exactTariffPairAndRatesConsistent:exactPairRateStations.length,
+ repeatedTariffIdPairs:top(sharedTariffIdPairs,10),
+ reuseValidation:'Matching chargeTariffId is strong repeated schema evidence, but it is not an explicit EVSE binding at other stations and must not be automatically applied without second app test.',
+ powerSetVariationAcrossCanonicalPair:powersByPair[canonicalIds]?.size??0,
  dualTariffTwoRatesOneSlowOneFastCandidateCount:candidate.length,
  topKnownPowerSets:top(powerSets,18),topPricePairs:top(rateGroups,18),
  topPowerPriceCohorts:top(byFamily,22),
