@@ -29,6 +29,10 @@ PROVENANCE_URL=(
   'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/main/'
   'data/tesla-mac-catalogue-publication.json'
 )
+PUBLIC_VERIFICATION_URL=(
+  'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/main/'
+  'data/tesla-suc-only-public-verification.json'
+)
 def cc(value):
     return 'UK' if value=='GB' else value
 def day(value):
@@ -44,6 +48,12 @@ def get_evidence():
     with urllib.request.urlopen(urllib.request.Request(
         PROVENANCE_URL,headers={'User-Agent':'TCC-Country-Mac-SuC-Audit/3.0'}),timeout=40) as f:
         return json.load(f)
+def get_public_access_evidence():
+    with urllib.request.urlopen(urllib.request.Request(
+        PUBLIC_VERIFICATION_URL,headers={'User-Agent':'TCC-Country-Mac-SuC-Audit/3.1'}),timeout=40) as f:
+        result=json.load(f)
+    if result.get('schemaVersion')!=1:raise ValueError('Unknown public-access evidence schema')
+    return {v['sucRowId']:v for v in result['verified']}
 def primary_key(row):
     country=cc(row.get('countryCode'))
     key=mac_key(row)
@@ -53,6 +63,7 @@ def main():
     suc=json.loads(SUC.read_text(encoding='utf8'))
     suc_meta=json.loads(META.read_text(encoding='utf8'))
     evidence=get_evidence()
+    approved_public=get_public_access_evidence()
     if evidence.get('canonicalSha256')!=mac_sha:
         raise SystemExit('Mac canonical source changed during this report; retry after sync')
     now=dt.datetime.now(dt.timezone.utc)
@@ -119,11 +130,30 @@ def main():
         for key,stations in suc_keys.items():
             if key not in mac_keys:
                 suc_only+=len(stations)
-                for st in stations:exceptions.append({
-                    'country':country,'type':'only_suc','macStationId':None,
-                    'sucStationId':st.get('id'),'countrySelected':selected,
-                    'accessSource':(st.get('sucTracker') or {}).get('accessSource') or 'unknown',
-                    'outcome':'Needs public-access verification before adding to Mac inventory'})
+                for st in stations:
+                    newer=selected=='SuC Tracker' and country!='MA'
+                    official=approved_public.get(st.get('id')) if newer else None
+                    eligible=bool(official and official.get('countryCode')==repo_cc and
+                                  official.get('sourceStationId')==
+                                      str((st.get('sucTracker') or {}).get('sourceStationId') or '') and
+                                  (st.get('pricing') or {}).get('rules') and
+                                  any(float(c.get('powerKw') or 0)>0 for c in
+                                      (st.get('chargingConfigurations') or [])))
+                    exceptions.append({
+                        'country':country,
+                        'type':'only_suc_newer_public_verified' if eligible else
+                                'only_suc_newer_pending_access' if newer else
+                                'only_suc_parked_country_not_newer',
+                        'macStationId':None,'sucStationId':st.get('id'),
+                        'countrySelected':selected,
+                        'sucCountryNewer':newer,
+                        'officialTeslaPublicVerified':eligible,
+                        'verificationUrl':official.get('officialTeslaPage') if eligible else None,
+                        'accessSource':(st.get('sucTracker') or {}).get('accessSource') or 'unknown',
+                        'outcome':'Eligible for V9 inclusion' if eligible else
+                                  'Verify public access before inclusion' if newer else
+                                  'Keep outside V9 until SuC country is newer'
+                    })
         result[country]={
             'stations':len(mac_group),'sucStations':len(suc_group),
             'preferredTariffSource':selected,'reason':reason,
@@ -136,7 +166,7 @@ def main():
                 len(mac_group) if selected=='SuC Tracker' else 0,
         }
     report={
-        'schemaVersion':'3.0-country-selection',
+        'schemaVersion':'3.1-country-selection-suc-only-conditional',
         'generatedAt':now.isoformat(),'scopeCountries':list(COUNTRIES),
         'macRepository':'yass3705/tesla-charge-companion-stable@main',
         'macSourcePath':'data/tesla_stations.json','macSourceSha256':mac_sha,
@@ -148,6 +178,9 @@ def main():
         'unmatchedSuCRecords':{c:result[c]['onlySuCStations'] for c in COUNTRIES},
         'macStationsAudited':sum(len(mac_groups[c]) for c in COUNTRIES),
         'stationExceptionCount':len(exceptions),
+        'sucOnlyPublicVerifiedEligible':sum(x.get('officialTeslaPublicVerified',False) for x in exceptions),
+        'sucOnlyNewerPendingPublicVerification':sum(x['type']=='only_suc_newer_pending_access' for x in exceptions),
+        'sucOnlyParkedOlderCountry':sum(x['type']=='only_suc_parked_country_not_newer' for x in exceptions),
         'detailsPath':'tesla-source-selection-station-detail-latest.json',
         'detailsNote':'Legacy filename retained; rows now contain ONLY missing/ambiguous station exceptions',
         'notPublishedToV9':True,
@@ -156,7 +189,7 @@ def main():
             'after10Days':'SuC only if conservative SuC COUNTRY source observation newer than Mac COUNTRY date',
             'morocco':'always Mac',
             'noStationAgeComparisons':True,
-            'unmatchedStations':'Mac-only kept; SuC-only requires access verification',
+            'unmatchedStations':'SuC-only parked unless SuC country newer; then include only Tesla-officially verified public sites; Morocco always Mac',
         },
         'supersedesMisleadingReport':{
             'priorClaim':'station-level lastUpdated means 1,147 SuC overrides',
