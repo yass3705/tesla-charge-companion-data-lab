@@ -1,0 +1,62 @@
+name: Audit Electroverse live priority tariff evidence
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/electroverse_live_priority_price_probe.mjs"
+      - ".github/workflows/audit-electroverse-live-priority-prices.yml"
+permissions:
+  contents: write
+concurrency:
+  group: audit-electroverse-live-priority-prices
+  cancel-in-progress: true
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      ELECTROVERSE_APP_VERSION: "2026.09.08"
+      ELECTROVERSE_TIMEOUT_MS: "30000"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate live probe syntax
+        run: node --check scripts/electroverse_live_priority_price_probe.mjs
+      - name: Probe live priority locations without modifying offers or cache
+        run: node scripts/electroverse_live_priority_price_probe.mjs
+      - name: Preserve read-only raw source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-live-priority-evidence
+          path: reports/electroverse/live-priority-price-probe-2026-10-10.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Persist evidence to Data Lab (no tariff publication)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          path=reports/electroverse/live-priority-price-probe-2026-10-10.json
+          if [ ! -s "$path" ]; then echo 'No probe evidence generated'; exit 0; fi
+          cp "$path" /tmp/electroverse-live-priority-price-probe-2026-10-10.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/electroverse-live-priority-price-probe-2026-10-10.json "$path"
+            git add "$path"
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m 'audit(electroverse): record live priority tariff GraphQL evidence'
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          echo 'Failed to publish read-only evidence' >&2
+          exit 1
