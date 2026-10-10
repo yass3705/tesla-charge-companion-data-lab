@@ -1,0 +1,68 @@
+name: Audit Electroverse FR complete reconciliation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_electroverse_full_reconciliation.mjs"
+      - ".github/workflows/audit-electroverse-full-reconciliation.yml"
+permissions:
+  contents: write
+concurrency:
+  group: audit-electroverse-full-reconciliation
+  cancel-in-progress: true
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check audit syntax
+        run: node --check scripts/audit_electroverse_full_reconciliation.mjs
+      - name: Reconcile all cached Electroverse EVSEs and connector tariffs
+        run: node --max-old-space-size=6144 scripts/audit_electroverse_full_reconciliation.mjs
+      - name: Verify generated census
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='reports/electroverse/full-reconciliation/summary.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          if(j.counters.sourceEvses===0 || j.sourceInventory.overlayOffers===0)throw Error('empty census');
+          if(j.counters.sourceEvses!==j.counters.publishedSourceEvses+j.counters.unpublishedSourceEvses)throw Error('count mismatch');
+          if(j.cases.userHoldSeenInCache<20)throw Error('manual ambiguity regressions lost');
+          console.log(JSON.stringify({source:j.counters.sourceEvses,unpublished:j.counters.unpublishedSourceEvses,manual:j.cases.manualReviewRows,conflicts:j.cases.newPotentialDuplicateConflictIds}));
+          NODE
+      - name: Upload full evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-france-full-reconciliation
+          path: reports/electroverse/full-reconciliation/
+          retention-days: 30
+      - name: Publish immutable evidence report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cp -a reports/electroverse/full-reconciliation /tmp/electroverse-full-reconciliation
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            rm -rf reports/electroverse/full-reconciliation
+            cp -a /tmp/electroverse-full-reconciliation reports/electroverse/full-reconciliation
+            git add reports/electroverse/full-reconciliation
+            if git diff --cached --quiet; then
+              echo 'Report unchanged'
+              exit 0
+            fi
+            git commit -m 'audit(electroverse): publish full EVSE resolution census'
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          echo 'Failed to publish audit after retries' >&2
+          exit 1
