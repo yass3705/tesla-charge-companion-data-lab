@@ -182,7 +182,13 @@ def main():
         if reason == "multiple_energy_prices_without_windows":
             label, priority = "tarif_ambigu", "P1"
         elif reason == "fee_unit_verification_pending":
-            label, priority = "tarif_incalculable", "P1"
+            # User verified hourly unit; step_size 1800 seconds is only rounding.
+            # Midhope guest app says GBP 1.60/hour, but OCPI GBP 0.80004/hour.
+            midhope_ids = {"GB*CK0*E19825","GB*CK0*E19865","GB*CK0*E19716","GB*CK0*E19707"}
+            if txt(item.get("stationName")) == "Midhope Road" and txt(item.get("evseId")) in midhope_ids:
+                label, priority = "tarif_ambigu", "P1"
+            else:
+                label, priority = "tarif_incalculable", "P1"
         elif reason == "no_unique_standard_tariff":
             label, priority = "tarif_non_attribuable", "P2"
         elif reason in {"no_unique_exact_socket_match", "no_unique_exact_qr_and_geo_match"}:
@@ -204,12 +210,15 @@ def main():
             w.writeheader()
             w.writerows(items)
     assert len(ck_rows) == ck_ex["excludedConnectorCount"]
-    assert ck_labels["tarif_ambigu"] == ck["unresolvedReasonCounts"]["multiple_energy_prices_without_windows"]
-    assert ck_labels["tarif_incalculable"] == ck["unresolvedReasonCounts"]["fee_unit_verification_pending"]
-    assert ck_labels["tarif_ambigu"] + ck_labels["tarif_incalculable"] == 56
+    expected_price_conflict = ck["unresolvedReasonCounts"].get("multiple_energy_prices_without_windows",0)
+    expected_fee_unknown = ck["unresolvedReasonCounts"].get("fee_unit_verification_pending",0)
+    midhope_conflicts = sum(x["classification"] == "tarif_ambigu" and x["reason"] == "fee_unit_verification_pending" for x in ck_rows)
+    assert ck_labels["tarif_ambigu"] == expected_price_conflict + midhope_conflicts
+    assert ck_labels["tarif_incalculable"] == expected_fee_unknown - midhope_conflicts
+    assert ck_labels["tarif_ambigu"] + ck_labels["tarif_incalculable"] == expected_price_conflict + expected_fee_unknown
 
-    assert counts["total_connectors"] == 1142, "Unexpected source baseline, inspect before promoting"
-    assert len(station_ids) == 323
+    assert counts["total_connectors"] == existing["stagedConnectors"], "Connector count and staged source differ"
+    assert len(station_ids) == existing["sourceLocations"], "Station count and staged source differ"
     assert sum(1 for c in cases if c["decision"] == "tarif_indisponible") == existing["stagedUnpricedConnectors"], "Quarantine parity"
     assert counts["foreign_currency_tariff"] == existing["stagedUnpricedConnectors"]
     assert not conflicted_tariffs, "Confirmed contradictory source tariffs need manual handling"
@@ -264,7 +273,17 @@ def main():
                 "classifiedExcludedConnectors":dict(ck_labels),
                 "manualReviewAllCsv":str(ck_csv.relative_to(ROOT)),
                 "manualPriority1Csv":str(ck_urgent.relative_to(ROOT)),
-                "manualPriority1Connectors":sum(x["priority"] == "P1" for x in ck_rows)},
+                "manualPriority1Connectors":sum(x["priority"] == "P1" for x in ck_rows),
+                "midhopeHourlyConflict":{
+                    "confirmedTariffUnit":"GBP_per_hour",
+                    "officialGuestDescriptionGbpPerHour":1.60,
+                    "ocpiGrossGbpPerHour":0.80004,
+                    "ocpiTimeStepSeconds":1800,
+                    "stepMeans":"billing rounding increments, NOT a separate per-block rate",
+                    "localFeeWindow":"Monday-Saturday 08:30-18:00 Europe/London, seasonal conversion required",
+                    "disposition":"tarif_ambigu_pending_first_party_price_reconciliation",
+                    "affectedConnectorCount":midhope_conflicts
+                }},
             "Allego":{"publicExactPricedConnectors":allego["exactPricedConnectors"],"unpricedPublicConnectors":allego["unpricedPublicConnectors"],"state":allego["status"]},
             "Blink":{"publicExactPricedConnectors":blink["exactPricedConnectors"],"unpricedPublicConnectors":blink["unpricedPublicConnectors"],"state":blink["status"]},
             "Gridserve":{"publicExactPricedConnectors":grid["exactPricedConnectors"],"unpricedPublicConnectors":grid["unpricedPublicConnectors"],"excludedLocationReasons":grid["excludedCounts"],"state":grid["status"]},
