@@ -33,11 +33,7 @@ jobs:
           [ -n "$source_file" ] || { echo 'checkpoint missing from artifact' >&2; exit 1; }
           cp "$source_file" /tmp/electroverse-part-00-recovered.json
           node scripts/electroverse_merge_status_partitions.mjs /tmp/electroverse-part-00-recovered.json data/electroverse/live_statuses/parts/part-00.json
-          node - <<'NODE'
-          const f=require('fs');const j=JSON.parse(f.readFileSync('data/electroverse/live_statuses/parts/part-00.json','utf8'));
-          if(Object.keys(j.entries).length<1425)throw Error('checkpoint regression: expected at least 1425 verified entries');
-          console.log('RECOVERED verified='+Object.keys(j.entries).length+' missing='+(j.expectedLocations-Object.keys(j.entries).length));
-          NODE
+          node -e "const f=require('fs');const j=JSON.parse(f.readFileSync('data/electroverse/live_statuses/parts/part-00.json','utf8'));if(Object.keys(j.entries).length<1425)throw Error('checkpoint regression');console.log('RECOVERED verified='+Object.keys(j.entries).length+' missing='+(j.expectedLocations-Object.keys(j.entries).length))"
       - name: Publish merged checkpoint
         run: |
           set -euo pipefail
