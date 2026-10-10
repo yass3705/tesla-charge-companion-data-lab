@@ -1,0 +1,56 @@
+name: Electroverse recover checkpoint from failed persistence
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/electroverse-recover-checkpoint-38061969612.yml'
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read checkpoint artifact from interrupted run
+        uses: actions/download-artifact@v4
+        with:
+          name: electroverse-status-partition-0
+          run-id: 38061969612
+          github-token: ${{ github.token }}
+          path: /tmp/electroverse-recovery
+      - name: Recover and merge all 1425 verified observations
+        run: |
+          set -euo pipefail
+          source_file=$(find /tmp/electroverse-recovery -type f -name 'part-00.json' -print -quit)
+          [ -n "$source_file" ] || { echo 'checkpoint missing from artifact' >&2; exit 1; }
+          cp "$source_file" /tmp/electroverse-part-00-recovered.json
+          node scripts/electroverse_merge_status_partitions.mjs /tmp/electroverse-part-00-recovered.json data/electroverse/live_statuses/parts/part-00.json
+          node - <<'NODE'
+          const f=require('fs');const j=JSON.parse(f.readFileSync('data/electroverse/live_statuses/parts/part-00.json','utf8'));
+          if(Object.keys(j.entries).length<1425)throw Error('checkpoint regression: expected at least 1425 verified entries');
+          console.log('RECOVERED verified='+Object.keys(j.entries).length+' missing='+(j.expectedLocations-Object.keys(j.entries).length));
+          NODE
+      - name: Publish merged checkpoint
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            node scripts/electroverse_merge_status_partitions.mjs /tmp/electroverse-part-00-recovered.json data/electroverse/live_statuses/parts/part-00.json
+            git add data/electroverse/live_statuses/parts/part-00.json
+            git diff --cached --quiet && exit 0
+            git commit -m 'data(electroverse): recover 1425 verified status locations from run artifact'
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((i*2))
+          done
+          exit 1
