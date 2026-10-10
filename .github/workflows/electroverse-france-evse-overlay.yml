@@ -49,7 +49,8 @@ jobs:
             node scripts/build_electroverse_france_evse_overlay.mjs
             node scripts/audit_electroverse_status_gate_postbuild.mjs
           else
-            echo 'Status census not yet available — preserve current V9 overlay'
+            echo 'ERROR: National Electroverse live EVSE status census missing; guarded rebuild cannot run.' >&2
+            exit 1
           fi
       - name: Persist validated EVSE overlay
         run: |
