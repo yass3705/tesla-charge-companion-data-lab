@@ -55,7 +55,7 @@ const __report={
  unmatchedSamples:__missing.slice(0,80)
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
-await fs.writeFile('reports/electroverse/reconciliation-classified-2026-10-10.json',JSON.stringify(__report,null,2)+'\n');
+await fs.writeFile('reports/electroverse/reconciliation-classified-2026-10-10.json',JSON.stringify(__report,null,2)+'\\n');
 await fs.writeFile('reports/electroverse/reconciliation-unmatched-2026-10-10.json.gz',zlib.gzipSync(Buffer.from(JSON.stringify(__missing))));
 console.log('RECONCILIATION_AUDIT',JSON.stringify(__report.counts));
 `;
