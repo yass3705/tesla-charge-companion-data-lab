@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-10T11:51:54.285Z",
+  "generatedAt": "2026-10-10T12:09:03.428Z",
   "sourceManifest": "data/platforms/electra/france/manifest.json",
   "sourceEvidence": "data/manual_verification/electra_app_evidence_2026-10-10.json",
   "sourceGeneratedAt": "2026-10-08T23:16:29.362Z",
@@ -745,7 +745,7 @@
       "locationId": "5338d58c-c8be-4719-964e-cab7f61438e4",
       "name": "Marseille - Sofitel Vieux Port",
       "cpo": "Electra",
-      "validation": "direct_app_screen_dynamic_fast_only",
+      "validation": "direct_app_screen_fast_dynamic_and_slow_flat",
       "appObserved": [
         {
           "label": "Rapide",
@@ -762,8 +762,11 @@
         {
           "label": "Lent",
           "maxPowerKw": 22,
-          "energyEurPerKwh": null,
-          "pricing": "tab_exists_no_visible_rate"
+          "energyEurPerKwh": 0.49,
+          "pricing": "flat_all_day_in_app_chart",
+          "shownTime": "14h",
+          "screenshot": "IMG_8104.png",
+          "screenshotSha256": "6562e93b96c63bea0f1ec3f37fc879ae5e248701012a49cd1f6c17105315e5f7"
         }
       ],
       "appFees": [
@@ -1018,22 +1021,25 @@
         },
         {
           "powerKw": 22,
-          "appRate": null,
+          "appRate": 0.49,
           "appLabel": "Lent",
-          "possibleTariffIds": [],
+          "possibleTariffIds": [
+            "95cc5df1-69ff-466d-a4df-3f0ce0e6e60c",
+            "42e80897-f1e1-406f-bc7c-faadfa6883c2"
+          ],
           "matchedEvseIds": [
             "FR*ELC*EX73R",
             "FR*ELC*EYT3Z"
           ],
-          "status": "missing_app_rate",
-          "pricing": "tab_exists_no_visible_rate"
+          "status": "ambiguous_tariff_identification",
+          "pricing": "flat_all_day_in_app_chart"
         }
       ],
       "unresolved": {
-        "technicalMismatches": 0,
+        "technicalMismatches": 1,
         "unknownTechnicalEVSEs": 0,
         "sourceTariffs": 2,
-        "pricedAppPowerGroups": 1,
+        "pricedAppPowerGroups": 2,
         "possibleSourceMappingUnique": 1
       },
       "finalDisposition": "evidence_supports_per_power_rules_not_exact_all_evse_and_temporal_applicability",
@@ -1650,9 +1656,27 @@
       "locationId": "0a05897d-13f9-44ee-a64e-5d4ec1422239",
       "name": "Albi, Jardinerie Tarnaise Fonlabour",
       "cpo": "Freshmile",
-      "validation": "user_negative_discovery",
-      "appObserved": [],
-      "appFees": [],
+      "validation": "direct_app_screen_per_power",
+      "appObserved": [
+        {
+          "label": "Rapide",
+          "maxPowerKw": 50,
+          "energyEurPerKwh": 0.55
+        },
+        {
+          "label": "Lent",
+          "maxPowerKw": 22,
+          "energyEurPerKwh": 0.46
+        }
+      ],
+      "appFees": [
+        {
+          "type": "parking",
+          "value": 6,
+          "unit": "EUR/hour",
+          "condition": "not specified in screenshot"
+        }
+      ],
       "sourceTariffs": [
         {
           "id": "2c3b120d-5ff5-4023-b38c-c79338fc5c2f",
@@ -1866,25 +1890,52 @@
           "technicalPowerStatus": "one_national_power"
         }
       ],
-      "perPowerChecks": [],
+      "perPowerChecks": [
+        {
+          "powerKw": 50,
+          "appRate": 0.55,
+          "appLabel": "Rapide",
+          "possibleTariffIds": [
+            "e9a289c6-cb47-40ce-b68f-5fc06889aee6"
+          ],
+          "matchedEvseIds": [
+            "FR*FR1*EDSQT*1"
+          ],
+          "status": "per_power_candidate_requires_live_tariff_refresh",
+          "pricing": "price_of_day"
+        },
+        {
+          "powerKw": 22,
+          "appRate": 0.46,
+          "appLabel": "Lent",
+          "possibleTariffIds": [
+            "9505942a-595c-4a2d-994c-b8f0c63dbbe7"
+          ],
+          "matchedEvseIds": [
+            "FR*FR1*EDSQT*2"
+          ],
+          "status": "per_power_candidate_requires_live_tariff_refresh",
+          "pricing": "price_of_day"
+        }
+      ],
       "unresolved": {
         "technicalMismatches": 0,
         "unknownTechnicalEVSEs": 0,
         "sourceTariffs": 3,
-        "pricedAppPowerGroups": 0,
-        "possibleSourceMappingUnique": 0
+        "pricedAppPowerGroups": 2,
+        "possibleSourceMappingUnique": 2
       },
-      "finalDisposition": "app_absent_unverified_keep_unpublished",
+      "finalDisposition": "evidence_supports_per_power_rules_not_exact_all_evse_and_temporal_applicability",
       "crossChannelWarning": "Electra eMSP only. Do not override direct CPO tariffs."
     }
   ],
   "autoPublishableTariffAssignments": 0,
   "summary": {
     "checkedStations": 6,
-    "appPresent": 5,
-    "appAbsent": 1,
-    "matchedRateAndPowerCandidates": 5,
-    "sourceTariffAmbiguous": 2,
+    "appPresent": 6,
+    "appAbsent": 0,
+    "matchedRateAndPowerCandidates": 7,
+    "sourceTariffAmbiguous": 3,
     "powerMismatches": 1
   }
 }
