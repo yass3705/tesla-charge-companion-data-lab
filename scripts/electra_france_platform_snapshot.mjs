@@ -87,10 +87,19 @@ function compileTariff(t){
       let w=windows.get(key);if(!w){w={values:{...base},present:new Set(),start:start||'00:00',end:end||'24:00',days};windows.set(key,w);}
       if(threshold>0){
         const surcharge=values.time+values.parking;
-        if(surcharge>0)duration.push({threshold,rate:surcharge,start:w.start,end:w.end,days});
+        if(surcharge>0){
+          const kinds=['time','parking'].filter(k=>present.has(k)&&values[k]>0);
+          const kind=kinds.length===1&&rr.maxDuration==null&&!present.has('flat')?(kinds[0]==='time'?'TIME':'PARKING_TIME'):null;
+          duration.push({threshold,rate:surcharge,start:w.start,end:w.end,days,kind});
+        }
       }else for(const k of present){w.values[k]+=values[k];w.present.add(k);}
     }else if(threshold>0){
-      const surcharge=values.time+values.parking;if(surcharge>0)duration.push({threshold,rate:surcharge});
+      const surcharge=values.time+values.parking;
+      if(surcharge>0){
+        const kinds=['time','parking'].filter(k=>present.has(k)&&values[k]>0);
+        const kind=kinds.length===1&&rr.maxDuration==null&&!present.has('flat')?(kinds[0]==='time'?'TIME':'PARKING_TIME'):null;
+        duration.push({threshold,rate:surcharge,kind});
+      }
     }else for(const k of present)base[k]+=values[k];
   }
   if(base.energy===0&&Number.isFinite(Number(t?.currentPricePerKwh)))base.energy=Number(t.currentPricePerKwh);
@@ -101,13 +110,16 @@ function compileTariff(t){
     ocpiCongestionDurationBands:congestionBands
       .filter(x=>scope==='allDay'?!x.start:x.start===start&&x.end===end)
       .map(x=>[x.min,x.max,round(x.rate)]),
-    afterMinutesRate:after?round(after.rate):0,afterMinutesThreshold:after?Math.round(after.threshold):0,days,ocpiDurationBands:[]
+    afterMinutesRate:after?round(after.rate):0,afterMinutesThreshold:after?Math.round(after.threshold):0,
+    afterMinutesComponent:after?.kind||null,days,ocpiDurationBands:[]
   });
-  const baseAfter=duration.filter(x=>!x.start).sort((a,b)=>a.threshold-b.threshold)[0]||null;
+  const baseCandidates=duration.filter(x=>!x.start).sort((a,b)=>a.threshold-b.threshold);
+  const baseAfter=baseCandidates.length===1?baseCandidates[0]:baseCandidates.length?{...baseCandidates[0],kind:null}:null;
   const rules=[rule('allDay','00:00','24:00',base,null,baseAfter)];
   for(const w of windows.values()){
     const r={...base};for(const k of w.present)r[k]=w.values[k];
-    const after=duration.filter(x=>x.start===w.start&&x.end===w.end).sort((a,b)=>a.threshold-b.threshold)[0]||null;
+    const matches=duration.filter(x=>x.start===w.start&&x.end===w.end).sort((a,b)=>a.threshold-b.threshold);
+    const after=matches.length===1?matches[0]:matches.length?{...matches[0],kind:null}:null;
     rules.push(rule('timeWindow',w.start,w.end,r,w.days,after));
   }
   return {type:'rules',rules};
