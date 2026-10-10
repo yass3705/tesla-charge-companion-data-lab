@@ -69,7 +69,10 @@ jobs:
             if [ -f /tmp/electroverse-status-gate-postbuild.json ]; then
               cp /tmp/electroverse-status-gate-postbuild.json reports/electroverse/status-gate-postbuild.json
             fi
-            git add data/platforms/electroverse/france-evse reports/electroverse/status-gate-postbuild.json
+            git add data/platforms/electroverse/france-evse
+            if [ -f reports/electroverse/status-gate-postbuild.json ]; then
+              git add reports/electroverse/status-gate-postbuild.json
+            fi
             if git diff --cached --quiet; then
               echo 'No overlay changes'
               exit 0
