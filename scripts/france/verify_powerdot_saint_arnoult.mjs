@@ -57,7 +57,7 @@ const report={schemaVersion:1,generatedAt:new Date().toISOString(),evidenceLocat
  requiresKnownExactEvse:true,requiresKnownPower:true,requiresOnlyTwoPowerBands:true,restrictBatchToPowersKw:[22,50],
  requiresTariffIds: [...cohortIds],requiresOnlyEnergy:true,
  explicitSameEvseSamePowerConflictsMustFail:true,unverifiedExtraFastPowersMustRemainPending:true
-},batch:{candidateStationCount:0,validStationCount:0,invalidReasons:{},validStations:[],stationsWithOtherTariffs:0}};
+},batch:{candidateStationCount:0,validStationCount:0,invalidReasons:{},validStations:[],stationsWithOtherTariffs:0,nonPublicOrDealershipCandidates:[]}};
 const reason=(s)=>(report.batch.invalidReasons[s]=(report.batch.invalidReasons[s]||0)+1);
 for(const c of residual.cases||[]){
  if(c.cpo!=='Powerdot')continue;
@@ -70,6 +70,11 @@ for(const c of residual.cases||[]){
  cp.some(e=>e.powersKw[0]===22)&&cp.some(e=>e.powersKw[0]===50);
  if(!valid22and50)continue;
  report.batch.candidateStationCount++;
+ if(/\bgarage\b|\bconcession\b|\bcentre auto\b|\bautomobile\b/i.test(String(loc.name||''))){
+  reason('nonpublic_or_dealership_to_reverify');
+  report.batch.nonPublicOrDealershipCandidates.push({locationId:loc.id,name:loc.name});
+  continue;
+ }
  if(ts.length!==2||ts.some(t=>!cohortIds.has(t.id))){reason('other_tariff_ids_or_grid_count');report.batch.stationsWithOtherTariffs++;continue;}
  if(ts.some(t=>t.kinds.length!==1||t.kinds[0]!=='ENERGY'||t.rate.length!==1)){reason('mixed_components_or_rates');continue;}
  if(ts.some(t=>t.restrictions.some(r=>Object.values(r).some(v=>v!=null&&v!==''&&(!Array.isArray(v)||v.length))))){reason('restrictions_present');continue;}
