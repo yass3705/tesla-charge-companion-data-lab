@@ -1,0 +1,39 @@
+name: Verify Powerdot Saint-Arnoult and guarded 22-50 candidates
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/france/verify_powerdot_saint_arnoult.mjs"
+      - ".github/workflows/electra-powerdot-verify-22-50.yml"
+permissions:
+  contents: write
+concurrency:
+  group: powerdot-22-50-verification-main
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Validate exact Powerdot source EVSE and national IRVE powers
+        run: node scripts/france/verify_powerdot_saint_arnoult.mjs
+      - name: Persist audited candidate cohort
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/powerdot-saint-arnoult-proof-and-22-50-candidates-latest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'audit(electra): validate Saint-Arnoult EVSE and enumerate safeguarded Powerdot 22-50 candidates'
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              if git rebase -X theirs origin/main && git push origin HEAD:main; then exit 0; fi
+              git rebase --abort || true
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
