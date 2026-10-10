@@ -26,11 +26,11 @@ SUC=ROOT/'data/suc-tracker/tesla_stations.json'
 META=ROOT/'data/suc-tracker/metadata.json'
 COUNTRIES=('FR','IT','CH','DE','ES','NL','UK','MA','BE')
 PROVENANCE_URL=(
-  'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/main/'
+  f'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/{inv.REF}/'
   'data/tesla-mac-catalogue-publication.json'
 )
 PUBLIC_VERIFICATION_URL=(
-  'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/main/'
+  f'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/{inv.REF}/'
   'data/tesla-suc-only-public-verification.json'
 )
 def cc(value):
@@ -86,8 +86,8 @@ def main():
         mac_time=published_date(evidence['countries'].get(repo_cc))
         mac_provenance='country_mac_batch_publication'
         if mac_time is None:
-            # No batch for DE: one historical date for the WHOLE country,
-            # never 326 independent Mac freshness assessments.
+            # Historical country without a verified Mac batch: do not assign
+            # per-station freshness from legacy lastUpdated metadata.
             older=[day(s.get('lastUpdated')) for s in mac_group]
             older=[x for x in older if x]
             mac_time=max(older) if older else None
@@ -168,7 +168,7 @@ def main():
     report={
         'schemaVersion':'3.1-country-selection-suc-only-conditional',
         'generatedAt':now.isoformat(),'scopeCountries':list(COUNTRIES),
-        'macRepository':'yass3705/tesla-charge-companion-stable@main',
+        'macRepository':f'yass3705/tesla-charge-companion-stable@{inv.REF}',
         'macSourcePath':'data/tesla_stations.json','macSourceSha256':mac_sha,
         'macCountryBatchPublicationEvidence':evidence['countries'],
         'sucMetadata':suc_meta,
