@@ -79,6 +79,9 @@ def main():
         if not public_flag:
             category="operator_not_public"
             reason="PCPR publish flag is false; not eligible for public V9"
+        elif re.search(r"\\b(?:residents\\s+only|employees\\s+only|staff\\s+only|members\\s+only)\\b",text,re.I):
+            category="nonpublic_explicit_onsite_rules"
+            reason="Source location directions explicitly restrict access to residents, employees, staff or members; exclude from general-public charging"
         elif lid in confirmed:
             category="visitor_public_verified"
             reason="Independently documented venue guest/visitor access"
@@ -122,7 +125,8 @@ def main():
       "crossSourceAccessStatuses":dict(Counter(r["externalAccessStatus"] or "not_present" for r in rows)),
       "nameAndDirectionsSignals":dict(signals),
       "declaredPublicCount":sum(r["publish"] for r in rows),
-      "confirmedNonPublicCount":sum(r["category"]=="operator_not_public" for r in rows),
+      "confirmedNonPublicCount":sum(r["category"] in ("operator_not_public","nonpublic_explicit_onsite_rules") for r in rows),
+      "confirmedNonPublicConnectorCount":sum(r["connectors"] for r in rows if r["category"] in ("operator_not_public","nonpublic_explicit_onsite_rules")),
       "directPAYGPromoted":0,
       "manualReviewPolicy":"Review ONLY priority classes and exceptions; PCPR public declaration alone does not justify direct price ranking or universal 24/7 physical access.",
       "prioritySamples":review[:35],
