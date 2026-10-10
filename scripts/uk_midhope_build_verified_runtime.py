@@ -38,7 +38,7 @@ def main():
            "provider":"Connected Kerb","kind":"direct","countries":["GB"],"currency":"GBP",
            "stationIds":[station_id],"evseIds":[source["evseId"]],
            "connectorIds":[source["connectorId"]],
-           "directOperatorOnly":True,"validFrom":"2026-10-10","validThrough":"2026-10-24",
+           "directOperatorOnly":True,"validFrom":"2026-10-10",
            "pricing":{"type":"connected_kerb_midhope_guest_verified",
                "verifiedSourceVersion":"2026-10-10-midhope-exact-4","includesVat":True,
                "energyPerKwhGbp":.39996,"parkingPerStarted30minGbp":.80004,
@@ -47,6 +47,9 @@ def main():
                "pricingScope":"cpo_direct_guest_exact_connector",
                "sourceEvidence":"midhope-guest-2026-10-10",
                "pricingTimeZone":"Europe/London",
+               "scheduleBasis":"customer app 09:30-19:00 Europe/Paris = 08:30-18:00 Europe/London, including DST",
+               "tariffObservedAt":"2026-10-10",
+               "refreshPolicy":"revalidate exact CPO guest price on new tariff evidence; DST alone does not expire the price",
                "feeRateScope":"parked occupancy, no charging/idle double billing",
                "guestPreAuthorisationGbpNotCost":25,
                "winterEvidence":"not_confirmed_not_activated"}
@@ -56,7 +59,7 @@ def main():
     assert len({v["evse_id"] for v in evses})==4
     payload={"country":"GB","collectedAt":raw["collectedAt"],
         "source":"Connected Kerb guest app exact socket rates + user screenshots 2026-10-10",
-        "activationPolicy":"summer_verified_only_until_2026-10-24_inclusive",
+        "activationPolicy":"Europe/London local time schedule; no DST-only expiration; revalidate price on new CPO evidence",
         "sources":[{"id":"connected-kerb-midhope-guest-verified","name":"Connected Kerb",
             "partyIdsExpected":["CK0"],"country":"GB","pricingScope":"cpo_direct_guest_exact_connector",
             "locations":[{**loc,"evses":evses}],"tariffs":[]}]}
@@ -66,12 +69,12 @@ def main():
         "exactConnectorCount":len(offers),"exactStationCount":1,
         "stationId":station_id,"evseIds":sorted(v["evseIds"][0] for v in offers),
         "connectorIds":sorted(v["connectorIds"][0] for v in offers),
-        "tariffValidFrom":"2026-10-10","tariffValidThrough":"2026-10-24",
-        "winter":"no_price_after_cutoff_without_direct_guest_verification",
+        "tariffValidFrom":"2026-10-10","tariffValidThrough":None,
+        "winter":"Europe/London automatic DST conversion; tariff freshness independently reviewed",
         "evidence":"reports/uk/connected-kerb-midhope-verified-2026-10-10.json",
         "runtimeType":"connected_kerb_midhope_guest_verified",
         "stagedFile":"data/national/uk_connected_kerb_midhope_verified_v9.json.gz",
-        "status":"summer_verified_exact_connector_candidate"}
+        "status":"local_time_dst_verified_exact_connector_candidate"}
     report_file=ROOT/"reports/uk/connected-kerb-midhope-runtime-stage-2026-10-10.json"
     report_file.write_text(json.dumps(report,indent=2)+"\n",encoding="utf8")
     print(json.dumps(report))
