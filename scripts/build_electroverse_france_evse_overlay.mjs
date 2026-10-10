@@ -480,6 +480,49 @@ for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
   const k=norm(p);if(!k)continue;
   const set=globalPdcOwners.get(k)||new Set();set.add(m.irveStationId);globalPdcOwners.set(k,set);
 }
+// Narrow whitelist: three user-reviewed source EVSEs for which the same physical
+// PDC was mistakenly attached to another IRVE station. Never override an
+// ambiguous physical identifier without a unique <10m canonical GPS match.
+const appExactEvidence=JSON.parse(await fs.readFile(
+ 'data/platforms/electroverse/validated-mappings/app-evidence-four-extra-exact-2026-10-11.json','utf8'));
+const appExactBySource=new Map((appExactEvidence.confirmedMatches||[])
+ .map(x=>[String(x.sourceLocationPk)+':'+String(x.sourceEvsePk),x]));
+const geometers=(a,b)=>{
+ const n=[a?.lat,a?.lon,b?.lat,b?.lon].map(Number);
+ if(n.some(v=>!Number.isFinite(v)))return null;
+ const [x,y,X,Y]=n.map(v=>v*Math.PI/180),dl=X-x,dn=Y-y;
+ return 2*6371000*Math.asin(Math.sqrt(Math.sin(dl/2)**2+Math.cos(x)*Math.cos(X)*Math.sin(dn/2)**2));
+};
+const appGeoDecisionCounters={qualified:0,blocked:0,details:[]};
+function reviewedAppGeoOwnerValid(row,e,ref,m){
+ const key=String(row.electroverseLocationPk)+':'+String(e?.pk??'');
+ const approval=appExactBySource.get(key);
+ if(!approval)return false;
+ const reasons=[];
+ if(norm(ref)!==approval.identityNormalized)reasons.push('source_ref_mismatch');
+ if(String(m?.irveStationId)!==String(approval.stationId))reasons.push('station_id_mismatch');
+ if(!(m?.irvePdcIds||[]).some(p=>norm(p)===approval.identityNormalized))reasons.push('missing_canonical_pdc');
+ const cs=e?.connectors||[];
+ if(cs.length!==1||cs.some(c=>Math.abs(Number(c?.kilowatts)-approval.maxKw)>.001||
+    (approval.standard==='CCS'&&String(c?.standard?.name||c?.standard)!=='IEC_62196_T2_COMBO')))
+    reasons.push('source_power_or_connector_mismatch');
+ const others=(mapping.mappings||[]).filter(z=>(z.irvePdcIds||[]).some(p=>norm(p)===approval.identityNormalized));
+ const sources=others.filter(z=>String(z.electroverseLocationPk)===String(approval.sourceLocationPk)&&
+     String(z.irveStationId)===String(approval.stationId));
+ const competitors=others.filter(z=>!sources.includes(z));
+ const canonicalMetres=sources.length===1?geometers(m?.electroverse,sources[0].irve):null;
+ const alternativeDistances=competitors.map(z=>geometers(m?.electroverse,z.irve));
+ if(sources.length!==1||!(canonicalMetres!==null&&canonicalMetres<=10))
+    reasons.push('canonical_distance_over_10m');
+ if(competitors.length<1||alternativeDistances.some(d=>d===null||d<=20))
+    reasons.push('competing_owner_within_20m_or_unlocated');
+ const approved=!reasons.length;
+ if(approved)appGeoDecisionCounters.qualified++;else appGeoDecisionCounters.blocked++;
+ if(appGeoDecisionCounters.details.length<15)appGeoDecisionCounters.details.push({
+  sourcePk:e.pk,locationPk:row.electroverseLocationPk,physicalReference:ref,
+  canonicalMetres,alternativeDistances,approved,reasons});
+ return approved;
+}
 
 const tiles=new Map(),rejected={},parentGroups=new Map(),p01PriceOnlyGroups=new Map();
 const debugNumericSourcePks=new Set(['4179421','4179445','4132457','4132473']);
@@ -2340,8 +2383,12 @@ for(const sh of manifest.shards||[]){
         }
       }else if(local.has(k)){
         const owners=globalPdcOwners.get(k);
-        if(!owners||owners.size!==1){rej('physical_reference_not_globally_unique');continue;}
-        stats.exactUniqueNationalEvses++;
+        if(!owners||owners.size!==1){
+          if(!reviewedAppGeoOwnerValid(row,e,pr,m)){
+            rej('physical_reference_not_globally_unique');continue;
+          }
+          identityMode='reviewed_app_exact_gps_disambiguation';
+        }else stats.exactUniqueNationalEvses++;
       }else{
         const candidates=[...local].filter(p=>{
           if(!k.startsWith(p)||k.length<=p.length)return false;
@@ -2649,6 +2696,8 @@ for(const sh of manifest.shards||[]){
       };
       const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
       tiles.get(id).push(offer);
+      if(identityMode==='reviewed_app_exact_gps_disambiguation')
+        stats.reviewedAppExactGeoOfferCandidates=(stats.reviewedAppExactGeoOfferCandidates||0)+1;
       if(validatedResidualTarget)stats.validatedResidualOffersCreated++;
       if(ordinalMode)stats.ordinalPublishedEvses++;
       if(identityMode==='strict_station_common_prefix_tail_bijection')stats.genericTailPublishedEvses++;
@@ -2972,6 +3021,7 @@ const out={
   tileSizeDegrees:TILE,
   tileCount:manifestTiles.length,
   stats,rejected,
+  reviewedAppExactGeo:{approvedAppIdentities:appExactBySource.size,decisionCounters:appGeoDecisionCounters},
   reviewedDisputes:{reviewedAt:reviewedPriceDisputes.reviewedAt,
     originalSamePowerRefs:reviewedPriceDisputes.samePowerDisputes?.length||0,
     confirmedPowerSplitRefs:reviewedPriceDisputes.chargezyPowerVariants?.length||0,
