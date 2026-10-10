@@ -1,93 +1,14 @@
-name: Electroverse nationwide status census and tariff-gated rebuild
+name: Retired Electroverse monolithic status sweep
+# Retired: nationwide one-shot sweeps exhausted GraphQL service with
+# thousands of partial failures. Use electroverse-status-incremental.yml.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '12 1 * * *'
-  push:
-    branches: [main]
-    paths:
-      - "scripts/electroverse_collect_live_evse_statuses.mjs"
-      - ".github/workflows/electroverse-status-gated-rebuild.yml"
 permissions:
-  contents: write
-concurrency:
-  group: electroverse-france-status-gate
-  cancel-in-progress: false
+  contents: read
 jobs:
-  preflight:
+  retired:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
-    env:
-      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
-      ELECTROVERSE_SAMPLE_LIMIT: '16'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Check collector syntax and query shape
+      - name: Point to incremental replacement
         run: |
-          node --check scripts/electroverse_collect_live_evse_statuses.mjs
-          node scripts/electroverse_collect_live_evse_statuses.mjs
-      - uses: actions/upload-artifact@v4
-        with:
-          name: electroverse-status-preflight
-          path: reports/electroverse/live-status-preflight-2026-10-10.json
-  full_status_census:
-    needs: preflight
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    env:
-      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
-      ELECTROVERSE_STATUS_BATCH_SIZE: '4'
-      ELECTROVERSE_STATUS_CONCURRENCY: '5'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Collect statuses of all mapped France EVSEs
-        run: node scripts/electroverse_collect_live_evse_statuses.mjs
-      - name: Validate status ledger
-        run: |
-          node - <<'NODE'
-          const fs=require('fs');
-          const src=JSON.parse(fs.readFileSync('data/electroverse/tariff_cache/manifest.json'));
-          const j=JSON.parse(fs.readFileSync('data/electroverse/live_statuses/manifest.json'));
-          if(j.completedLocations!==src.totalStations||j.failedLocations)throw Error('incomplete status census');
-          if(!j.observedEvses||!j.statuses.AVAILABLE)throw Error('invalid status data');
-          console.log(JSON.stringify(j.statuses));
-          NODE
-      - name: Preserve census artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: electroverse-national-evse-statuses
-          path: |
-            reports/electroverse/live-status-refresh-2026-10-10.json
-            data/electroverse/live_statuses/
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Persist status evidence and request dependent rebuild
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp -a data/electroverse/live_statuses /tmp/electroverse_live_statuses
-          cp reports/electroverse/live-status-refresh-2026-10-10.json /tmp/electroverse_live_status_report.json
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          for attempt in 1 2 3 4 5; do
-            git fetch origin main
-            git reset --hard origin/main
-            mkdir -p data/electroverse/live_statuses
-            cp -a /tmp/electroverse_live_statuses/. data/electroverse/live_statuses/
-            cp /tmp/electroverse_live_status_report.json reports/electroverse/live-status-refresh-2026-10-10.json
-            git add data/electroverse/live_statuses reports/electroverse/live-status-refresh-2026-10-10.json
-            git diff --cached --quiet && exit 0
-            git commit -m 'data(electroverse): stage national EVSE status evidence for safe overlay rebuild'
-            git push origin HEAD:main && exit 0
-            sleep $((attempt*2))
-          done
-          exit 1
+          echo 'One-shot Electroverse status sweep retired. Use electroverse-status-incremental.yml to resume 16 durable partitions.'
