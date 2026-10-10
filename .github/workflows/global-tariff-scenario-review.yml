@@ -177,7 +177,7 @@ jobs:
           if rows:
               ordered=sorted(rows.values(),key=lambda d:str(d.get('reviewedAt','')))
               pathlib.Path('reports/tariff-scenarios/history.jsonl').write_text(
-                  ''.join(json.dumps(d,ensure_ascii=False,separators=(',',':'))+'\\n' for d in ordered),encoding='utf-8')
+                  ''.join(json.dumps(d,ensure_ascii=False,separators=(',',':'))+'\n' for d in ordered),encoding='utf-8')
           PY
             git add reports/tariff-scenarios/history.jsonl
             if ! git diff --cached --quiet; then
