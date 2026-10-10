@@ -48,7 +48,7 @@ def main():
   'teslaLegacyLastUpdatedAge_NOT_PRICE_OBSERVATION':{k:v.get('legacyLastUpdatedAgeBuckets_NOT_OBSERVATION',{}) for k,v in tesla['countries'].items()},
   'teslaFreshnessSelection':{'stationCount':selection['macStationsAudited'],
        'byCountry':selection['countries'],'unmatchedSuCRecords':selection['unmatchedSuCRecords'],
-       'policy':selection['sourceSelectionPolicy']},
+       'policy':(selection.get('sourceSelectionPolicy') or selection['policy'])},
   'teslaTimeScopeAudit':{k:v.get('timeScopeAudit',{}) for k,v in tesla['countries'].items()},
   'franceOverlayOfferRows':{
     k:v for k,v in global_data['franceRealOfferRows'].items() if '/offer_rows' in k},
