@@ -20,14 +20,20 @@ Vérifie quatre identifiants, tarif énergie, pas de facturation, préautorisati
 
 Les offres sont désormais prévues dans le moteur et la source V9 construite, mais restent dépendantes d'un snapshot global validé avant visibilité dans l'interface publique.
 
-## Blocages de déploiement global non liés à Midhope
+## Validation et publication effective
 
-- Run preview global **38058077511 : échec** — source **Ubitricity UK** dépassant le seuil strict de 48 heures. **Ne pas contourner** sans réactualiser ou mettre la source non vérifiée en quarantaine.
-- Run paquet V9 isolé **38058093523 : échec** — source **Blink UK** non conforme au croisement horodatage/source rapport de validation. **Ne pas forcer la publication** d'un snapshot dont les autres tarifs sont en écart.
-- ChargePoint UK : `readyForTariffRanking=false`; la nouvelle construction le conserve inactif plutôt que de publier des tarifs ad hoc non confirmés.
+- **Blink UK** : collecte PCPR du **2026-10-10T14:10:35Z**, audit indépendant `38058579417` réussi ; 869 stations / 3 599 connecteurs tarifés / 55 tarifs / 0 non tarifé.
+- **Ubitricity UK** : exclu de la V9 tant que le support CPO n'a pas renvoyé un accès de collecte fonctionnel ; les anciennes données sont archivées mais la source runtime `uk-ubitricity-pcpr-payg` reste `active:false`.
+- **ChargePoint UK** : `readyForTariffRanking:false`, tarifs encore hors classement faute de preuve directe PAYG/TVA.
+- **Midhope Road** : quatre EVSE source `uk-connected-kerb-midhope-guest-verified` intégrés au snapshot V9 avec bornage temporel été validé (du 10 au 24 octobre inclus) ; période hivernale `tarif indisponible` jusqu'à nouvelle preuve.
+- **Allemagne IONITY** : quatre sites isolés sans prix, contrôle de proximité et huit cas tiers exclus ; aucun tarif extrapolé.
+- **Tests finaux** : snapshot construit, tests OCPI, tests UK, smoke multi-pays et scénario navigateur réussis.
+- **GitHub Pages** : publication vérifiée par exécution `38059294144` (`build-deploy: success`, `deploy: success`), le 10/10/2026 à **14:23:35 UTC**.
+- URL de la prévisualisation : https://yass3705.github.io/tesla-charge-companion-production/
+- URL du run de publication : https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38059294144
 
 ## Statut
 
-`ENGINE_AND_EXACT_CPO_SOURCE_VERIFIED__V9_UI_NOT_DEPLOYED`
+`MIDHOPE_4_EVSE_BLINK_3599_PUBLISHED_TO_V9_PAGES__UBITRICITY_SUPPORT_HOLD`
 
-La réussite des tests Midhope et la présence du code sur `main` ne prouvent **pas** la publication effective du snapshot V9 en production. Reprendre par la réconciliation des collectes Ubitricity/Blink, reconstruire le snapshot complet, vérifier la présence des quatre EVSE dans le registre/runtime navigateur, puis déployer.
+Le workflow GitHub Pages confirme le déploiement. L'URL publique n'a pas été relue depuis cet environnement réseau après déploiement ; tests de navigateur sur artefact du workflow réussis. La réactivation Ubitricity nécessite des données fraîches et une validation explicite. L'heure d'hiver Midhope nécessite une nouvelle observation tarifaire client.
