@@ -6,10 +6,10 @@ const ENDPOINT='https://emsp.go-electra.com/graphql';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function request(query,variables={}){
   let err=null;
-  for(let attempt=1;attempt<=3;attempt++){
+  for(let attempt=1;attempt<=1;attempt++){
     try{
       const r=await fetch(ENDPOINT,{method:'POST',headers:{'content-type':'application/json','accept':'application/json','user-agent':'TCC/1.0-public-readonly-contract-audit'},
-       body:JSON.stringify({query,variables}),signal:AbortSignal.timeout(24000)});
+       body:JSON.stringify({query,variables}),signal:AbortSignal.timeout(7000)});
       const b=await r.text();let data=null;try{data=JSON.parse(b)}catch{}
       if(r.ok)return {httpStatus:r.status,data:data?.data??null,errors:data?.errors?.map(e=>e.message)?.slice(0,8)??[],rawError:!data?b.slice(0,240):null};
       err={httpStatus:r.status,error:data?.errors?.map(e=>e.message)?.slice(0,6)??b.slice(0,250)};
