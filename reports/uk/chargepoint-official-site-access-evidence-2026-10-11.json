@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "scope": "UK ChargePoint CMS 323 stations, access cross-check (not tariff validation)",
+  "verifiedAt": "2026-10-11",
+  "policy": "Operator public listing alone does not guarantee site and payment accessibility. Exact EVSE evidence is necessary before promoting direct tariff.",
+  "groups": [
+    {
+      "group": "bristol_airport_multi_storey",
+      "stationIds": [
+        "GBCPIL7379125",
+        "GBCPIL7379275",
+        "GBCPIL7379175"
+      ],
+      "classification": "public_physical_access_confirmed_with_parking_conditions",
+      "confidence": "high",
+      "expectedConnectorTotal": 20,
+      "source": [
+        "https://www.bristolairport.co.uk/parking/multi-storey-car-park",
+        "https://www.bristolairport.co.uk/parking/terms-and-conditions",
+        "https://www.zapmap.com/charge-points/backwell-nailsea/C40CU5F"
+      ],
+      "evidence": "Airport says 20 EV connectors opposite Multi Storey available for customer PAYG; Zapmap confirms ChargePoint network 20 connectors. Three source stations names MSCP 2; combined exact connector count must equal 20.",
+      "conditions": "Airport parking rules and maximum 2h charging; parking charges may apply separately",
+      "tariffPromoted": false
+    },
+    {
+      "group": "bristol_airport_lulsgate",
+      "stationIds": [
+        "GBCPIL7268305"
+      ],
+      "classification": "nonpublic_staff_only",
+      "confidence": "high",
+      "source": [
+        "https://www.bristolairport.co.uk/media/rzohx2he/colleague-travel-guide-2026-april-2026.pdf",
+        "https://docs.planning.org.uk/20260423/51/TCIP27LP01600/cdy4rtwm2510ntb1.pdf"
+      ],
+      "evidence": "Official Bristol Airport staff travel guide states Lulsgate House car park EV charging is currently only available to BAL staff; planning docs distinguish staff-only EV bays.",
+      "tariffPromoted": false
+    },
+    {
+      "group": "bristol_airport_delivery_and_fire",
+      "stationIds": [
+        "GBCPIL7270045",
+        "GBCPIL7269625"
+      ],
+      "classification": "nonpublic_explicit_operator_site_directions",
+      "confidence": "high",
+      "source": [
+        "data/national/uk_eco_movement_pcpr.json.gz"
+      ],
+      "evidence": "ChargePoint original site directions explicitly say Fleet, Staff and Contractors Only and Fleet and BRS Staff use Only.",
+      "tariffPromoted": false
+    },
+    {
+      "group": "university_south_wales",
+      "stationIds": [
+        "GBCPIL6532865",
+        "GBCPIL6480925",
+        "GBCPIL2890105",
+        "GBCPIL6480945",
+        "GBCPIL6520395"
+      ],
+      "classification": "nonpublic_university_chargepoint_site",
+      "confidence": "high_site_medium_exact_EVSE",
+      "source": [
+        "https://www.southwales.ac.uk/estates-and-facilities/property-services/parking/electric-vehicle-charging/",
+        "https://www.southwales.ac.uk/estates-and-facilities/property-services/travel/visitor-travel/"
+      ],
+      "evidence": "University of South Wales states its EV charge points are not available for public use (ChargePoint+); source stations are on Cardiff Atrium, G Block, Sports Park and Glyntaff campuses. Names and postcodes support association; exact individual hardware membership is inferred from site matching.",
+      "tariffPromoted": false
+    },
+    {
+      "group": "university_hull",
+      "stationIds": [
+        "GBCPIL6948875",
+        "GBCPIL6774035",
+        "GBCPIL6822655",
+        "GBCPIL6806985"
+      ],
+      "classification": "campus_visitors_charging_exists_exact_evse_not_confirmed",
+      "confidence": "medium_site_low_exact_EVSE",
+      "source": [
+        "https://www.hull.ac.uk/help-centre/visiting-the-university/where-can-i-park-for-a-campus-visit"
+      ],
+      "evidence": "Hull University confirms visitors can park and limited campus EV charging first come first served; none of four ChargePoint source station IDs is individually named by the university.",
+      "tariffPromoted": false
+    }
+  ],
+  "exceptions": [
+    {
+      "stationId": "GBCPIL6919865",
+      "category": "private_car_park_unproven_guest_access",
+      "evidence": "Site operator directions Private Car Park; do not infer restricted membership without explicit statement."
+    },
+    {
+      "stationId": "GBCPIL7268305",
+      "category": "official_staff_only",
+      "evidence": "Lulsgate staff only override even when source feed claims publish:true."
+    }
+  ],
+  "verificationGoal": "Produce 100-row exact-ID access evidence matrix; identify nonpublic and public verified subsets; preserve all remaining unverified."
+}
