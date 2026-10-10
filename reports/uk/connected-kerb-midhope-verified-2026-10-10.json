@@ -132,13 +132,26 @@
     "idleSupplementCondition": "vehicle is not charging; separate from occupancy parking fee",
     "guestPreAuthorizationGbp": 25,
     "guestPreAuthorizationCountedAsSessionCost": false,
-    "precision": "customer-facing hourly 2 decimals; raw source fractional pence preserved"
+    "precision": "customer-facing hourly 2 decimals; raw source fractional pence preserved",
+    "parkingDescriptionLondonLocal": {
+      "start": "08:30",
+      "end": "18:00",
+      "timeZone": "Europe/London",
+      "appScreenshotProof": "09:30-19:00 Europe/Paris"
+    },
+    "parkingScreenshotParisLocal": {
+      "start": "09:30",
+      "end": "19:00",
+      "timeZone": "Europe/Paris"
+    },
+    "parkedTimeTimezonePolicy": "Use civil local Europe/London including DST; no UTC-constant 07:30-17:00 after clock change",
+    "parkingSourceUtcNote": "07:30-17:00 UTC is the summer observation, not a perennial UTC schedule"
   },
   "guardrails": [
     "No double billing the raw CHARGING_TIME and IDLE_TIME parking phase on same minutes",
     "No automatic 20 percent UK VAT reapplication; customer values already gross",
     "Do not include preauthorization in session price",
-    "Winter time adjustment from guest app must be reverified; current 07:30 UTC schedule is a source observation, not a perpetual UK local schedule",
+    "Convert guest-app French display to Europe/London local hours 08:30-18:00 year-round, including DST; monitor CPO price changes independently",
     "Billing rounding across change of occupancy phase/window and idle supplement not validated by receipt",
     "No V9 promotion without exact connector binding and timed/phase billing engine regression"
   ]
