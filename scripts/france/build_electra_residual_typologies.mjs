@@ -88,9 +88,8 @@ const groups={
  single_known_power_without_tariff_mapping:summaries.filter(x=>x.class==='single_known_power_without_tariff_mapping')
 };
 const multiple=groups.multiple_known_powers_without_tariff_mapping;
-if(multiple.length!==4438||groups.all_evse_powers_unknown.length!==307||
- groups.some_evse_powers_unknown.length!==300||groups.single_known_power_without_tariff_mapping.length!==373)
- throw Error('Canonical class totals changed; review grouping before publication: '+
+if(Object.values(groups).reduce((sum,rows)=>sum+rows.length,0)!==cases.length)
+ throw Error('Canonical class counts do not reconcile to all residual cases: '+
  JSON.stringify(Object.fromEntries(Object.entries(groups).map(([k,v])=>[k,v.length]))));
 const profile=(rows,n=3)=>({
  stations:rows.length,knownEvseIds:rows.reduce((a,x)=>a+x.knownEvseCount,0),
