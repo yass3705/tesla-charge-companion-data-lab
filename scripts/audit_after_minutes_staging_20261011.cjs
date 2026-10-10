@@ -78,16 +78,22 @@ check('night_cap_missing_time_context',missingTime,
 // Legacy Electra eMSP must not be guessed to be CONNECTED_TIME.
 const electra=[...fixtures,...pilot].filter(x=>x.provider?.includes('Electra') &&
   (x.offer?.pricing?.rules||[]).some(r=>Number(r.afterMinutesRate)>0));
-for(const sample of electra.slice(0,6)){
+const electraDeferred=[];
+for(const sample of electra){
  const r=evaluate(sample.offer,session(90));
- const pass=r.complete===false;
+ const rules=sample.offer.pricing.rules.filter(x=>Number(x.afterMinutesRate)>0);
+ const pass=r.complete===false&&r.reason==='after_minutes_component_unverified';
  checks.push({name:'electra_missing_semantics_'+sample.offer.id,pass,actual:r.reason||r.totalEur});
- if(!pass)failures.push('Electra semantics guessed '+sample.offer.id);
+ electraDeferred.push({id:sample.offer.id,provider:sample.provider,origin:sample.origin,
+  afterMinutesTerms:rules.map(v=>({rate:v.afterMinutesRate,threshold:v.afterMinutesThreshold,
+    cap:v.afterMinutesCap??0,component:v.afterMinutesComponent??null})),
+  expectedStatus:'TARIF_INCALCULABLE',reason:r.reason||null});
+ if(!pass)failures.push('Electra unknown surcharge mishandled '+sample.offer.id);
 }
 const report={generatedAt:new Date().toISOString(),mode:'STAGING_ENGINE_BRANCH_ONLY',
  sixVerifiedOffers:selected.map(x=>x.id),electraLegacySamples:electra.length,
  checksTotal:checks.length,passed:checks.filter(x=>x.pass).length,failed:failures.length,
- failures,checks,publications:'none'};
+ failures,checks,electraDeferred,publications:'none'};
 fs.mkdirSync(path.join(root,'reports/tariff-scenarios'),{recursive:true});
 fs.writeFileSync(path.join(root,'reports/tariff-scenarios/after-minutes-staging-validation-2026-10-11.json'),
  JSON.stringify(report,null,2)+'\n');
