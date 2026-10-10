@@ -37,11 +37,25 @@ for(const c of arr){
 }
 const energy=all.filter(x=>x.kind==='energy');
 const sharedTariffIdPairs={};
+const tariffProfiles={};
+const cohortExamples={};
 const powersByPair={};
 for(const station of all){
  const pair=station.tariffIds.filter(Boolean).slice().sort().join('|');
  if(!pair)continue;
  count(sharedTariffIdPairs,pair);
+ if(!cohortExamples[pair])cohortExamples[pair]={name:station.name,city:station.city,locationId:station.locationId,powers:station.knownPowersKw,rates:station.pricesEurPerKwh};
+ const l=lookup.get(station.locationId);
+ for(const tariff of l?.chargeTariffs||[]){
+  const id=String(tariff.chargeTariffId||tariff.id||'');
+  if(!id)continue;
+  const p=tariffProfiles[id]??={stations:0,seen:new Set(),rates:new Set(),components:new Set()};
+  if(!p.seen.has(station.locationId)){p.stations++;p.seen.add(station.locationId);}
+  for(const e of tariff.elements||[])for(const c of e.priceComponents||[]){
+   if(c.type==='ENERGY'&&Number.isFinite(Number(c.price)))p.rates.add(Number(c.price));
+   else p.components.add(String(c.type)+':'+c.price);
+  }
+ }
  if(!powersByPair[pair])powersByPair[pair]=new Set();
  powersByPair[pair].add(station.powerKey);
 }
@@ -75,7 +89,9 @@ const powerdot={
  sourceTariffsAreAtLocationLevel:true,energyOnly:energy.length,
  exactJarvilleTariffIdPairReusedOnStations:repeatedPairStations.length,
  exactTariffPairAndRatesConsistent:exactPairRateStations.length,
- repeatedTariffIdPairs:top(sharedTariffIdPairs,10),
+ repeatedTariffIdPairs:top(sharedTariffIdPairs,10).map(x=>({...x,sample:cohortExamples[x.key]})),
+ tariffIdPriceProfiles:Object.entries(tariffProfiles).sort((a,b)=>b[1].stations-a[1].stations).slice(0,18)
+  .map(([tariffId,p])=>({tariffId,stations:p.stations,rates:[...p.rates].sort((a,b)=>a-b),components:[...p.components].sort()})),
  reuseValidation:'Matching chargeTariffId is strong repeated schema evidence, but it is not an explicit EVSE binding at other stations and must not be automatically applied without second app test.',
  powerSetVariationAcrossCanonicalPair:powersByPair[canonicalIds]?.size??0,
  dualTariffTwoRatesOneSlowOneFastCandidateCount:candidate.length,
