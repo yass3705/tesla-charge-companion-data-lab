@@ -47,6 +47,7 @@ jobs:
         run: |
           if [ -s data/electroverse/live_statuses/manifest.json ]; then
             node scripts/build_electroverse_france_evse_overlay.mjs
+            node scripts/audit_electroverse_status_gate_postbuild.mjs
           else
             echo 'Status census not yet available — preserve current V9 overlay'
           fi
@@ -54,6 +55,9 @@ jobs:
         run: |
           rm -rf /tmp/electroverse-france-evse
           cp -a data/platforms/electroverse/france-evse /tmp/electroverse-france-evse
+          if [ -f reports/electroverse/status-gate-postbuild.json ]; then
+            cp reports/electroverse/status-gate-postbuild.json /tmp/electroverse-status-gate-postbuild.json
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           for attempt in 1 2 3 4 5; do
@@ -62,7 +66,10 @@ jobs:
             rm -rf data/platforms/electroverse/france-evse
             mkdir -p data/platforms/electroverse
             cp -a /tmp/electroverse-france-evse data/platforms/electroverse/france-evse
-            git add data/platforms/electroverse/france-evse
+            if [ -f /tmp/electroverse-status-gate-postbuild.json ]; then
+              cp /tmp/electroverse-status-gate-postbuild.json reports/electroverse/status-gate-postbuild.json
+            fi
+            git add data/platforms/electroverse/france-evse reports/electroverse/status-gate-postbuild.json
             if git diff --cached --quiet; then
               echo 'No overlay changes'
               exit 0
