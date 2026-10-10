@@ -8,6 +8,7 @@ const OUT=process.argv[2]||'data/platforms/electra/france';
 const NATIONAL=process.argv[3]||'data/national/france-irve-static-v9/all.json.gz';
 const ASSOCIATIONS=process.argv[4]||'data/platforms/electra/irve-associations-batch-01.json';
 const ASSOCIATION_DIR=process.argv[5]||'data/platforms/electra/irve-association-batches';
+const VERIFIED_APP_LINKS=process.argv[6]||'data/platforms/electra/verified-app-evse-tariff-map.json';
 const URL='https://emsp.go-electra.com/graphql';
 const PAGE_SIZE=100,CONCURRENCY=8,MAX_RETRIES=5,TILE=.5;
 await fs.mkdir(OUT,{recursive:true});
@@ -115,6 +116,14 @@ function signature(p){return JSON.stringify(p);}
 function tileId(lat,lon){const a=Math.floor(lat/TILE),b=Math.floor(lon/TILE);return `t_${a}_${b}`;}
 
 const nationalRows=JSON.parse(zlib.gunzipSync(fss.readFileSync(NATIONAL)).toString('utf8'));
+const verifiedEvidence=JSON.parse(fss.readFileSync(VERIFIED_APP_LINKS,'utf8'));
+if(verifiedEvidence.schemaVersion!==1||!Array.isArray(verifiedEvidence.verifiedLinks))throw new Error('Invalid verified Electra EVSE evidence ledger');
+const verifiedByLocation=new Map();
+for(const x of verifiedEvidence.verifiedLinks){
+ if(verifiedByLocation.has(String(x.locationId)))throw new Error('Duplicate verified Electra location');
+ if(!Array.isArray(x.mappings)||!x.mappings.length)throw new Error('Verified location without EVSE mappings');
+ verifiedByLocation.set(String(x.locationId),x);
+}
 const nationalEvse=new Set(),nationalPowerByEvse=new Map();
 for(const row of nationalRows)for(const cfg of row?.[8]||[])for(const id of Array.isArray(cfg?.[6])?cfg[6]:[]){
   const key=norm(id),power=Number(cfg?.[3]);
@@ -173,7 +182,7 @@ for(const loc of locations)for(const evse of loc.evses||[]){
   exactClaims.get(id).add(String(loc.id));
 }
 
-const tiles=new Map(),residualLocations=[],reasons={},cpoSummary=new Map(),stats={franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,curatedLocationAssociations:0,manualAssociationConflicts:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0};
+const tiles=new Map(),residualLocations=[],reasons={},cpoSummary=new Map(),stats={franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,curatedLocationAssociations:0,manualAssociationConflicts:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0,verifiedAppLocations:0,verifiedAppEvseOffers:0};
 for(const x of locations){
   const cpo=String(x.cpo?.name||'CPO inconnu');
   if(!cpoSummary.has(cpo))cpoSummary.set(cpo,{cpo,totalCompatibleLocations:0,locationsWithNationalEvse:0,curatedLocationAssociations:0,matchedEvseIds:0,publishedLocations:0,publishedEvseIds:0,rejected:{}});
@@ -210,7 +219,27 @@ for(const x of locations){
   if(compiled.some(v=>!v)){reject('unsupported_tariff');continue;}
   const uniq=[...new Map(compiled.map(v=>[signature(v),v])).values()];
   const assigned=new Map(),tariffs=x.chargeTariffs||[];
-  if(uniq.length===1){
+  const manual=verifiedByLocation.get(String(x.id));
+  if(manual){
+    let invalid=manual.cpo!==cpo||manual.locationName!==x.name;
+    const seen=new Set();
+    for(const proof of manual.mappings){
+      const key=norm(proof.evseId);
+      const ids=associatedIds.filter(id=>norm(id)===key);
+      const power=nationalPowerByEvse.get(key);
+      const tariffIndexes=tariffs.map((t,i)=>t.chargeTariffId===proof.chargeTariffId?i:-1).filter(i=>i>=0);
+      if(seen.has(key)||ids.length!==1||!(power>0)||Math.abs(power-Number(proof.powerKw))>0.01||tariffIndexes.length!==1){invalid=true;break;}
+      const i=tariffIndexes[0],t=tariffs[i];
+      const allComponents=(t.elements||[]).flatMap(e=>e.priceComponents||[]);
+      const energy=allComponents.filter(p=>p.type==='ENERGY').map(p=>Number(p.price));
+      const kinds=[...new Set(allComponents.map(p=>String(p.type)))].sort();
+      const expected=[...(proof.components||[])].sort();
+      if(!energy.length||energy.some(v=>!Number.isFinite(v)||Math.abs(v-Number(proof.rateEurPerKwh))>0.0001)||
+         kinds.length!==expected.length||kinds.some((v,j)=>v!==expected[j])){invalid=true;break;}
+      assigned.set(key,compiled[i]);seen.add(key);
+    }
+    if(invalid||assigned.size!==manual.mappings.length){reject('verified_app_tariff_link_invalid');continue;}
+  }else if(uniq.length===1){
     for(const id of associatedIds)assigned.set(norm(id),uniq[0]);
   }else{
     const scopes=tariffs.map(powerScope);
@@ -227,22 +256,37 @@ for(const x of locations){
     }
     if(ambiguous){reject('same_power_tariff_assignment_ambiguous');continue;}
   }
+  if(manual&&assigned.size<associatedIds.length){
+    const pending=(x.evses||[]).filter(e=>associatedIds.some(id=>norm(id)===norm(e.evseId))&&!assigned.has(norm(e.evseId)));
+    const reason='verified_app_partial_attribution_pending';
+    reasons[reason]=(reasons[reason]||0)+1;
+    cs.rejected[reason]=(cs.rejected[reason]||0)+1;
+    residualLocations.push({electraLocationId:String(x.id),name:x.name||null,address:x.address||null,
+      city:x.city||null,postalCode:x.postalCode||null,country:x.country||null,coordinates:x.coordinates||null,
+      connectorTypes:x.connectorTypes||[],maxPower:x.maxPower??null,cpo,operator:x.operator?.name||null,
+      reason,evses:pending.map(e=>({id:e.id||null,evseId:e.evseId||null,status:e.status||null,
+        physicalReference:e.physicalReference||null}))});
+  }
   const lat=Number(x.coordinates?.latitude),lon=Number(x.coordinates?.longitude);
   if(!Number.isFinite(lat)||!Number.isFinite(lon)){reject('no_coordinates');continue;}
   const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
   for(const pdc of associatedIds){
     const pricing=assigned.get(norm(pdc));
+    if(!pricing)continue;
     const offer={
       id:`electra-platform:${x.id}:${norm(pdc)}`,provider:'Electra',countries:['FR'],
       currency:pricing.rules?.[0]?.currency||'EUR',priority:82,evseIds:[pdc],
       pricing,metadata:{verified:true,verifiedScope:'exact_evse',identityMode,associationEvidence,
       electraLocationId:String(x.id),nationalEvseId:pdc,cpo:x.cpo?.name||null,operator:x.operator?.name||null,
-      source:identityMode==='exact_national_irve_evse'?'Electra eMSP GraphQL':'Electra eMSP GraphQL + curated national IRVE location crosswalk'}
+      source:identityMode==='exact_national_irve_evse'?'Electra eMSP GraphQL':'Electra eMSP GraphQL + curated national IRVE location crosswalk',
+      tariffAttributionEvidence:manual?'user_electra_app_verified_per_power':null,
+      screenshotSha256:manual?.screenshotSha256??null}
     };
     tiles.get(id).push(offer);stats.publishedOffers++;
   }
-  stats.publishedLocations++;stats.publishedEvseIds+=associatedIds.length;
-  cs.publishedLocations++;cs.publishedEvseIds+=associatedIds.length;
+  stats.publishedLocations++;stats.publishedEvseIds+=assigned.size;
+  cs.publishedLocations++;cs.publishedEvseIds+=assigned.size;
+  if(manual){stats.verifiedAppLocations++;stats.verifiedAppEvseOffers+=assigned.size;}
 }
 const manifestTiles=[];
 for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
@@ -258,7 +302,9 @@ await fs.writeFile(path.join(OUT,'source-locations.json.gz'),sourceGz);
 stats.sourceLocationCount=locations.length;
 stats.sourceEvseCount=sourceEvseCount;
 stats.retainedUnmatchedLocations=residualLocations.length;
-const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),sourceArchive:{file:'source-locations.json.gz',locationCount:locations.length,evseCount:sourceEvseCount,sha256:sha(sourceGz)},associationBatches:associationDocuments.map(doc=>({batch:doc.batch,cpoCounts:doc.cpoCounts||{},candidateCount:doc.candidateCount,ambiguousExcluded:doc.ambiguousExcluded||0,collisionExcluded:doc.collisionExcluded||0,applied:batchStats.get(doc.batch)?.applied||0,conflicts:batchStats.get(doc.batch)?.conflicts||0})),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,evseScopedTariffOffers:true,explicitDisjointPowerRestrictionRequiredForHeterogeneousTariffs:true,unsupportedComponentsFailClosed:true,overlayConservation:'all compatible source locations and EVSEs are retained in source-locations.json.gz; tiles contain only matched tariff enrichments'},tiles:manifestTiles};
+const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),sourceArchive:{file:'source-locations.json.gz',locationCount:locations.length,evseCount:sourceEvseCount,sha256:sha(sourceGz)},associationBatches:associationDocuments.map(doc=>({batch:doc.batch,cpoCounts:doc.cpoCounts||{},candidateCount:doc.candidateCount,ambiguousExcluded:doc.ambiguousExcluded||0,collisionExcluded:doc.collisionExcluded||0,applied:batchStats.get(doc.batch)?.applied||0,conflicts:batchStats.get(doc.batch)?.conflicts||0})),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,evseScopedTariffOffers:true,explicitDisjointPowerRestrictionRequiredForHeterogeneousTariffs:true,verifiedAppEvidenceForListedEVSEOnly:true,
+    verifiedAppEvidenceDoesNotOverrideDirectCpo:true,verifiedAppMappingFailsClosedOnTariffChange:true,
+    unsupportedComponentsFailClosed:true,overlayConservation:'all compatible source locations and EVSEs are retained in source-locations.json.gz; tiles contain only matched tariff enrichments'},tiles:manifestTiles};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 const residualGz=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,country:'FR',generatedAt:manifest.generatedAt,locations:residualLocations})),{level:9});
 await fs.writeFile(path.join(OUT,'residuals.json.gz'),residualGz);
