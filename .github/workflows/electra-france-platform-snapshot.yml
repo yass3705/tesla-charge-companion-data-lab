@@ -6,6 +6,8 @@ on:
     paths:
       - "scripts/electra_france_platform_snapshot.mjs"
       - "tests/electra-france-evse-power-scope.test.mjs"
+      - "tests/electra-powerdot-acdc-family.test.mjs"
+      - "data/manual_verification/electra_powerdot_action_angouleme_2026-10-11.json"
       - "data/platforms/electra/verified-app-evse-tariff-map.json"
       - "data/manual_verification/electra_powerdot_saint_arnoult_2026-10-10.json"
       - "data/platforms/electra/irve-associations-batch-01.json"
@@ -34,6 +36,8 @@ jobs:
         run: node tests/electra-france-congestion-soc80.test.mjs
       - name: Regression per-EVSE / same-power attribution
         run: node tests/electra-france-evse-power-scope.test.mjs
+      - name: Regression Powerdot AC/DC cohort
+        run: node tests/electra-powerdot-acdc-family.test.mjs
       - name: Build exact national-EVSE Electra platform overlay
         run: |
           rm -rf data/platforms/electra/france
