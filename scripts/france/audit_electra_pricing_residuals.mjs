@@ -81,9 +81,54 @@ for(const row of residual.locations||[]){
     components:[...types].sort(),restrictionFields:[...restrictionFields].sort(),issues:[...issues],
     evseIds:(loc?.evses||row.evses||[]).map(e=>e.evseId).filter(Boolean).slice(0,12),
     examples:tariffDetails.slice(0,3)};
+  // Triage by observed station/EVSE evidence. These diagnostics must never
+  // substitute a price-to-EVSE attribution when the platform omits that link.
+  const validPowers=Object.keys(knownPowerGroups).filter(x=>x!=='unknown');
+  const unknownPowerEvses=(knownPowerGroups.unknown||[]).length;
+  const distinctPowerCount=validPowers.length;
+  const matchedSourceEvses=Object.values(knownPowerGroups).reduce((n,ids)=>n+ids.length,0);
+  const componentFingerprint=t=>JSON.stringify((t.elements||[]).flatMap(el=>(el.priceComponents||[])
+    .map(pc=>[compType(pc),Number(pc.price)]).filter(([k])=>k==='ENERGY')).sort());
+  const nonEnergyFingerprint=t=>JSON.stringify((t.elements||[]).flatMap(el=>(el.priceComponents||[])
+    .map(pc=>[compType(pc),Number(pc.price)]).filter(([k])=>k!=='ENERGY')).sort());
+  const energyVariantCount=new Set(tariff.map(componentFingerprint)).size;
+  const ancillaryVariantCount=new Set(tariff.map(nonEnergyFingerprint)).size;
+  const scopeCoverage=scopes.filter(Boolean).length;
+  const exclusivePowerAssignment=scopeCoverage===tariff.length&&matchedSourceEvses>0&&
+    unknownPowerEvses===0&&Object.entries(knownPowerGroups).every(([kw])=>{
+      const p=Number(kw);return scopes.filter(r=>p>=r.lo&&p<=r.hi).length===1;
+    });
+  const triageClass=exclusivePowerAssignment?'power_scopes_unique_rebuild_required':
+    matchedSourceEvses===0?'no_source_evse_ids':
+    unknownPowerEvses===matchedSourceEvses?'all_evse_powers_unknown':
+    unknownPowerEvses>0?'some_evse_powers_unknown':
+    distinctPowerCount===1?'single_known_power_without_tariff_mapping':
+    'multiple_known_powers_without_tariff_mapping';
+  item.triage={class:triageClass,sourceEvseCount:matchedSourceEvses,
+    knownPowerCount:matchedSourceEvses-unknownPowerEvses,unknownPowerCount:unknownPowerEvses,
+    distinctKnownPowers:validPowers.map(Number).sort((a,b)=>a-b),
+    energyPriceVariation:energyVariantCount>1,ancillaryPriceVariation:ancillaryVariantCount>1,
+    distinctEnergyFingerprints:energyVariantCount,distinctAncillaryFingerprints:ancillaryVariantCount,
+    tariffPowerScopeCount:scopeCoverage,exclusivePowerAssignment,
+    missingSourceEvseTariffLink:true,decision:'hold_electra_emsp_price_unattributed',
+    nextEvidence:'operator EVSE/connector-to-chargeTariffId linkage or documented exclusive tariff power restriction'};
   cases.push(item);
 }
-const summary={schemaVersion:1,generatedAt:new Date().toISOString(),sourceGeneratedAt:manifest.generatedAt,
+const triageCounts={},triageByCpo={},variantCounts={energyPriceVariation:0,ancillaryPriceVariation:0,exclusivePowerAssignment:0,singleEvse:0,unknownPowerEvses:0,sourceEvseIds:0};
+for(const item of cases){
+  const x=item.triage,cls=x.class;
+  count(triageCounts,cls);
+  const c=triageByCpo[item.cpo]??={total:0,classes:{},energyPriceVariation:0,ancillaryPriceVariation:0,unknownPowerEvses:0};
+  c.total++;count(c.classes,cls);
+  if(x.energyPriceVariation){c.energyPriceVariation++;variantCounts.energyPriceVariation++;}
+  if(x.ancillaryPriceVariation){c.ancillaryPriceVariation++;variantCounts.ancillaryPriceVariation++;}
+  if(x.exclusivePowerAssignment)variantCounts.exclusivePowerAssignment++;
+  if(x.sourceEvseCount===1)variantCounts.singleEvse++;
+  variantCounts.unknownPowerEvses+=x.unknownPowerCount;
+  variantCounts.sourceEvseIds+=x.sourceEvseCount;
+}
+const rankedCpo=Object.fromEntries(Object.entries(triageByCpo).sort((a,b)=>b[1].total-a[1].total));
+const summary={schemaVersion:2,generatedAt:new Date().toISOString(),sourceGeneratedAt:manifest.generatedAt,
   counts:{total:cases.length,unsupported:cases.filter(x=>x.reason==='unsupported_tariff').length,
     heterogeneous:cases.filter(x=>['heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous'].includes(x.reason)).length,
     evidenceRequired:cases.filter(x=>x.missingPowerEvidence).length,
@@ -92,6 +137,10 @@ const summary={schemaVersion:1,generatedAt:new Date().toISOString(),sourceGenera
   residualReasonCounts:manifest.rejected||{},auditedReasonCounts:reasons,
   snapshotStats:{publishedLocations:manifest.stats?.publishedLocations,publishedEvseIds:manifest.stats?.publishedEvseIds,publishedOffers:manifest.stats?.publishedOffers,retainedUnmatchedLocations:manifest.stats?.retainedUnmatchedLocations},
   unresolvedKinds:blockedBy,componentTypes:components,restrictionFields:restrictions,
+  triage:{classificationCounts:triageCounts,variationCounts:variantCounts,
+    eligibleForAutomaticPublication:0,reason:'Source location chargeTariffs have no proven EVSE-to-tariff association in these residuals; no power-only guess.'},
+  triageByCpo:rankedCpo,
+  sampleTriage:cases.slice(0,24).map(({locationId,name,cpo,triage})=>({locationId,name,cpo,triage})),
   heterogeneousPatterns:heteroReasons,
   sampleUnsupported:cases.filter(x=>x.reason==='unsupported_tariff').slice(0,30),
   sampleHeterogeneous:cases.filter(x=>['heterogeneous_location_tariffs','tariff_attribution_missing_evse_evidence','same_power_tariff_assignment_ambiguous'].includes(x.reason)).slice(0,20),
@@ -102,5 +151,5 @@ await fs.mkdir('reports/france/irve',{recursive:true});
 await fs.writeFile('reports/france/irve/electra-pricing-residual-audit-2026-10-08.json',JSON.stringify(summary,null,2)+'\n');
 await fs.writeFile(summary.caseArchive,zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,cases})),{level:9}));
 console.log(JSON.stringify({generatedAt:summary.generatedAt,counts:summary.counts,unresolvedKinds:summary.unresolvedKinds,
- heterogeneousPatterns:heteroReasons,componentTypes:components,restrictionFields:restrictions,
+ heterogeneousPatterns:heteroReasons,componentTypes:components,restrictionFields:restrictions,triage:summary.triage,topCpos:Object.entries(rankedCpo).slice(0,12),
  sampleUnsupported:summary.sampleUnsupported.slice(0,5).map(x=>({name:x.name,cpo:x.cpo,issues:x.issues,components:x.components,restrictions:x.restrictionFields}))}));
