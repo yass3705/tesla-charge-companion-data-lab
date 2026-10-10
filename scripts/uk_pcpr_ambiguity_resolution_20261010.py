@@ -174,6 +174,11 @@ def main():
     # Connected Kerb: preserve every excluded connector's original evidence.
     # A real price conflict is distinct from an unidentified tariff or an
     # unresolved correspondence. Never lift a quarantine by station average.
+    # Source-verified user app evidence: four Midhope socket IDs, never a
+    # station-wide inherited tariff. Still a candidate, not a live TCC price.
+    proof_path = ROOT / "reports/uk/connected-kerb-midhope-verified-2026-10-10.json"
+    midhope_proof = json.loads(proof_path.read_text(encoding="utf8")) if proof_path.exists() else {}
+    verified_midhope_ids = {txt(x.get("evseId")) for x in midhope_proof.get("verifiedExactSockets", [])}
     ck_rows = []
     ck_labels = collections.Counter()
     for item in ck_ex["excludedConnectors"]:
@@ -182,11 +187,13 @@ def main():
         if reason == "multiple_energy_prices_without_windows":
             label, priority = "tarif_ambigu", "P1"
         elif reason == "fee_unit_verification_pending":
-            # User verified hourly unit; step_size 1800 seconds is only rounding.
-            # Midhope guest app says GBP 1.60/hour, but OCPI GBP 0.80004/hour.
             midhope_ids = {"GB*CK0*E19825","GB*CK0*E19865","GB*CK0*E19716","GB*CK0*E19707"}
-            if txt(item.get("stationName")) == "Midhope Road" and txt(item.get("evseId")) in midhope_ids:
-                label, priority = "tarif_ambigu", "P1"
+            if (txt(item.get("stationName")) == "Midhope Road"
+                    and txt(item.get("evseId")) in midhope_ids):
+                if txt(item.get("evseId")) in verified_midhope_ids:
+                    label, priority = "tarif_documente_simulation_non_activee", "P2"
+                else:
+                    label, priority = "tarif_ambigu", "P1"
             else:
                 label, priority = "tarif_incalculable", "P1"
         elif reason == "no_unique_standard_tariff":
@@ -213,9 +220,11 @@ def main():
     expected_price_conflict = ck["unresolvedReasonCounts"].get("multiple_energy_prices_without_windows",0)
     expected_fee_unknown = ck["unresolvedReasonCounts"].get("fee_unit_verification_pending",0)
     midhope_conflicts = sum(x["classification"] == "tarif_ambigu" and x["reason"] == "fee_unit_verification_pending" for x in ck_rows)
+    midhope_documented = sum(x["classification"] == "tarif_documente_simulation_non_activee" for x in ck_rows)
     assert ck_labels["tarif_ambigu"] == expected_price_conflict + midhope_conflicts
-    assert ck_labels["tarif_incalculable"] == expected_fee_unknown - midhope_conflicts
-    assert ck_labels["tarif_ambigu"] + ck_labels["tarif_incalculable"] == expected_price_conflict + expected_fee_unknown
+    assert ck_labels["tarif_incalculable"] == expected_fee_unknown - midhope_conflicts - midhope_documented
+    assert (ck_labels["tarif_ambigu"] + ck_labels["tarif_incalculable"] +
+            ck_labels["tarif_documente_simulation_non_activee"]) == expected_price_conflict + expected_fee_unknown
 
     assert counts["total_connectors"] == existing["stagedConnectors"], "Connector count and staged source differ"
     assert len(station_ids) == existing["sourceLocations"], "Station count and staged source differ"
@@ -274,15 +283,21 @@ def main():
                 "manualReviewAllCsv":str(ck_csv.relative_to(ROOT)),
                 "manualPriority1Csv":str(ck_urgent.relative_to(ROOT)),
                 "manualPriority1Connectors":sum(x["priority"] == "P1" for x in ck_rows),
-                "midhopeHourlyConflict":{
-                    "confirmedTariffUnit":"GBP_per_hour",
-                    "officialGuestDescriptionGbpPerHour":1.60,
-                    "ocpiGrossGbpPerHour":0.80004,
-                    "ocpiTimeStepSeconds":1800,
-                    "stepMeans":"billing rounding increments, NOT a separate per-block rate",
-                    "localFeeWindow":"Monday-Saturday 08:30-18:00 Europe/London, seasonal conversion required",
-                    "disposition":"tarif_ambigu_pending_first_party_price_reconciliation",
-                    "affectedConnectorCount":midhope_conflicts
+                "midhopeGuestRateReconciled":{
+                    "verifiedEvidenceFile":"reports/uk/connected-kerb-midhope-verified-2026-10-10.json",
+                    "evidenceStatus":midhope_proof.get("status","not_yet_verified"),
+                    "publicEnergyGbpPerKwhGross":0.4,
+                    "publicParkingGbpPerHourGross":1.6,
+                    "operatorParkingGbpPerStarted30MinutesGross":0.80004,
+                    "operatorChargingAndIdleTimeTariffs":"alternative parking phases, never duplicate on same minutes",
+                    "independentIdleFeeGbpPerMinuteGross":0.01,
+                    "guestPreAuthorizationGbpNotFee":25,
+                    "summerUtcWindow":"07:30-17:00 Monday-Saturday",
+                    "summerStationLocalWindow":"08:30-18:00 Europe/London",
+                    "summerUserDeviceFranceWindow":"09:30-19:00 Europe/Paris",
+                    "disposition":"source_rates_resolved_await_runtime_phase_and_dst_qa",
+                    "documentedConnectorCount":midhope_documented,
+                    "unresolvedConnectorsInThisGroup":midhope_conflicts
                 }},
             "Allego":{"publicExactPricedConnectors":allego["exactPricedConnectors"],"unpricedPublicConnectors":allego["unpricedPublicConnectors"],"state":allego["status"]},
             "Blink":{"publicExactPricedConnectors":blink["exactPricedConnectors"],"unpricedPublicConnectors":blink["unpricedPublicConnectors"],"state":blink["status"]},
