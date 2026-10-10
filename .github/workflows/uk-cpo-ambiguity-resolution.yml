@@ -2,6 +2,9 @@ name: UK CPO direct tariff ambiguity resolution
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["UK Eco-Movement PCPR collect"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -17,6 +20,7 @@ concurrency:
 
 jobs:
   validate:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
