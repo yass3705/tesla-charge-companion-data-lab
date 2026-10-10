@@ -34,7 +34,7 @@ COUNTRY = {
     "morocco": "MA", "belgium": "BE", "luxembourg": "LU", "portugal": "PT",
 }
 TCC = ("FR", "IT", "CH", "DE", "ES", "NL", "GB", "MA", "BE")
-PATTERN = re.compile(r"^chore\\(stations\\): publish ([a-z_]+) automated lot update #(\\d+)$")
+PATTERN = re.compile(r"^chore\(stations\): publish ([a-z_]+) automated lot update #(\d+)$")
 OCT_EVENTS = {
     "d2285e2c72fe2398e7a08a9e40560f5327f344e8": ("ES", "2026-10-08"),
     "f9a9bc53d87f3881ee8a0d8b2fde77fc2d4493eb": ("IT", "2026-10-09"),
