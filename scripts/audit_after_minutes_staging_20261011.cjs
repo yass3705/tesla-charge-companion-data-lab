@@ -66,6 +66,12 @@ const parking=JSON.parse(JSON.stringify(connected));parking.pricing.rules[0].aft
 check('parking_component_idle_phase',parking,session(90),17);
 const unknownCap=JSON.parse(JSON.stringify(connected));unknownCap.pricing.rules[0].afterMinutesCap=4;
 check('unknown_cap_mode_fails_closed',unknownCap,session(90),'after_minutes_cap_window_requires_source_confirmation');
+const negativeCap=JSON.parse(JSON.stringify(connected));negativeCap.pricing.rules[0].afterMinutesCap=-1;
+check('negative_cap_fails_closed',negativeCap,session(90),'after_minutes_invalid_cap_value');
+const nonEurCap=JSON.parse(JSON.stringify(offer('sigeif-7-22')));
+nonEurCap.pricing.rules[0].currency='CHF';
+check('non_eur_cap_fails_closed',nonEurCap,session(300,'2026-10-10T17:00:00+02:00'),
+ 'after_minutes_cap_currency_unverified');
 const missingTime=JSON.parse(JSON.stringify(offer('sigeif-7-22')));
 check('night_cap_missing_time_context',missingTime,
  {...session(300),startAt:null,timeZone:null},'after_minutes_cap_requires_timezone_and_start');
