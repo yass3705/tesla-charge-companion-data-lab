@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "submittedDate": "2026-10-10",
+  "source": "Screenshots provided by user from Electra app",
+  "country": "FR",
+  "verificationIntent": "Resolve station-level Electra eMSP tariff attribution without assuming a price for unmatched EVSEs",
+  "publicationRules": [
+    "Screenshots attest price at displayed power/category and observation, not every EVSE or future dynamic price.",
+    "Never promote Electra eMSP price to a CPO direct/ad-hoc tariff.",
+    "Require exact EVSE-to-power match and unambiguous source chargeTariffId fit before publication.",
+    "Use 80% SOC congestion only when station saturated, according to user screenshot; saturation unavailable means condition unresolved.",
+    "No inference for 50 kW CHAdeMO connector when only 60 kW CCS fast price is visible.",
+    "Preserve differing nominal slow power 7 kW vs national IRVE 22.1 kW until reconciled."
+  ],
+  "stations": [
+    {
+      "locationId": "137e6395-b5a0-4832-987b-84a22331b3aa",
+      "name": "La Plagne - Parking épicerie bibliothèque de Bellentre",
+      "cpo": "TotalEnergies",
+      "screenshot": "IMG_8100.jpeg",
+      "sha256": "3f0165ce49dfb90dfd426164bdc10e8016913de8d103c3d5989f2a9d77f391eb",
+      "screenshotClock": "13:45",
+      "observations": [
+        {
+          "label": "Rapide",
+          "maxPowerKw": 100,
+          "energyEurPerKwh": 0.66
+        },
+        {
+          "label": "Lent",
+          "maxPowerKw": 22,
+          "energyEurPerKwh": 0.54
+        }
+      ],
+      "fees": [
+        {
+          "kind": "parking",
+          "eurPerHour": 2.4,
+          "trigger": "not specified in screenshot"
+        }
+      ],
+      "confidence": "direct_app_screen_per_power",
+      "remaining": "third tariff 0.48 and 2.45/18 fee candidates not mapped; resolve by per-EVSE tariff comparison"
+    },
+    {
+      "locationId": "428364b3-2b55-4f1f-802b-819b9af0403a",
+      "name": "DRIVECO - Campanile - Saint-Quentin",
+      "cpo": "DRIVECO",
+      "screenshot": "IMG_8099.png",
+      "sha256": "97154d7e3c6011cba72b9ea847ca0232c0869f4f18b6f5fbf84d504f0239889c",
+      "screenshotClock": "13:44",
+      "observations": [
+        {
+          "label": "Rapide",
+          "maxPowerKw": 200,
+          "energyEurPerKwh": 0.59
+        },
+        {
+          "label": "Lent",
+          "maxPowerKw": 7,
+          "energyEurPerKwh": 0.44
+        }
+      ],
+      "fees": [
+        {
+          "kind": "parking",
+          "eurPerHour": 12,
+          "trigger": "not specified in screenshot"
+        }
+      ],
+      "confidence": "direct_app_screen_per_power",
+      "sourceDiscrepancy": "app labels slow 7 kW while IRVE inventory groups at 22.1 kW",
+      "remaining": "7 kW versus 22.1 kW requires connector-level reconciliation; other parking fee candidate 18 EUR/h remains unexplained"
+    },
+    {
+      "locationId": "01df2390-d20f-4199-9b15-b2b6c95c94c3",
+      "name": "Intermarché - Jarville-la-Malgrange",
+      "cpo": "Powerdot",
+      "screenshot": "IMG_8098.png",
+      "sha256": "e043049b4308a24ab53c862c04f5e4568d59701bc940a0f98a35ae817bf616dd",
+      "screenshotClock": "13:43",
+      "observations": [
+        {
+          "label": "Rapide",
+          "maxPowerKw": 60,
+          "energyEurPerKwh": 0.62,
+          "connectorType": "CCS"
+        },
+        {
+          "label": "Lent",
+          "maxPowerKw": 22,
+          "energyEurPerKwh": 0.49,
+          "connectorType": "Type2"
+        }
+      ],
+      "fees": [],
+      "confidence": "direct_app_screen_per_power",
+      "remaining": "CHAdeMO 50 kW listed as connector but its specific applicable tariff is not displayed in price panel"
+    },
+    {
+      "locationId": "5338d58c-c8be-4719-964e-cab7f61438e4",
+      "name": "Marseille - Sofitel Vieux Port",
+      "cpo": "Electra",
+      "screenshot": "IMG_8097.png",
+      "sha256": "11d924ccb7d4d1262724d3ff6a09c53efa691cf249625ee0d5c13e663be00c46",
+      "screenshotClock": "13:42",
+      "observations": [
+        {
+          "label": "Rapide",
+          "maxPowerKw": 200,
+          "energyEurPerKwh": 0.61,
+          "pricing": "dynamic_by_day_time_demand",
+          "shownTime": "13h",
+          "otherChartRateValuesEurPerKwh": [
+            0.39,
+            0.49,
+            0.61
+          ]
+        },
+        {
+          "label": "Lent",
+          "maxPowerKw": 22,
+          "energyEurPerKwh": null,
+          "pricing": "tab_exists_no_visible_rate"
+        }
+      ],
+      "fees": [
+        {
+          "kind": "congestion",
+          "eurPerMinute": 0.4,
+          "startsAtSocPercent": 80,
+          "condition": "only_if_station_saturated"
+        }
+      ],
+      "confidence": "direct_app_screen_dynamic_fast_only",
+      "remaining": "slow rate needs screenshot; exact time-window boundary and load-level require live source"
+    },
+    {
+      "locationId": "04a04882-7e07-40b2-bf67-3f757548054d",
+      "name": "Pessac - Hôtel Ibis",
+      "cpo": "Electra",
+      "screenshot": "IMG_8096.png",
+      "sha256": "427e585f78e4127d8e6ae5e1b26b34465611580b9b1f1fb709f9cf54473a8012",
+      "screenshotClock": "13:42",
+      "observations": [
+        {
+          "label": "Rapide",
+          "maxPowerKw": 400,
+          "energyEurPerKwh": 0.49,
+          "pricing": "dynamic_by_day_time_demand",
+          "shownTime": "13h",
+          "otherChartRateValuesEurPerKwh": [
+            0.39,
+            0.49,
+            0.61
+          ]
+        },
+        {
+          "label": "Lent",
+          "maxPowerKw": 22,
+          "energyEurPerKwh": null,
+          "pricing": "tab_exists_no_visible_rate"
+        }
+      ],
+      "fees": [
+        {
+          "kind": "congestion",
+          "eurPerMinute": 0.4,
+          "startsAtSocPercent": 80,
+          "condition": "only_if_station_saturated"
+        }
+      ],
+      "confidence": "direct_app_screen_dynamic_fast_only",
+      "remaining": "slow rate needs screenshot; exact time-window boundary and load-level require live source"
+    },
+    {
+      "locationId": "0a05897d-13f9-44ee-a64e-5d4ec1422239",
+      "name": "Albi, Jardinerie Tarnaise Fonlabour",
+      "cpo": "Freshmile",
+      "screenshot": null,
+      "observation": "User reports no station discoverable in Electra app search",
+      "confidence": "user_negative_discovery",
+      "status": "not_found_in_app_to_recheck",
+      "remaining": "Do not delete source station without cross-checking identifiers, geolocation and public access"
+    }
+  ]
+}
