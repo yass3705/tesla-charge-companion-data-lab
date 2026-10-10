@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-11",
+  "purpose": "Reconcile four residual exact identity gaps with user-provided Electroverse app screenshots; evidence only until status-gated rebuild",
+  "provenance": "Four user-provided Electroverse app screenshots, 2026-10-11; compared with full reconciliation summary generated 2026-10-10",
+  "identityNormalization": "Uppercase alphanumerics; strip * and - only; do not change digit counts or derive nearby IDs",
+  "confirmedMatches": [
+    {
+      "sourceLocationPk": "4347332",
+      "sourceEvsePk": "2709019",
+      "stationId": "FRLDLPLFR1132EVCP",
+      "appId": "FR*LDL*E00007048",
+      "identityNormalized": "FRLDLE00007048",
+      "standard": "CCS",
+      "maxKw": 120,
+      "eurPerKwh": 0.39,
+      "appStatus": "Disponible",
+      "priceFieldsVisible": [
+        "energy"
+      ],
+      "appExtraFeesDisplayed": false,
+      "sourcePricingExtraFeeComponentsZero": true,
+      "decision": "APP_IDENTIFIED_AND_TARIFF_MATCH; REQUIRE_LIVE_SOURCE_PK_STATUS_AND_STRICT_LOCAL_IRVE_TARGET"
+    },
+    {
+      "sourceLocationPk": "4347332",
+      "sourceEvsePk": "2709000",
+      "stationId": "FRLDLPLFR1132EVCP",
+      "appId": "FR*LDL*E00007049",
+      "identityNormalized": "FRLDLE00007049",
+      "standard": "CCS",
+      "maxKw": 120,
+      "eurPerKwh": 0.39,
+      "appStatus": "Disponible",
+      "priceFieldsVisible": [
+        "energy"
+      ],
+      "appExtraFeesDisplayed": false,
+      "sourcePricingExtraFeeComponentsZero": true,
+      "decision": "APP_IDENTIFIED_AND_TARIFF_MATCH; REQUIRE_LIVE_SOURCE_PK_STATUS_AND_STRICT_LOCAL_IRVE_TARGET"
+    },
+    {
+      "sourceLocationPk": "4064278",
+      "sourceEvsePk": "3291032",
+      "stationId": "FRALLPGO000287",
+      "appId": "FRALLEGO800088-2",
+      "identityNormalized": "FRALLEGO8000882",
+      "standard": "CCS",
+      "maxKw": 150,
+      "eurPerKwh": 0.59,
+      "appStatus": "Disponible",
+      "priceFieldsVisible": [
+        "energy"
+      ],
+      "appExtraFeesDisplayed": false,
+      "sourcePricingExtraFeeComponentsZero": true,
+      "decision": "APP_IDENTIFIED_AND_TARIFF_MATCH; REQUIRE_LIVE_SOURCE_PK_STATUS_AND_STRICT_LOCAL_IRVE_TARGET"
+    }
+  ],
+  "stillUnverified": [
+    {
+      "sourceLocationPk": "4064278",
+      "sourceEvsePk": "3291026",
+      "stationId": "FRALLPGO000287",
+      "expectedAppId": "FRALLEGO800088-1",
+      "identityNormalized": "FRALLEGO8000881",
+      "standard": "CCS",
+      "maxKw": 150,
+      "cachedEurPerKwh": 0.59,
+      "reason": "No matching user screenshot; never infer from 800088-2"
+    }
+  ],
+  "otherScreenshots": [
+    {
+      "appId": "FRALLEGO800019-2",
+      "identityNormalized": "FRALLEGO8000192",
+      "standard": "Type 2",
+      "maxKw": 22,
+      "eurPerKwh": 0.39,
+      "appStatus": "Disponible",
+      "mappedToFourExactResiduals": false,
+      "reason": "Distinct ID from FRALLEGO800088-1; do not substitute or add as target without national IRVE identity check"
+    }
+  ],
+  "rules": [
+    "Capture indicates app display at that moment, not a durable live status; final gate uses source PK AVAILABLE/CHARGING.",
+    "CPO prices must never override the separate Electroverse eMSP tariff.",
+    "A screenshot showing only energy rate is not blanket proof of no time/parking fees.",
+    "Never publish if normalized app id, source EVSE id, connector standard, power, or one-to-one national IRVE owner mismatches."
+  ]
+}
