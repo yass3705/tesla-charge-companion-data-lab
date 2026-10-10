@@ -162,7 +162,7 @@ const queuePath='reports/france/irve/electra-pricing-action-queue-latest.csv';
 const fields=['locationId','name','cpo','triageClass','sourceEvseCount','knownPowerCount','unknownPowerCount',
  'distinctKnownPowersKw','evseIds','tariffCount','tariffSignatureCount','energyPriceVariation',
  'ancillaryPriceVariation','restrictionVariation','verifiedSamePowerConflict','decision','missingEvidence'];
-const quoteCsv=x=>{const v=String(x??'');return /[",\\n\\r;]/.test(v)?'"'+v.replaceAll('"','""')+'"':v;};
+const quoteCsv=x=>{const v=String(x??'');return v.includes('"')||v.includes(';')||v.includes(String.fromCharCode(10))||v.includes(String.fromCharCode(13))?'"'+v.replaceAll('"','""')+'"':v;};
 const queue=[fields.join(';')];
 for(const c of cases){const t=c.triage;const r={locationId:c.locationId,name:c.name,cpo:c.cpo,
  triageClass:t.class,sourceEvseCount:t.sourceEvseCount,knownPowerCount:t.knownPowerCount,
@@ -174,7 +174,7 @@ for(const c of cases){const t=c.triage;const r={locationId:c.locationId,name:c.n
  queue.push(fields.map(k=>quoteCsv(r[k])).join(';'));
 }
 if(queue.length!==cases.length+1)throw new Error('Electra queue count mismatch');
-await fs.writeFile(queuePath,'\\ufeff'+queue.join('\\n')+'\\n','utf8');
+await fs.writeFile(queuePath,String.fromCharCode(0xFEFF)+queue.join(String.fromCharCode(10))+String.fromCharCode(10),'utf8');
 console.log(JSON.stringify({generatedAt:summary.generatedAt,counts:summary.counts,unresolvedKinds:summary.unresolvedKinds,
  heterogeneousPatterns:heteroReasons,componentTypes:components,restrictionFields:restrictions,triage:summary.triage,topCpos:Object.entries(rankedCpo).slice(0,12),
  sampleUnsupported:summary.sampleUnsupported.slice(0,5).map(x=>({name:x.name,cpo:x.cpo,issues:x.issues,components:x.components,restrictions:x.restrictionFields}))}));
