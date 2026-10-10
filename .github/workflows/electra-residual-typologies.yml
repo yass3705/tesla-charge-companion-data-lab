@@ -1,0 +1,41 @@
+name: Electra residual typologies and app-check examples
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/france/build_electra_residual_typologies.mjs"
+      - ".github/workflows/electra-residual-typologies.yml"
+permissions:
+  contents: write
+concurrency:
+  group: electra-residual-typologies-main
+  cancel-in-progress: true
+jobs:
+  classify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: 
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Group all residual locations and prepare verifiable EVSE examples
+        run: node scripts/france/build_electra_residual_typologies.mjs
+      - name: Commit classification and full Excel queue
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/residual-typologies-and-verification-examples-2026-10-10.json reports/france/electra/electra-residual-station-typologies-latest.csv
+          if ! git diff --cached --quiet; then
+            git commit -m 'audit(electra): classify unresolved stations and identify app-check examples'
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              if git rebase -X theirs origin/main && git push origin HEAD:main; then exit 0; fi
+              git rebase --abort || true
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
