@@ -1,0 +1,41 @@
+name: Electra public EVSE tariff GraphQL contract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/france/probe_electra_evse_tariff_contract.mjs"
+      - ".github/workflows/electra-evse-tariff-contract.yml"
+permissions:
+  contents: write
+concurrency:
+  group: electra-evse-tariff-contract-main
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Examine public GraphQL EVSE/tariff contract
+        run: node scripts/france/probe_electra_evse_tariff_contract.mjs
+      - name: Save contract evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/graphql-evse-tariff-contract-latest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'audit: document Electra public tariff to EVSE schema'
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              if git rebase -X theirs origin/main && git push origin HEAD:main; then exit 0; fi
+              git rebase --abort || true
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
