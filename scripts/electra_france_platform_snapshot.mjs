@@ -215,6 +215,15 @@ for(const x of locations){
   if(!associatedIds.length){reject('no_national_evse');continue;}
   stats.locationsWithNationalEvse++;cs.locationsWithNationalEvse++;cs.matchedEvseIds+=associatedIds.length;
   const compiled=(x.chargeTariffs||[]).map(compileTariff);
+  // Electra's own app tariff is fixed at session start (official price terms,
+  // go-electra.com/fr/price). This is NOT an assumption about partner CPOs
+  // sold through Electra eMSP, which may set different charging conditions.
+  if(cpo==='Electra')for(const pricing of compiled){
+    if(!pricing)continue;
+    pricing.priceSelectionBasis='session_start_local_time';
+    pricing.tariffStartLockEvidence='electra_official_2026-10-10';
+    for(const rule of pricing.rules||[])rule.congestionFeeCapEur=50;
+  }
   if(!compiled.length){reject('no_tariff');continue;}
   if(compiled.some(v=>!v)){reject('unsupported_tariff');continue;}
   const uniq=[...new Map(compiled.map(v=>[signature(v),v])).values()];
