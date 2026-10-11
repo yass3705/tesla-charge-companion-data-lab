@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Integrate StellaPower's official Dutch direct-pay tariff.
 
-StellaPower states on its own public site that Dutch public chargers use a
-fixed national energy tariff, paid by QR/card, with a post-session parking
-charge.  The national DOT-NL records are accepted only when partyId is SPA.
-No roaming, eMSP, card-contract, or station-level inference is used.
+Legacy optional fallback for stations missing a national DOT-NL tariff only.
+DOT-NL is the canonical NL tariff source when a connector has a national
+REGULAR, AD_HOC_PAYMENT or untyped tariff. Do not replace a present tariff
+merely because a separate QR guest channel may also exist.
 """
 
 from __future__ import annotations
@@ -133,11 +133,19 @@ def main() -> None:
     data = read_normalized(args.normalized)
     key, obj = tariff()
     matches = []
+    existing_preserved = 0
+    spa_connector_count = 0
     for station in data.get("stations") or []:
         if station.get("partyId") != PARTY:
             continue
         for evse in station.get("evses") or []:
             for connector in evse.get("connectors") or []:
+                spa_connector_count += 1
+                # Operator national data is authoritative unless absent:
+                # Never replace an existing OCPI tariff with a generic web price.
+                if connector.get("tariffKeys"):
+                    existing_preserved += 1
+                    continue
                 if not args.no_write:
                     connector["tariffKeys"] = [key]
                     connector["tariffIds"] = []
@@ -150,8 +158,23 @@ def main() -> None:
                     "match": "exact_national_connector_with_cpo_declared_uniform_tariff",
                 })
 
-    if not matches:
+    if not spa_connector_count:
         raise RuntimeError("No in-scope SPA connectors found")
+    if not matches:
+        # This is the normal case on current DOT-NL: all 328 SPA connectors
+        # already have national REGULAR tariffs and must remain untouched.
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps({
+            "schemaVersion": 1, "generatedAt": generated,
+            "status": "national_dotnl_tariffs_preserved",
+            "partyId": PARTY, "officialSources": checks,
+            "existingNationalConnectorCount": existing_preserved,
+            "fallbackConnectorCount": 0,
+            "policy": "DOT-NL national first; CPO fallback only when missing"
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps({"status": "national_dotnl_tariffs_preserved",
+                          "existingNationalConnectorCount": existing_preserved}))
+        return
     if not args.no_write:
         data.setdefault("tariffs", {})[key] = obj
         overlays = data.setdefault("source", {}).setdefault("directTariffOverlays", [])
