@@ -5,4 +5,4 @@
 - Immobilization begins 15 min after charge completion and is waived 00:00-07:00; current public rate: 0.21 EUR/min.
 - Former formal SDEC PDF URL is retired/moved and is no longer a hard refresh dependency.
 - Official technical dataset rows: 1107; sample stations resolved in Caen, Bayeux and Vire Normandie.
-- Fingerprint: `82f066762f6abcc8d45caac924c7e5d34b0d844c8be9dc5bbcc901016cfb44f8`
+- Fingerprint: `7c9b35454063bd421733d0833ed86d9f364b520c5bb8d554d2e280c1e698f289`
