@@ -26,3 +26,13 @@
 2. N'activer le calcul par offre qu'avec une preuve `CONNECTED_TIME` / `TIME` / `PARKING_TIME`, et, si nécessaire, les seuils/caps explicites.
 3. Sur la V9, distinguer `Tarif incalculable` (composante connue mais non modélisable) et `Prix non disponible` (aucune offre).
 4. Aucun déploiement du moteur ou changement des sources n'est nécessaire pour les 6 tarifs déjà documentés : le code de production testé fonctionne. Pas de publication de valeurs pour les 78 eMSP non justifiés.
+
+## Matrice Electra eMSP — 78 offres réellement recensées
+
+[Extraction exacte des 78 offres et de leurs règles](electra-78-afterminutes-evidence-matrix-2026-10-11.json), vérifiée par [GitHub Actions](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38096858628).
+
+- **78 offres**, **110 lignes de règles** différées, **31 identifiants de groupes tarifaires**, **38 profils taux + seuil + plafonds distincts**.
+- Répartition par **CPO physique identifié dans la provenance Electra eMSP** : **Freshmile 50 offres**, **Pass Pass 16**, **Izivia 10**, **Easy Charge 2**.
+- Les 16 offres Pass Pass présentent **48 lignes de règles** : il faut impérativement préserver et vérifier les créneaux/règles tarifaires au lieu de réduire à un seul taux.
+- Le tarif du **CPO direct** n'est pas une preuve des conditions de refacturation de l'**eMSP Electra** ; seuls des termes Electra spécifiques au tarif concerné permettront de débloquer le calcul.
+- Ordre de résolution conseillé : Freshmile (50) → Pass Pass (16, créneaux multiples) → Izivia (10) → Easy Charge (2).
