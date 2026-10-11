@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - "scripts/build_electroverse_france_evse_overlay.mjs"
+      - "scripts/lib/electroverse_connector_policy.mjs"
+      - "scripts/audit_electroverse_status_gate_postbuild.mjs"
       - "data/electroverse/tariff_cache/manifest.json"
       - "data/electroverse/live_statuses/manifest.json"
       - "data/electroverse/irve_location_mapping.json"
@@ -43,6 +45,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Reject unsupported connector types before publication
+        run: |
+          node --test tests/electroverse_connector_policy.test.mjs
+          node --check scripts/electroverse_hybrid_refresh.mjs
+          node --check scripts/electroverse_incremental_refresh.mjs
+          node --check scripts/build_electroverse_france_evse_overlay.mjs
+          node --check scripts/audit_electroverse_status_gate_postbuild.mjs
       - name: Build exact EVSE-level Electroverse overlay
         run: |
           if [ -s data/electroverse/live_statuses/manifest.json ]; then
