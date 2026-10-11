@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-11",
+  "originalAudit": {
+    "snapshotAt": "2026-10-11T10:09:40.512026Z",
+    "activeConnectorRecordsWithSourceTariffUncomputable": 5246,
+    "rootCauses": {
+      "restrictedFlatWithTimeDayRestrictions": 4916,
+      "unsupportedStepSize": 329,
+      "noCurrentTariffElement": 1
+    }
+  },
+  "implementation": {
+    "dataLabScript": "scripts/dotnl_netherlands_runtime.py",
+    "v9ProductionAdapter": "runtime-overrides/assets/v9/adapters/netherlands-dotnl.js",
+    "v9ProductionPricingEngine": "runtime-overrides/assets/v9/pricing-engine.js",
+    "rules": [
+      "Support conditional flat fee within a weekday/time-of-use OCPI TariffElement",
+      "Allow legal FLAT step 0, ENERGY step in Wh, TIME and PARKING_TIME step in seconds",
+      "TIME and PARKING_TIME price unit is EUR/hour (not EUR/minute or per step)",
+      "Transmit energy/time/parking billed steps in NL compiled runtime without changing non-NL schema",
+      "Segment time windows with weekday restrictions and apply FLAT once per session rather than per segment",
+      "Keep expired tariff missing; never invent amount"
+    ]
+  },
+  "verification": {
+    "nationalCanonicalBuild": {
+      "workflowRun": 38132063115,
+      "conclusion": "success"
+    },
+    "dataLabPythonUnit": {
+      "workflowRun": 38132289819,
+      "conclusion": "success"
+    },
+    "v9ProductionJavascriptUnit": {
+      "workflowRun": 38132241018,
+      "conclusion": "success"
+    },
+    "nlTotalEnergiesOverlay": {
+      "workflowRun": 38132268850,
+      "conclusion": "success"
+    },
+    "nationalActiveScopeFinal": {
+      "workflowRun": 38132414152,
+      "conclusion": "success",
+      "snapshotAt": "2026-10-11T10:32:38.365362Z",
+      "connectorRecords": 165429,
+      "priced": 161520,
+      "notPriced": 3909,
+      "unpricedReasons": {
+        "noNationalTariff": 3707,
+        "unresolvedTariffReferences": 201,
+        "allTariffElementsExpired": 1
+      },
+      "supportedKinds": [
+        "DOMESTIC_*",
+        "TYPE2",
+        "CCS2"
+      ],
+      "operationalEvseStatus": [
+        "AVAILABLE",
+        "CHARGING"
+      ]
+    },
+    "originallyUncomputableNowCompiled": 5245,
+    "stillUncomputable": 1,
+    "remainingCase": {
+      "operatorPartyId": "NUO",
+      "tariffId": "NL:NUO:2000025714-2000013230",
+      "endDate": "2026-03-31",
+      "reason": "No current element on audit date; no cost can be computed without new operator tariff."
+    }
+  },
+  "productionPublishing": {
+    "newCodeCommittedInProductionRepository": true,
+    "publishedLiveV9SnapshotConfirmed": false,
+    "blocker": "Existing full production candidate pipeline fails outside the new NL-focused unit test at production/tests/runtime-integration.test.mjs:210 (expected 1 actual 2); global build not validated.",
+    "failedFullPipelineRun": 38132141104
+  },
+  "sourceOfTruth": "https://github.com/yass3705/tesla-charge-companion-data-lab/blob/main/reports/netherlands/dotnl-active-type2-ccs-tariff-audit-latest.json",
+  "ocpiReference": "https://ocpi.github.io/openapi-specification/ocpi/2.2.1/roles/cpo-interface.html",
+  "note": "No assertion that the engine supports literally every possible future charging tariff; observed 5245 active-valid cases are now compilable."
+}
