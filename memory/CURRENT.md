@@ -1,0 +1,48 @@
+# État de reprise — 2026-10-11
+
+Constat daté du 2026-10-11 après `git fetch origin` et avances rapides locales : les quatre `main` locaux étaient alignés avec `origin/main` aux SHA ci-dessous. La mémoire est disponible sur la branche GitHub `docs/tcc-v9-shared-memory` de Data Lab ; vérifier séparément son éventuelle intégration dans `main` avant de l'y considérer comme référence. Les trois autres dépôts restaient sur `main` lors de ce relevé.
+
+| Dépôt | `main` local | `origin/main` après fetch | Écart local / distant |
+| --- | --- | --- |
+| Production | `796e7fc` | `796e7fc` | 0 / 0 commit |
+| Data Lab | `28f1aba30` | `28f1aba30` | 0 / 0 commit |
+| Stable | `b1284080` | `b1284080` | 0 / 0 commit |
+| Updater Test | `3d2b0e9e` | `3d2b0e9e` | 0 / 0 commit |
+
+Les 24 commits Data Lab, 2 commits Stable et 1 commit Updater Test ont été intégrés par `git pull --ff-only origin main`. Aucun commit local `main` n'était absent du distant lors de ce relevé. Les trois fichiers de mémoire sont consultables sur la branche GitHub `docs/tcc-v9-shared-memory` ; leur présence dans `main` se vérifie indépendamment dans l'historique et l'arbre de `main`.
+
+## Travaux et limites documentés
+
+- Le [site V9 public](https://yass3705.github.io/tesla-charge-companion-production/v9-production-shell/) sert un `shell-config.json` lu le 11 octobre avec `snapshotId=2026-10-11-r38134963436`, `mode=candidate` et `observedCandidateSha=ce1b2649666de6528cecea0bcf7c87ef248e4483` (ancien HEAD Stable). Ce constat HTTP identifie le shell publié, sans établir à lui seul le SHA Data Lab de chaque donnée servie.
+- La [configuration de développement Production](https://github.com/yass3705/tesla-charge-companion-production/blob/main/config/refresh-policy.json) épingle séparément `2026-10-03-nl-datalab-candidate` au SHA Data Lab `40806cdd10c428579ed7c6b0bbecca0a01b70d12`. Ce candidat de développement n'est pas l'identifiant du shell public. Le [statut Production](https://github.com/yass3705/tesla-charge-companion-production/blob/main/docs/STATUS.md) contient des sections historiques contradictoires et ne remplace pas ces lectures de configuration.
+- Le [périmètre eMSP multi-pays](../docs/tcc-v9-multicountry-emsp-overlays-scope-2026-10-11.md) est une cible enregistrée, sans publication internationale supplémentaire attestée au 11 octobre. L'analyse du direct CPO NL reste prioritaire selon ce document.
+- La [politique des libellés](../docs/v9-pricing-result-labels-policy-2026-10-10.md) est décidée, mais son application dans le moteur et l'UI V9 demande un changement testé et un artefact publié. Les 27 identifiants Electroverse signalés restent sous traitement conservatoire selon cette source.
+- La [revue des frais différés](../reports/tariff-scenarios/after-minutes-production-review-2026-10-11.md) consigne des calculs vérifiés et des conditions eMSP encore à établir. Ne pas confondre résultat de banc d'essai et prix V9 publié.
+- La [dernière archive de couverture France distante](https://github.com/yass3705/tesla-charge-companion-data-lab/blob/main/reports/france/tariff-coverage/latest.json) indique `validated_audit_not_v9_published`, 90 588 EVSE actifs, 74 402 avec au moins une source tarifaire et 16 186 sans tarif valide. Les chiffres du gel dans la SOP du 9 octobre (94 586 / 77 751 / 16 835) restent un instantané historique, pas les compteurs actuels.
+
+## Ambiguïtés et questions ouvertes
+
+1. Le document [périmètre eMSP](../docs/tcc-v9-multicountry-emsp-overlays-scope-2026-10-11.md) emploie « tarif incalculable » pour des « ambiguïtés vérifiées », tandis que la [politique de libellés](../docs/v9-pricing-result-labels-policy-2026-10-10.md) réserve « Tarif ambigu » aux offres concurrentes incompatibles. La consigne utilisateur ultérieure du 11 octobre privilégie « Tarif incalculable » dans l'interface et « ambigu » comme diagnostic interne pertinent ; harmoniser les documents avant implémentation.
+2. Les conditions exactes de refacturation de certaines offres Electra eMSP et les conflits Electroverse demeurent à résoudre dans leurs rapports sources ; pas de montant déduit par analogie avec le direct CPO.
+3. La dernière règle [Midhope](../docs/uk-midhope-release-readiness-2026-10-10.md) **retire la garde au 24 octobre**. Le [générateur Data Lab](../scripts/uk_midhope_build_verified_runtime.py) et la donnée comprimée publiée dans le dépôt n'ont pas de `validThrough`; l'[adaptateur Production](https://github.com/yass3705/tesla-charge-companion-production/blob/main/runtime-overrides/assets/v9/adapters/uk-open-feeds.js) retire l'ancien `validThrough=2026-10-24` après contrôle strict, et le moteur utilise `Europe/London`. Le registre public lu le 11 octobre garde pourtant `summer-only` et « Winter ... fail closed » dans sa description. Son texte de provenance est donc périmé ; la source binaire exacte servie en ligne n'a pas pu être relue à partir du chemin du registre (404).
+4. La consigne utilisateur du 11 octobre réserve « Tarif ambigu » au diagnostic interne lorsque pertinent et demande **« Tarif incalculable »** pour une offre non calculable. Le [moteur Stable](https://github.com/yass3705/tesla-charge-companion-stable/blob/main/v9-production-runtime/assets/v9/pricing-engine.js) renvoie déjà `complete:false` avec `after_minutes_component_unverified`. Mais le [bridge Production](https://github.com/yass3705/tesla-charge-companion-production/blob/main/v9-production-shell/bridge.js) affiche encore « Tarif ambigu à vérifier auprès de l’opérateur » ou « Tarif à vérifier auprès de l’opérateur » ; les marqueurs sans prix disent « Tarif indisponible ». L'UI ne respecte donc pas encore complètement la consigne et confond parfois absence d'offre et calcul impossible. Aucun code métier n'a été modifié durant cette synchronisation.
+5. Le [registre de production](https://github.com/yass3705/tesla-charge-companion-production/blob/main/scripts/build_runtime_registry.py) porte encore les mentions Midhope `summer-only` et « Winter ... fail closed ». Mettre ses métadonnées en accord avec la rectification, puis reconstruire/valider un candidat avant toute publication.
+6. La [politique DOT-NL](../docs/netherlands-dotnl-tariff-source-priority-2026-10-11.md) nomme « incalculable » les conflits de tarifs de même priorité ; la [politique générale des libellés](../docs/v9-pricing-result-labels-policy-2026-10-10.md) les nomme « ambigu » si les offres concurrentes sont incompatibles. Une clarification documentaire est nécessaire avant modification du rendu UI.
+
+## Audit des règles métier absentes de l'index initial
+
+| Règle / dossier | Source existante | Résultat de l'audit |
+| --- | --- | --- |
+| France, activité EVSE et preuves P1/P2/P3 | [filtre actif](../docs/france-irve-active-only-evse-reconciliation-policy.md), [SOP figée](../docs/france-irve-tariff-coverage-frozen-sop-v1.md) | Manquait dans l'index : ajouté. La SOP régit l'audit, pas la publication V9. |
+| Frais différés, plafonds et temps connecté | [résolution](../reports/tariff-scenarios/after-minutes-resolution-2026-10-11.md), [revue](../reports/tariff-scenarios/after-minutes-production-review-2026-10-11.md) | Manquait dans l'index : ajouté. Six offres documentées ; 78 eMSP Electra restent sans nature de temps prouvée. |
+| Prix par EVSE/puissance, condition de congestion, pas de double facturation TIME/PARKING_TIME | [règles Electra](../docs/electra-v9-tariff-rules-official-2026-10-10.md), [captures](../docs/electra-user-app-pricing-reconciliation-2026-10-10.md) | Références complétées. Plusieurs rattachements et frais restent ouverts dans le document de captures ; aucun tarif station moyen. |
+| Source canonique NL et exceptions | [politique DOT-NL](../docs/netherlands-dotnl-tariff-source-priority-2026-10-11.md) | Déjà référencée ; conflits de vocabulaire à résoudre, et connecteurs sans prix à garder indisponibles. |
+| Validité, fuseau local, préautorisation et publication UK | [état Midhope](../docs/uk-midhope-release-readiness-2026-10-10.md) | Manquait dans l'index : ajouté. La rectification finale retire la garde saisonnière initiale ; vérifier son application effective. |
+| Statut calculé / ambigu / incalculable / indisponible, classement fail-closed | [politique des libellés](../docs/v9-pricing-result-labels-policy-2026-10-10.md) | Déjà référencée ; déploiement moteur/UI non établi par ce seul document. Deux politiques spécialisées utilisent un terme différent pour les conflits. |
+| Passage des données validées au runtime | [architecture Production](https://github.com/yass3705/tesla-charge-companion-production/blob/main/docs/ARCHITECTURE.md), [statut Production](https://github.com/yass3705/tesla-charge-companion-production/blob/main/docs/STATUS.md) | Déjà référencé ; versions de développement et état du site à vérifier contre configuration et artefacts, pas à déduire des premières sections historiques. |
+
+Cet audit porte sur les règles transverses et les dossiers explicitement documentés ci-dessus. Il ne certifie ni l'exhaustivité de tous les CPO/pays, ni l'application de chaque règle dans le site actuellement servi.
+
+## Prochaine reprise
+
+Traiter les deux écarts de rendu/provenance ci-dessus dans le code Production avec tests adaptés, puis vérifier un nouvel artefact et le site après publication autorisée. Pour toute nouvelle session, refaire le `fetch` et la comparaison des quatre dépôts, relire la configuration de développement et le `shell-config.json` public, choisir un dossier de travail, puis consigner objectif, preuves, tests, commit, impact Production, blocages et prochaine action dans cette fiche et `HISTORY.md`.
