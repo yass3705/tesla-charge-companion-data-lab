@@ -1,0 +1,37 @@
+name: Electroverse connector scope regression tests
+on:
+  push:
+    paths:
+      - 'scripts/lib/electroverse_connector_policy.mjs'
+      - 'scripts/electroverse_hybrid_refresh.mjs'
+      - 'scripts/electroverse_incremental_refresh.mjs'
+      - 'scripts/build_electroverse_france_evse_overlay.mjs'
+      - 'scripts/audit_electroverse_status_gate_postbuild.mjs'
+      - 'tests/electroverse_connector_policy.test.mjs'
+      - '.github/workflows/electroverse-connector-policy-tests.yml'
+  pull_request:
+    paths:
+      - 'scripts/lib/electroverse_connector_policy.mjs'
+      - 'scripts/electroverse_hybrid_refresh.mjs'
+      - 'scripts/electroverse_incremental_refresh.mjs'
+      - 'scripts/build_electroverse_france_evse_overlay.mjs'
+      - 'scripts/audit_electroverse_status_gate_postbuild.mjs'
+      - 'tests/electroverse_connector_policy.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test E/F Type 2 CCS only
+        run: |
+          node --test tests/electroverse_connector_policy.test.mjs
+          node --check scripts/electroverse_hybrid_refresh.mjs
+          node --check scripts/electroverse_incremental_refresh.mjs
+          node --check scripts/build_electroverse_france_evse_overlay.mjs
+          node --check scripts/audit_electroverse_status_gate_postbuild.mjs
