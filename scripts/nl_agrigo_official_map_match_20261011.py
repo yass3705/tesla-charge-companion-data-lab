@@ -33,7 +33,7 @@ def operator_markers(raw):
     dec=json.JSONDecoder()
     byid={}
     errors=0
-    for m in re.finditer(r'\\{"id":"[0-9]+","title":',raw):
+    for m in re.finditer(r'\{"id":"[0-9]+","title":',raw):
         try:
             data,n=dec.raw_decode(raw[m.start():])
             if not isinstance(data,dict):continue
