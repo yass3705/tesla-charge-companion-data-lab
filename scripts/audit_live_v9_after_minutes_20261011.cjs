@@ -102,6 +102,33 @@ if(template){
  check('unverified_cap_mode_fail_closed',bad.complete,false,{reason:bad.reason||null});
 }
 const historical=histPilot.unmodeledExamples||[];
+const historicalFiles=[
+ 'reports/tariff-scenarios/france-real-offer-fixtures.json',
+ 'reports/tariff-scenarios/france-runtime-offer-fixtures.json'];
+const historicalFixtures=historicalFiles.flatMap(f=>{
+ const raw=JSON.parse(fs.readFileSync(f,'utf8'));
+ return Array.isArray(raw)?raw:(Array.isArray(raw.offers)?raw.offers:[]);
+});
+const historicalById=new Map(historicalFixtures.map(x=>[String(x.offer?.id||x.offerId),x.offer||x]));
+const historicalRateClassification={zero:0,positive:0,missingFixture:0,missingRate:0,invalid:0,byProvider:{}};
+for(const ex of historical){
+ const offer=historicalById.get(String(ex.offerId));
+ const group=historicalRateClassification.byProvider[ex.provider]||{zero:0,positive:0,missingFixture:0,missingRate:0,invalid:0};
+ const hit=(key)=>{historicalRateClassification[key]++;group[key]++;};
+ if(!offer)hit('missingFixture');
+ else{
+  const rates=(offer.pricing?.rules||[]).filter(r=>Object.hasOwn(r,'afterMinutesRate')).map(r=>Number(r.afterMinutesRate));
+  if(!rates.length)hit('missingRate');
+  else if(rates.some(x=>!Number.isFinite(x)))hit('invalid');
+  else if(rates.some(x=>x>0))hit('positive');
+  else hit('zero');
+ }
+ historicalRateClassification.byProvider[ex.provider]=group;
+}
+check('historical_sample_classification_complete',
+ historicalRateClassification.zero+historicalRateClassification.positive+
+ historicalRateClassification.missingFixture+historicalRateClassification.missingRate+
+ historicalRateClassification.invalid,historical.length);
 const byProvider={};
 for(const ex of historical){const p=ex.provider||'UNKNOWN';byProvider[p]=(byProvider[p]||0)+1;}
 const srcObj={
@@ -109,7 +136,7 @@ const srcObj={
  referenceStableCommit:process.env.TCC_STABLE_REF||null,readOnly:true,
  engineSha256:crypto.createHash('sha256').update(fs.readFileSync(files[0])).digest('hex'),
  baselineReportAt:histPilot.generatedAt,
- historicalUnmodeledOffers:historical.length,historicalUnmodeledProviders:byProvider,
+ historicalUnmodeledOffers:historical.length,historicalUnmodeledProviders:byProvider,historicalRateClassification,
  livePositiveRateOffers:selected.length,livePositiveRateOfferIds:ids,scenarios:profiles.length,
  checks:checks.length,passed:checks.filter(x=>x.pass).length,failed:violations.length,
  positiveRateSourceRuleDetails:selected.map(x=>({id:x.id,provider:x.provider,source:x.source,
