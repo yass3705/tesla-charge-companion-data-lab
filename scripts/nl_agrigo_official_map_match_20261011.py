@@ -51,6 +51,17 @@ def operator_markers(raw):
             errors+=1
     return list(byid.values()),errors
 
+def name_tokens(value):
+    # Street/site tokens only: no city/postal code from the full address.
+    base=str(value or "").split(",")[0].split("\t")[0].casefold()
+    return {t for t in re.findall(r"[a-zà-ÿ][a-zà-ÿ'-]{4,}",base)
+            if t not in {"hotel","charge","laadpaal","station","parking","laadpunt","nieuw"}}
+
+def verified_street_alignment(source_name, marker):
+    source=name_tokens(source_name)
+    official=name_tokens(marker.get("name","")) | name_tokens(marker.get("address",""))
+    return bool(source & official)
+
 def main():
     req=urllib.request.Request(URL,headers={"User-Agent":"Mozilla/5.0 TCC-public-operator-map-exact-location-audit","Accept":"text/html"})
     with urllib.request.urlopen(req,timeout=35) as resp:
@@ -70,8 +81,13 @@ def main():
         close=sorted([(hav_m(lat,lon,m["lat"],m["lon"]),m) for m in marks if abs(m["lat"]-lat)<.002 and abs(m["lon"]-lon)<.004],key=lambda pair:pair[0])
         strict=[x for x in close if x[0]<=10.0]
         if len(strict)==1:
-            rank="unique_strict_gps_10m"
             chosen=strict[0]
+            if verified_street_alignment(ex["name"],chosen[1]):
+                rank="unique_strict_gps_and_street_10m"
+            else:
+                # Even 4 metres can match a neighbouring street or a second
+                # charger. Retain for review, never treat as exact identity.
+                rank="unique_gps_10m_street_unverified"
         elif len(strict)>1:
             rank="ambiguous_multiple_map_markers_10m";chosen=None
         elif close and close[0][0]<=30.0:
@@ -109,7 +125,7 @@ def main():
         "matchConnectorsByClass":dict(exact_connector_counts),
         "sampleByClass":sample,
         "siteIdentityProvenance":"first-party map exact GPS location; no public QR price",
-        "uniquenessPolicy":"only a unique official operator marker <=10m is marked exact location; >=2 candidates fail closed; 10–30m unverified",
+        "uniquenessPolicy":"only unique official marker <=10m with an independently matching source street token can be promoted to first-party site match. Neighbouring street/name mismatch remains unverified even at 4m. Multiple candidates fail closed; 10–30m unverified.",
         "notForV9DirectPrice":True,"matchedConnectorPricePromoted":0,
         "csv":"reports/netherlands/nl-agrigo-official-map-match-2026-10-11.csv"
     }
