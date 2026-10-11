@@ -7,6 +7,8 @@ import {
   PAGED_LOCATION_QUERY
 } from './lib/electroverse_direct_client.mjs';
 
+import {filterSupportedElectroverseConnectors} from './lib/electroverse_connector_policy.mjs';
+
 const API_KEY=process.env.ELECTROVERSE_API_KEY;
 const REQUEST_INTERVAL_MS=Number(process.env.REQUEST_INTERVAL_MS||1500);
 const SELECTION='reports/electroverse/incremental-selection.json';
@@ -30,7 +32,7 @@ function tariffProjection(loc){
     evses:nodes(loc?.evses).map(e=>({
       pk:e?.pk??null,
       physicalReference:e?.physicalReference??null,
-      connectors:nodes(e?.connectors).map(c=>({
+      connectors:filterSupportedElectroverseConnectors(nodes(e?.connectors)).map(c=>({
         pk:c?.pk??null,
         kilowatts:c?.kilowatts??null,
         speed:c?.speed??null,
@@ -38,7 +40,7 @@ function tariffProjection(loc){
         standard:c?.standard??null,
         priceComponents:c?.priceComponents??null,
         complexPricingDetail:c?.complexPricingDetail??null,
-      })).sort((a,b)=>String(a.pk).localeCompare(String(b.pk)))
+      })).filter(e=>e.connectors.length>0).sort((a,b)=>String(a.pk).localeCompare(String(b.pk)))
     })).sort((a,b)=>String(a.pk).localeCompare(String(b.pk)))
   };
 }
