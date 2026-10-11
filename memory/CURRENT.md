@@ -1,6 +1,6 @@
 # État de reprise — 2026-10-11
 
-Constat après `git fetch origin` et avances rapides locales autorisées le 2026-10-11. Les quatre `main` locaux sont alignés avec `origin/main` aux SHA ci-dessous. Cette mémoire est préparée sur la branche locale `docs/tcc-v9-shared-memory` de Data Lab ; sa publication GitHub reste à valider. Les trois autres dépôts restent sur `main`.
+Constat daté du 2026-10-11 après `git fetch origin` et avances rapides locales : les quatre `main` locaux étaient alignés avec `origin/main` aux SHA ci-dessous. La mémoire est disponible sur la branche GitHub `docs/tcc-v9-shared-memory` de Data Lab ; vérifier séparément son éventuelle intégration dans `main` avant de l'y considérer comme référence. Les trois autres dépôts restaient sur `main` lors de ce relevé.
 
 | Dépôt | `main` local | `origin/main` après fetch | Écart local / distant |
 | --- | --- | --- |
@@ -9,7 +9,7 @@ Constat après `git fetch origin` et avances rapides locales autorisées le 2026
 | Stable | `b1284080` | `b1284080` | 0 / 0 commit |
 | Updater Test | `3d2b0e9e` | `3d2b0e9e` | 0 / 0 commit |
 
-Les 24 commits Data Lab, 2 commits Stable et 1 commit Updater Test ont été intégrés par `git pull --ff-only origin main`. Aucun commit local `main` absent du distant. Les fichiers de mémoire ne figurent pas dans GitHub tant que la branche n'est pas poussée ; ils ne figureront sur `main` qu'après fusion.
+Les 24 commits Data Lab, 2 commits Stable et 1 commit Updater Test ont été intégrés par `git pull --ff-only origin main`. Aucun commit local `main` n'était absent du distant lors de ce relevé. Les trois fichiers de mémoire sont consultables sur la branche GitHub `docs/tcc-v9-shared-memory` ; leur présence dans `main` se vérifie indépendamment dans l'historique et l'arbre de `main`.
 
 ## Travaux et limites documentés
 
