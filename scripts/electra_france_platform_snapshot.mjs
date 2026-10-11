@@ -136,8 +136,14 @@ for(const x of verifiedEvidence.verifiedLinks){
  if(!Array.isArray(x.mappings)||!x.mappings.length)throw new Error('Verified location without EVSE mappings');
  verifiedByLocation.set(String(x.locationId),x);
 }
+// Exclude legacy unsupported connector groups even before a national rebuild.
+function supportedIrveConnectorGroup(cfg){
+ return /^IRVE\s*·\s*(?:EF|Type\s*2|CCS)(?=\s|$)/i.test(String(cfg?.[1]||''));
+}
 const nationalEvse=new Set(),nationalPowerByEvse=new Map(),nationalKindsByEvse=new Map();
-for(const row of nationalRows)for(const cfg of row?.[8]||[])for(const id of Array.isArray(cfg?.[6])?cfg[6]:[]){
+for(const row of nationalRows)for(const cfg of row?.[8]||[]){
+ if(!supportedIrveConnectorGroup(cfg))continue;
+ for(const id of Array.isArray(cfg?.[6])?cfg[6]:[]){
   const key=norm(id),power=Number(cfg?.[3]);
   nationalEvse.add(key);
   if(!nationalKindsByEvse.has(key))nationalKindsByEvse.set(key,new Set());
@@ -146,6 +152,7 @@ for(const row of nationalRows)for(const cfg of row?.[8]||[])for(const id of Arra
     const old=nationalPowerByEvse.get(key);
     nationalPowerByEvse.set(key,old==null?power:old===power?power:null);
   }
+ }
 }
 // In a location with several distinct tariffs, only an explicit exclusive
 // minPower/maxPower restriction proves which EVSE may use which tariff.
