@@ -16,6 +16,22 @@ SOURCE_URL = "https://proxy.transport.data.gouv.fr/resource/consolidation-transp
 TILE_DEGREES = 0.5
 YES = {"1", "true", "t", "yes", "oui", "vrai", "x"}
 
+ALLOWED_CONNECTORS = (
+    ("prise_type_ef", "EF"),
+    ("prise_type_2", "Type 2"),
+    ("prise_type_combo_ccs", "CCS"),
+)
+
+
+def supported_connectors(row):
+    """Strict TCC scope: domestic E/F, Type 2, CCS only.
+
+    Deliberately excludes CHAdeMO, Type 3C, other and unknown connectors.
+    If a PDC offers CCS + CHAdeMO, preserve the CCS part only.
+    """
+    return [label for col, label in ALLOWED_CONNECTORS if enabled(get(row, col))]
+
+
 
 def key(value):
     value = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode().lower()
@@ -149,6 +165,9 @@ def main():
             pos = coordinates(row)
             if pos is None:
                 continue
+            plug_types = supported_connectors(row)
+            if not plug_types:
+                continue  # Exclude unsupported CHAdeMO/Type 3C/unknown-only rows.
             station = stations.setdefault(station_id, {
                 "id": station_id, "name": "", "address": "", "lat": pos[0], "lon": pos[1],
                 "operator": "", "amenageur": "", "hours": 0, "date": "", "declaredCount": 0,
@@ -174,20 +193,8 @@ def main():
             elif kw > 1000:
                 kw /= 1000.0
             kw = round(kw, 1)
-            plug_types = []
-            for col, label in (
-                ("prise_type_ef", "EF"), ("prise_type_2", "Type 2"),
-                ("prise_type_combo_ccs", "CCS"), ("prise_type_chademo", "CHAdeMO")
-            ):
-                if enabled(get(row, col)):
-                    plug_types.append(label)
-            other = get(row, "prise_type_autre")
-            if other and other.lower() not in {"false", "0", "non", "no"}:
-                plug_types.append(other)
-            if not plug_types:
-                plug_types = ["INCONNU"]
             for plug in plug_types:
-                kind = "DC" if any(token in plug.lower() for token in ("ccs", "combo", "chademo")) or (plug == "INCONNU" and kw > 43) else "AC"
+                kind = "DC" if plug == "CCS" else "AC"
                 group_key = (kind, kw, plug)
                 group = station["groups"].setdefault(group_key, set())
                 group.add(evse)
@@ -205,7 +212,8 @@ def main():
             suffix = kw_text.replace(".", "_")
             label = f"IRVE · {kind} {kw_text} kW" if plug == "INCONNU" else f"IRVE · {plug} {kw_text} kW"
             groups.append([f"irve-{ordinal}-{kind.lower()}-{suffix}", label, kind, kw, len(ids), [], sorted(ids)])
-        pdc_count = max(len(station["evses"]), station["declaredCount"])
+        # Declared total may include unsupported sockets, unlike retained PDCs.
+        pdc_count = len(station["evses"])
         row = [station["id"], station["name"], station["address"], station["lat"], station["lon"],
                station["operator"].upper(), pdc_count, station["hours"] or 0, groups,
                station["date"], station["amenageur"] or station["operator"]]
@@ -239,6 +247,8 @@ def main():
         "sourceRetrievedAt": args.source_retrieved_at,
         "sourceLastModified": args.source_last_modified or None,
         "sourceSha256": args.source_sha256,
+        "builderSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "supportedConnectors": ["EF", "Type 2", "CCS"],
         "sourceBytes": args.source_bytes,
         "sourceRows": source_rows, "stationCount": len(valid_stations),
         "pdcCount": len(all_evse), "skippedRows": source_rows - len(all_evse),
