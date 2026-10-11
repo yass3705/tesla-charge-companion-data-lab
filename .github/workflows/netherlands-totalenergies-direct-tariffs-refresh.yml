@@ -9,6 +9,7 @@ on:
     branches: ["main"]
     paths:
       - "scripts/integrate_total_nl_chargingservices.py"
+      - "scripts/dotnl_national_tariff_guard.py"
       - ".github/workflows/netherlands-totalenergies-direct-tariffs-refresh.yml"
 
 permissions:
@@ -31,7 +32,12 @@ jobs:
       - name: Fetch official TotalEnergies web API and integrate exact PAYG prices
         run: |
           set -euo pipefail
+          cp data/national/netherlands_dotnl/normalized.json.gz /tmp/dotnl-before-total-guest.gz
           python3 scripts/integrate_total_nl_chargingservices.py
+          python3 scripts/dotnl_national_tariff_guard.py \
+            /tmp/dotnl-before-total-guest.gz \
+            data/national/netherlands_dotnl/normalized.json.gz \
+            reports/netherlands/dotnl-national-tariff-preservation-total-latest.json
           rm -rf data/national/netherlands_dotnl/runtime
           python3 scripts/dotnl_netherlands_runtime.py \
             data/national/netherlands_dotnl/normalized.json.gz \
@@ -56,9 +62,9 @@ jobs:
                       for key in c.get('tariffKeys',[]):
                           if str(key).startswith('NL:GFX:TOTAL-PAYG:'):
                               total.append(key)
-          assert total, 'TotalEnergies overlay is empty'
+          # Zero is acceptable when DOT-NL already provides complete CPO tariffs.
           assert all(d['tariffs'][key].get('type')=='AD_HOC_PAYMENT' for key in total)
-          print({'totalExactDirectConnectors':len(total),'tariffKeys':len(set(total))})
+          print({'totalFallbackConnectorsWithoutNationalTariff':len(total),'tariffKeys':len(set(total))})
           PY
 
       - name: Publish refreshed NL data
@@ -70,6 +76,7 @@ jobs:
             data/national/netherlands_dotnl/runtime \
             data/operator_direct/totalenergies_nl_payg_exact_overlay.json \
             reports/netherlands/totalenergies-direct-payg-live-integration-2026-10-04.json \
+            reports/netherlands/dotnl-national-tariff-preservation-total-latest.json \
             reports/netherlands_dotnl_runtime.json \
             reports/netherlands-dotnl-access-report.json
           if git diff --cached --quiet; then exit 0; fi
