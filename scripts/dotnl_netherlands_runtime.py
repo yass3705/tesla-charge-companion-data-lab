@@ -84,12 +84,11 @@ def dimension_schedule(elements,dim,day_name,m):
         rate=component_gross(pc)
         if rate is None: return None,None,'missing_price'
         if dim in ('TIME','PARKING_TIME'):
-            # Existing DOT-NL TIME/PARKING_TIME components with step 1 or
-            # 60 are represented as per-minute amounts.  Preserve that
-            # established convention, while honoring larger OCPI increments
-            # (notably StellaPower's 900-second parking increment).
-            step=fnum(pc.get('stepSize'))
-            rate/=(step if step and step>60 else 60.0)
+            # OCPI 2.2.1 price is ALWAYS per hour; step_size is the
+            # integer billing quantum in SECONDS, not the unit of price.
+            # PriceEngine expects a per-minute rate. Billing steps are
+            # forwarded separately in a wire row metadata field.
+            rate/=60.0
         candidates.append((mn,mx,rate))
         boundaries.add(mn)
         if mx is not None: boundaries.add(mx)
@@ -121,6 +120,25 @@ def dimension_schedule(elements,dim,day_name,m):
             bands.append([dim,round(a,6),None if b is None else round(b,6),round(rate,8)])
     return base,bands,None
 
+def billing_steps(elements,day_name,m):
+    # A price can have a different rounding quantum per time window.
+    # Encode each active component's step for the corresponding runtime
+    # schedule row, independently of its hourly/per-kWh rate.
+    steps={}
+    mapping={'ENERGY':'energyStepWh',
+             'TIME':'chargingTimeStepSeconds',
+             'PARKING_TIME':'parkingTimeStepSeconds'}
+    for dim,wire in mapping.items():
+        for el in elements:
+            if not static_element_matches(el,day_name,m): continue
+            pc=element_component(el,dim)
+            if pc is None:continue
+            step=fnum(pc.get('stepSize'))
+            if step is not None and step>1:
+                steps[wire]=int(step)
+            break
+    return steps
+
 def compile_tariff(t,today):
     if not tariff_current(t,today): return None,'not_current'
     current=[el for el in (t.get('elements') or []) if isinstance(el,dict) and current_element(el,today)]
@@ -132,33 +150,19 @@ def compile_tariff(t,today):
         if bad: return None,'unsupported_restriction:'+','.join(sorted(bad))
         if (rr.get('min_duration') not in (None,'') or rr.get('max_duration') not in (None,'')):
             if duration_interval(el) is None: return None,'invalid_duration_range'
-            if element_component(el,'FLAT') is not None: return None,'duration_restricted_flat'
+            # FLAT may be duration-conditional. Duration bands and session
+            # one-time-fee protection already exist in V9 PricingEngine.
         for pc in el.get('priceComponents') or []:
             typ=str(pc.get('type') or '').upper()
             if typ not in DIMS: return None,'unsupported_dimension:'+typ
             step=fnum(pc.get('stepSize'))
-            # OCPI expresses TIME and PARKING_TIME step_size in seconds.
-            # A 60-second step is therefore a normal per-minute component;
-            # the compiler converts its rate to the runtime's per-second
-            # representation in dimension_schedule().  Keep the stricter
-            # one-unit rule for ENERGY and FLAT so we never reinterpret a
-            # monetary amount with the wrong billing unit.
-            if step not in (None,1.0) and not (typ in {'TIME','PARKING_TIME'} and step in {60.0,900.0}):
-                return None,'step_size'
+            # OCPI 2.2.1: ENERGY step in Wh; TIME / PARKING_TIME step in
+            # seconds; FLAT is dimensionless.  A FLAT step_size of 0 is
+            # found in genuine national data, and is not a billing error.
+            if (step is not None and
+                (step<0 or step!=int(step) or (typ!='FLAT' and step<1))):
+                return None,'invalid_step_size'
             if component_gross(pc) is None: return None,'missing_price'
-
-    flat_components=[]
-    for el in current:
-        rr=el.get('restrictions') or {}
-        for pc in el.get('priceComponents') or []:
-            if str(pc.get('type') or '').upper()=='FLAT':
-                if any(rr.get(k) not in (None,[],{},'') for k in ('start_time','end_time','day_of_week')): return None,'restricted_flat'
-                flat_components.append(pc)
-    flat=0.0
-    if flat_components:
-        first=component_gross(flat_components[0])
-        if any(abs(component_gross(pc)-first)>1e-9 for pc in flat_components[1:]): return None,'multiple_flat'
-        flat=first
 
     boundaries={0,1440}
     for el in current:
@@ -172,7 +176,7 @@ def compile_tariff(t,today):
             if b<=a: continue
             probe=a+(b-a)/2
             values={}; duration_bands=[]
-            for dim in ('ENERGY','TIME','PARKING_TIME'):
+            for dim in ('ENERGY','TIME','PARKING_TIME','FLAT'):
                 base,bands,err=dimension_schedule(current,dim,day_name,probe)
                 if err: return None,err
                 values[dim]=base
@@ -181,13 +185,14 @@ def compile_tariff(t,today):
             rows.append([
                 'timeWindow',hhmm(a),'24:00' if b==1440 else hhmm(b),billing,
                 (t.get('currency') or 'EUR').upper(),
-                round(values['ENERGY'],6),round(values['TIME'],8),round(flat,6),
-                round(values['PARKING_TIME'],8),0,0,[JS_DAY[day_name]],duration_bands
+                round(values['ENERGY'],6),round(values['TIME'],8),round(values['FLAT'],6),
+                round(values['PARKING_TIME'],8),0,0,[JS_DAY[day_name]],duration_bands,
+                billing_steps(current,day_name,probe)
             ])
 
     merged={}
     for r in rows:
-        key=json.dumps(r[:11]+[r[12]],separators=(',',':'))
+        key=json.dumps(r[:11]+[r[12],r[13]],separators=(',',':'))
         if key not in merged: merged[key]=r
         else: merged[key][11]=sorted(set(merged[key][11]+r[11]))
     out=list(merged.values()); out.sort(key=lambda r:(r[1],r[2],r[11]))
