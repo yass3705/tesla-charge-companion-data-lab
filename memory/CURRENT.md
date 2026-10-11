@@ -1,15 +1,15 @@
 # État de reprise — 2026-10-11
 
-Constat daté du 2026-10-11 après `git fetch origin` et avances rapides locales : les quatre `main` locaux étaient alignés avec `origin/main` aux SHA ci-dessous. La mémoire est disponible sur la branche GitHub `docs/tcc-v9-shared-memory` de Data Lab ; vérifier séparément son éventuelle intégration dans `main` avant de l'y considérer comme référence. Les trois autres dépôts restaient sur `main` lors de ce relevé.
+Constat daté du 2026-10-11 après un nouveau `git fetch origin` dans les quatre dépôts : les quatre `main` locaux sont alignés avec `origin/main` aux SHA ci-dessous. La PR [#192](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/192) a été fusionnée sur `main` de Data Lab au commit `b5ef9caf8`. Les trois autres dépôts restent sur `main`. Les futures sessions doivent refaire ce contrôle avant de traiter les SHA comme actuels.
 
 | Dépôt | `main` local | `origin/main` après fetch | Écart local / distant |
 | --- | --- | --- |
 | Production | `796e7fc` | `796e7fc` | 0 / 0 commit |
-| Data Lab | `28f1aba30` | `28f1aba30` | 0 / 0 commit |
+| Data Lab | `b5ef9caf8` | `b5ef9caf8` | 0 / 0 commit |
 | Stable | `b1284080` | `b1284080` | 0 / 0 commit |
 | Updater Test | `3d2b0e9e` | `3d2b0e9e` | 0 / 0 commit |
 
-Les 24 commits Data Lab, 2 commits Stable et 1 commit Updater Test ont été intégrés par `git pull --ff-only origin main`. Aucun commit local `main` n'était absent du distant lors de ce relevé. Les trois fichiers de mémoire sont consultables sur la branche GitHub `docs/tcc-v9-shared-memory` ; leur présence dans `main` se vérifie indépendamment dans l'historique et l'arbre de `main`.
+Les trois fichiers de mémoire initiaux sont présents sur `main` de Data Lab après la fusion de #192. Les 24 commits Data Lab, 2 commits Stable et 1 commit Updater Test du relevé précédent avaient été intégrés par `git pull --ff-only origin main`. Aucun commit local `main` n'était absent du distant lors de ce nouveau relevé. La configuration commune `AGENTS.md` et les ajustements de mémoire sont préparés sur la branche documentaire `docs/tcc-v9-agents-continuity` ; leur présence dans `main` dépendra de la fusion de sa PR.
 
 ## Travaux et limites documentés
 
@@ -45,4 +45,4 @@ Cet audit porte sur les règles transverses et les dossiers explicitement docume
 
 ## Prochaine reprise
 
-Traiter les deux écarts de rendu/provenance ci-dessus dans le code Production avec tests adaptés, puis vérifier un nouvel artefact et le site après publication autorisée. Pour toute nouvelle session, refaire le `fetch` et la comparaison des quatre dépôts, relire la configuration de développement et le `shell-config.json` public, choisir un dossier de travail, puis consigner objectif, preuves, tests, commit, impact Production, blocages et prochaine action dans cette fiche et `HISTORY.md`.
+Traiter les deux écarts de rendu/provenance ci-dessus dans le code Production avec tests adaptés, puis vérifier un nouvel artefact et le site après publication autorisée. Pour toute nouvelle session, refaire le `fetch` et la comparaison des quatre dépôts, relire la configuration de développement et le `shell-config.json` public, choisir un dossier de travail, puis consigner objectif, preuves, tests, commit, impact Production, blocages et prochaine action dans cette fiche et `HISTORY.md`. Les décisions prises seulement en conversation restent non synchronisées tant qu'elles ne figurent pas dans une branche ou PR GitHub identifiée.
