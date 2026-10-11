@@ -25,3 +25,12 @@ Ce rapport est un **inventaire des scénarios et des formes de prix** sur les pa
 - Un EVSE hors service n'est pas réactivé par un prix présent ; l'identité et les états actifs restent gérés par la [SOP IRVE figée](../../docs/france-irve-tariff-coverage-frozen-sop-v1.md).
 
 **Déploiement prévu :** pilote France, puis CH/IT, UK/NL/ES, DE/MA/BE après validation des cas par pays. Aucune modification du moteur de prix production dans cette étape.
+
+## Mise au point — moteur V9 courant (11/10/2026)
+
+- **L'audit initial des 84 offres** utilisait des fixtures historiques épinglées au 9–10 octobre ; il ne démontre pas que les mêmes champs sont encore manquants en production.
+- Le moteur courant a passé les 9 tests de frais différés et plafonds ; [audit du moteur courant](current-v9-after-minutes-audit-2026-10-11.json).
+- Les **6 offres** Plug Inn direct, SIGEIF direct (3) et Charge Pass Basic/Intense contiennent maintenant `afterMinutesComponent: CONNECTED_TIME` dans les catalogues stables réels. SIGEIF 7/22 kW définit `afterMinutesCapMode: night_window_local_per_night`. **21/21 tests** passés sur les fichiers réellement publiés : [rapport](current-v9-after-minutes-official-six-2026-10-11.json).
+- Les **78 offres Electra eMSP de l'échantillon historique** n'ont toujours pas de dimension de facturation justifiée. Regroupement par familles et PK dans [l'inventaire](electra-emsp-afterminutes-78-unresolved-2026-10-11.json). Ne pas appliquer les conditions du CPO direct à Electra eMSP.
+- Sans preuve indiquant si le temps est CONNECTED_TIME / TIME / PARKING_TIME, conserver le résultat **tarif incalculable** ; ne pas ignorer les frais ni annoncer la correction de 78 offres.
+- Vérification de la **couverture du dernier overlay Electra** nécessaire après chaque actualisation ; les 78 sont un inventaire de test et non un total national actuel.
