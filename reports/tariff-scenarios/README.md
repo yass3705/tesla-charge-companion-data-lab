@@ -34,3 +34,12 @@ Ce rapport est un **inventaire des scénarios et des formes de prix** sur les pa
 - Les **78 offres Electra eMSP de l'échantillon historique** n'ont toujours pas de dimension de facturation justifiée. Regroupement par familles et PK dans [l'inventaire](electra-emsp-afterminutes-78-unresolved-2026-10-11.json). Ne pas appliquer les conditions du CPO direct à Electra eMSP.
 - Sans preuve indiquant si le temps est CONNECTED_TIME / TIME / PARKING_TIME, conserver le résultat **tarif incalculable** ; ne pas ignorer les frais ni annoncer la correction de 78 offres.
 - Vérification de la **couverture du dernier overlay Electra** nécessaire après chaque actualisation ; les 78 sont un inventaire de test et non un total national actuel.
+
+
+## Audit des frais différés V9 — 11 octobre 2026
+
+- [Validation du moteur V9 actuel](live-v9-after-minutes-2026-10-11.json) : **181 contrôles réussis, 0 échec**. Les 6 offres Plug Inn, SIGEIF et Charge Pass possèdent le champ `afterMinutesComponent=CONNECTED_TIME`; l'application des seuils et du plafond nocturne SIGEIF est validée par un oracle indépendant. Référence stable figée : `4072ea32a0a545cc29f86566f4e53cf7269b3a61`.
+- [Comparaison des 78 offres Electra eMSP avec le nouvel overlay](electra-78-current-overlay-validation-2026-10-11.json) : **78/78 retrouvées**, **0** avec dimension facturée vérifiée, **78** `after_minutes_component_unverified` ; elles **doivent rester « Tarif incalculable »**, pas faire afficher un total partiel. Elles sont regroupées en [38 profils de grille](electra-78-afterminutes-evidence-matrix-2026-10-11.json).
+- Les **84 alertes** du rapport du 10 octobre sont de vrais frais différés positifs (78 Electra eMSP et 6 autres). Le rapport historique est épinglé à une ancienne version du moteur : ne pas confondre les résultats du test figé avec le moteur et les données V9 actuels.
+- **Blocage restant** : examiner les éléments sources OCPI/eMSP par tarif Electra pour préciser si les frais concernent `TIME`, `PARKING_TIME`, ou `CONNECTED_TIME`, ainsi que les éventuelles restrictions de durée. Ne jamais copier les règles tarifaires du CPO pour déduire celles de l'eMSP.
+- Cet audit **ne publie pas de prix** et ne modifie pas les fichiers de tarifs V9.
