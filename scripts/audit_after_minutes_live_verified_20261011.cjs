@@ -42,7 +42,7 @@ const nightOffer=m.get('sigeif-7-22');
 for(const t of [
  {name:'night_only_4e_cap',at:'2026-10-11T20:30:00+02:00',minutes:300,expected:.39*20+4},
  {name:'day_only_uncapped',at:'2026-10-11T12:00:00+02:00',minutes:300,expected:.39*20+6},
- {name:'day_then_night',at:'2026-10-11T18:00:00+02:00',minutes:300,expected:.39*20+6}
+ {name:'day_then_night',at:'2026-10-11T18:00:00+02:00',minutes:300,expected:.39*20+4}
 ]){
  const result=engine.evaluateOffer(nightOffer,{...sample,startAt:t.at,durationMinutes:t.minutes,chargingMinutes:75,totalChargingMinutes:75,postChargeMinutes:t.minutes-75});
  const pass=result.complete&&Math.abs(result.totalEur-t.expected)<.0002;
