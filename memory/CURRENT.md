@@ -1,5 +1,10 @@
 # État de reprise — 2026-10-11
 
+## Revue GitHub ouverte — 11 octobre 2026
+
+- Production : branche `fix/v9-tariff-labels-local`, commit initial `7b471d6` puis correction de fixture navigateur `1dda721`, [PR #36](https://github.com/yass3705/tesla-charge-companion-production/pull/36). Data Lab : branche `docs/v9-tariff-labels-validation-local`, [PR #194](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/194). Les deux PR sont ouvertes vers `main`, liées réciproquement et non fusionnées.
+- Le push Production a lancé un build historique r8 qui échoue sur l'overlay Electroverse épinglé absent. La première validation PR a construit le snapshot et passé ses tests runtime avant d'échouer sur une fixture navigateur sans `result.complete:true` ; la correction de test est poussée. Le workflow Pages a ignoré son upload et son job `deploy` sur `pull_request`. Dernier déploiement Pages observé : SHA `796e7fc` du 11 octobre à 11:18 UTC, antérieur aux PR. Vérifier les nouveaux contrôles CI de `1dda721` ; aucun déploiement V9 n'est attesté par ces commits.
+
 ## Validation locale Node 22 et corrections en cours — 11 octobre 2026
 
 - Après `git fetch origin` dans les quatre dépôts, Production `796e7fc`, Stable `b1284080` et Updater Test `3d2b0e9e` restent alignés ; Data Lab a avancé sans conflit de `9484fd02c` à `01f6c2a1d` (rapports Tesla seulement). Branches locales : Production `fix/v9-tariff-labels-local`, Data Lab `docs/v9-tariff-labels-validation-local`. Aucun push ni déploiement.
