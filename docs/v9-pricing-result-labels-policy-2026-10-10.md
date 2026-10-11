@@ -1,6 +1,8 @@
 # TCC V9 — libellés des résultats tarifaires (décision du 10 octobre 2026)
 
-## Règle de présentation
+## Règle de présentation — rectification du 11 octobre 2026
+
+Dans l'interface V9, afficher **« Tarif incalculable »** pour toute offre identifiée sans calcul fiable, y compris un conflit entre offres du même EVSE, connecteur, puissance et catégorie. Conserver `ambiguous` et la raison exacte comme diagnostics internes. Afficher **« Prix non disponible »** lorsqu'aucune offre tarifaire exploitable n'est identifiée dans cette catégorie. Cette rectification supplante les libellés « Tarif ambigu » et « Tarif indisponible » demandés ci-dessous pour l'interface ; les distinctions de fond restent utiles à l'audit.
 
 - **Tarif ambigu** : au moins deux offres pour le même EVSE / connecteur, le même usage et le même instant, avec composantes incompatibles et aucune preuve suffisante pour départager. Ne sélectionner aucun montant arbitraire et ne pas afficher de coût numérique calculé à partir d'un des candidats.
 - **Tarif incalculable** : une offre déterminée existe, mais les variables ou règles nécessaires à son calcul sont inconnues ou non prises en charge. Aucune estimation prétendument précise.
@@ -22,13 +24,23 @@ Ne pas publier le prix d'un enregistrement alternatif d'un même EVSE pour conto
 
 Preuve : `reports/electroverse/manual-evidence-bry-sur-marne-pasteur-p1-2026-10-10.md`.
 
-## Acceptation
+## Acceptation historique — décision du 10 octobre
+
+Les libellés des points 1 et 3 ci-dessous décrivent la décision initiale. La rectification du 11 octobre fixe les critères d'interface applicables aujourd'hui.
 
 1. Cas ci-dessus : libellé exact « Tarif ambigu » (pas « indisponible » ni prix inventé).
 2. Offre unique à durée manquante : « Tarif incalculable ».
 3. Aucune offre : « Tarif indisponible ».
 4. Une autre offre indépendante, validée et exploitable pour la même borne continue à être calculée/affichée.
 5. Les filtres, classements et comparaisons n'utilisent pas un montant des offres « ambigu » ou « incalculable ».
+
+## Critères d'acceptation de l'interface — décision du 11 octobre
+
+1. Une offre identifiée dont le résultat est incomplet, ambigu ou non calculable affiche exactement **« Tarif incalculable »**, y compris chez Tesla, même si un total numérique figure dans les diagnostics.
+2. Une catégorie sans offre identifiée affiche exactement **« Prix non disponible »**. L'absence d'offre Tesla suit la même règle.
+3. Aucun total incomplet n'alimente un meilleur tarif, un classement, un marqueur de carte ou un coût par kilomètre. Une offre indépendante complète reste calculable.
+4. Les décisions sont isolées par EVSE, connecteur, puissance et catégorie tarifaire. Les conflits et leurs raisons exactes restent accessibles dans les diagnostics internes (`ambiguous`, `unresolved`, `missing`, `priced`).
+5. Les fenêtres tarifaires utilisent en priorité `pricing.timeZone`, puis le fuseau des métadonnées de l'offre, de la station et enfin de la session. Un fuseau source explicite invalide rend le calcul local incalculable ; le fuseau du Mac ou de l'utilisateur ne le remplace pas.
 
 **État :** règle de produit documentée. Le déploiement dans le moteur / UI V9 nécessite un changement testé dans le code et la publication de l'artefact de production ; cette fiche ne constitue pas une preuve de déploiement.
 
