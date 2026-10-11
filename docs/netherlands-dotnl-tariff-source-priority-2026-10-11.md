@@ -3,7 +3,7 @@ Date : 11 octobre 2026. Décision utilisateur.
 
 ## Règle de référence
 
-**DOT-NL est la source tarifaire canonique aux Pays-Bas.** Utiliser par défaut le tarif fourni et associé à l'EVSE/connecteur exact, sans le recontrôler individuellement dans le QR du CPO ni dans une application.
+**Cette politique s'applique sans exception à tous les CPO du pays, y compris Agri Go Charge, Laadnet, StellaPower, TotalEnergies, Ubitricity, Electra et les autres opérateurs de DOT-NL.**\n\n**DOT-NL est la source tarifaire canonique aux Pays-Bas.** Utiliser par défaut le tarif fourni et associé à l'EVSE/connecteur exact, sans le recontrôler individuellement dans le QR du CPO ni dans une application.
 
 Un objet de tarif **AD_HOC_PAYMENT**, **REGULAR** ou **sans type** émis par le CPO propriétaire de la station est recevable tant que son prix est cohérent, calculable et non explicitement signalé comme eMSP/itinérance/contrat tiers. En présence d'une alternative dans le même flux, préférer AD_HOC_PAYMENT ; en cas de contradictions réellement insolubles entre tarifs de même priorité, déclarer « tarif incalculable ».
 
@@ -39,4 +39,4 @@ Le besoin éventuel d'un moyen de paiement QR ne justifie **pas** une deuxième 
 - reports/netherlands/nl-cpo-unpriced-evse-inventory-2026-10-11.json
 - reports/netherlands/nl-direct-price-provenance-2026-10-11.json
 
-Les tarifs historiques des snapshots nationaux demeurent traçables. Aucune approximation ni prix eMSP ne sont injectés dans Direct.
+Contrôle automatisé : le script scripts/dotnl_national_tariff_guard.py compare **chaque référence tarifaire EVSE/connecteur nationale avant et après intégration des CPO**. Les références présentes doivent rester identiques pour tous les partyId ; seules les références absentes peuvent être enrichies. Le pipeline principal et la passe TotalEnergies publient le rapport de contrôle.\n\nLes tarifs historiques des snapshots nationaux demeurent traçables. Aucune approximation ni prix eMSP ne sont injectés dans Direct.
