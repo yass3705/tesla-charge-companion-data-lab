@@ -174,7 +174,10 @@ def main() -> None:
                 continue
             connector = national_connectors[0]
             old_keys = list(connector.get("tariffKeys") or [])
-            if old_keys and all(str(k).startswith("NL:ELD:") and data.get("tariffs", {}).get(k, {}).get("sourceKind") not in {None, "official_cpo_direct_payg_api"} for k in old_keys):
+            if old_keys:
+                # DOT-NL tariff always takes precedence, regardless of
+                # REGULAR / AD_HOC_PAYMENT / unspecified national type.
+                # An operator app source is fallback only for missing links.
                 stats["existing_preserved"] += 1
                 continue
             if not args.no_write:
