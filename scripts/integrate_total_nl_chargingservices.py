@@ -231,6 +231,8 @@ def main() -> None:
         tariffs[row["tariffKey"]] = tariff_for(row["grossEurPerKwh"])[1]
 
     changed = 0
+    existing_national_preserved = 0
+    promoted_rows = []
     conflicts = []
     for row in source_rows:
         station, evse, connector = national[(row["evseId"], row["connectorId"])]
@@ -244,10 +246,18 @@ def main() -> None:
                         old_gross.append(round(float(component["priceInclVat"]), 6))
         if old_gross and row["grossEurPerKwh"] not in old_gross:
             conflicts.append({"evseId": row["evseId"], "connectorId": row["connectorId"], "oldGross": old_gross, "newGross": row["grossEurPerKwh"]})
+        if old_ids:
+            # DOT-NL is authoritative: an exact national tariff wins even if
+            # the separate official PAYG portal advertises another price.
+            # Unresolved/contradictory national offers are audited separately
+            # and are never silently overwritten.
+            existing_national_preserved += 1
+            continue
         if not args.no_write:
             connector["tariffKeys"] = [row["tariffKey"]]
             connector["tariffIds"] = []
             connector["unresolvedTariffIds"] = []
+        promoted_rows.append(row)
         changed += 1
 
     if not args.no_write:
@@ -276,7 +286,9 @@ def main() -> None:
         "partyId": PARTY,
         "source": PORTAL,
         "tariffs": tariffs,
-        "matches": source_rows,
+        "matches": promoted_rows,
+        "sourceCandidates": len(source_rows),
+        "nationalTariffsPreserved": existing_national_preserved,
         "policy": {
             "officialWebApi": True,
             "directCpoOnly": True,
@@ -300,12 +312,14 @@ def main() -> None:
         },
         "dotnlInventory": {"stations": sum(1 for x in data.get("stations") or [] if x.get("partyId") == PARTY), "connectorRecords": len(national)},
         "exactPricedConnectorCount": changed,
-        "overlayTariffCount": len(tariffs),
+        "existingNationalTariffConnectorsPreserved": existing_national_preserved,
+        "operatorPortalCandidates": len(source_rows),
+        "overlayTariffCount": len({row["tariffKey"] for row in promoted_rows}),
         "rejectedReasons": dict(reasons),
         "conflictingExistingTariffs": conflicts,
         "status": "integrated" if not args.no_write else "candidate_only",
         "overlaySha256": hashlib.sha256(args.overlay.read_bytes()).hexdigest(),
-        "guardrails": ["No eMSP or roaming product", "No Visitor Hosting", "No PRIX FLEX/VARPRICE", "No station inheritance", "Exact EVSE and connector identity only"],
+        "guardrails": ["DOT-NL national tariff always preserved", "Portal fallback ONLY if exact connector lacks national tariff", "No eMSP or roaming product", "No Visitor Hosting", "No PRIX FLEX/VARPRICE", "No station inheritance", "Exact EVSE and connector identity only"],
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
