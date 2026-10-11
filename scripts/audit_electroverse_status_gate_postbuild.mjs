@@ -1,6 +1,7 @@
 /** Prevent publication of Electroverse offers sourced from UNKNOWN / OUTOFORDER EVSEs. */
 import fs from 'node:fs/promises';
 import zlib from 'node:zlib';
+import {isSupportedElectroverseConnector} from './lib/electroverse_connector_policy.mjs';
 const ROOT='data/platforms/electroverse/france-evse';
 const STAT='data/electroverse/live_statuses';
 const OUTPUT='reports/electroverse/status-gate-postbuild.json';
@@ -14,13 +15,18 @@ for(const [loc,entries] of Object.entries(doc.locations||{}))for(const [pk,statu
  statusByPk.set(String(pk),status);
 }
 const allowed=new Set(['AVAILABLE','CHARGING']);
-const bad=[],unknownProvenance=[],covered={};
+const bad=[],unknownProvenance=[],covered={},unsupportedConnectorMetadata=[];
 let offers=0,withPK=0,publishedSourcePkRefs=0;
 for(const tile of manifest.tiles||[]){
  const body=await gz(ROOT+'/'+tile.file);
  for(const offer of body.emspOffers||[]){
   offers++;
   const meta=offer.metadata||{};
+  const labelledStandards=[...(Array.isArray(meta.standards)?meta.standards:[]),...(meta.sourceStandard?[meta.sourceStandard]:[])];
+  for(const standard of labelledStandards){
+    if(!isSupportedElectroverseConnector({standard}))
+      unsupportedConnectorMetadata.push({offer:offer.id,standard,targets:offer.evseIds||[]});
+  }
   const ids=[...new Set([...(meta.electroverseEvsePks||[]),...(meta.electroverseAliasEvsePks||[]),meta.electroverseEvsePk].filter(x=>x!=null).map(String))];
   if(ids.length)withPK++;
   else {unknownProvenance.push({offer:offer.id,targets:offer.evseIds});continue;}
@@ -35,8 +41,10 @@ for(const tile of manifest.tiles||[]){
 const report={generatedAt:new Date().toISOString(),statusSnapshotAt:stat.generatedAt,overlayAt:manifest.generatedAt,
  offers,offersWithExplicitSourcePks:withPK,publishedSourcePkRefs,statusSummary:covered,
  invalidPublishedSourceRefs:bad.length,examples:bad.slice(0,100),missingProvenanceOffers:unknownProvenance.length,
- statusPkConflicts:statusConflicts.length,policy:'All published Electroverse offer source EVSE PKs must be AVAILABLE/CHARGING in status snapshot; reject any UNKNOWN, OUTOFORDER, missing or other.'};
+ statusPkConflicts:statusConflicts.length,
+ unsupportedConnectorMetadata:unsupportedConnectorMetadata.length,
+ unsupportedConnectorExamples:unsupportedConnectorMetadata.slice(0,40),policy:'All published Electroverse offer source EVSE PKs must be AVAILABLE/CHARGING in status snapshot; reject any UNKNOWN, OUTOFORDER, missing or other.'};
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(OUTPUT,JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify(report));
-if(bad.length||unknownProvenance.length||statusConflicts.length)process.exitCode=2;
+if(bad.length||unknownProvenance.length||statusConflicts.length||unsupportedConnectorMetadata.length)process.exitCode=2;
