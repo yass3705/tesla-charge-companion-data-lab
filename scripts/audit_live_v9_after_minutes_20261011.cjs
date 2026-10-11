@@ -131,12 +131,46 @@ check('historical_sample_classification_complete',
  historicalRateClassification.invalid,historical.length);
 const byProvider={};
 for(const ex of historical){const p=ex.provider||'UNKNOWN';byProvider[p]=(byProvider[p]||0)+1;}
+const historicalProfiles=new Map();
+const historicEvaluation={complete:0,incomplete:0,byReason:{},sampleFailures:[],sampleComplete:[]};
+for(const h of historical){
+ const offer=historicalById.get(String(h.offerId));
+ if(!offer)continue;
+ const rules=(offer.pricing?.rules||[]).filter(r=>Number(r.afterMinutesRate)>0);
+ for(const r of rules){
+  const signature=JSON.stringify({provider:h.provider,rate:r.afterMinutesRate,
+    threshold:r.afterMinutesThreshold,component:r.afterMinutesComponent||null,
+    cap:r.afterMinutesCap||0,capMode:r.afterMinutesCapMode||null,
+    capStart:r.afterMinutesCapStart||null,capEnd:r.afterMinutesCapEnd||null,
+    source:offer.source||null,notes:offer.note||null});
+  const p=historicalProfiles.get(signature)||{count:0,exampleIds:[]};
+  p.count++;if(p.exampleIds.length<3)p.exampleIds.push(h.offerId);
+  historicalProfiles.set(signature,p);
+ }
+ const session=mkSession(200),result=readOnly(offer,session);
+ if(result.complete){
+  historicEvaluation.complete++;
+  if(historicEvaluation.sampleComplete.length<8)
+    historicEvaluation.sampleComplete.push({id:h.offerId,provider:h.provider,totalEur:result.totalEur});
+ }else{
+  historicEvaluation.incomplete++;
+  const reason=result.reason||'UNKNOWN';
+  historicEvaluation.byReason[reason]=(historicEvaluation.byReason[reason]||0)+1;
+  if(historicEvaluation.sampleFailures.length<10)
+    historicEvaluation.sampleFailures.push({id:h.offerId,provider:h.provider,reason});
+ }
+}
+const historicalRuleProfiles=[...historicalProfiles].map(([k,v])=>({...JSON.parse(k),...v}))
+ .sort((a,b)=>b.count-a.count);
+check('historical_current_engine_evaluation_count',
+ historicEvaluation.complete+historicEvaluation.incomplete,historical.length);
 const srcObj={
  generatedAt:new Date().toISOString(),referenceEngineRepo:'yass3705/tesla-charge-companion-stable',
  referenceStableCommit:process.env.TCC_STABLE_REF||null,readOnly:true,
  engineSha256:crypto.createHash('sha256').update(fs.readFileSync(files[0])).digest('hex'),
  baselineReportAt:histPilot.generatedAt,
  historicalUnmodeledOffers:historical.length,historicalUnmodeledProviders:byProvider,historicalRateClassification,
+ historicalRuleProfiles,historicEvaluation,
  livePositiveRateOffers:selected.length,livePositiveRateOfferIds:ids,scenarios:profiles.length,
  checks:checks.length,passed:checks.filter(x=>x.pass).length,failed:violations.length,
  positiveRateSourceRuleDetails:selected.map(x=>({id:x.id,provider:x.provider,source:x.source,
