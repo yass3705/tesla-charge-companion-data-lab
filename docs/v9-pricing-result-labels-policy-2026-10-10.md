@@ -1,6 +1,8 @@
 # TCC V9 — libellés des résultats tarifaires (décision du 10 octobre 2026)
 
-## Règle de présentation
+## Règle de présentation — rectification du 11 octobre 2026
+
+Dans l'interface V9, afficher **« Tarif incalculable »** pour toute offre identifiée sans calcul fiable, y compris un conflit entre offres du même EVSE, connecteur, puissance et catégorie. Conserver `ambiguous` et la raison exacte comme diagnostics internes. Afficher **« Prix non disponible »** lorsqu'aucune offre tarifaire exploitable n'est identifiée dans cette catégorie. Cette rectification supplante les libellés « Tarif ambigu » et « Tarif indisponible » demandés ci-dessous pour l'interface ; les distinctions de fond restent utiles à l'audit.
 
 - **Tarif ambigu** : au moins deux offres pour le même EVSE / connecteur, le même usage et le même instant, avec composantes incompatibles et aucune preuve suffisante pour départager. Ne sélectionner aucun montant arbitraire et ne pas afficher de coût numérique calculé à partir d'un des candidats.
 - **Tarif incalculable** : une offre déterminée existe, mais les variables ou règles nécessaires à son calcul sont inconnues ou non prises en charge. Aucune estimation prétendument précise.
