@@ -1,4 +1,15 @@
-# État de reprise — 2026-10-11
+# État de reprise — 2026-10-12
+
+## État vérifié avant fusion des PR IONITY — 12 octobre 2026
+
+- **Production #40 fusionnée** : correctif du parcours navigateur RC1 sur l'artefact immuable `2026-09-30-r8`, commit de fusion `c48ad07aeb4085606e205ce0fdb59fa33253ddce`; [run RC1 post-fusion 38178557177](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38178557177) réussi. Aucun snapshot historique modifié.
+- **[Production #39](https://github.com/yass3705/tesla-charge-companion-production/pull/39)** : HEAD validé `e5ea99cb0bbcdb35c921b914ba509c56846877c3`, revue GitHub `CLEAN`. Vérifications réussies : [Allemagne 38180622767](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38180622767), [Ubitricity 38180625542](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38180625542), [développement épinglé et Playwright 38180625476](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38180625476), [V9 global et Playwright 38180625622](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38180625622). La publication Pages a été ignorée.
+- **[Data Lab #195](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/195)** : PR exclusivement documentaire `memory/CURRENT.md` et `memory/HISTORY.md`, sans modification de base tarifaire ou de snapshot ; `main` Data Lab vérifié à `a0572b8cbf60e10cda382c4375a7d2281650d640` avant fusion.
+- La provenance IONITY est **fail-closed** sur l'association explicite entre le commit Data Lab et les empreintes SHA-256 des deux sources. Les générations autorisées donnent 199 IONITY/3 isolées ou 200/4, avec 8 UUID en quarantaine, sans création de prix ni EVSE. Tout nouveau SHA Data Lab utilisé par le workflow global doit être vérifié puis déclaré explicitement, même si les sources sont identiques.
+- **Limite persistante** : l'archive source de l'overlay Electra du snapshot historique manque ; son manifeste compilé et ses tuiles sont contrôlés, uniquement pour le pin autorisé. Ne pas étendre silencieusement cette exception.
+- **Action de reprise** : valider et fusionner la PR documentaire #195 sur autorisation, vérifier que les blobs nationaux et IONITY n'ont pas changé, ajouter au manifeste de Production #39 la provenance du nouveau commit Data Lab uniquement après preuve d'identité des sources, puis vérifier toute la CI de #39 et fusionner après validation. Contrôles Pages : `workflow_dispatch` et `publish=true` obligatoires, valeur par défaut `false`. Aucune publication de V9 prévue.
+
+## Historique des étapes précédentes (constats valides à leur date, non statut courant)
 
 ## Validation locale du pin allemand IONITY — 11 octobre 2026
 
@@ -77,4 +88,4 @@ Cet audit porte sur les règles transverses et les dossiers explicitement docume
 
 ## Prochaine reprise
 
-Traiter les deux écarts de rendu/provenance ci-dessus dans le code Production avec tests adaptés, puis vérifier un nouvel artefact et le site après publication autorisée. Pour toute nouvelle session, refaire le `fetch` et la comparaison des quatre dépôts, relire la configuration de développement et le `shell-config.json` public, choisir un dossier de travail, puis consigner objectif, preuves, tests, commit, impact Production, blocages et prochaine action dans cette fiche et `HISTORY.md`. Les décisions prises seulement en conversation restent non synchronisées tant qu'elles ne figurent pas dans une branche ou PR GitHub identifiée.
+Vérifier les runs et les références exactes après chaque fusion, en conservant les pins immuables, le contrôle strict des provenances et les protections Pages. Les anciennes sections de cette fiche décrivent les étapes historiques et ne doivent pas être interprétées comme le statut actuel. Pour toute nouvelle session, refaire le `fetch` et la comparaison des quatre dépôts, relire la configuration de développement et le `shell-config.json` public, choisir un dossier de travail, puis consigner objectif, preuves, tests, commit, impact Production, blocages et prochaine action dans cette fiche et `HISTORY.md`. Les décisions prises seulement en conversation restent non synchronisées tant qu'elles ne figurent pas dans une branche ou PR GitHub identifiée.
