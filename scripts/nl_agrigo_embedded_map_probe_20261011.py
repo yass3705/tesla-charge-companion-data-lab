@@ -18,9 +18,9 @@ P=Path("reports/netherlands/nl-agrigo-embedded-map-probe-2026-10-11.json")
 URLS=["https://agrigo.nl/charge/locaties/","https://agrigo.nl/charge/tarieven/",
  "https://agrigo.nl/js/app.a2b628b3.js","https://agrigo.nl/js/chunk-vendors.48197fb4.js"]
 PATTERNS=[
- ("EVSE_ID",r"NL\\*AGO\\*E\\d{4,}"),("AGO_PARTY",r"NL[\\*:]*AGO"),("BRESKENS",r"Breskens"),
+ ("EVSE_ID",r"NL\*AGO\*E\d{4,}"),("AGO_PARTY",r"NL[\*:]*AGO"),("BRESKENS",r"Breskens"),
  ("ZIERIKZEE",r"Zierikzee"),("SAMPLE_E10894",r"E10894"),("SAMPLE_E10914",r"E10914"),
- ("API_HTTP",r"https?://[^\\s\\\x22\\x27<>\\\\]{8,140}"),
+ ("API_HTTP",r"https?://[^\s\\x22\x27<>\\]{8,140}"),
  ("API_LABEL",r"(?i)api|chargepoint|evse|tariff|betaal|webapp|qr|powergoodies|lastmile|mapbox"),
  ("LATITUDE",r"(?i)latitude"),("MAP_GEO",r"(?i)geojson|latlng|markercluster|mapapi")]
 def fetch(url):
@@ -43,10 +43,10 @@ def fetch(url):
                         candidates.append(s[:160])
                 r["observations"][name]={"count":len(matches),"uniqueCandidates":list(dict.fromkeys(candidates))[:35]}
             elif name=="API_LABEL":
-                r["observations"][name]={"count":len(matches),"sampleContexts":[re.sub(r"\\s+"," ",text[max(0,m.start()-90):m.end()+100])[:210] for m in matches[:18]]}
+                r["observations"][name]={"count":len(matches),"sampleContexts":[re.sub(r"\s+"," ",text[max(0,m.start()-90):m.end()+100])[:210] for m in matches[:18]]}
             else:
-                r["observations"][name]={"count":len(matches),"sampleContexts":[re.sub(r"\\s+"," ",text[max(0,m.start()-80):m.end()+140])[:260] for m in matches[:6]]}
-        r["publicInlineScriptSizes"]=sorted([len(x) for x in re.findall(r"<script[^>]*>([\\s\\S]*?)</script>",text,re.I)],reverse=True)[:12]
+                r["observations"][name]={"count":len(matches),"sampleContexts":[re.sub(r"\s+"," ",text[max(0,m.start()-80):m.end()+140])[:260] for m in matches[:6]]}
+        r["publicInlineScriptSizes"]=sorted([len(x) for x in re.findall(r"<script[^>]*>([\s\S]*?)</script>",text,re.I)],reverse=True)[:12]
     except Exception as e:
         r["httpError"]=type(e).__name__+": "+str(e)[:240]
     return r
@@ -63,7 +63,7 @@ def main():
       "eMSPPricesNeverUsed":True,
       "important":"Detection of an identifier, public mapping API or posted category price alone cannot establish an exact real QR ad-hoc tariff."
     }
-    P.write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\\n",encoding="utf8")
+    P.write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\n",encoding="utf8")
     print(json.dumps([{"url":r["url"],"http":r["status"],"bytes":r["bytes"],"hits":{k:v.get("count") for k,v in r["observations"].items()},"inlineScriptSizes":r.get("publicInlineScriptSizes"),"error":r["httpError"]} for r in rows],ensure_ascii=False,indent=2))
 
 if __name__=="__main__":main()
