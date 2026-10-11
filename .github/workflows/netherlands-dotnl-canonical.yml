@@ -60,10 +60,11 @@ jobs:
           set -euo pipefail
           python scripts/integrate_electra_nl_graphql.py
 
-      - name: Integrate exact official StellaPower NL direct-pay tariff
-        run: |
-          set -euo pipefail
-          python scripts/integrate_stellapower_nl_official.py
+      # DOT-NL is the canonical NL tariff authority. National CPO-owned
+      # AD_HOC_PAYMENT / REGULAR / untyped tariffs are used as provided
+      # whenever compilable and unambiguous. In particular, do NOT
+      # overwrite StellaPower's national tariffs with a QR-derived default.
+      # CPO website/QR investigation is only for no-tariff or ambiguous cases.
 
       - name: Build direct CPO runtime
         run: |
@@ -106,6 +107,16 @@ jobs:
                   if tariff.get("sourceKind")=="official_cpo_direct_payg_portal": ub2.append(tariff)
           assert len(ub2)==3670, len(ub2)
           assert all(t.get("type")=="AD_HOC_PAYMENT" and t.get("partyId")=="UB2" for t in ub2)
+          # Protect DOT-NL precedence for StellaPower; QR overrides must
+          # never replace a calculable national tariff by default.
+          spa_keys=[]
+          for station in data["stations"]:
+            if station.get("partyId") != "SPA": continue
+            for evse in station.get("evses",[]):
+              for connector in evse.get("connectors",[]):
+                spa_keys.extend(connector.get("tariffKeys") or [])
+          assert spa_keys, "StellaPower national tariffs unexpectedly missing"
+          assert all("STELLAPOWER-PAYG" not in k for k in spa_keys), "CPO override replaced DOT-NL reference"
           assert data["scope"]["publicOnly"] is True
           assert data["scope"]["teslaExcluded"] is True
           print(json.dumps({
