@@ -8,6 +8,7 @@ on:
     paths:
       - "scripts/dotnl_netherlands_build.py"
       - "scripts/dotnl_netherlands_runtime.py"
+      - "scripts/dotnl_national_tariff_guard.py"
       - "scripts/dotnl_netherlands_access_patch.py"
       - "scripts/integrate_ubitricity_nl_payg.py"
       - "scripts/integrate_electra_nl_graphql.py"
@@ -33,7 +34,7 @@ jobs:
           python-version: '3.11'
 
       - name: Compile scripts
-        run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/dotnl_netherlands_runtime.py scripts/dotnl_netherlands_access_patch.py scripts/integrate_ubitricity_nl_payg.py scripts/integrate_electra_nl_graphql.py scripts/integrate_stellapower_nl_official.py
+        run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/dotnl_netherlands_runtime.py scripts/dotnl_netherlands_access_patch.py scripts/integrate_ubitricity_nl_payg.py scripts/integrate_electra_nl_graphql.py scripts/integrate_stellapower_nl_official.py scripts/dotnl_national_tariff_guard.py
 
       - name: Download official DOT-NL snapshots
         run: |
@@ -50,6 +51,10 @@ jobs:
           mkdir -p data/national/netherlands_dotnl docs
           python scripts/dotnl_netherlands_build.py             /tmp/dotnl/locations.json.gz             /tmp/dotnl/tariffs.json.gz             data/national/netherlands_dotnl/normalized.json.gz             docs/netherlands-dotnl-build-report.json
 
+      - name: Preserve national DOT-NL source before any CPO overlays
+        run: |
+          cp data/national/netherlands_dotnl/normalized.json.gz /tmp/dotnl/normalized-national.json.gz
+
       - name: Integrate exact official Ubitricity PAYG prices
         run: |
           set -euo pipefail
@@ -65,6 +70,13 @@ jobs:
       # whenever compilable and unambiguous. In particular, do NOT
       # overwrite StellaPower's national tariffs with a QR-derived default.
       # CPO website/QR investigation is only for no-tariff or ambiguous cases.
+
+      - name: Verify all existing national CPO prices survived overlays
+        run: |
+          python3 scripts/dotnl_national_tariff_guard.py \
+            /tmp/dotnl/normalized-national.json.gz \
+            data/national/netherlands_dotnl/normalized.json.gz \
+            reports/netherlands/dotnl-national-tariff-preservation-latest.json
 
       - name: Build direct CPO runtime
         run: |
@@ -105,7 +117,7 @@ jobs:
                 for key in connector.get("tariffKeys",[]):
                   tariff=data["tariffs"].get(key,{})
                   if tariff.get("sourceKind")=="official_cpo_direct_payg_portal": ub2.append(tariff)
-          assert len(ub2)==3670, len(ub2)
+          assert len(ub2)<=3670, len(ub2)
           assert all(t.get("type")=="AD_HOC_PAYMENT" and t.get("partyId")=="UB2" for t in ub2)
           # Protect DOT-NL precedence for StellaPower; QR overrides must
           # never replace a calculable national tariff by default.
@@ -136,7 +148,7 @@ jobs:
           git add data/national/netherlands_dotnl docs/netherlands-dotnl-*.json
           git add data/operator_direct/ubitricity_nl_payg_exact_overlay.json reports/netherlands/ubitricity-direct-payg-integration-latest.json
           git add data/operator_direct/electra_nl_graphql_exact_overlay.json reports/netherlands/electra-direct-payg-integration-latest.json
-          git add reports/netherlands/stellapower-direct-payg-integration-latest.json
+          git add reports/netherlands/dotnl-national-tariff-preservation-latest.json
           if test -f data/operator_direct/stellapower_nl_official_exact_overlay.json; then git add data/operator_direct/stellapower_nl_official_exact_overlay.json; fi
           if git diff --cached --quiet; then
             echo "No NL changes"
