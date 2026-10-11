@@ -1,5 +1,11 @@
 # État de reprise — 2026-10-11
 
+## Revue corrective des PR #36 et #194 — 11 octobre 2026
+
+- Production #36 : correction préparée sur `fix/v9-tariff-labels-local` au commit `ca8e3e55ddb7a0f017fc564b4f457a46c831ea7b`. Le fuseau tarifaire suit `pricing.timeZone` > métadonnées de l'offre > station > session dans l'évaluation générale, la validité, le prix verrouillé au début et la chronologie de charge. Tests locaux ciblés : DST, date locale, chronologie, OCPI, SOC80, catégories et regroupement réussis. Un total d'offre incomplet ne peut plus alimenter le meilleur tarif, le coût/km, les marqueurs et les classements ; Tesla distingue une offre incalculable de l'absence d'offre. Le contrôle CI et l'absence de déploiement restent à confirmer après push.
+- Data Lab #194 : les critères d'acceptation de [la politique des libellés](../docs/v9-pricing-result-labels-policy-2026-10-10.md) sont actualisés pour l'interface, et la décision du 10 octobre est conservée comme historique. La publication de ces changements reste limitée aux branches des PR, sans fusion.
+- Fetch transversal : Production et Data Lab restent synchronisés avec leurs branches de PR ; Stable `main=b1284080` est aligné. Updater Test `main` local `3d2b0e9e` est derrière `origin/main=acb1d71e` d'un commit Electroverse indépendant ; aucune intégration effectuée.
+
 ## Revue GitHub ouverte — 11 octobre 2026
 
 - Production : branche `fix/v9-tariff-labels-local`, commit initial `7b471d6` puis correction de fixture navigateur `1dda721`, [PR #36](https://github.com/yass3705/tesla-charge-companion-production/pull/36). Data Lab : branche `docs/v9-tariff-labels-validation-local`, [PR #194](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/194). Les deux PR sont ouvertes vers `main`, liées réciproquement et non fusionnées.
