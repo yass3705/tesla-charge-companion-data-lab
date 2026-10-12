@@ -98,7 +98,7 @@ jobs:
           cp -a "$RUNNER_TEMP/nl-tiles" data/national/netherlands_dotnl/runtime
           python production-pin/scripts/build_refresh_candidate_config.py \
             --base production-pin/config/snapshots/2026-09-30-r9-electra-fr.json \
-            --datalab-sha "c7173fd03143a89f9fd41e4eed6e2c6d71531b52" --use-datalab-nl \
+            --datalab-sha "$source_sha" --use-datalab-nl \
             --snapshot-id "nl-policy-validation-${source_sha:0:12}" \
             --out "$RUNNER_TEMP/nl-candidate-config.json"
           python production-pin/scripts/validate_snapshot.py "$RUNNER_TEMP/nl-candidate-config.json"
