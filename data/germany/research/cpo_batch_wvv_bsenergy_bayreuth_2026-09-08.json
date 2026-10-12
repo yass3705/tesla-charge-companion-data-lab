@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "date": "2026-09-08",
+  "purpose": "First-pass exact ad-hoc tariff audit for previously unprocessed German CPO identities.",
+  "cpos": [
+    {
+      "canonicalName": "WVV Energie GmbH",
+      "aliases": ["WVV", "WVV Energie", "Würzburger Versorgungs- und Verkehrs-GmbH", "WVV Würzburg"],
+      "status": "complete",
+      "scope": "Public charging stations operated by WVV Energie",
+      "directPayment": "Ad-hoc charging with charge it easy app",
+      "tariff": {
+        "AC": {"energyEurPerKwh": 0.54, "blockingEurPerMinute": 0.10},
+        "DC": {"energyEurPerKwh": 0.69, "blockingEurPerMinute": 0.25},
+        "blockingRule": "Blocking fee starts immediately when an EV charging parking space remains occupied without ongoing charging, irrespective of time. No blocking fee in gated WVV Stadtverkehr parking areas and in the AC areas in Zell and Rimpar."
+      },
+      "evidence": [
+        {
+          "type": "official_cpo",
+          "url": "https://www.wvv.de/elektromobilitaet/ladepreis/",
+          "observed": "Official current WVV page explicitly labels the ad-hoc charge-it-easy column and publishes AC 54 ct/kWh + 10 ct/min and DC 69 ct/kWh + 25 ct/min, including the exact blocking rule and exceptions."
+        }
+      ],
+      "failClosedNotes": "Roaming prices are not generalized; official page warns they may differ."
+    },
+    {
+      "canonicalName": "BS|ENERGY",
+      "aliases": ["BS Energy", "BS|ENERGY Braunschweig", "Löwenladen", "BS|Löwenladen"],
+      "status": "complete",
+      "scope": "Public BS|ENERGY charging infrastructure",
+      "directPayment": "Direct Payment / ad-hoc",
+      "tariff": {
+        "AC": {"energyEurPerKwh": 0.53, "blockingEurPerMinute": 0.05, "blockingAfterMinutes": 240, "blockingWindow": "08:00-23:00"},
+        "DC_up_to_50kW": {"energyEurPerKwh": 0.59, "blockingEurPerMinute": 0.05, "blockingAfterMinutes": 90, "blockingWindow": "00:00-23:59"},
+        "DC_from_51kW": {"energyEurPerKwh": 0.59, "blockingEurPerMinute": 0.05, "blockingAfterMinutes": 60, "blockingWindow": "00:00-23:59"}
+      },
+      "evidence": [
+        {
+          "type": "official_cpo",
+          "url": "https://www.bs-energy.de/e-mobilitaet/ladeinfrastruktur",
+          "observed": "Official current BS|ENERGY infrastructure page has an explicit Direct Payment table: AC 0.53 EUR/kWh, DC 0.59 EUR/kWh, with blocking thresholds and time windows by power class."
+        },
+        {
+          "type": "official_cpo",
+          "url": "https://www.bs-energy.de/e-mobilitaet/loewenladen",
+          "observed": "Official Löwenladen page independently confirms own-network AC/DC prices and blocking rules; discounted electricity-customer tariff is kept separate."
+        }
+      ],
+      "failClosedNotes": "External EMP roaming prices are explicitly excluded; discounted BS|ENERGY electricity-customer prices are not substituted for Direct Payment."
+    },
+    {
+      "canonicalName": "Stadtwerke Bayreuth Energie und Wasser GmbH",
+      "aliases": ["Stadtwerke Bayreuth", "Stadtwerke Bayreuth Energie und Wasser", "LadeverbundPlus Bayreuth"],
+      "status": "partial_deferred",
+      "scope": "Public charging stations operated by Stadtwerke Bayreuth",
+      "directPayment": "QR-code ad-hoc charging without registration",
+      "tariff": null,
+      "evidence": [
+        {
+          "type": "official_cpo",
+          "url": "https://www.stadtwerke-bayreuth.de/energie-wasser/elektromobilitaet/laden-unterwegs",
+          "observed": "Official current page confirms an Ad-hoc-Tarif via QR code without the LadeverbundPlus app, but states that applicable tariffs are shown per charge point in the app or after scanning the QR code. No universal current numeric ad-hoc tariff is published on the accessible page."
+        }
+      ],
+      "deferReason": "Exact current direct price is ladepunkt-specific and exposed only in the QR checkout/app surface; no verified universal station/EVSE tariff matrix was obtainable from the accessible official page in this pass.",
+      "unlockNeeded": "Capture a public QR/direct-payment checkout for representative Stadtwerke Bayreuth EVSEs or a current official backend/export that maps each EVSE to its ad-hoc price; verify variation before any CPO-wide rule."
+    }
+  ],
+  "guardrails": [
+    "No historical, subscription, customer-discount or roaming tariff generalized to ad-hoc.",
+    "No station-level value extrapolated to a full CPO without an official scope statement.",
+    "Aliases are documentary only and do not create new eMI3 prefixes."
+  ]
+}

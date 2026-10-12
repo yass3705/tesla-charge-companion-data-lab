@@ -1,0 +1,99 @@
+name: Germany Pfalzwerke national direct overlay
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_pfalzwerke_overlay.py'
+      - '.github/workflows/germany-pfalzwerke-overlay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  overlay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore latest national direct-CPO staging catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/germany
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-national-direct-cpo-staging&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/direct-cpo.zip
+          unzip -q /tmp/direct-cpo.zip -d data/germany
+          test -s data/germany/germany_non_tesla_catalog_staging_direct_cpo.json.gz
+      - name: Restore latest Pfalzwerke tariff evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-pfalzwerke-direct-tariff&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/pfalzwerke.zip
+          unzip -q /tmp/pfalzwerke.zip -d data/germany
+          test -s data/germany/pfalzwerke_direct_tariff.json
+      - name: Apply Pfalzwerke direct energy-price precedence
+        run: python scripts/germany_pfalzwerke_overlay.py
+      - name: Validate Pfalzwerke overlay
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          with gzip.open('data/germany/germany_non_tesla_catalog_staging_direct_cpo_pfalzwerke.json.gz','rt',encoding='utf-8') as f:
+              d=json.load(f)
+          m=json.loads(Path('data/germany/germany_non_tesla_catalog_staging_direct_cpo_pfalzwerke_manifest.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-national-non-tesla-catalog-staging-direct-cpo'
+          assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
+          assert d['scope']['tariffsRankable'] is False
+          assert d['scope']['pfalzwerkeDirectEnergyPricesIncluded'] is True
+          s=d['stats']
+          assert s['pfalzwerkeDirectSites']==533, s
+          assert s['directCpoSites']==5493, s
+          assert s['directCpoProviders']=={'EWE Go':1204,'EnBW mobility+':2653,'Wirelane':1103,'Pfalzwerke':533}, s
+          assert s['directCpoConnectorClassRequiredSites']==3186, s
+          assert s['directCpoAppliedOutsideExactOperator']==0, s
+          pfalz_count=0
+          afir_preferred=0
+          for site in d['sites']:
+              pr=site['pricing']; assert pr['rankable'] is False
+              direct=pr.get('directCpo') or {}
+              preferred=pr.get('stagingPreferredTariff') or {}
+              if site['operator']=='Pfalzwerke AG':
+                  pfalz_count += 1
+                  assert direct['provider']=='Pfalzwerke' and direct['tariffModel']=='connector_class', site['id']
+                  assert direct['completeCostModel'] is False
+                  assert direct['taxIncluded'] is None
+                  assert direct['blockingFee']['assumedZero'] is False
+                  assert direct['connectorClassTariffs']['AC']['eurPerKwh']==0.58
+                  assert direct['connectorClassTariffs']['DC']['eurPerKwh']==0.79
+                  assert preferred['sourceType']=='direct_cpo' and preferred['provider']=='Pfalzwerke'
+                  assert preferred['productionRankable'] is False
+              elif preferred.get('sourceType')=='afir':
+                  afir_preferred += 1
+          assert pfalz_count==533, pfalz_count
+          assert s['pfalzwerkeAfirCandidatesOverridden'] >= 200, s
+          assert s['pfalzwerkeAfirCandidatesOverridden'] <= 533, s
+          assert afir_preferred==s['validatedAfirFallbackPreferredSites'], (afir_preferred,s)
+          assert m['stats']==s
+          print('TCC_GERMANY_PFALZWERKE_OVERLAY_VALIDATED='+json.dumps({
+              'directCpoSites':s['directCpoSites'],
+              'providers':s['directCpoProviders'],
+              'connectorClassSites':s['directCpoConnectorClassRequiredSites'],
+              'pfalzwerkeAfirOverridden':s['pfalzwerkeAfirCandidatesOverridden'],
+              'afirFallbackSites':s['validatedAfirFallbackPreferredSites'],
+              'afirPriceDistribution':s['pfalzwerkeOverriddenAfirPriceDistribution']
+          },sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-national-direct-cpo-staging-pfalzwerke
+          path: |
+            data/germany/germany_non_tesla_catalog_staging_direct_cpo_pfalzwerke.json.gz
+            data/germany/germany_non_tesla_catalog_staging_direct_cpo_pfalzwerke_manifest.json
+          if-no-files-found: error
+          retention-days: 30

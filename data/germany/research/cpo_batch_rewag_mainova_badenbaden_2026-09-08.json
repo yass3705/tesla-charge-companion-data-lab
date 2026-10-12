@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "date": "2026-09-08",
+  "policy": "Exact public/ad-hoc tariff evidence only. Subscription, roaming, historical and sampled station values are not generalized beyond their proven scope.",
+  "cpos": [
+    {
+      "operator": "REWAG Regensburger Energie- und Wasserversorgung AG & Co KG",
+      "aliases": ["REWAG", "REWAG Regensburg", "r.charge", "rewario.strom.mobil"],
+      "status": "partial",
+      "authoritativePrefix": null,
+      "publishedEvseExample": "DE*GUC*E*RWG*xxxx",
+      "findings": {
+        "publicNetwork": "REWAG states it manages more than 1,000 charging points, about 590 of them public in the region.",
+        "directPayment": "Official direct payment via PayPal requires no specific charging card: scan the QR code and enter payment data online.",
+        "directAC": "Normal charging stations up to 49 kW: 0.5000 EUR/kWh. Where a blocking fee applies: 0.0200 EUR/min between 09:00 and 19:00 from the 121st minute of standing time.",
+        "directDC": "Fast charging stations from 50 kW: 0.5500 EUR/kWh. Where a blocking fee applies: 0.1000 EUR/min from the 61st minute of standing time.",
+        "stationSpecificBlocking": "REWAG explicitly states that the blocking fee is charged only at various stations in the Regensburg city area and that affected locations are marked in the station descriptions."
+      },
+      "reason": "Energy and applicable blocking rates are exact and official, but the blocking-fee applicability flag remains station-specific. Exact total pricing is not complete until the affected station/EVSE set is mapped exhaustively.",
+      "neededToComplete": "Harvest the official REWAG station list/description flags and map every represented REWAG EVSE to blocking-fee applicable or not-applicable, preserving the <=49 kW and >=50 kW bands.",
+      "sources": [
+        "https://www.rewag.de/e-mobilitaet/ladestrom-tarif",
+        "https://www.rewag.de/e-mobilitaet/ladekarte",
+        "https://www.rewag.de/unternehmen/engagement/elektromobilitaet"
+      ]
+    },
+    {
+      "operator": "Mainova AG",
+      "aliases": ["Mainova", "Mainova Frankfurt", "Mainova Ladepunkte"],
+      "status": "partial",
+      "authoritativePrefix": null,
+      "findings": {
+        "publicNetwork": "Mainova stated on 2026-05-11 that it operates around 750 charging points and is a major charging-infrastructure provider in Hesse.",
+        "currentDigitalAccess": "Mainova directs public charging users to the Shell Recharge app; the 2026 Mainova/Shell partnership states that Mainova customers receive 20% off the current kWh price at Mainova stations when charging through the Shell app.",
+        "pricingScope": "The official partnership announcement refers to the current kWh price but does not publish a numeric network-wide direct/ad-hoc tariff or prove that one price applies to every Mainova station/EVSE."
+      },
+      "reason": "Current charging infrastructure and Shell-mediated pricing are official, but no exact numeric station/EVSE direct tariff matrix is exposed in the audited Mainova pages. A discount statement cannot be inverted into an underlying price.",
+      "neededToComplete": "Resolve Shell Recharge/Mainova station identifiers against Mainova EVSEs and capture the exact current direct price and any time/blocking/parking component per station from a public checkout or official station feed.",
+      "sources": [
+        "https://www.mainova.de/de/loesungen/elektromobilitaet",
+        "https://www.mainova.de/de/ihre-mainova/presse/pressemitteilungen/2026/shell-und-mainova-bieten-mehr-ladepower-fuer-hessen-und-vereinbaren-langfristige-ladepartnerschaft--168004"
+      ]
+    },
+    {
+      "operator": "Stadtwerke Baden-Baden",
+      "aliases": ["Stadtwerke Baden-Baden", "SW Baden-Baden", "e-laden Baden-Baden"],
+      "status": "partial",
+      "authoritativePrefix": null,
+      "findings": {
+        "historicalOfficialTariff": "An official Stadtwerke Baden-Baden price sheet published for validity from 2023-02-01 documents ad-hoc AC at 1.50 EUR start + 0.63 EUR/kWh + 0.05 EUR/min from minute 61, and ad-hoc DC at 1.50 EUR start + 0.77 EUR/kWh + 0.05 EUR/min from minute 1.",
+        "freshness": "No newer official electromobility price sheet establishing those values as current in September 2026 was found in the audited public source surface."
+      },
+      "reason": "The only exact official ad-hoc matrix found is explicitly old. It is retained as historical discovery evidence but must not be used as a current 2026 tariff.",
+      "neededToComplete": "Locate a current 2026 Stadtwerke Baden-Baden/e-laden tariff sheet, station QR checkout or AFIR/Mobilithek tariff publication and map the exact current values to represented stations/EVSEs.",
+      "sources": [
+        "https://www.stadtwerke-baden-baden.de/media/docs/mobilitaet-freizeit/elektromobilitaet/Preisblatt_Stand_Maerz_2022.pdf"
+      ]
+    }
+  ],
+  "consistency": {
+    "newFirstPassIdentities": 3,
+    "complete": 0,
+    "partial": 3,
+    "blocked": 0,
+    "prefixesInvented": 0,
+    "historicalTariffsPromotedCurrent": 0,
+    "subscriptionTariffsGeneralizedToAdHoc": 0,
+    "stationSpecificFeesGeneralizedNetworkWide": 0
+  }
+}

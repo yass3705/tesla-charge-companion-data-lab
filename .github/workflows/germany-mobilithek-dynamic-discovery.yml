@@ -1,0 +1,26 @@
+name: Germany Mobilithek dynamic discovery
+
+on:
+  push:
+    branches:
+      - feature/germany-national-base
+    paths:
+      - 'scripts/germany_mobilithek_dynamic_discovery.py'
+      - '.github/workflows/germany-mobilithek-dynamic-discovery.yml'
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover current dynamic AFIR offers
+        run: python scripts/germany_mobilithek_dynamic_discovery.py
+      - name: Upload discovery metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: germany-mobilithek-dynamic-discovery-${{ github.run_id }}
+          path: data/germany/mobilithek_dynamic_discovery.json
+          if-no-files-found: error
+          retention-days: 7

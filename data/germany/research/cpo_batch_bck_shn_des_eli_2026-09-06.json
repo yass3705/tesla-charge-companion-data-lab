@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-06",
+  "scope": "Germany V9 remaining CPO research",
+  "cpos": [
+    {
+      "prefix": "DEBCK",
+      "status": "partial",
+      "alias": "Backcharge GmbH / roaming-platform prefix",
+      "conclusion": "Shared platform prefix, not a single tariff authority. Public ladenetz roaming matrix maps DEBCK through Backcharge to many distinct CPOs/brands (including BayWa r.e., Firmenladen, NEW AG, Qwello, LichtBlick and others). Fail closed: resolve downstream physical CPO/EVSE before pricing; no DEBCK-wide tariff.",
+      "sources": ["https://www.stadtwerke-muehlhausen.de/Strom/MUeHLSTROM-MOBIL-E-Mobilitaet-in-Muehlhausen/PremiumPlus-ladenetz.pdf"]
+    },
+    {
+      "prefix": "DESHN",
+      "status": "partial",
+      "alias": "Stadtwerke Heilbronn GmbH",
+      "conclusion": "Official current ad-hoc tariff is 0.69 EUR/kWh. Blocking fee: 0.10 EUR/min after 240 min AC or 120 min DC, capped at 12 EUR generally and 4 EUR at SWHN locations with a parking fee. Kept partial until all canonical DESHN EVSE are confirmed to be tariff-authoritative SWHN assets rather than represented partner assets.",
+      "sources": ["https://www.stadtwerke-heilbronn.de/swh/e-energie/e_mobilitaet.php"]
+    },
+    {
+      "prefix": "DEDES",
+      "status": "partial",
+      "alias": "TotalEnergies-dominant / shared station-level pricing scope",
+      "conclusion": "TotalEnergies officially states there is no uniform network price; prices vary by location/payment context and must be read per station in Charge Europe / Find a Charger. Some stations add blocking fees. Therefore DEDES must remain station/EVSE-resolved and no network fallback may be inferred. Summer 2026 0.59 EUR/kWh promotion expired 2026-08-31 and is not current.",
+      "sources": ["https://totalenergies.de/elektromobilitaet/faq_alternative/ladevorgang-starten-stoppen-und-bezahlen/was-genau-kostet-ein", "https://totalenergies.de/elektromobilitaet/sommeraktion"]
+    },
+    {
+      "prefix": "DEELI",
+      "status": "partial",
+      "alias": "eliso GmbH dominant / station-level pricing",
+      "conclusion": "Current direct-payment station observations are not uniform: multiple eliso sites show 0.53 EUR/kWh plus 0.12 EUR/min after 60 min, while Ochsenfurt shows 0.49 EUR/kWh plus 0.10 EUR/min after 60 min. These third-party station-level observations are discovery evidence only, so no eliso-wide tariff is promoted without a primary exhaustive source or exact EVSE checkout mapping.",
+      "sources": ["https://www.ladeguru.de/ladestation/eliso-gmbh/63695-glauburg/23374", "https://www.ladeguru.de/ladestation/eliso-gmbh/97199-ochsenfurt/23370"]
+    }
+  ],
+  "policy": "No sampled, promotional, roaming or third-party tariff is generalized beyond its source scope. Shared prefixes remain fail-closed until EVSE-to-physical-CPO resolution is explicit."
+}

@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "operationalDenominator": 591,
+  "canonicalCountPolicy": "Frozen at last user-directed known total; no canonical reconstruction during first-pass traversal.",
+  "firstPassPriority": true,
+  "historicalSeenCountCertified": false,
+  "reliableNewFirstPassesSinceCanonicalFreeze": 40,
+  "reliableClassificationSinceCanonicalFreeze": {
+    "complete": 4,
+    "partialOrDeferred": 36,
+    "blocked": 0
+  },
+  "thisRun": {
+    "newFirstPasses": 3,
+    "complete": 1,
+    "partial": 2,
+    "blocked": 0,
+    "completed": ["FairEnergie GmbH"],
+    "deferredAfterFirstPass": ["Stadtwerke Nürtingen GmbH", "Stadtwerk am See GmbH & Co. KG"],
+    "aliasesResolved": {
+      "FairEnergie GmbH": ["FairEnergie", "FairEnergie Reutlingen", "FairStromEmobil"],
+      "Stadtwerke Nürtingen GmbH": ["Stadtwerke Nürtingen", "SW Nürtingen", "SWN Nürtingen"],
+      "Stadtwerk am See GmbH & Co. KG": ["Stadtwerk am See", "STADTWERK AM SEE", "SWSee", "Mein Auto Strom"]
+    },
+    "authoritativePrefixMappings": {
+      "FairEnergie GmbH": null,
+      "Stadtwerke Nürtingen GmbH": null,
+      "Stadtwerk am See GmbH & Co. KG": null
+    }
+  },
+  "consistency": {
+    "reAuditedDeferredCpos": 0,
+    "canonicalRebuildRetried": false,
+    "prefixWideTariffExtrapolations": 0,
+    "duplicateAliasFindings": 0,
+    "identicalInvestigationOverTwoRuns": 0,
+    "denominatorCheck": "591 retained as frozen operational denominator; legacy 568 remains reference-only.",
+    "activePr": "yass3705/tesla-charge-companion-data-lab PR #73, branch feature/germany-national-base",
+    "registryPrecheck": {
+      "FairEnergie GmbH": "no occurrence in the active PR patch before this pass",
+      "Stadtwerke Nürtingen GmbH": "no occurrence in the active PR patch before this pass",
+      "Stadtwerk am See GmbH & Co. KG": "no occurrence in the active PR patch before this pass"
+    },
+    "notes": [
+      "FairEnergie official current ad-hoc tariff is complete: 0.65 EUR/kWh AC/DC, no base fee, blocking 0.10 EUR/min from minute 241, capped at 12 EUR/session, charged 06:00-24:00 and not charged 00:00-06:00.",
+      "Nürtingen official current page confirms QR/Ladepay ad-hoc via PayPal/card but exposes only the separate SWN customer-card numeric tariff; direct price remains fail-closed.",
+      "Stadtwerk am See confirms eCharge+ and Direct Payment at its stations but exposes only the MEIN AUTO STROM subscriber price, labelled valid from 2022-12-01; no current direct amount inferred.",
+      "No subscriber, roaming, historical or sampled station tariff was generalized to a direct CPO tariff.",
+      "No authoritative eMI3 prefix was invented for any of the three CPOs."
+    ]
+  },
+  "evidencePath": "data/germany/research/cpo_batch_fairenergie_nuertingen_swsee_2026-09-07.json",
+  "nextPolicy": "Continue only with identities absent from active PR first-pass evidence; prioritize official QR/direct-payment price surfaces, then AFIR/Mobilithek/DATEX II station-level mapping."
+}

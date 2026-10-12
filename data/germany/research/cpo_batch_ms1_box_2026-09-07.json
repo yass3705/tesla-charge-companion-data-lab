@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "researchDate": "2026-09-07",
+  "policy": {
+    "firstPassPriority": true,
+    "noPrefixWideExtrapolation": true,
+    "subscriptionAndRoamingSeparatedFromDirectPayment": true,
+    "aggregatorsDiscoveryOrStationScopedOnly": true
+  },
+  "cpos": [
+    {
+      "cpoId": "DEMS1",
+      "displayPrefix": "DE*MS1",
+      "operator": "Stadtwerke Münster GmbH",
+      "classification": "partial",
+      "deferAfterFirstPass": true,
+      "aliasConfidence": "high",
+      "evidence": [
+        {
+          "type": "station-level-current",
+          "source": "ladestau.de / chargecloud",
+          "url": "https://ladestau.de/muenster/stadtwerke-muenster-fabian-cammarata/",
+          "observed": "DE*MS1*E*MS*097*01*01, *01*02, *02*01 and *02*02: 0.47 EUR/kWh AC"
+        },
+        {
+          "type": "station-level-current",
+          "source": "ladestau.de / chargecloud",
+          "url": "https://ladestau.de/muenster/stadtwerke-muenster-bremer-platz-54/",
+          "observed": "DE*MS1*E*MS*077*01*01 through sampled Bremer Platz EVSEs: 0.47 EUR/kWh AC"
+        },
+        {
+          "type": "official-contract-tariff",
+          "source": "Stadtwerke Münster",
+          "url": "https://www.stadtwerke-muenster.de/geschaeftskunden/e-mobilitaet/ladekarte",
+          "observed": "Business Ladekarte publishes separate contractual AC/DC energy and time components; retained as contract-channel evidence only, not ad-hoc pricing."
+        }
+      ],
+      "conclusion": "Current station-level chargecloud-backed observations support 0.47 EUR/kWh on sampled DE*MS1 AC EVSEs, but no primary exhaustive direct-payment matrix was found. Keep fail-closed outside explicitly evidenced EVSEs; do not generalize the sampled 0.47 EUR/kWh to all DE*MS1 points."
+    },
+    {
+      "cpoId": "DEBOX",
+      "displayPrefix": "DE*BOX",
+      "operator": "Stadtwerke Bochum GmbH",
+      "classification": "partial",
+      "deferAfterFirstPass": true,
+      "aliasConfidence": "high",
+      "evidence": [
+        {
+          "type": "official-direct-payment-policy",
+          "source": "Stadtwerke Bochum",
+          "url": "https://www.stadtwerke-bochum.de/faq/faq-detail/elektromobilitaet-17",
+          "observed": "Ad-hoc charging is supported by QR code with PayPal or credit card; official page does not state the ad-hoc numeric tariff."
+        },
+        {
+          "type": "official-contract-tariff",
+          "source": "Stadtwerke Bochum",
+          "url": "https://www.stadtwerke-bochum.de/geschaeftskunden/elektromobilitaet/tarife-und-ladekarte",
+          "observed": "Stadtwerkedrive card tariff is 0.50 EUR/kWh AC/DC, with separate time rules; operator explicitly warns ad-hoc/fremdanbieter tariffs can differ."
+        },
+        {
+          "type": "station-level-current",
+          "source": "e-Stations.de",
+          "url": "https://www.e-stations.de/ladestationen/bochum/stadtwerke-bochum-ostring-28-56871",
+          "observed": "DE*BOX*EAC0054 at Ostring 28: 0.51 EUR/kWh AC, no start fee, 0.10 EUR/min blocking fee after 240 min; page also exposes a 0.55 EUR/kWh HPC ad-hoc value at the site."
+        }
+      ],
+      "conclusion": "DE*BOX is confirmed for Stadtwerke Bochum and exact direct-payment values exist at sampled EVSE/site scope. Because the official operator page explicitly distinguishes card and ad-hoc tariffs and does not publish an exhaustive direct matrix, retain only station/EVSE-scoped values and do not apply the 0.50 EUR/kWh card tariff network-wide to direct payment."
+    }
+  ],
+  "runSummary": {
+    "newFirstPasses": 2,
+    "complete": 0,
+    "partial": 2,
+    "blocked": 0,
+    "deferredAfterFirstPass": ["DEMS1", "DEBOX"]
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "date": "2026-09-08",
+  "purpose": "Germany V9 first-pass tariff audit; exact contract-free station/EVSE pricing only, fail-closed where current direct pricing is not proven.",
+  "cpos": [
+    {
+      "canonicalName": "Stadtwerke Norderstedt",
+      "aliases": ["Stadtwerke Norderstedt GmbH", "TuWatt+2Go", "m8mit Norderstedt"],
+      "status": "complete",
+      "officialEvidence": [
+        {
+          "url": "https://www.stadtwerke-norderstedt.de/e-mobilitaet/bezahlmoeglichkeiten",
+          "observed": "2026-09-08",
+          "facts": "Official live payment page states spontaneous ad-hoc charging is available at all Norderstedt charging stations. SMS, web and m8mit-app direct payment are 0.6528 EUR/kWh AC and 0.7718 EUR/kWh DC; web/app use credit card or PayPal. Giro-e is available at DC fast chargers and is 0.66 EUR/kWh plus 0.35 EUR activation per session. The page separately identifies TuWatt+2Go RFID contract pricing, which is not used as ad-hoc pricing."
+        }
+      ],
+      "exactDirectTariffs": [
+        {"payment":"SMS / m8mit web / m8mit app", "acEurPerKwh":0.6528, "dcEurPerKwh":0.7718, "sessionFeeEur":0.0},
+        {"payment":"Giro-e", "scope":"DC fast chargers where Giro-e is installed", "dcEurPerKwh":0.66, "sessionFeeEur":0.35}
+      ],
+      "failClosedNotes": "No TuWatt+2Go RFID subscriber price is substituted for ad-hoc. Giro-e is not generalized to AC because the official page says it is currently available at DC fast chargers."
+    },
+    {
+      "canonicalName": "LSW Energie GmbH & Co. KG",
+      "aliases": ["LSW", "LSW Energie", "LSW Autostrom", "LSW Wolfsburg"],
+      "status": "partial/deferred",
+      "officialEvidence": [
+        {
+          "url": "https://www.lsw.de/produkte/strom/lsw-autostrom/",
+          "observed": "2026-09-08",
+          "facts": "Official live LSW AUTOSTROM page publishes 0.55 EUR/kWh AC and 0.65 EUR/kWh DC at LSW-operated charge points with no blocking fee, but presents these values as the LSW AUTOSTROM mobility-provider product. Partner locations use the price and conditions shown in eCharge+."
+        }
+      ],
+      "reasonDeferred": "A current official public contract-free QR/card/ad-hoc price contract for all LSW-operated EVSEs was not found. The published 0.55/0.65 EUR/kWh values are tied to the LSW AUTOSTROM product and therefore cannot be promoted as universal ad-hoc pricing.",
+      "neededToComplete": "Resolve an official LSW direct-payment/QR checkout or station-level public payload for representative LSW EVSE IDs, then map exact direct price and any payment-specific fees per EVSE without substituting the AUTOSTROM subscriber tariff."
+    },
+    {
+      "canonicalName": "Energie und Wasser Potsdam GmbH",
+      "aliases": ["EWP", "Stadtwerke Potsdam", "EWP EchtMobil"],
+      "status": "partial/deferred",
+      "officialEvidence": [
+        {
+          "url": "https://www.swp-potsdam.de/elektromobilit%C3%A4t/faq/",
+          "observed": "2026-09-08",
+          "facts": "Official FAQ current in 2026 confirms contract-free ad-hoc access at EWP EchtMobil chargers by scanning the QR code (Direct Payment) and paying by credit card. It reports 130 EWP public charge points as of 2026-03-01."
+        },
+        {
+          "url": "https://www.swp-potsdam.de/echtmobilapp/",
+          "observed": "2026-09-08",
+          "facts": "Official EWP EchtMobil app page displays 0.52 EUR/kWh AC and 0.62 EUR/kWh DC for EWP locations plus time fees, but labels the table as valid from 2024-05-01 and describes the app/contract product rather than explicitly tying those numbers to QR Direct Payment."
+        }
+      ],
+      "reasonDeferred": "Current official documentation proves a QR/card ad-hoc path but does not publish a current numeric tariff explicitly bound to that Direct Payment path. The EchtMobil app tariff is not assumed to equal ad-hoc.",
+      "neededToComplete": "Open a public EWP QR/Direct Payment checkout or obtain an official station-level tariff payload and bind its current numeric energy/time components to exact EWP EVSEs."
+    }
+  ],
+  "consistency": {
+    "newFirstPassIdentities": 3,
+    "complete": 1,
+    "partialDeferred": 2,
+    "blockedSetAside": 0,
+    "unsafeExtrapolations": 0,
+    "duplicatePriorBatchByFilenameOrVisibleAlias": false
+  }
+}

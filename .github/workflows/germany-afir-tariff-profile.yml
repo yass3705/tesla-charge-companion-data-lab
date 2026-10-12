@@ -1,0 +1,42 @@
+name: Germany AFIR tariff semantics profile
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_afir_tariff_profile.py'
+      - '.github/workflows/germany-afir-tariff-profile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Profile AFIR tariff semantics
+        run: python scripts/germany_afir_tariff_profile.py
+      - name: Validate tariff profile
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/afir_tariff_profile.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-afir-tariff-profile'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          assert d['scope']['tariffsRankable'] is False
+          assert set(d['providers']) == {'chargecloud','eround','qwello'}
+          assert d['providers']['chargecloud']['stats']['sitesWithActualPrice'] > 5000
+          assert d['providers']['eround']['stats']['sitesWithActualPrice'] > 3000
+          print('TCC_AFIR_TARIFF_PROFILE_VALIDATED='+json.dumps({p:r['stats'] for p,r in d['providers'].items()},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-afir-tariff-profile
+          path: data/germany/afir_tariff_profile.json
+          if-no-files-found: error
+          retention-days: 30

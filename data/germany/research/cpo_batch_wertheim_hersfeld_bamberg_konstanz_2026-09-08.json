@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "auditedAt": "2026-09-08T11:50:00+01:00",
+  "purpose": "Forward first-pass audit of previously unvisited German CPO identities under the frozen 591-CPO denominator.",
+  "cpos": [
+    {
+      "canonicalName": "Stadtwerke Wertheim GmbH",
+      "aliases": ["Stadtwerke Wertheim", "SW Wertheim"],
+      "status": "complete",
+      "directPricing": {
+        "currency": "EUR",
+        "vatIncluded": true,
+        "acEurPerKwh": 0.69,
+        "dcEurPerKwh": 0.86,
+        "dcBlockingEurPerMinute": 0.10,
+        "dcBlockingStartsAfterMinutes": 45
+      },
+      "scope": "Official Stadtwerke Wertheim public charging tariff table; ad-hoc is explicitly identified as one-time QR-code authentication. The page is current and also documents the September 2026 LadeVerbundPlus app transition.",
+      "evidence": [
+        "https://www.stadtwerke-wertheim.de/ladesaeulen"
+      ],
+      "guardrails": [
+        "Do not apply registered-app or partner tariffs to ad-hoc sessions.",
+        "No AC blocking fee is invented; the official page explicitly states the blocking fee for DC use."
+      ]
+    },
+    {
+      "canonicalName": "Stadtwerke Bad Hersfeld GmbH",
+      "aliases": ["Stadtwerke Bad Hersfeld", "SWH Bad Hersfeld"],
+      "status": "partial",
+      "verified": {
+        "acAdHocEurPerKwh": 0.62,
+        "acBlockingByLocation": [
+          {"locations": ["Am Markt", "Dudenstrasse"], "eurPerMinute": 0.02},
+          {"locations": ["Verwaltungsgebaeude Stadtwerke Bad Hersfeld, Kleine Industriestrasse 1"], "eurPerMinute": 0.01},
+          {"locations": ["P&R Parkplatz Bismarckstrasse"], "eurPerMinute": 0.00}
+        ],
+        "blockingTimeWindow": "20:00-08:00 no blocking fee"
+      },
+      "reason": "The official current page gives exact AC ad-hoc pricing and station-dependent blocking fees, but instructs users to consult the LadeVerbundPlus app for DC pricing. DC therefore remains fail-closed until mapped per station/EVSE.",
+      "neededToComplete": "Resolve current DC direct/ad-hoc price and any DC blocking rule for every represented Bad Hersfeld DC EVSE from the official app/QR checkout or another official station-level feed.",
+      "evidence": [
+        "https://www.stadtwerke-hef.de/de/Produkte/Unsere-Produkte/Elektromobilitaet/Ladetarife/Ladetarife-fuer-oeffentliche-E-Ladestationen.html"
+      ]
+    },
+    {
+      "canonicalName": "Stadtwerke Bamberg Energie- und Wasserversorgungs GmbH",
+      "aliases": ["Stadtwerke Bamberg", "STWB", "STWB Bamberg"],
+      "status": "partial",
+      "verified": {
+        "registeredLadeVerbundPlusOwnNetworkEurPerKwh": 0.55,
+        "publicNetworkScopeConfirmed": true,
+        "platform": "LadeVerbundPlus"
+      },
+      "reason": "The current official Stadtwerke Bamberg page confirms its public network and a 0.55 EUR/kWh LadeVerbundPlus price when Stadtwerke Bamberg is selected as provider, but does not publish a current exact ad-hoc QR tariff. Historic/generic LadeVerbundPlus ad-hoc values are not substituted because pricing and app arrangements are changing in September 2026.",
+      "neededToComplete": "Capture the current ad-hoc QR checkout price and blocking-fee applicability per STWB station/EVSE after the September 2026 LadeVerbundPlus transition.",
+      "evidence": [
+        "https://www.stadtwerke-bamberg.de/e-laden",
+        "https://www.stadtwerke-bamberg.de/mobilitaet/e-mobilitaet"
+      ]
+    },
+    {
+      "canonicalName": "Stadtwerke Konstanz Mobil GmbH",
+      "aliases": ["Stadtwerke Konstanz", "Stadtwerke Konstanz Mobil", "KMG"],
+      "status": "partial",
+      "verified": {
+        "ownNetworkLadekarteEurPerKwh": 0.44,
+        "tariffValidFrom": "2025-03-01",
+        "publicChargePointsReported2026": 185,
+        "publicSitesReported2026": 34
+      },
+      "reason": "The official current charging page publishes 0.44 EUR/kWh for the Stadtwerke Konstanz charging card on its own stations, with monthly card fees depending on customer class. It does not expose a current contract-free/ad-hoc price. The charging contracts moved to Stadtwerke Konstanz Mobil GmbH from 2025, so the legal alias is recorded explicitly.",
+      "neededToComplete": "Resolve the direct/ad-hoc QR or card-payment tariff, including any time/blocking component, for each KMG/Stadtwerke Konstanz station/EVSE from an official checkout or public station feed.",
+      "evidence": [
+        "https://www.stadtwerke-konstanz.de/bauen-wohnen/elektromobilitaet/unterwegs-laden/",
+        "https://www.stadtwerke-konstanz.de/parken-laden/aktuelles/elektromobilitaet-in-konstanz-weiter-auf-wachstumskurs/",
+        "https://www.stadtwerke-konstanz.de/parken-laden/aktuelles/uebertragung-der-e-ladekartenvertrage-auf-kmg/"
+      ]
+    }
+  ],
+  "consistency": {
+    "allAreNewForwardFirstPassIdentities": true,
+    "reAuditedDeferredCpos": 0,
+    "prefixWideTariffExtrapolations": 0,
+    "historicalOrSubscriptionTariffPromotedToAdHoc": 0,
+    "unverifiedEmi3PrefixesCreated": 0
+  }
+}

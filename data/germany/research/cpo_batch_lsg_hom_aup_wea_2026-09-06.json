@@ -1,0 +1,55 @@
+{
+  "date": "2026-09-06",
+  "scope": "Germany V9 CPO tariff research",
+  "entries": [
+    {
+      "prefix": "DELSG",
+      "status": "partial",
+      "alias": "Ladestationen Südwest GmbH & Co. KG",
+      "coverage_hint_evse": 256,
+      "evidence": [
+        "Mobilithek/BNetzA-derived station evidence ties DE*LSG EVSEs to Ladestationen Südwest GmbH & Co. KG.",
+        "Stadtwerke Zweibruecken publishes exact current ad-hoc tariffs for Ladestationen Suedwest stations in Zweibruecken: AC 0.56 EUR/kWh, DC 0.69 EUR/kWh, 0.50 EUR transaction fee, blocking AC after 300 min at 0.04 EUR/min, DC after 120 min at 0.08 EUR/min, max 12 EUR, with listed parking-garage exemptions and no AC blocking charge 21:00-06:00."
+      ],
+      "decision": "No network-wide fallback. Exact direct price is demonstrably site/municipality dependent; resolve per EVSE/site."
+    },
+    {
+      "prefix": "DEHOM",
+      "status": "partial",
+      "alias": "HomE of Mobility GmbH",
+      "coverage_hint_evse": 250,
+      "evidence": [
+        "Multiple DE*HOM EVSEs are publicly tied to HomE of Mobility GmbH.",
+        "Current station-level observations repeatedly show AC 0.66 EUR/kWh plus 0.03 EUR/min after 240 min and DC/HPC 0.89 EUR/kWh at several HomE locations."
+      ],
+      "decision": "Keep fail-closed until a primary-source tariff contract or exhaustive EVSE-level checkout confirms applicability across the canonical DEHOM set."
+    },
+    {
+      "prefix": "DEAUP",
+      "status": "partial",
+      "alias": "Autostrom plus GmbH",
+      "coverage_hint_evse": 250,
+      "evidence": [
+        "Official Autostrom plus tariff update states that from 2026-01-01 all ad-hoc charging at its charging parks/stations costs 0.69 EUR/kWh and the previous blocking fee is removed.",
+        "Official current tariff page states uniform site-independent direct-payment/QR pricing and no blocking fee; multiple DE*AUP EVSE checkout pages identify Autostrom plus and show 0.69 EUR/kWh."
+      ],
+      "decision": "Tariff authority is strongly established, but retain partial until canonical audit confirms every DEAUP EVSE belongs to Autostrom plus and no delegated/partner exceptions exist."
+    },
+    {
+      "prefix": "DEWEA",
+      "status": "partial",
+      "alias": "Westenergie Metering GmbH",
+      "coverage_hint_evse": 244,
+      "evidence": [
+        "Multiple DE*WEA EVSEs from current public/BNetzA-derived station data are tied to Westenergie Metering GmbH.",
+        "Current station-level direct-payment evidence repeatedly shows 0.67 EUR/kWh across several AC sites, with at least one 50 kW site also at 0.67 EUR/kWh."
+      ],
+      "decision": "Do not promote a network fallback without a current primary Westenergie tariff source or exhaustive EVSE-level evidence."
+    }
+  ],
+  "guardrails": [
+    "No sampled or third-party tariff generalized beyond source scope.",
+    "No roaming or subscription price substituted for ad-hoc pricing.",
+    "Aliases are operational identities only; tariff authority remains fail-closed where canonical coverage is not exhaustive."
+  ]
+}

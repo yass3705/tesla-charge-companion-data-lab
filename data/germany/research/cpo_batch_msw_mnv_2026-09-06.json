@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "date": "2026-09-06",
+  "policy": "first-pass anti-stagnation; no tariff extrapolation; third-party station observations are discovery/evidence only unless explicitly scoped",
+  "cpos": [
+    {
+      "prefix": "DEMSW",
+      "operator": "Meißener Stadtwerke GmbH",
+      "status": "partial",
+      "aliases": ["Meissener Stadtwerke GmbH", "MSW"],
+      "firstPass": true,
+      "findings": [
+        "Public station/payment surface m8mit identifies DE*MSW EVSEs as Meißener Stadtwerke GmbH.",
+        "DE*MSW*E7283*01 currently exposes an ad-hoc direct price of 0.60 EUR/kWh plus 1.99 EUR Direct-Pay fee on the public station page.",
+        "Official MSW MEIn Ladehelfer pricing is a subscription/app-card product and must remain separate: own MSW stations are 0.39 EUR/kWh AC / 0.59 EUR/kWh DC for existing electricity/gas customers and 0.44 / 0.64 EUR/kWh for new customers, plus a monthly base fee.",
+        "Because direct-pay and contract channels differ, the MEIn Ladehelfer tariff is not generalized to ad-hoc DE*MSW sessions."
+      ],
+      "sources": [
+        "https://mei.m8mit.de/station/mei/DE%2AMSW%2AE7283%2A01",
+        "https://www.stadtwerke-meissen.de/mein-ladehelfer/"
+      ],
+      "neededToComplete": "Enumerate all canonical DE*MSW EVSEs and resolve each public m8mit/QR checkout tariff, including Direct-Pay fee and any AC/DC/site variation; keep subscriber MEIn Ladehelfer pricing in the eMSP/subscription layer."
+    },
+    {
+      "prefix": "DEMNV",
+      "operator": "Mainova AG",
+      "status": "partial",
+      "aliases": ["Mainova"],
+      "firstPass": true,
+      "findings": [
+        "BNetzA-derived current station data identifies Mainova AG EVSE DE*MNV*E4169326*001 at Kelsterbach, confirming DEMNV as a Mainova physical CPO prefix.",
+        "Mainova officially stated on 2026-05-11 that it operates around 750 charging points and has a long-term charging partnership with Shell Recharge.",
+        "No current official network-wide direct/ad-hoc price matrix was found in this pass; the applicable direct price therefore remains fail-closed rather than inferred from Shell roaming or unrelated Mainova energy tariffs."
+      ],
+      "sources": [
+        "https://www.mainova.de/de/ihre-mainova/presse/pressemitteilungen/2026/shell-und-mainova-bieten-mehr-ladepower-fuer-hessen-und-vereinbaren-langfristige-ladepartnerschaft--168004",
+        "https://chargemyride.live/station/1137347"
+      ],
+      "neededToComplete": "Resolve Mainova's public QR/card/app station checkout or official station-level tariff feed for every DEMNV EVSE, including energy price and any time/blocking/parking component. Do not substitute Shell Recharge roaming pricing."
+    }
+  ]
+}
