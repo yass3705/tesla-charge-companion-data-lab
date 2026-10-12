@@ -27,6 +27,8 @@ const countOf=()=>Object.fromEntries(profiles.map(p=>[p.id,{completeWeight:0,inc
 const profileTotals=countOf(),family={};
 const reasonWeights={},reasonExamples={},cpo={};
 let totalFixtures=0,compiledConnectors=0,independentOracleCases=0,oracleMismatchWeight=0,unverifiedZeroPriceWeight=0;
+let nonEurSourceCurrencyWeight=0,implausibleSourcePowerWeight=0;
+const nonEurCurrencyByCode={},nonEurCurrencyExamples=[];
 const blockedSamplesMax=12;
 
 function markReason(kind,profile,g,result){
@@ -71,7 +73,18 @@ for(const [i,g] of source.groups.entries()){
  if(site.offers.length!==1)throw new Error('Adapter suppressed/multiplied an accepted direct tariff: '+g.tariffKey);
  const offer=site.offers[0];
  assert.equal(offer.kind,'direct');
- if(offer.currency!=='EUR')throw new Error('Unexpected NL currency: '+offer.currency);
+ const sourceCurrency=String(offer.currency||'UNSPECIFIED').toUpperCase();
+ const currencyMismatch=sourceCurrency!=='EUR';
+ if(currencyMismatch){
+  nonEurSourceCurrencyWeight+=g.count;
+  nonEurCurrencyByCode[sourceCurrency]=(nonEurCurrencyByCode[sourceCurrency]||0)+g.count;
+  if(nonEurCurrencyExamples.length<20)nonEurCurrencyExamples.push({
+    partyId:g.cpo,stationId:g.sampleStationId,evseId:g.sampleEvseId,
+    tariffKey:g.tariffKey,standard:g.standard,powerKw:g.powerKw,
+    currency:sourceCurrency,connectors:g.count
+  });
+ }
+ if(g.sourcePowerPlausible===false)implausibleSourcePowerWeight+=g.count;
  const cats=familyFor(g.rules),oracle=independentEnergyOnly(offer);
  const operator=cpo[g.cpo]||(cpo[g.cpo]={groupCount:0,compiledConnectors:0,incompleteByProfile:{},incompleteReasons:{}});
  operator.groupCount++;operator.compiledConnectors+=g.count;
@@ -83,8 +96,13 @@ for(const [i,g] of source.groups.entries()){
  for(const profile of profiles){
   const session={...profile.session,timeZone:source.timeZone,stationTimeZone:source.timeZone,powerKw:g.powerKw,includeCongestionFees:true};
   let result;
-  try{result=engine.evaluateOffer(offer,session);}
-  catch(e){result={complete:false,reason:'exception:'+String(e).slice(0,200)};}
+  if(currencyMismatch){
+   // Never treat an unexpected USD/other-currency DOT-NL source as an EUR quote.
+   result={complete:false,reason:'nl_non_eur_source_currency:'+sourceCurrency};
+  }else{
+   try{result=engine.evaluateOffer(offer,session);}
+   catch(e){result={complete:false,reason:'exception:'+String(e).slice(0,200)};}
+  }
   const out=profileTotals[profile.id];
   if(result?.complete===true&&Number.isFinite(result.totalEur)&&result.totalEur>=0){
    out.completeWeight+=g.count;out.completeGroups++;
@@ -126,6 +144,8 @@ const report={
  independentEnergyOnlyOracleCases:independentOracleCases,
  independentOracleMismatchWeight:oracleMismatchWeight,
  zeroOrFreeSourceConnectorWeight:unverifiedZeroPriceWeight,
+ nonEurSourceCurrencyWeight,nonEurCurrencyByCode,nonEurCurrencyExamples,
+ implausibleSourcePowerWeight,
  sourceWarning:'Simulation success is not independently verified CPO quote; contractual restrictions and physical public access remain unverified.',
  publishedToTcc:false
 };
@@ -136,6 +156,7 @@ console.log(JSON.stringify({
  sourceSha:report.inputCompressedSha256,engineSha:report.engineSha256,
  groups:totalFixtures,weightedEvaluations:report.weightedEvaluationCount,
  profiles:report.profiles.map(p=>({id:p.id,complete:p.results.completeWeight,incomplete:p.results.incompleteWeight})),
- topReasons:bad.slice(0,18),independentOracleCases,oracleMismatchWeight,unverifiedZeroPriceWeight
+ topReasons:bad.slice(0,18),independentOracleCases,oracleMismatchWeight,unverifiedZeroPriceWeight,
+ nonEurSourceCurrencyWeight,nonEurCurrencyByCode,nonEurCurrencyExamples,implausibleSourcePowerWeight
 }));
 if(oracleMismatchWeight)process.exitCode=2;
