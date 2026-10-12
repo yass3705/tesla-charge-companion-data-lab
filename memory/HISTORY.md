@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Lots 2 et 3 : GeniePoint, pin et preuve d'abonnement
+
+- Production [#56](https://github.com/yass3705/tesla-charge-companion-production/pull/56) fusionnée `a3a56c8a` : 46 offres walk-up GeniePoint exactes en plus, 281/1 138 prises tarifées, 857 sans montant ; CI global/pin verts, Pages ignoré. [#57](https://github.com/yass3705/tesla-charge-companion-production/pull/57) fusionnée `15309bf0` : nouveau pin de développement immuable `2026-10-13-uk-geniepoint-ad-hoc-candidate` validé sur PR ; anciens pins conservés. Ubitricity/Evyve bloqués par périmètre fournisseur, Zest/ChargePoint sans preuves tarifaires complètes.
+- Data Lab [#203](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/203) fusionnée `047e1911` après tests, scan public et collecte Powerdot officielle ; remises Electroverse conservées comme métadonnées non tarifaires par EVSE. [Inventaire international](../docs/v9-emsp-international-coverage-differential-2026-10-13.md) : seuls les overlays FR ont une source exacte épinglée. Production [#58](https://github.com/yass3705/tesla-charge-companion-production/pull/58) fusionnée `6926c98b` après CI candidate/global/r9 verte : neuvième pays BE et 41 706 offres ad-hoc énergie seule TTC, 28 337 EVSE pris en charge sans montant ; nouveaux et anciens pins conservés. Runs `main` post-fusion encore à relever. Aucun Pages/Cloudflare.
+
 ## 2026-10-12 — Collecte Powerdot réelle validée sans publication
 
 - [Run Data Lab 38298531234](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38298531234) terminé success : scan public, tests, collecte live et assertion CPO/eMSP réussis ; Powerdot Electroverse France 22 % pour 1,99 €/mois, direct CPO QR/station sans tarif national unique. Inventaire statique de 6 636 lignes, non live ; [artefact de collecte 11769846643](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38298531234/artifacts/11769846643). Aucun push de donnée canonique ni promotion Production ; correction contenue dans la PR #203 jusqu'à fusion validée.
