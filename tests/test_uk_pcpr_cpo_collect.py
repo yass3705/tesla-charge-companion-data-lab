@@ -15,7 +15,7 @@ def location(operator, tariff_ids=None, extra=None):
         "operator": {"name": operator}, "publish": True,
         "coordinates": {"latitude": "51.5", "longitude": "-0.1"},
         "evses": [{"uid": "1", "evse_id": "GB*ABC*E1", "status": "AVAILABLE",
-                   "connectors": [{"id": "1", "max_electric_power": 22000,
+                   "connectors": [{"id": "1", "standard": "IEC_62196_T2", "max_electric_power": 22000,
                                    "tariff_ids": tariff_ids if tariff_ids is not None else ["T1"]}]}],
     }
     item.update(extra or {})
@@ -81,6 +81,14 @@ class TestUkPcpr(unittest.TestCase):
             component["price"] = 0.1
             self.assertEqual(module.make_tariff(raw, module.provider("source_ev"))[1],
                              "ambiguous_fractional_vat")
+
+    def test_chademo_is_not_staged(self):
+        raw = location("Source EV")
+        raw["evses"][0]["connectors"].append({"id": "2", "standard": "CHADEMO",
+            "tariff_ids": ["T1"]})
+        _, audit = module.stage([raw], [tariff()], "now", module.provider("source_ev"))
+        self.assertEqual(audit["publicConnectors"], 1)
+        self.assertEqual(audit["excluded"]["unsupported_connector_standard"], 1)
 
     def test_tariff_gbp_and_components(self):
         other = tariff()
