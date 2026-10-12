@@ -1,5 +1,11 @@
 # État de reprise — 2026-10-12
 
+## Intégration NL effective en développement — 12 octobre 2026, 20:02 Paris
+
+- Production [#48](https://github.com/yass3705/tesla-charge-companion-production/pull/48) fusionnée en `39fbd05d134e5f511ef2004c3f3351411e9e4fe4` : nouveau snapshot immuable `2026-10-12-nl-dotnl-validated` et pin développement Data Lab `c7173fd03143a89f9fd41e4eed6e2c6d71531b52`. Ce commit contient déjà les tuiles runtime NL versionnées du 12/10, 73 557 stations ; la réserve précédente sur les tuiles du 11/10 est levée.
+- [Validation post-fusion #38287811216](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38287811216) verte : parité Stable, contrôles multi pays, navigateur simulé et empreintes du manifeste. [Validation snapshot #38287811141](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38287811141) verte. Aucun déploiement public V9. Le rapport NL est enrichi de ce pin.
+- Les sections antérieures ci-dessous retracent la validation éphémère préalable ; la consigne « tuiles du 11/10 à régénérer » est désormais obsolète.
+
 ## Validation NL la plus récente — 12 octobre 2026, 17:01 UTC
 
 - **Candidat d'intégration NL validé, sans publication** : [run #38281196004](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38281196004) vert. Source normalisée du 12/10 SHA-256 `ae40423f595b53c0d6959726a1b7b38db91cb3441d8635545fbcc3e8236ef967` explicitement épinglée, adaptateur Production fusionné `d6f99d6a`. Reconstruction éphémère des tuiles, contrôle de l'inventaire intégral, candidat V9 neuf jeux de données, parité Stable, graphe des assets, smoke runtime et manifeste SHA vérifiés. [Rapport de validation](../reports/netherlands/v9-nl-post-policy-validation-20261012.json).
