@@ -68,8 +68,22 @@ def main():
         code = map_code(detail.get("legacyId"))
         return {"mapId": mid, "status": st, "pos": pos, "code": code, "detail": detail}
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         details = list(pool.map(detail_one, markers))
+
+    # Network failures are not evidence that an official map station is absent.
+    # Revisit only failed detail fetches, serially, under the shared request throttle.
+    failed_markers = {row["mapId"] for row in details if row and row.get("status") != 200}
+    marker_by_id = {m.get("id"): m for m in markers if isinstance(m, dict) and m.get("id")}
+    recovered_details = 0
+    for map_id in sorted(failed_markers):
+        marker = marker_by_id.get(map_id)
+        if marker is None:
+            continue
+        recovered = detail_one(marker)
+        if recovered and recovered.get("status") == 200:
+            details = [recovered if row and row.get("mapId") == map_id else row for row in details]
+            recovered_details += 1
     by_code = defaultdict(list)
     detail_failures = []
     for row in details:
@@ -122,8 +136,23 @@ def main():
         result["status"] = "direct_price_published" if result["directRawPricing"] else "no_direct_price"
         return result
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
-        rows = list(pool.map(price_one, sorted(fast.items(), key=lambda x: int(x[0]))))
+    ordered = sorted(fast.items(), key=lambda x: int(x[0]))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        rows = list(pool.map(price_one, ordered))
+
+    # A transient failed pricing response is not an absent tariff. Retry only
+    # these failed stations after bulk traffic has stopped; never synthesize a price.
+    recovered_pricing = 0
+    for idx, row in enumerate(rows):
+        if row["status"] != "pricing_request_failed":
+            continue
+        retry = price_one(ordered[idx])
+        if retry["status"] == "direct_price_published":
+            rows[idx] = retry
+            recovered_pricing += 1
+        elif retry["status"] != "pricing_request_failed":
+            rows[idx] = retry
+
     texts = Counter(text for row in rows for text in row.get("directRawPricing", []))
     summary = {
         "capturedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -133,6 +162,9 @@ def main():
         "uniqueDirectTexts": len(texts),
         "directTexts": [{"count": n, "text": t} for t, n in texts.most_common()],
         "detailFailureCount": len(detail_failures),
+        "recoveredDetailRequests": recovered_details,
+        "recoveredPricingStations": recovered_pricing,
+        "unresolvedDetailRequests": len(detail_failures),
         "detailFailures": detail_failures[:50],
         "unmatchedMapCodes": sorted(set(by_code) - set(fast)),
         "exceptions": [{"stationId": row["stationId"], "status": row["status"]} for row in rows if row["status"] != "direct_price_published"],
