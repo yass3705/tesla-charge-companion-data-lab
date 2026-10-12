@@ -2,6 +2,11 @@
 
 Entrées append-only, datées, avec liens vers les documents et commits sources. L'historique exhaustif du code reste dans Git (`git log`) et dans les changelogs propres aux dépôts ; ce journal consigne les passages de relais et décisions transverses.
 
+## 2026-10-12 — Vingt CPO UK intégrés prudemment au candidat, Ubitricity toujours bloquée
+
+- La collecte publique GeniePoint a été épinglée en Data Lab : 306 sites, 1 138 prises, 530 tarifs et zéro référence tarifaire manquante. Le candidat Production ne classe que 235 offres exactes TTC. Les 20 autres CPO du lot sont intégrés comme prix vérifiés, inventaire de prises sans prix ou sites sans identité de prise, selon leurs preuves. Le [dossier Production](https://github.com/yass3705/tesla-charge-companion-production/blob/feat/uk-direct-ocpi-batch-20261012/docs/V9_UK_21_CPO_FOLLOWTHROUGH_20261012.md) détaille les limites.
+- Audit du build global local : 31 des 32 CPO terminés présents en inventaire, 15 avec au moins une offre ; Ubitricity reste inactive sous blocage support. Tests du snapshot, manifeste, parité Stable et runtime multi-pays réussis. Aucune publication Pages. Les branches de travail doivent encore passer la CI GitHub avant fusion.
+
 ## 2026-10-12 — Candidat UK publié en PR de revue, quatre checks Production réussis
 
 - [Data Lab #204](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/204) et [Production #50](https://github.com/yass3705/tesla-charge-companion-production/pull/50) ouvertes après accord utilisateur, non fusionnées. La CI de #50 a corrigé successivement la compatibilité des pins historiques, la parité Stable et les chemins relatifs des tests. Le [run global 38298692518](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38298692518), r9, développement épinglé et Ubitricity ont réussi ; job Pages ignoré. Le dernier déploiement Pages reste `796e7fca` du 11 octobre.
