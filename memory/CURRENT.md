@@ -1,5 +1,14 @@
 # État de reprise — 2026-10-12
 
+## Electroverse abonnements Powerdot/IONITY — branche de correction 12 octobre 2026
+
+- Branche distante Data Lab `fix/electroverse-subscriptions-powerdot-ionity-20261012` issue de `main=4fbf951100b8d953ffa03e64e3419806ba9793ba`. Périmètre : collecteur officiel Powerdot, assertion du workflow, tests hors ligne, référentiel eMSP documentaire. Aucun changement Production, Stable, Updater Test ou base nationale IRVE.
+- [Preuve Electroverse](https://electroverse.com/fr-FR/community/electroverse-features/abonnements-electroverse-qu-est-ce-que-c-est-et-comment-s-inscrire) (mise à jour octobre 2026) : Powerdot FR 22 %, ES 29 %, BE 30 %, PT 25 % pour 1,99 €/mois ; IONITY FR 40 % avec 11,99 €/mois indicatifs (application à revérifier).
+- Le collecteur Powerdot recherchait auparavant tous les « France: n % » globalement et le workflow attendait 28 %, alors que 28 % concerne Powerdot Pologne, pas France. Extraction à portée CPO/pays avec arrêt sur preuve manquante ou contradictoire ; test workflow désormais 22 %. Le référentiel `data/emsp/electroverse_subscription_public_evidence_202610.json` est une **preuve tarifaire eMSP non EVSE**, jamais un prix calculé ni un direct CPO.
+- [IZIVIA FAST/Express 38288551568](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38288551568) : jobs `check` et `station-tariffs` réussis ; [capture nationale 38271411552](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38271411552) : 482/620 stations tarifées, 76 requêtes prix échouées, 59 correspondances carte manquantes. Succès FAST/Express ne prouve pas réparation complète FAST national ; l'incident demeure ouvert.
+- Validation à réaliser : exécuter les tests de parsing et collecte officielle sur PR, examiner les logs, vérifier publication seulement si preuves complètes. Aucune promotion Production autorisée. **Statut : branche de correction proposée, non fusionnée, pas de publication V9.**
+
+
 ## Source EV UK : collecte quotidienne et intégration candidate — 12 octobre 2026
 
 - Secret `SOURCE_EV_PCPR_TOKEN` présent ; [run 38289984508](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38289984508) réussi. Données collectées : 37 sites Source EV, 36 sites publics actifs, 321 connecteurs Type 2/CCS avec offre exacte, deux tarifs officiels PAYG corroborés pour la TVA. Le statut des données reste `staged_for_audit_not_live`, sans publication V9.
