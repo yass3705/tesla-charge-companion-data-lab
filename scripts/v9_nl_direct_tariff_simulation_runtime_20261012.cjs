@@ -26,6 +26,7 @@ const profiles=[
 const countOf=()=>Object.fromEntries(profiles.map(p=>[p.id,{completeWeight:0,incompleteWeight:0,completeGroups:0,incompleteGroups:0}]));
 const profileTotals=countOf(),family={};
 const reasonWeights={},reasonExamples={},cpo={};
+const segmentationBlockerWeights={},segmentationBlockerSamples=[];
 let totalFixtures=0,compiledConnectors=0,independentOracleCases=0,oracleMismatchWeight=0,unverifiedZeroPriceWeight=0;
 let nonEurSourceCurrencyWeight=0,implausibleSourcePowerWeight=0;
 const nonEurCurrencyByCode={},nonEurCurrencyExamples=[];
@@ -119,6 +120,34 @@ for(const [i,g] of source.groups.entries()){
    operator.incompleteByProfile[profile.id]=(operator.incompleteByProfile[profile.id]||0)+g.count;
    operator.incompleteReasons[reason]=(operator.incompleteReasons[reason]||0)+g.count;
    markReason(reason,profile,g,result);
+   if(reason==='tariff_window_crossing_unsupported_components'){
+    const r=result?.matchedRule||{};
+    const flags={
+     energyStepWh:Number(r.energyStepWh)>0,
+     chargingTimeStepSeconds:Number(r.chargingTimeStepSeconds)>0,
+     connectedTimeStepSeconds:Number(r.connectedTimeStepSeconds)>0,
+     energyRoundingStartedKwh:r.energyRounding==='started_kwh',
+     connectedTimeBlock:Number(r.connectedTimeBlockMinutes)>0||r.connectedTimeBlockEur!=null,
+     connectedTimeAfterFree:r.connectedTimeFreeMinutes!=null||r.connectedTimePerMinuteAfterFreeEur!=null,
+     connectedTimeInitialTier:r.connectedTimeInitialMinutes!=null||r.connectedTimeInitialFlatEur!=null,
+     connectedTimeFixed:Number(r.connectedTimeComponentEur)>0,
+     sessionFee:Number(r.sessionFeeEur)>0,
+     minimumSession:r.minimumSessionEur!=null,
+     holidayRule:r.holidayOnly===true||r.excludeHolidays===true,
+     forceSameDay:r.mustEndSameLocalDay===true
+    };
+    for(const [flag,present] of Object.entries(flags)){
+      if(present)segmentationBlockerWeights[flag]=(segmentationBlockerWeights[flag]||0)+g.count;
+    }
+    if(segmentationBlockerSamples.length<30)segmentationBlockerSamples.push({
+     partyId:g.cpo,stationId:g.sampleStationId,evseId:g.sampleEvseId,
+     tariffKey:g.tariffKey,weight:g.count,powerKw:g.powerKw,flags,
+     matchedRule:{start:r.start,end:r.end,days:r.days,energyStepWh:r.energyStepWh,
+      chargingTimeStepSeconds:r.chargingTimeStepSeconds,connectedTimeStepSeconds:r.connectedTimeStepSeconds,
+      connectionFee:r.connectionFee,pricePerKwh:r.pricePerKwh,chargePerMinute:r.chargePerMinute,
+      idlePerMinute:r.idlePerMinute,ocpiDurationBands:r.ocpiDurationBands}
+    });
+   }
    for(const name of cats)family[name].profileFailures+=g.count;
   }
  }
@@ -141,6 +170,7 @@ const report={
  cpo,
  failureReasonsWeighted:reasonWeights,
  failureExamplesByProfileAndReason:reasonExamples,
+ segmentationBlockerWeights,segmentationBlockerSamples,
  independentEnergyOnlyOracleCases:independentOracleCases,
  independentOracleMismatchWeight:oracleMismatchWeight,
  zeroOrFreeSourceConnectorWeight:unverifiedZeroPriceWeight,
@@ -157,6 +187,7 @@ console.log(JSON.stringify({
  groups:totalFixtures,weightedEvaluations:report.weightedEvaluationCount,
  profiles:report.profiles.map(p=>({id:p.id,complete:p.results.completeWeight,incomplete:p.results.incompleteWeight})),
  topReasons:bad.slice(0,18),independentOracleCases,oracleMismatchWeight,unverifiedZeroPriceWeight,
- nonEurSourceCurrencyWeight,nonEurCurrencyByCode,nonEurCurrencyExamples,implausibleSourcePowerWeight
+ nonEurSourceCurrencyWeight,nonEurCurrencyByCode,nonEurCurrencyExamples,implausibleSourcePowerWeight,
+ segmentationBlockerWeights,segmentationBlockerSamples:segmentationBlockerSamples.slice(0,10)
 }));
 if(oracleMismatchWeight)process.exitCode=2;
