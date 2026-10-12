@@ -44,3 +44,15 @@ Priorité : **NL** pour le recensement exhaustif et les 5 246 cas à requalifier
 Le workflow de cette PR produit également un **artefact de contrôle** `v9-nl-type2-ccs-scope-audit` depuis `data/national/netherlands_dotnl/normalized.json.gz` du commit analysé. Script : `scripts/v9_nl_type2_ccs_scope_audit_20261012.py`. Il filtre les connecteurs Type 2/CCS et conserve séparément la disponibilité (AVAILABLE/CHARGING), les références tarifaires nationales présentes et les références absentes, par CPO et avec SHA-256 de la source.
 
 **Important :** ce deuxième résultat est un décompte de connecteurs candidats, **pas** une preuve d'accès public ni une simulation de prix ; il n'attribue pas « calculable » à une référence tarifaire qui n'a pas encore été simulée. Les autres prises et statuts non actifs sont exclus de la sélection active et reportés dans les diagnostics. L'artefact n'est pas publié dans TCC.
+
+## Résultat du contrôle DOT-NL réel — run 38187419104
+
+Audit de `data/national/netherlands_dotnl/normalized.json.gz` sur le commit Data Lab `3c9588b49ab16efdce4a8a20fcd21d9564cc9856`. Source générée le **11/10/2026 à 10:32:38 UTC**, empreinte SHA-256 `651d3723e67250ff9e5dfe0644a4b7973a8609ff08e3021b3f253cc5ef85ee93`.
+
+- **175 437** occurrences de connecteurs Type 2/CCS (170 305 Type 2 ; 5 132 CCS).
+- **165 418** de ces connecteurs indiquaient AVAILABLE ou CHARGING ; **10 019** n'étaient pas dans ces statuts ou avaient un statut inconnu.
+- **5 431** occurrences n'avaient aucune référence tarifaire nationale DOT-NL ; **3 908** étaient disponibles ou occupées. **161 510** connexions actives avaient une référence nationale, à vérifier ensuite pour la calculabilité réelle.
+- CPO prioritaires parmi les **3 908 actifs sans référence nationale** : **Agri Go 2 374**, **GFX 738**, **Laadnet 432**, **EFL 111**, **NUO 84**, **WattHub 74**, **UB2 36**, **QPA 32**, **SGM 25**, **LMS 2**. Ces codes opérateurs sont ceux de DOT-NL et doivent être réconciliés avec leur nom réel avant les démarches CPO.
+- Le fichier persistant `reports/netherlands/v9-nl-type2-ccs-scope-20261012.json` conserve les détails agrégés par CPO et l'identifiant du run de preuve. [Validation GitHub](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38187419104).
+
+**Ce résultat n'est pas le nombre de tarifs « incalculables ».** Il compte les références nationales manquantes. L'étape suivante doit vérifier l'accès public et calculer réellement les offres associées aux **161 510 connecteurs actifs avec référence** : composantes, conflits, restrictions temporelles, seuils, plafonds, parking et devise. Le statut n'est qu'une photographie du 11 octobre. Aucune attribution tarifaire par station ou par simple proximité.
