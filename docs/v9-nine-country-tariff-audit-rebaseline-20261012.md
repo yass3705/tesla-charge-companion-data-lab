@@ -4,9 +4,9 @@ Date de préparation : 12 octobre 2026. **État : audit documentaire reproductib
 
 ## Références et portée
 
-Cette étape fige les preuves datées des rapports existants afin de ne pas confondre fichier source, connecteur, offre eMSP et scénario calculé. Commande de recalcul : \`python scripts/v9_tariff_gap_baseline_20261012.py\` ; contrôles : \`python scripts/v9_tariff_gap_baseline_20261012.py --check\` et \`python -m unittest discover -s tests -p 'test_v9_tariff_gap_baseline_20261012.py'\`.
+Cette étape fige les preuves datées des rapports existants afin de ne pas confondre fichier source, connecteur, offre eMSP et scénario calculé. Commande de recalcul : `python scripts/v9_tariff_gap_baseline_20261012.py` ; contrôles : `python scripts/v9_tariff_gap_baseline_20261012.py --check` et `python -m unittest discover -s tests -p 'test_v9_tariff_gap_baseline_20261012.py'`.
 
-- Rapports sources : \`reports/tariff-scenarios/review-latest.json\` (revu le 10/10, run 38047584760), \`reports/netherlands/nl-cpo-unpriced-evse-inventory-2026-10-11.json\` (snapshot 10/10) et \`reports/tariff-scenarios/after-minutes-production-verification-2026-10-11.json\`.
+- Rapports sources : `reports/tariff-scenarios/review-latest.json` (revu le 10/10, run 38047584760), `reports/netherlands/nl-cpo-unpriced-evse-inventory-2026-10-11.json` (snapshot 10/10) et `reports/tariff-scenarios/after-minutes-production-verification-2026-10-11.json`.
 - Inventaire mondial daté : **1 312 fichiers recensés, 1 306 analysés, six non analysés**, et **1 179 stations Tesla déclarées dans la source utilisée par l'audit historique**. Ni le décompte de fichiers ni celui des stations Tesla ne prouve le nombre d'EVSE tarifés, actifs ou accessibles.
 - Fichiers sources classés par pays dans ce rapport historique : FR **740**, IT **12**, CH **142**, DE **6**, ES **12**, NL **48**, UK **61**, MA **227**, BE **28**. La classification n'est pas un décompte de bornes et n'est pas nécessairement une partition sans recouvrement. L'audit devra ensuite couvrir les sous-répertoires non attribués et les sources non analysées.
 - Les neuf pays sont présents, mais la profondeur et la fraîcheur des fichiers ne sont pas comparables. **Aucune couverture tarifaire nationale intégrale n'est déduite de ces chiffres.**
@@ -29,7 +29,7 @@ DOT-NL prime sur les tarifs directs lorsque la référence appartient au CPO de 
 
 ## France : frais différés
 
-Sur les **84 offres réelles historiques** étudiées, **6** règles directes/abonnements disposent d'une preuve suffisante, et **78 offres Electra eMSP** n'ont pas de preuve sur la nature de la durée facturée (\`CONNECTED_TIME\`, \`TIME\` ou \`PARKING_TIME\`). Ces 78 ne doivent fournir **aucun total inventé** : « Tarif incalculable » tant que leur contrat propre n'est pas établi. Les preuves d'un tarif CPO direct ne se substituent pas aux conditions d'un eMSP tiers.
+Sur les **84 offres réelles historiques** étudiées, **6** règles directes/abonnements disposent d'une preuve suffisante, et **78 offres Electra eMSP** n'ont pas de preuve sur la nature de la durée facturée (`CONNECTED_TIME`, `TIME` ou `PARKING_TIME`). Ces 78 ne doivent fournir **aucun total inventé** : « Tarif incalculable » tant que leur contrat propre n'est pas établi. Les preuves d'un tarif CPO direct ne se substituent pas aux conditions d'un eMSP tiers.
 
 ## Prochain audit calculatoire à produire (nouvelle passe, neuf pays)
 
