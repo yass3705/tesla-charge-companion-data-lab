@@ -2,6 +2,11 @@
 
 Entrées append-only, datées, avec liens vers les documents et commits sources. L'historique exhaustif du code reste dans Git (`git log`) et dans les changelogs propres aux dépôts ; ce journal consigne les passages de relais et décisions transverses.
 
+## 2026-10-12 — Fusion UK validée, sans déploiement Pages
+
+- Après autorisation utilisateur, Data Lab [#204](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/204) a été fusionnée en `f54dd4954`, puis Production [#50](https://github.com/yass3705/tesla-charge-companion-production/pull/50) en `4aa88f5ee`. Les cinq runs Production post-fusion sont réussis, dont [le global 38299445565](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38299445565) ; les étapes et le job Pages ont été ignorés. Dernier déploiement Pages : `796e7fca` du 11 octobre.
+- Source EV, Allego et les 8 100 connecteurs Connected Kerb sont dans le code candidat. Les 21 CPO manquants, ChargePoint, Ubitricity et Evyve conservent les statuts décrits dans [CURRENT.md](CURRENT.md). Cette entrée est portée par la branche `docs/uk-consolidation-postmerge-20261012` en attente de revue.
+
 ## 2026-10-12 — Candidat UK publié en PR de revue, quatre checks Production réussis
 
 - [Data Lab #204](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/204) et [Production #50](https://github.com/yass3705/tesla-charge-companion-production/pull/50) ouvertes après accord utilisateur, non fusionnées. La CI de #50 a corrigé successivement la compatibilité des pins historiques, la parité Stable et les chemins relatifs des tests. Le [run global 38298692518](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38298692518), r9, développement épinglé et Ubitricity ont réussi ; job Pages ignoré. Le dernier déploiement Pages reste `796e7fca` du 11 octobre.
