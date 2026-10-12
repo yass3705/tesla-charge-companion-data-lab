@@ -174,6 +174,13 @@ def main():
         "activeConnectors": report["totalActiveType2CcsConnectorOccurrences"],
         "counts": report["counts"],
         "reasons": report["compilerRejectionReasons"],
+        "blockedExamples": {k: v for k, v in report["examplesByClass"].items()
+                            if k not in {"noNationalReference", "compiledNotSimulated"}},
+        "topCpoMissing": sorted(
+            ({"partyId": code, "missing": row.get("noNationalReference", 0)}
+             for code, row in report["cpoBreakdown"].items()),
+            key=lambda x: (-x["missing"], x["partyId"]),
+        )[:15],
         "diagnostics": report["diagnostics"],
     }, ensure_ascii=False))
     if args.output:
