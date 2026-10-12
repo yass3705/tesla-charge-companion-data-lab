@@ -56,3 +56,9 @@ Audit de `data/national/netherlands_dotnl/normalized.json.gz` sur le commit Data
 - Le fichier persistant `reports/netherlands/v9-nl-type2-ccs-scope-20261012.json` conserve les détails agrégés par CPO et l'identifiant du run de preuve. [Validation GitHub](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38187419104).
 
 **Ce résultat n'est pas le nombre de tarifs « incalculables ».** Il compte les références nationales manquantes. L'étape suivante doit vérifier l'accès public et calculer réellement les offres associées aux **161 510 connecteurs actifs avec référence** : composantes, conflits, restrictions temporelles, seuils, plafonds, parking et devise. Le statut n'est qu'une photographie du 11 octobre. Aucune attribution tarifaire par station ou par simple proximité.
+
+## Deuxième audit NL — compilabilité contractuelle du tarif CPO
+
+Le workflow PR exécute `scripts/v9_nl_direct_tariff_compiler_audit_20261012.py` en **lecture seule** sur le DOT-NL épinglé au commit du run, et compare son périmètre à l'audit Type 2/CCS : nombre de connecteurs actifs et nombre exact de références manquantes. Il classe chaque occurrence active en : sans référence nationale, compilée mais **non simulée**, contradictoire, référence pointant sur un tarif absent, tarif hors période, tarif non-direct, ou règle incomplète/non prise en charge.
+
+Ce diagnostic utilise **le compilateur DOT-NL déjà en place**, sans le modifier. Il ne fournit **pas** de simulation complète : les profils horaires, durée connectée, énergie, stationnement et frais SOC80 devront être validés indépendamment avant d'annoncer un prix réel. Le rapport de détail est conservé comme artefact CI, puis ses agrégats seront archivés dans la PR après validation. Aucun nouveau prix, abonnement ou eMSP n'est injecté en Direct.

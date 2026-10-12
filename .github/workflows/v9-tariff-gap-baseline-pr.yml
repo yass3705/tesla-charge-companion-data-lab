@@ -7,6 +7,8 @@ on:
       - "tests/test_v9_tariff_gap_baseline_20261012.py"
       - "scripts/v9_nl_type2_ccs_scope_audit_20261012.py"
       - "tests/test_v9_nl_type2_ccs_scope_audit_20261012.py"
+      - "scripts/v9_nl_direct_tariff_compiler_audit_20261012.py"
+      - "tests/test_v9_nl_direct_tariff_compiler_audit_20261012.py"
       - "docs/v9-nine-country-tariff-audit-rebaseline-20261012.md"
       - ".github/workflows/v9-tariff-gap-baseline-pr.yml"
 permissions:
@@ -35,4 +37,21 @@ jobs:
         with:
           name: v9-nl-type2-ccs-scope-audit
           path: ${{ runner.temp }}/nl-type2-ccs-audit.json
+          retention-days: 7
+      - name: Analyze DOT-NL active direct-CPO tariff compilability, no runtime publication
+        run: |
+          python -m unittest discover -s tests -p 'test_v9_nl_direct_tariff_compiler_audit_20261012.py' -v
+          python scripts/v9_nl_direct_tariff_compiler_audit_20261012.py --output "$RUNNER_TEMP/nl-direct-compiler-audit.json"
+          python - "$RUNNER_TEMP/nl-type2-ccs-audit.json" "$RUNNER_TEMP/nl-direct-compiler-audit.json" <<'PY'
+          import json,sys
+          scope,compiled=(json.load(open(p)) for p in sys.argv[1:])
+          assert compiled["totalActiveType2CcsConnectorOccurrences"]==scope["totals"]["activeAvailableOrCharging"], "Active Type 2/CCS census mismatch"
+          assert compiled["counts"]["noNationalReference"]==scope["totals"]["activeWithoutTariffReference"], "Missing tariff ref mismatch"
+          assert compiled["publishedToTcc"] is False
+          print("DOT-NL direct-CPO compiler census reconciles with source scope.")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-nl-direct-compiler-audit
+          path: ${{ runner.temp }}/nl-direct-compiler-audit.json
           retention-days: 7
