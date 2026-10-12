@@ -1,0 +1,34 @@
+name: Agri Go CPO direct power and site evidence NL (read-only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/v9-nl-agrigo-direct-audit-pr.yml"
+      - "scripts/v9_nl_agrigo_site_tier_scope_20261012.py"
+      - "tests/test_v9_nl_agrigo_site_tier_scope_20261012.py"
+permissions:
+  contents: read
+jobs:
+  agri-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit active Agri Go charging plugs without pricing
+        run: |
+          python -m unittest discover -s tests -p 'test_v9_nl_agrigo_site_tier_scope_20261012.py' -v
+          python scripts/v9_nl_agrigo_site_tier_scope_20261012.py --output "$RUNNER_TEMP/nl-agrigo-direct-classification.json"
+          python - "$RUNNER_TEMP/nl-agrigo-direct-classification.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          assert d["cpoCode"]=="AGO"
+          assert d["pricingAssigned"] is False
+          assert d["publishedToTcc"] is False
+          assert sum(v["active"] for v in d["byKindPower"])==d["totalActiveType2Ccs"]
+          assert d["totalActiveType2Ccs"]>0
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-nl-agrigo-direct-site-tier-evidence
+          path: ${{ runner.temp }}/nl-agrigo-direct-classification.json
+          retention-days: 14
