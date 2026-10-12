@@ -50,6 +50,32 @@ class UbitricityTariffSemanticsTests(unittest.TestCase):
         self.assertEqual(validator.grid([band("00:00", "23:59", 0.375),
                                          band("00:00", "23:59", 0.4667)], 0)[0], 0.45)
 
+    def test_new_parking_tariff_keeps_energy_and_validates_fee(self):
+        energy = band("00:00", "23:59", 0.4583)
+        parking = {"restrictions": {"start_time": "00:00", "end_time": "23:59"},
+                   "price_components": [{"type": "PARKING_TIME", "price": 2.52,
+                                         "vat": 20, "step_size": 60}]}
+        self.assertEqual(validator.grid([energy, parking], 0, allow_parking=True)[600], 0.55)
+        with self.assertRaisesRegex(ValueError, "parking fee differs"):
+            parking["price_components"][0]["price"] = 4.0
+            validator.grid([energy, parking], 0, allow_parking=True)
+
+    def test_parking_fee_requires_coverage_of_daytime_window(self):
+        energy = band("00:00", "23:59", 0.4583)
+        parking = {"restrictions": {"start_time": "08:00", "end_time": "19:59"},
+                   "price_components": [{"type": "PARKING_TIME", "price": 2.46,
+                                         "vat": 20, "step_size": 60}]}
+        self.assertEqual(validator.grid([energy, parking], 0, allow_parking=True)[600], 0.55)
+        parking["restrictions"]["end_time"] = "18:59"
+        with self.assertRaisesRegex(ValueError, "parking component missing"):
+            validator.grid([energy, parking], 0, allow_parking=True)
+
+    def test_rules_do_not_encode_ignored_post_charge_fields(self):
+        rules = validator.rules_for([[0.55] * 1440 for _ in range(7)])
+        self.assertTrue(rules)
+        self.assertTrue(all('postChargeRate' not in rule and 'postChargeGraceMinutes' not in rule
+                            for rule in rules))
+
     def test_public_detail_must_retain_exact_location_identity(self):
         payload = {"id": "new-site", "evses": [{"id": "GB*UBI*E123", "connectors": [
             {"id": "1", "tariffs": [{"id": "rate", "currency": "GBP"}]}]}]}
