@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Validate PCPR prices against public PAYG details, then compile exact offers.
+"""Compile exact PCPR offers; retain public PAYG comparisons as diagnostics.
 
-Both current PCPR and public PAYG components state VAT separately. Compare
-gross prices after VAT and resolve overlapping time bands by the narrowest
-applicable window. Equal-width conflicting bands remain ambiguous.
+PCPR is OCPI: the first matching element per dimension wins. The public
+Direct Access day bands are a separate presentation, not an OCPI tariff list.
 """
 import copy, gzip, json, urllib.request
 from collections import Counter, defaultdict
@@ -13,6 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DAYS = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY']
 PORTAL = 'https://api.shell.com/ubitricity/direct-access/api/direct-access/locations/'
+RECHECK_EACH_CONNECTOR = {
+    '6fc1ae3a29994220791ee2b4fb1b4604',
+    '2ad31c3bf8759020e02523db8d8c7d9e',
+    'be724f0ff4cf7e86b56e45fe1b9b9762',
+}
 
 def minute(value):
     h,m = map(int,value.split(':'))
@@ -47,9 +51,11 @@ def grid(elements, day, payg=False):
         cost=price(pcs[0])
         for m in range(start,end):
             width=end-start
-            if width < widths[m]:
+            if not payg and result[m] is None:
+                result[m]=cost
+            elif payg and width < widths[m]:
                 result[m],widths[m]=cost,width
-            elif width == widths[m] and result[m] != cost:
+            elif payg and width == widths[m] and result[m] != cost:
                 raise ValueError('equally specific conflicting time bands')
     if any(v is None for v in result): raise ValueError('incomplete daily coverage')
     return result
@@ -102,23 +108,30 @@ def main():
                 ids=c.get('tariff_ids',[])
                 if len(ids)==1: refs[(l['country_code'],l['party_id'],str(ids[0]))].append((str(l['id']),e.get('evse_id'),str(c['id'])))
     now=datetime.now(timezone.utc); day=now.astimezone(__import__('zoneinfo').ZoneInfo('Europe/London')).weekday()
-    valid={}; evidence={}; rejected={}
+    valid={}; evidence={}; rejected={}; payg_differences={}; pair_errors={}
     for key,pairs in refs.items():
         tid=key[2]
         try:
             t=by_key[key]
             if t.get('currency')!='GBP': raise ValueError('unsupported currency')
             week=[grid(t['elements'],d) for d in range(7)]
-            samples=[]
-            for location_id,eid,cid in dict.fromkeys([pairs[0],pairs[-1]]):
-                s=public_sample(location_id,eid,cid,tid)
-                if grid(s['currentDayTariffs'],day,True)!=week[day] or grid(s['nextDayTariffs'],(day+1)%7,True)!=week[(day+1)%7]:
-                    raise ValueError('PCPR/PAYG time-band or price conflict')
-                samples.append(s)
+            samples=[]; checked=0
+            selected=dict.fromkeys(pairs if tid in RECHECK_EACH_CONNECTOR else [pairs[0],pairs[-1]])
+            for location_id,eid,cid in selected:
+                try:
+                    s=public_sample(location_id,eid,cid,tid)
+                    checked+=1
+                    if grid(s['currentDayTariffs'],day,True)!=week[day] or grid(s['nextDayTariffs'],(day+1)%7,True)!=week[(day+1)%7]:
+                        payg_differences[tid]='public day-band presentation differs from OCPI first-match PCPR'
+                    if len(samples)<2: samples.append(s)
+                except (ValueError,KeyError,TypeError,OSError) as ex:
+                    if tid not in RECHECK_EACH_CONNECTOR: raise
+                    pair_errors[(location_id,eid,cid,tid)]=str(ex) if isinstance(ex,(ValueError,KeyError,TypeError)) else 'public PAYG validation unavailable'
+            if not checked: raise ValueError('no connector retains exact public location and tariff identity')
             valid[key]=week; evidence[tid]=samples
         except (ValueError,KeyError,TypeError,OSError) as ex:
             rejected[tid]=str(ex) if isinstance(ex,(ValueError,KeyError,TypeError)) else 'public PAYG validation unavailable'
-    if not valid: raise ValueError('no tariff passed independent PAYG verification')
+    if not valid: raise ValueError('no PCPR tariff passed exact public identity checks')
     locations=copy.deepcopy(raw['locations']); priced=0; exclusions=Counter(); ids=set(); affected=set()
     for l in locations:
         if l.get('time_zone')!='Europe/London' or l.get('publish') is not True: raise ValueError('non-public or unknown timezone')
@@ -129,22 +142,26 @@ def main():
                 identity=(eid,cid)
                 if not eid or identity in ids: raise ValueError('duplicate or missing connector identity')
                 ids.add(identity)
-                if len(c.get('tariff_ids',[]))!=1 or k not in valid:
-                    exclusions[rejected.get(k[2],'missing or ambiguous exact tariff')]+=1; affected.add(l['id']); c['tariff_ids']=[]; continue
+                pair_error=pair_errors.get((str(l['id']),eid,cid,k[2]))
+                if len(c.get('tariff_ids',[]))!=1 or k not in valid or pair_error:
+                    exclusions[pair_error or rejected.get(k[2],'missing or ambiguous exact tariff')]+=1; affected.add(l['id']); c['tariff_ids']=[]; continue
                 w=c.get('max_electric_power'); idle=isinstance(w,(float,int)) and 7000<=w<=22000
                 c['validatedV9Offer']={'id':f'ubitricity-pcpr:{l["id"]}:{eid}:{cid}:{k[2]}','provider':'Ubitricity','kind':'direct','subscriptionId':None,
                     'countries':['GB'],'currency':'GBP','stationIds':[str(l['id'])],'evseIds':[eid],
                     'pricing':{'type':'rules','timeZone':'Europe/London','rules':rules_for(valid[k],idle)},
-                    'metadata':{'connectorId':cid,'tariffId':k[2],'scope':'cpo_direct_payg_verified','collectedAt':raw['collectedAt'],
-                                'vatIncluded':True,'paygVerification':True,'idleFeeSource':'https://ubitricity.com/en/driver/pricing/' if idle else None}}
+                    'metadata':{'connectorId':cid,'tariffId':k[2],'scope':'cpo_direct_pcpr_verified','collectedAt':raw['collectedAt'],
+                                'vatIncluded':True,'paygVerification':k[2] not in payg_differences,
+                                'pricingSource':'PCPR OCPI first-match',
+                                'idleFeeSource':'https://ubitricity.com/en/driver/pricing/' if idle else None}}
                 c['tariff_ids']=[]; priced+=1
-    source={'id':'ubitricity-pcpr-payg','name':'Ubitricity','pricingScope':'cpo_direct_payg_verified','locations':locations,'tariffs':[]}
+    source={'id':'ubitricity-pcpr-payg','name':'Ubitricity','pricingScope':'cpo_direct_pcpr_verified','locations':locations,'tariffs':[]}
     report={'collectedAt':raw['collectedAt'],'validatedAt':now.isoformat(),'locations':len(locations),'connectors':len(ids),
             'pricedConnectors':priced,'unpricedConnectors':len(ids)-priced,'affectedLocations':len(affected),
             'validTariffIds':[k[2] for k in valid],'rejectedTariffs':rejected,'exclusionReasons':dict(exclusions),
+            'paygPresentationDifferences':payg_differences,
             'countries':dict(Counter(l['country'] for l in locations)), 'otherCountriesAccessible':False,
             'crossCountryConclusion':'Complete unfiltered token feed contains GB only; FR/NL/DE require separately authorized scope',
-            'pricingPolicy':'exact connector and location, VAT 20% gross conversion, narrowest time window, PAYG current/next day cross-check, London timezone',
+            'pricingPolicy':'exact connector and location, PCPR OCPI first matching element, VAT 20% gross conversion, PAYG advisory current/next day cross-check, London timezone',
             'publishedToV9':False,'status':'validated_runtime_input_ready','credentialsPersisted':False}
     outputs={'data/national/uk_ubitricity_v9.json.gz':{'collectedAt':raw['collectedAt'],'sources':[source]},
              'reports/uk/ubitricity-pcpr-validation-latest.json':report,
