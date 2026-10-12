@@ -1,0 +1,43 @@
+name: Compare rolling and frozen DOT-NL direct tariff gaps (read-only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/v9-nl-rollforward-gap-audit-pr.yml"
+      - "scripts/v9_nl_rollforward_direct_gap_20261012.py"
+      - "tests/test_v9_nl_rollforward_direct_gap_20261012.py"
+permissions:
+  contents: read
+jobs:
+  gap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-data-lab
+          ref: 3c9588b49ab16efdce4a8a20fcd21d9564cc9856
+          path: frozen-datalab
+          persist-credentials: false
+      - name: Check rollforward reconciliation and audit real active CPO connectors
+        run: |
+          set -euo pipefail
+          test "$(git -C frozen-datalab rev-parse HEAD)" = "3c9588b49ab16efdce4a8a20fcd21d9564cc9856"
+          python -m unittest discover -s tests -p 'test_v9_nl_rollforward_direct_gap_20261012.py' -v
+          python scripts/v9_nl_rollforward_direct_gap_20261012.py --previous frozen-datalab/data/national/netherlands_dotnl/normalized.json.gz --output "$RUNNER_TEMP/nl-rollforward-audit.json"
+          python - "$RUNNER_TEMP/nl-rollforward-audit.json" <<'PY'
+          import json,sys,re
+          r=json.load(open(sys.argv[1]))
+          assert r["publishedToTcc"] is False
+          assert r["oldInputCompressedSha256"]=="651d3723e67250ff9e5dfe0644a4b7973a8609ff08e3021b3f253cc5ef85ee93"
+          assert re.fullmatch("[0-9a-f]{64}",r["currentInputCompressedSha256"])
+          assert r["oldTotals"]["activeAvailableOrCharging"]==165418
+          assert r["oldTotals"]["activeWithoutTariffReference"]==3908
+          assert r["currentTotals"]["activeAvailableOrCharging"] == sum(r["currentCompilerClasses"].values())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-nl-rolling-direct-gap-review
+          path: ${{ runner.temp }}/nl-rollforward-audit.json
+          retention-days: 14
