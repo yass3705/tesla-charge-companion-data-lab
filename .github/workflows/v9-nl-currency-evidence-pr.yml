@@ -1,0 +1,37 @@
+name: Inspect non-EUR DOT-NL source tariffs (read-only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/v9-nl-currency-evidence-pr.yml"
+      - "scripts/v9_nl_non_eur_tariff_evidence_20261012.py"
+      - "tests/test_v9_nl_non_eur_tariff_evidence_20261012.py"
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check non-EUR tariff report and no inferred EUR values
+        run: |
+          python -m unittest discover -s tests -p 'test_v9_nl_non_eur_tariff_evidence_20261012.py' -v
+          python scripts/v9_nl_non_eur_tariff_evidence_20261012.py --output "$RUNNER_TEMP/nl-source-currency.json"
+          python - "$RUNNER_TEMP/nl-source-currency.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          assert d["publishedToTcc"] is False
+          assert d["inputCompressedSha256"]=="651d3723e67250ff9e5dfe0644a4b7973a8609ff08e3021b3f253cc5ef85ee93"
+          pairs={"NL:CPI:NLCPIT2QP*1*0":("USD",15),
+                 "NL:NUO:Free":("XXX",9)}
+          for k,(currency,n) in pairs.items():
+            row=d["tariffs"][k]
+            assert row["sourceCurrency"]==currency
+            assert row["counts"]["activeType2CcsOccurrences"]==n
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-nl-non-eur-source-currency-evidence
+          path: ${{ runner.temp }}/nl-source-currency.json
+          retention-days: 14
