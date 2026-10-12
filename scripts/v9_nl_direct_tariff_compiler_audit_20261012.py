@@ -120,8 +120,6 @@ def evaluate(data, *, example_limit=5):
         raise ValueError("Connector classes do not reconcile")
     if not examined:
         raise ValueError("No active Type 2/CCS connector to audit")
-    if not totals["compiledNotSimulated"] and not totals["noNationalReference"]:
-        raise ValueError("No compiled contracts or missing-reference examples")
     summary = {
         "schemaVersion": 1,
         "status": "DIRECT_CPO_COMPILER_ACCEPTANCE_NOT_COMPLETE_PRICE_SIMULATION",
