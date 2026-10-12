@@ -1,0 +1,20 @@
+name: Validate TCC V9 dated tariff-gap baseline (no publish)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/v9_tariff_gap_baseline_20261012.py"
+      - "tests/test_v9_tariff_gap_baseline_20261012.py"
+      - "docs/v9-nine-country-tariff-audit-rebaseline-20261012.md"
+      - ".github/workflows/v9-tariff-gap-baseline-pr.yml"
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate dated source evidence (read-only)
+        run: |
+          python scripts/v9_tariff_gap_baseline_20261012.py --check
+          python -m unittest discover -s tests -p 'test_v9_tariff_gap_baseline_20261012.py' -v
