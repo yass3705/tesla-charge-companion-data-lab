@@ -1,5 +1,7 @@
 # État de reprise — 2026-10-12
 
+- **Collecte Powerdot réelle validée** : [run read-only 38298531234](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38298531234) sur commit `24195e6fe2a3530b4f46a2dd3105fb0a6683fa0e` : scan de sécurité, tests offline, extraction des sources réelles et gardes CPO/eMSP réussis. Extrait officiel : abonnement Electroverse Powerdot France 1,99 €/mois, remise 22 % ; aucun tarif national direct unique et prix QR dépendant de la borne. Inventaire IRVE statique 6 636 lignes (non temps réel), 3 échantillons ; empreinte `22f5abbc6c3df86076d37a2f62735f086768c54b8b580615eec93374b403d8f9`. [Artefact 11769846643](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38298531234/artifacts/11769846643), disponible 7 jours. **Aucune écriture des tarifs collectés sur main, aucun changement Production et aucun déploiement V9.**
+
 ## Electroverse abonnements Powerdot/IONITY — branche de correction 12 octobre 2026
 
 - Branche distante Data Lab `fix/electroverse-subscriptions-powerdot-ionity-20261012` issue de `main=4fbf951100b8d953ffa03e64e3419806ba9793ba`. Périmètre : collecteur officiel Powerdot, assertion du workflow, tests hors ligne, référentiel eMSP documentaire. Aucun changement Production, Stable, Updater Test ou base nationale IRVE.
