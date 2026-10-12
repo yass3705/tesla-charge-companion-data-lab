@@ -34,12 +34,24 @@ def inventory(data,limit=15):
     candidate=collections.Counter()
     status=collections.Counter()
     meta=collections.Counter()
+    stationFields=collections.Counter()
+    stationSamples=[]
     metaValues=collections.defaultdict(collections.Counter)
     samples=[]
     selected=0
     for station in data.get("stations") or []:
         if str(station.get("partyId") or "").upper()!="AGO" or not valid_nl(station):
             continue
+        for k in station:
+            stationFields[k]+=1
+        if len(stationSamples)<12:
+            stationSamples.append({
+                "stationId":station.get("stationId"),
+                "name":station.get("name"),
+                "city":station.get("city"),
+                "address":station.get("address"),
+                "fieldNames":sorted(station.keys()),
+            })
         context={k:station[k] for k in SUSPECT_FIELDS if station.get(k) is not None}
         for k,val in context.items():
             meta[k]+=1
@@ -83,6 +95,8 @@ def inventory(data,limit=15):
                         for (k,p),n in sorted(rows.items())],
         "byUnassignedTariffCandidate":dict(sorted(candidate.items())),
         "statusCountsAllType2Ccs":dict(sorted(status.items())),
+        "stationFieldPresence":dict(sorted(stationFields.items())),
+        "stationFieldSamples":stationSamples,
         "stationContextFieldsPresent":dict(meta),
         "stationContextValueCounts":{
             k:dict(sorted(v.items())) for k,v in sorted(metaValues.items())},
@@ -116,6 +130,8 @@ def main():
         "total":result["totalActiveType2Ccs"],
         "candidateTiers":result["byUnassignedTariffCandidate"],
         "powerRows":result["byKindPower"],
+        "stationFields":result["stationFieldPresence"],
+        "stationSamples":result["stationFieldSamples"][:5],
         "contextFields":result["stationContextFieldsPresent"],
         "contextValues":result["stationContextValueCounts"],
         "sampleEvseSources":result["sampleEvseSources"][:4]
