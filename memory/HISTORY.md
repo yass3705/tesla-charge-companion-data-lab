@@ -12,8 +12,61 @@
 - [Première CI PR #203](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38295400173) : 5/6 tests réussis ; le remplacement global `1,99 €` modifiait par erreur le montant IONITY `11,99 €` dans la fixture. Test corrigé par commit `7524144d`; contrôle complet non encore attesté.
 - IZIVIA FAST/Express : [run 38288551568](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38288551568) réussi ; FAST national [38271411552](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38271411552) bloqué sur tarification et rapprochement. Aucune modification de données validées.
 
+## 2026-10-13 — Lot 1 V9 : échecs historiques différenciés, rejeu DOT-NL réparé
+
+- Production `9bedc84` déjà fusionné corrige le doublon navigateur UK PCPR ; global, Midhope, pin et r9 verts sur `160e2e2`. La [PR #55](https://github.com/yass3705/tesla-charge-companion-production/pull/55) fusionnée en `cbe4dd286` corrige seulement l'assertion du rejeu DOT-NL figé : 24 connecteurs USD/XXX restent sans offre EUR, les 161 485 autres restent calculables dans chacun des six profils ; [CI 38318304587](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38318304587) réussie. La PR historique #45, dont le merge aurait régressé le candidat, est fermée avec justification. Aucun déploiement Pages/Cloudflare, aucun changement de pin ; détails et reprise dans [CURRENT.md](CURRENT.md).
+
+## 2026-10-12 — Ubitricity : condition des frais après charge confirmée
+
+- Data Lab [#215](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/215) fusionnée en `c7d8c9a40`, run 38311301464 réussi avec 17 tests. Production [#54](https://github.com/yass3705/tesla-charge-companion-production/pull/54) fusionnée en `160e2e22a` ; six checks PR et cinq runs `main` réussis, dont le global 38311766949. Le constructeur évite désormais le doublon `uk-pcpr.js` qui cassait le global sur le `main` précédent. Pages ignoré ; source Ubitricity inactive faute de collecte PCPR fraîche.
+- L'utilisateur a vérifié sur le site PAYG que les frais des prises 7–22 kW ne commencent qu'après 60 minutes suivant la fin de recharge si le véhicule reste branché, et ne s'appliquent qu'entre 8 h et 20 h. La page officielle confirme 5 p/min. Le validateur remplace les anciens champs ignorés par V9 par `postChargeFee` avec grâce et exemption nocturne ; la nouvelle référence `b02a...` peut être évaluée seulement après collecte PCPR fraîche et identité exacte. Les 33 restent hors classement dans le snapshot actuel. Voir [l'audit](../docs/uk-ubitricity-rejected-tariffs-audit-2026-10-12.md).
+
+## 2026-10-12 — IZIVIA FAST : 616/616 intégrées au pin de développement V9
+
+- [CI exhaustive #38308710299](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38308710299) : 616/616 stations jointes, 1 212 tarifs directs, 0 erreur. [CI combinée FR + UK #38309263354](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38309263354) réussie, ainsi que la [CI de promotion #38309567151](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38309567151) (browser, manifeste, sécurité des pins). 12 affectations CHAdeMO non prises en compte.
+- [Production PR #52](https://github.com/yass3705/tesla-charge-companion-production/pull/52) fusionnée `91b8273acac18dbea4f66fa65f8ee42b24690410` et pin développement `2026-10-12-izivia-fast-direct-candidate` contrôlé sur `main`, Data Lab `66ec5a67b5498a5e95ff5896d2d7b9ebc25fde60`. **Pas de Pages/release.** Anciennes versions de retour arrière conservées.
+
+
+## 2026-10-12 — Rectification de la priorité PCPR Ubitricity
+
+- Data Lab [#212](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/212) fusionnée en `eb0443662` et Production [#53](https://github.com/yass3705/tesla-charge-companion-production/pull/53) en `150f77c`. Run Ubitricity Data Lab 38309335991 réussi ; quatre checks PR et cinq runs Production post-fusion réussis. Le job Pages a été ignoré ; dernier déploiement `796e7fca`. Aucun nouveau prix Ubitricity actif.
+- La règle OCPI est le premier élément compatible par dimension, dans l'ordre publié. L'ancien constat de conflit lundi 20 h–minuit sur 183 prises reposait sur une priorité erronée à la fenêtre courte et est retiré ; le PAYG devient un diagnostic. Les 33 prises à nouvelle référence publique sont 21 prises de 7,4 kW et 12 de 22 kW. Leurs composantes `PARKING_TIME` (2,46/2,52 GBP/h hors TVA, pas 60 s) ne détaillent pas la grâce et la plage horaire annoncées officiellement. Source V9 inactive faute de collecte PCPR fraîche. Voir [l'audit rectifié](../docs/uk-ubitricity-rejected-tariffs-audit-2026-10-12.md).
+
+## 2026-10-12 — Ubitricity UK : correction du validateur et preuve des blocages résiduels
+
+- Audit officiel public des 458 prises rattachées aux trois références PCPR rejetées : 202 prix désormais corroborés à la prise après TVA et priorité de la fenêtre courte, 183 avec conflit lundi soir, 33 avec nouvelle référence et frais de stationnement, 39 sites déplacés et un détail indisponible. Voir [le dossier source](../docs/uk-ubitricity-rejected-tariffs-audit-2026-10-12.md). Le run PCPR quotidien 38231569077 renvoie toujours 0 site / 0 tarif avec le jeton actuel. Correctif du validateur et tests fusionnés via [#209](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/209) (`a1efdd75f`) ; [run post-fusion 38307222593](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38307222593) réussi, appels au CPO et persistance ignorés. Source Production inactive, aucune publication.
+
+- [Validation effective run #38299651696](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38299651696) **success** : 620 stations et tarifs directs officiels, 616 avec connecteurs éligibles, quatre sans connecteur pris en charge. Détails carte 0 échec, aucune repasse sollicitée, couverture précédente 482 → 616 (+134). 665 codes carte, 45 codes carte hors inventaire ; pas d'élargissement des correspondances exactes. [Artefact](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38299651696/artifacts/11769129182). Le succès de la première passe ne prouve pas l'utilisation des retries. Aucune promotion Production.
+
+## 2026-10-12 — Récupération IZIVIA FAST (candidate)
+
+- [Run historique 38271411552](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38271411552) : 482 stations tarifées sur 620, 76 erreurs tarifaires, 59 non-appariements carte et 65 fiches carte en échec. Hypothèse testée : interruptions/rate limit de l'API pendant les requêtes concurrentes, non disparition nécessaire des sites.
+- Branche Data Lab `fix/izivia-fast-recover-map-prices-20261012` : quatre workers, repasse séquentielle des détails et prix échoués, rapports de récupération, aucun tarif inventé. [Validation nationale sans publication 38299651696](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38299651696) déclenchée ; décision de fusion suspendue à la validation effective et aux preuves.
+
 
 Entrées append-only, datées, avec liens vers les documents et commits sources. L'historique exhaustif du code reste dans Git (`git log`) et dans les changelogs propres aux dépôts ; ce journal consigne les passages de relais et décisions transverses.
+
+## 2026-10-12 — Vingt CPO UK intégrés prudemment au candidat, Ubitricity toujours bloquée
+
+- Data Lab [#207](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/207) fusionnée en `0942299c4`, puis Production [#51](https://github.com/yass3705/tesla-charge-companion-production/pull/51) en `660fe0b`. Les quatre checks de PR et cinq runs Production post-fusion ont réussi ; [run global 38304183240](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38304183240), Pages ignoré. Le dernier déploiement Pages reste `796e7fc` du 11 octobre. L'audit de 31/32 CPO présents concerne le candidat construit, pas le site publié. La PR documentaire #206 conflictuelle a été fermée après reprise de ses preuves dans #207.
+- La consolidation précédente a été fusionnée via Data Lab [#204](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/204) (`f54dd4954`) puis Production [#50](https://github.com/yass3705/tesla-charge-companion-production/pull/50) (`4aa88f5ee`). Les cinq runs Production post-fusion ont réussi, Pages ignoré ; dernier déploiement connu `796e7fca`. La note de la PR documentaire #206 est reprise dans `CURRENT.md` après conflit avec des changements indépendants.
+- La collecte publique GeniePoint a été épinglée en Data Lab : 306 sites, 1 138 prises, 530 tarifs et zéro référence tarifaire manquante. Le candidat Production ne classe que 235 offres exactes TTC. Les 19 autres CPO intégrables du lot sont traités comme prix vérifiés, inventaire de prises sans prix ou sites sans identité de prise, selon leurs preuves. Le [dossier Production](https://github.com/yass3705/tesla-charge-companion-production/blob/feat/uk-direct-ocpi-batch-20261012/docs/V9_UK_21_CPO_FOLLOWTHROUGH_20261012.md) détaille les limites.
+- Audit du build global local : 31 des 32 CPO terminés présents en inventaire, 15 avec au moins une offre ; Ubitricity reste inactive sous blocage support. Tests du snapshot, manifeste, parité Stable et runtime multi-pays réussis. Aucune publication Pages. Les branches de travail doivent encore passer la CI GitHub avant fusion.
+
+## 2026-10-12 — Candidat UK publié en PR de revue, quatre checks Production réussis
+
+- [Data Lab #204](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/204) et [Production #50](https://github.com/yass3705/tesla-charge-companion-production/pull/50) ouvertes après accord utilisateur, non fusionnées. La CI de #50 a corrigé successivement la compatibilité des pins historiques, la parité Stable et les chemins relatifs des tests. Le [run global 38298692518](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38298692518), r9, développement épinglé et Ubitricity ont réussi ; job Pages ignoré. Le dernier déploiement Pages reste `796e7fca` du 11 octobre.
+- Le candidat local final sous Data Lab `2ea858eeb` et Stable `3b2d4776` passe la parité, le manifeste SHA-256 et le smoke runtime. Les 21 CPO terminés absents du runtime restent un écart ouvert ; aucune promotion du pin de développement ni publication Pages.
+
+## 2026-10-12 — Audit de couverture UK et candidat Connected Kerb/Allego local
+
+- Les preuves du jour sont rassemblées dans `docs/uk-cpo-consolidation-2026-10-12.md`. Le candidat Production local intègre les 8 100 prises Connected Kerb validées et épingle Allego avec son audit ; Source EV et Midhope sont contrôlés. ChargePoint conserve zéro prix direct promu ; les trois références Ubitricity rejetées n'ont pas de nouvelle preuve.
+- Contrôle de publication : 32 CPO marqués terminés, 11 présents dans des sources V9 actives, 9 avec au moins une offre, 21 absents. La publication UK complète reste ouverte. Branches locales `feat/uk-consolidation-20261012` dans Production et Data Lab, sans synchronisation GitHub ni déploiement Pages.
+
+## 2026-10-12 — Source EV publié dans les pipelines Data Lab et Production, sans Pages
+
+- Data Lab [#201](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/201) fusionnée (`dd53905ab`), puis [collecte 38294034888](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38294034888) réussie avec audit et scan public ; commit de données `054c48cbe`, 36 stations et 323 connecteurs exacts. La collecte continue quotidiennement à 03:43 UTC.
+- Production [#49](https://github.com/yass3705/tesla-charge-companion-production/pull/49) fusionnée (`1f1b593b`) après quatre checks réussis. Le [run global post-fusion 38294581197](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38294581197) a réussi avec Source EV et le parcours navigateur ; Pages ignoré. Dernier déploiement Pages inchangé à `796e7fc` ; aucune promotion du pin de développement.
 
 ## 2026-10-12 — Source EV quotidien validé localement, Evyve transmis au support
 
