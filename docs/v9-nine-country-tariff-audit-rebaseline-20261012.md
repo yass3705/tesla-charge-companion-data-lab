@@ -70,3 +70,13 @@ Sur les **165 418 occurrences de connecteurs Type 2/CCS disponibles ou occupés*
 Le seul rejet tarifaire concerne l'EVSE `NL*NUO*EALF*0072880*1` (connecteur Type 2, 22,08 kW, référence `NL:NUO:2000025714-2000013230`) : `no_current_element` au 11/10. Vérifier si la source a omis la grille en vigueur ; **ne pas** remplacer par un tarif d'une autre borne. Parmi les références absentes, AGO : 2 374, GFX : 738, LNT : 432, EFL : 111 (les autres CPO figurent dans le rapport).
 
 **Étape obligatoire suivante :** tester des scénarios réels (kWh, temps de charge et de connexion, stationnement, changements de créneau, min/max durée, TVA/arrondis) avec la version actuelle du moteur, puis contrôler les entrées tarifaires. Ces **161 509** tarifs sont *compilés*, **pas** démontrés comme correctement calculables dans tous les cas. Les sites à accès non public restent à exclure de la publication après vérification, sans les présumer publics sur le seul statut OCPI.
+
+## Simulation prospective de six profils de recharge (en cours de validation CI)
+
+Le script `scripts/v9_nl_direct_tariff_simulation_fixtures_20261012.py` conserve l'opérateur, le type de prise, la puissance et le tarif retenu du connecteur, ainsi que sa multiplicité. Un candidat tarifaire partagé est simulé une fois par classe (tarif, opérateur, prise, puissance) puis pondéré par le nombre de connecteurs actifs représentés. L'objectif est de couvrir les **161 509** connecteurs dont le compilateur DOT-NL a accepté une référence, sans fusionner les prix par station. Les **3 908** sans référence et le cas unique hors période restent exclus du calcul chiffré.
+
+Les six hypothèses sont : charge un jour ouvré, charge en soirée suivie d'une occupation, traversée de minuit, dimanche avec occupation, session de quatre heures, traversée du changement d'heure automnal. Ces dates/énergies/durées sont des **profils hypothétiques**, pas des factures ni une preuve que le tarif sera encore applicable à ces dates.
+
+La CI épingle le runtime **Production V9** sur `84e86c317af2f4d2380f2fd1543dd4befafc10fe`, importe l'adaptateur réel DOT-NL et son moteur tarifaire, exécute les régressions contractuelles, contrôle les totaux d'EVSE pondérés et publie un **artefact de résultats non déployé**. Seuls les tarifs simples ENERGIE sont comparés à une formule indépendante ; tous les autres succès sont déclarés **moteur a retourné un montant**, et non **prix commercial indépendant validé**. Les éventuels refus exacts sont conservés par profil, CPO, offre et raison.
+
+Aucune correction automatique de prix ou déploiement n'est autorisé par ce workflow.
