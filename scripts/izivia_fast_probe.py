@@ -5,6 +5,7 @@ import json
 import math
 import os
 import time
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -30,21 +31,54 @@ HEADERS = {
 }
 
 
+# Share one conservative request budget across concurrent station workers.
+# A provider 429 extends the cooldown for every worker, not only its caller.
+_REQUEST_LOCK = threading.Lock()
+_NEXT_REQUEST_AT = 0.0
+_MIN_INTERVAL_SECONDS = 0.35
+
+
+def _pace():
+    global _NEXT_REQUEST_AT
+    with _REQUEST_LOCK:
+        remaining = _NEXT_REQUEST_AT - time.monotonic()
+        if remaining > 0:
+            time.sleep(remaining)
+        _NEXT_REQUEST_AT = time.monotonic() + _MIN_INTERVAL_SECONDS
+
+
+def _cooldown(seconds):
+    global _NEXT_REQUEST_AT
+    with _REQUEST_LOCK:
+        _NEXT_REQUEST_AT = max(_NEXT_REQUEST_AT, time.monotonic() + seconds)
+
+
 def request(path, method="GET", body=None):
     data = None if body is None else json.dumps(body, separators=(",", ":")).encode()
     req = urllib.request.Request(BASE + path, data=data, headers=HEADERS, method=method)
-    for attempt in range(3):
+    for attempt in range(5):
+        _pace()
         try:
             with urllib.request.urlopen(req, timeout=30) as response:
                 return response.status, json.loads(response.read())
         except urllib.error.HTTPError as exc:
             raw = exc.read().decode("utf-8", "replace")
-            if exc.code not in (429, 500, 502, 503, 504) or attempt == 2:
+            if exc.code not in (429, 500, 502, 503, 504) or attempt == 4:
                 return exc.code, raw[:500]
+            if exc.code == 429:
+                retry_after = (exc.headers or {}).get("Retry-After", "")
+                try:
+                    wait = max(1.0, min(120.0, float(retry_after)))
+                except (TypeError, ValueError):
+                    wait = min(60.0, 5.0 * 2 ** attempt)
+            else:
+                wait = min(30.0, 2.0 ** attempt)
+            _cooldown(wait)
         except Exception as exc:
-            if attempt == 2:
+            if attempt == 4:
                 return 0, repr(exc)
-        time.sleep(attempt + 1)
+            _cooldown(min(30.0, 2.0 ** attempt))
+    return 0, "Request retries exhausted"
 
 
 def distance_m(lat1, lon1, lat2, lon2):
