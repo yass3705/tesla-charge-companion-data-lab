@@ -42,7 +42,7 @@ class SubscriptionEvidenceTests(unittest.TestCase):
     def test_missing_ionity_fails(self):
         with self.assertRaises(RuntimeError):
             parse_electroverse_subscriptions(PAGE.replace("IONITY", "Other"))
-            
+
     def test_missing_fee_fails(self):
         with self.assertRaisesRegex(RuntimeError, "Powerdot monthly fee"):
             parse_electroverse_subscriptions(PAGE.replace("pour seulement 1,99 €", "pour seulement 2,99 €"))
