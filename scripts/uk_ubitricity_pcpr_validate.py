@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Validate PCPR prices against public PAYG details, then compile exact offers.
-PCPR prices exclude VAT; PAYG detail prices include VAT. Preserve OCPI element
-order. Provider stop times ending :59 include that last minute, corroborated
-by PAYG bands and the official pricing page. Never guess a missing tariff.
+
+Both current PCPR and public PAYG components state VAT separately. Compare
+gross prices after VAT and resolve overlapping time bands by the narrowest
+applicable window. Equal-width conflicting bands remain ambiguous.
 """
 import copy, gzip, json, urllib.request
 from collections import Counter, defaultdict
@@ -19,39 +20,45 @@ def minute(value):
         raise ValueError('invalid time')
     return h*60+m
 
-def price(pc, gross):
+def price(pc):
     if pc.get('type',pc.get('dimensionType')) != 'ENERGY' or pc.get('step_size',pc.get('stepSize')) != 1:
         raise ValueError('unsupported price component')
     v=Decimal(str(pc['price']))
     if v < 0: raise ValueError('negative price')
-    if not gross:
-        if pc.get('vat') != 20: raise ValueError('unknown VAT')
-        v *= Decimal('1.2')
+    if pc.get('vat') != 20: raise ValueError('unknown VAT')
+    v *= Decimal('1.2')
     return float(v.quantize(Decimal('.01'), rounding=ROUND_HALF_UP))
 
-def grid(elements, day, gross=False):
+def grid(elements, day, payg=False):
     result=[None]*1440
+    widths=[1441]*1440
     for el in elements:
         r=el.get('restrictions') or {}
-        allowed={'startTime','stopTime'} if gross else {'start_time','end_time','day_of_week','min_duration'}
+        allowed={'startTime','stopTime'} if payg else {'start_time','end_time','day_of_week','min_duration'}
         if set(r)-allowed or r.get('min_duration',0) != 0: raise ValueError('unsupported restrictions')
-        if not gross and r.get('day_of_week') and DAYS[day] not in r['day_of_week']: continue
-        start=minute(r.get('startTime' if gross else 'start_time','00:00'))
-        raw_end=r.get('stopTime' if gross else 'end_time','24:00')
+        if not payg and r.get('day_of_week') and DAYS[day] not in r['day_of_week']: continue
+        start=minute(r.get('startTime' if payg else 'start_time','00:00'))
+        raw_end=r.get('stopTime' if payg else 'end_time','24:00')
         end=minute(raw_end)
         if raw_end.endswith(':59'): end+=1
         if end <= start: raise ValueError('unsupported overnight range')
-        pcs=el.get('priceComponents' if gross else 'price_components',[])
+        pcs=el.get('priceComponents' if payg else 'price_components',[])
         if len(pcs)!=1: raise ValueError('unsupported multiple dimensions')
-        cost=price(pcs[0],gross)
+        cost=price(pcs[0])
         for m in range(start,end):
-            if result[m] is None: result[m]=cost
+            width=end-start
+            if width < widths[m]:
+                result[m],widths[m]=cost,width
+            elif width == widths[m] and result[m] != cost:
+                raise ValueError('equally specific conflicting time bands')
     if any(v is None for v in result): raise ValueError('incomplete daily coverage')
     return result
 
-def public_sample(eid,cid,tid):
+def public_sample(location_id,eid,cid,tid):
     req=urllib.request.Request(PORTAL+eid,headers={'User-Agent':'TeslaChargeCompanion/9 PAYG validation'})
     with urllib.request.urlopen(req,timeout=45) as r: payload=json.load(r)
+    if str(payload.get('id')) != str(location_id):
+        raise ValueError('exact PAYG location identity changed')
     matches=[t for e in payload.get('evses',[]) if e.get('id')==eid for c in e.get('connectors',[]) if str(c.get('id'))==cid for t in c.get('tariffs',[]) if str(t.get('id'))==tid]
     if len(matches)!=1: raise ValueError('exact PAYG connector tariff missing or ambiguous')
     t=matches[0]
@@ -93,7 +100,7 @@ def main():
         for e in l.get('evses',[]):
             for c in e.get('connectors',[]):
                 ids=c.get('tariff_ids',[])
-                if len(ids)==1: refs[(l['country_code'],l['party_id'],str(ids[0]))].append((e.get('evse_id'),str(c['id'])))
+                if len(ids)==1: refs[(l['country_code'],l['party_id'],str(ids[0]))].append((str(l['id']),e.get('evse_id'),str(c['id'])))
     now=datetime.now(timezone.utc); day=now.astimezone(__import__('zoneinfo').ZoneInfo('Europe/London')).weekday()
     valid={}; evidence={}; rejected={}
     for key,pairs in refs.items():
@@ -103,8 +110,8 @@ def main():
             if t.get('currency')!='GBP': raise ValueError('unsupported currency')
             week=[grid(t['elements'],d) for d in range(7)]
             samples=[]
-            for eid,cid in dict.fromkeys([pairs[0],pairs[-1]]):
-                s=public_sample(eid,cid,tid)
+            for location_id,eid,cid in dict.fromkeys([pairs[0],pairs[-1]]):
+                s=public_sample(location_id,eid,cid,tid)
                 if grid(s['currentDayTariffs'],day,True)!=week[day] or grid(s['nextDayTariffs'],(day+1)%7,True)!=week[(day+1)%7]:
                     raise ValueError('PCPR/PAYG time-band or price conflict')
                 samples.append(s)
@@ -137,7 +144,7 @@ def main():
             'validTariffIds':[k[2] for k in valid],'rejectedTariffs':rejected,'exclusionReasons':dict(exclusions),
             'countries':dict(Counter(l['country'] for l in locations)), 'otherCountriesAccessible':False,
             'crossCountryConclusion':'Complete unfiltered token feed contains GB only; FR/NL/DE require separately authorized scope',
-            'pricingPolicy':'exact connector tariff, gross VAT, ordered OCPI elements, PAYG current/next day cross-check, London timezone',
+            'pricingPolicy':'exact connector and location, VAT 20% gross conversion, narrowest time window, PAYG current/next day cross-check, London timezone',
             'publishedToV9':False,'status':'validated_runtime_input_ready','credentialsPersisted':False}
     outputs={'data/national/uk_ubitricity_v9.json.gz':{'collectedAt':raw['collectedAt'],'sources':[source]},
              'reports/uk/ubitricity-pcpr-validation-latest.json':report,
