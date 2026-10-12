@@ -141,7 +141,7 @@ def eligible_location(loc, cfg):
     return None
 
 
-def make_tariff(raw):
+def make_tariff(raw, cfg=None):
     if raw.get("country_code") != "GB" or raw.get("currency") != "GBP":
         return None, "non_GBP_UK_tariff"
     if not isinstance(raw.get("elements"), list) or not raw["elements"]:
@@ -163,6 +163,23 @@ def make_tariff(raw):
                 price = Decimal(str(component["price"]))
                 vat = Decimal(str(component["vat"])) if component.get("vat") is not None else Decimal("20")
                 step = Decimal(str(component.get("step_size", 1)))
+                vat_origin = "explicit_OCPI" if component.get("vat") is not None else "UK_public_20_default"
+                if Decimal("0") < vat < Decimal("1"):
+                    # Source EV supplies a fractional 0.2 where OCPI expects a
+                    # percentage. Only observed prices corroborated by the CPO
+                    # PAYG page are supported; future prices fail closed.
+                    known = {"GB*SGB_02": Decimal("0.89"),
+                             "GB*SGB_02_22Kw_AC": Decimal("0.54")}
+                    expected = known.get(str(raw.get("id")))
+                    if (not cfg or cfg.get("slug") != "source_ev" or
+                        vat != Decimal("0.2") or expected is None or
+                        (component["type"] == "ENERGY" and
+                         abs(price * Decimal("1.2") - expected) > Decimal("0.005")) or
+                        component["type"] not in ("ENERGY", "FLAT") or
+                        (component["type"] == "FLAT" and price != 0)):
+                        return None, "ambiguous_fractional_vat"
+                    vat = Decimal("20")
+                    vat_origin = "fractional_source_vat_corroborated_by_official_CPO_PAYG"
                 if not all(x.is_finite() for x in (price, vat, step)) \
                         or price < 0 or vat < 0 or vat > 100 or step < 0 \
                         or (step == 0 and component["type"] != "FLAT"):
@@ -171,7 +188,7 @@ def make_tariff(raw):
                 return None, "invalid_component_values"
             component["sourcePriceExVat"] = float(price)
             component["tccVatRateAppliedPct"] = float(vat)
-            component["tccVatOrigin"] = "explicit_OCPI" if component.get("vat") is not None else "UK_public_20_default"
+            component["tccVatOrigin"] = vat_origin
             component["price"] = float((price * (Decimal(1) + vat / 100)).quantize(Decimal("0.000001")))
             component["vat"] = None  # already included; do not charge again
     result["tccPriceBasis"] = "GBP_including_public_UK_VAT"
@@ -240,7 +257,7 @@ def stage(locations, tariffs, stamp, cfg):
                             rejected["missing_or_ambiguous_exact_tariff"] += 1
                             missing.add(ref)
                             continue
-                        tariff, why = make_tariff(matches[0])
+                        tariff, why = make_tariff(matches[0], cfg)
                         if why:
                             rejected[why] += 1
                         else:
