@@ -1,5 +1,13 @@
 # État de reprise — 2026-10-12
 
+## IZIVIA FAST — récupération des fiches et tarifs manquants (12 octobre 2026)
+
+- [Ancien run national 38271411552](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38271411552) : 620 stations FAST inventoriées, 482 tarifées, 76 échecs de requêtes tarifaires et 59 stations sans rapprochement carte ; 65 échecs de détail de carte. Les classifications « absente de la carte » sont potentiellement dues à des réponses non obtenues, non à une absence physique avérée.
+- Branche `fix/izivia-fast-recover-map-prices-20261012` issue du Data Lab `main=b003d34631baa66d4fc0eee4f6eed9e0c2944465` ; changement `scripts/izivia_fast_capture.py` : réduction des workers de 8 à 4, passe séquentielle des détails carte échoués et passe séquentielle des tarifs échoués. Aucun prix extrapolé, pas d'assignation à un autre EVSE, preuve officielle et garde de correspondance exacte conservées.
+- [Run national de validation #38299651696](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38299651696) déclenché sur branche de test ; rapport et archive en artefact, **aucune publication automatique** des données validées. Résultat et compteurs à relever après fin. Si des stations manquent encore, examiner les codes exacts et leur preuve officielle ; aucune réduction du seuil de sécurité `>=616`.
+- Aucun changement Production, Stable ou Updater Test. Prochaine action : inspecter le rapport `recoveredDetailRequests/recoveredPricingStations`, consolider les statuts et tests avant toute fusion.
+
+
 ## Consolidation UK en PR de revue — 12 octobre 2026
 
 - [Data Lab #204](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/204) ouverte, check `snapshot` réussi ; [Production #50](https://github.com/yass3705/tesla-charge-companion-production/pull/50) ouverte, HEAD `2634c316`, checks r9 historique, développement épinglé, Ubitricity et global réussis ([run global 38298692518](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38298692518)). Branches `feat/uk-consolidation-20261012` publiées, **non fusionnées**. Le candidat local final utilise Data Lab `2ea858eeb` et Stable `3b2d4776` ; les jeux UK sont identiques à Data Lab `04d2b5d19`. Voir [la synthèse des preuves](../docs/uk-cpo-consolidation-2026-10-12.md) et le document Production `docs/V9_UK_CONSOLIDATION_20261012.md` sur #50.
