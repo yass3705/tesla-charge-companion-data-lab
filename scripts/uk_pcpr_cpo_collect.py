@@ -33,6 +33,7 @@ PROVIDERS = {
                   "id": "source-ev-uk-pcpr-direct"},
 }
 ALLOWED_COMPONENTS = {"ENERGY", "TIME", "PARKING_TIME", "FLAT"}
+SUPPORTED_STANDARDS = {"IEC_62196_T2", "IEC_62196_T2_COMBO"}
 ALLOWED_RESTRICTIONS = {"start_time", "end_time", "day_of_week", "min_duration",
                         "max_duration", "min_power", "max_power", "start_date", "end_date"}
 PRIVATE_FIELDS = ("PRIVATE", "STAFF", "EMPLOYEE", "FLEET", "RESIDENT_ONLY",
@@ -237,6 +238,9 @@ def stage(locations, tariffs, stamp, cfg):
             for conn in e.get("connectors") or []:
                 if not isinstance(conn, dict) or not str(conn.get("id") or ""):
                     excluded["missing_connector_identity"] += 1
+                    continue
+                if conn.get("standard") not in SUPPORTED_STANDARDS:
+                    excluded["unsupported_connector_standard"] += 1
                     continue
                 identity = (key, eid, str(conn["id"]))
                 if identity in seen_connectors:
