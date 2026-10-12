@@ -82,6 +82,18 @@ class TestUkPcpr(unittest.TestCase):
             self.assertEqual(module.make_tariff(raw, module.provider("source_ev"))[1],
                              "ambiguous_fractional_vat")
 
+    def test_source_ev_inactive_evse_does_not_qualify(self):
+        active = location("Source EV")
+        inactive = location("Source EV")
+        inactive["id"] = "L2"
+        inactive["evses"][0]["status"] = "OUTOFORDER"
+        staged, audit = module.stage([active, inactive], [tariff()], "now",
+                                     module.provider("source_ev"))
+        self.assertEqual(audit["publicCpoLocations"], 1)
+        self.assertEqual(audit["publicConnectors"], 1)
+        self.assertEqual(audit["excluded"]["source_ev_inactive_evse"], 1)
+        self.assertEqual(len(staged["sources"][0]["locations"]), 1)
+
     def test_chademo_is_not_staged(self):
         raw = location("Source EV")
         raw["evses"][0]["connectors"].append({"id": "2", "standard": "CHADEMO",

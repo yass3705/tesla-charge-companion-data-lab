@@ -229,6 +229,9 @@ def stage(locations, tariffs, stamp, cfg):
             if not isinstance(evse, dict) or str(evse.get("status") or "").upper() == "REMOVED":
                 excluded["removed_or_invalid_evse"] += 1
                 continue
+            if cfg["slug"] == "source_ev" and str(evse.get("status") or "").upper() not in ("AVAILABLE", "CHARGING"):
+                excluded["source_ev_inactive_evse"] += 1
+                continue
             eid = str(evse.get("evse_id") or evse.get("uid") or "").strip()
             if not eid:
                 excluded["missing_evse_identity"] += 1
