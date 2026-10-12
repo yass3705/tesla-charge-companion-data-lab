@@ -12,10 +12,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DAYS = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY']
 PORTAL = 'https://api.shell.com/ubitricity/direct-access/api/direct-access/locations/'
+NEW_PARKING_TARIFF_ID = 'b02a22fd3c6e28033c6a0151705c4a2e'
 RECHECK_EACH_CONNECTOR = {
     '6fc1ae3a29994220791ee2b4fb1b4604',
     '2ad31c3bf8759020e02523db8d8c7d9e',
     'be724f0ff4cf7e86b56e45fe1b9b9762',
+    NEW_PARKING_TARIFF_ID,
 }
 
 def minute(value):
@@ -33,9 +35,10 @@ def price(pc):
     v *= Decimal('1.2')
     return float(v.quantize(Decimal('.01'), rounding=ROUND_HALF_UP))
 
-def grid(elements, day, payg=False):
+def grid(elements, day, payg=False, allow_parking=False):
     result=[None]*1440
     widths=[1441]*1440
+    parking_coverage=[False]*1440 if allow_parking else None
     for el in elements:
         r=el.get('restrictions') or {}
         allowed={'startTime','stopTime'} if payg else {'start_time','end_time','day_of_week','min_duration'}
@@ -47,8 +50,24 @@ def grid(elements, day, payg=False):
         if raw_end.endswith(':59'): end+=1
         if end <= start: raise ValueError('unsupported overnight range')
         pcs=el.get('priceComponents' if payg else 'price_components',[])
-        if len(pcs)!=1: raise ValueError('unsupported multiple dimensions')
-        cost=price(pcs[0])
+        if not pcs: raise ValueError('missing price components')
+        energy=[]
+        seen_dimensions=set()
+        for pc in pcs:
+            dimension=pc.get('type',pc.get('dimensionType'))
+            if dimension in seen_dimensions: raise ValueError('duplicate price dimension')
+            seen_dimensions.add(dimension)
+            if dimension=='ENERGY': energy.append(price(pc))
+            elif dimension=='PARKING_TIME' and allow_parking:
+                if pc.get('step_size',pc.get('stepSize'))!=60 or pc.get('vat')!=20:
+                    raise ValueError('unsupported parking fee step or VAT')
+                per_minute=Decimal(str(pc['price']))*Decimal('1.2')/Decimal(60)
+                if abs(per_minute-Decimal('0.05'))>Decimal('0.001'):
+                    raise ValueError('parking fee differs from official five pence per minute')
+                for m in range(start,end): parking_coverage[m]=True
+            else: raise ValueError('unsupported price component')
+        if not energy: continue
+        cost=energy[0]
         for m in range(start,end):
             width=end-start
             if not payg and result[m] is None:
@@ -58,6 +77,8 @@ def grid(elements, day, payg=False):
             elif payg and width == widths[m] and result[m] != cost:
                 raise ValueError('equally specific conflicting time bands')
     if any(v is None for v in result): raise ValueError('incomplete daily coverage')
+    if allow_parking and not all(parking_coverage[480:1200]):
+        raise ValueError('parking component missing during official paid window')
     return result
 
 def public_sample(location_id,eid,cid,tid):
@@ -75,21 +96,20 @@ def public_sample(location_id,eid,cid,tid):
 
 def hm(m): return f'{m//60:02d}:{m%60:02d}'
 
-def rules_for(week,idle):
+def rules_for(week):
     groups=defaultdict(list)
     for d,values in enumerate(week):
         start=0
         while start<1440:
-            rate=.05 if idle and 480 <= start < 1200 else 0
             end=start+1
-            while end<1440 and values[end]==values[start] and (.05 if idle and 480 <= end < 1200 else 0)==rate: end+=1
-            groups[(start,end,values[start],rate)].append(DAYS[d])
+            while end<1440 and values[end]==values[start]: end+=1
+            groups[(start,end,values[start])].append(DAYS[d])
             start=end
     return [{'scope':'allDay' if a==0 and b==1440 else 'timeWindow','start':hm(a),'end':hm(b),
              'billing':'kwh','currency':'GBP','pricePerKwh':v,'chargePerMinute':0,'connectionFee':0,
-             'idlePerMinute':0,'postChargeRate':rate,'postChargeGraceMinutes':60,
+             'idlePerMinute':0,
              'days':None if len(days)==7 else days,'ocpiDurationBands':[]}
-            for (a,b,v,rate),days in groups.items()]
+            for (a,b,v),days in groups.items()]
 
 def main():
     raw=json.load(gzip.open(ROOT/'data/national/uk_ubitricity_pcpr.json.gz','rt'))
@@ -114,14 +134,14 @@ def main():
         try:
             t=by_key[key]
             if t.get('currency')!='GBP': raise ValueError('unsupported currency')
-            week=[grid(t['elements'],d) for d in range(7)]
+            week=[grid(t['elements'],d,allow_parking=tid==NEW_PARKING_TARIFF_ID) for d in range(7)]
             samples=[]; checked=0
             selected=dict.fromkeys(pairs if tid in RECHECK_EACH_CONNECTOR else [pairs[0],pairs[-1]])
             for location_id,eid,cid in selected:
                 try:
                     s=public_sample(location_id,eid,cid,tid)
                     checked+=1
-                    if grid(s['currentDayTariffs'],day,True)!=week[day] or grid(s['nextDayTariffs'],(day+1)%7,True)!=week[(day+1)%7]:
+                    if grid(s['currentDayTariffs'],day,True,tid==NEW_PARKING_TARIFF_ID)!=week[day] or grid(s['nextDayTariffs'],(day+1)%7,True,tid==NEW_PARKING_TARIFF_ID)!=week[(day+1)%7]:
                         payg_differences[tid]='public day-band presentation differs from OCPI first-match PCPR'
                     if len(samples)<2: samples.append(s)
                 except (ValueError,KeyError,TypeError,OSError) as ex:
@@ -146,9 +166,13 @@ def main():
                 if len(c.get('tariff_ids',[]))!=1 or k not in valid or pair_error:
                     exclusions[pair_error or rejected.get(k[2],'missing or ambiguous exact tariff')]+=1; affected.add(l['id']); c['tariff_ids']=[]; continue
                 w=c.get('max_electric_power'); idle=isinstance(w,(float,int)) and 7000<=w<=22000
+                if k[2]==NEW_PARKING_TARIFF_ID and not idle:
+                    exclusions['parking tariff outside verified 7-22 kW scope']+=1; affected.add(l['id']); c['tariff_ids']=[]; continue
                 c['validatedV9Offer']={'id':f'ubitricity-pcpr:{l["id"]}:{eid}:{cid}:{k[2]}','provider':'Ubitricity','kind':'direct','subscriptionId':None,
                     'countries':['GB'],'currency':'GBP','stationIds':[str(l['id'])],'evseIds':[eid],
-                    'pricing':{'type':'rules','timeZone':'Europe/London','rules':rules_for(valid[k],idle)},
+                    'pricing':{'type':'rules','timeZone':'Europe/London','rules':rules_for(valid[k]),
+                               **({'postChargeFee':{'eurPerMinute':0.05,'graceMinutes':60,
+                                   'exemptLocalWindows':[{'start':'20:00','end':'08:00'}]}} if idle else {})},
                     'metadata':{'connectorId':cid,'tariffId':k[2],'scope':'cpo_direct_pcpr_verified','collectedAt':raw['collectedAt'],
                                 'vatIncluded':True,'paygVerification':k[2] not in payg_differences,
                                 'pricingSource':'PCPR OCPI first-match',
@@ -161,7 +185,7 @@ def main():
             'paygPresentationDifferences':payg_differences,
             'countries':dict(Counter(l['country'] for l in locations)), 'otherCountriesAccessible':False,
             'crossCountryConclusion':'Complete unfiltered token feed contains GB only; FR/NL/DE require separately authorized scope',
-            'pricingPolicy':'exact connector and location, PCPR OCPI first matching element, VAT 20% gross conversion, PAYG advisory current/next day cross-check, London timezone',
+            'pricingPolicy':'exact connector and location, PCPR OCPI first matching element, VAT 20% gross conversion, PAYG advisory cross-check, official 7-22kW five-pence idle fee after 60 post-charge minutes only 08:00-20:00 Europe/London',
             'publishedToV9':False,'status':'validated_runtime_input_ready','credentialsPersisted':False}
     outputs={'data/national/uk_ubitricity_v9.json.gz':{'collectedAt':raw['collectedAt'],'sources':[source]},
              'reports/uk/ubitricity-pcpr-validation-latest.json':report,

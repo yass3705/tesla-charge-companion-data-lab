@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-12 — Ubitricity : condition des frais après charge confirmée
+
+- L'utilisateur a vérifié sur le site PAYG que les frais des prises 7–22 kW ne commencent qu'après 60 minutes suivant la fin de recharge si le véhicule reste branché, et ne s'appliquent qu'entre 8 h et 20 h. La page officielle confirme 5 p/min. Le validateur remplace les anciens champs ignorés par V9 par `postChargeFee` avec grâce et exemption nocturne ; la nouvelle référence `b02a...` peut être évaluée seulement après collecte PCPR fraîche et identité exacte. Les 33 restent hors classement dans le snapshot actuel. Voir [l'audit](../docs/uk-ubitricity-rejected-tariffs-audit-2026-10-12.md).
+
 ## 2026-10-12 — IZIVIA FAST : 616/616 intégrées au pin de développement V9
 
 - [CI exhaustive #38308710299](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38308710299) : 616/616 stations jointes, 1 212 tarifs directs, 0 erreur. [CI combinée FR + UK #38309263354](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38309263354) réussie, ainsi que la [CI de promotion #38309567151](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38309567151) (browser, manifeste, sécurité des pins). 12 affectations CHAdeMO non prises en compte.
