@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-12 — Collecte Powerdot réelle validée sans publication
+
+- [Run Data Lab 38298531234](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38298531234) terminé success : scan public, tests, collecte live et assertion CPO/eMSP réussis ; Powerdot Electroverse France 22 % pour 1,99 €/mois, direct CPO QR/station sans tarif national unique. Inventaire statique de 6 636 lignes, non live ; [artefact de collecte 11769846643](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38298531234/artifacts/11769846643). Aucun push de donnée canonique ni promotion Production ; correction contenue dans la PR #203 jusqu'à fusion validée.
+
+
 ## 2026-10-12 — Préparation Powerdot et IONITY dans la mémoire partagée
 
 - Preuve d'abonnement Electroverse officielle : Powerdot FR 22 %, ES 29 %, BE 30 %, PT 25 % (1,99 €/mois) et IONITY France 40 % (11,99 €/mois indicatifs) ; aucune valeur de remise ne se substitue à un prix eMSP par EVSE.
