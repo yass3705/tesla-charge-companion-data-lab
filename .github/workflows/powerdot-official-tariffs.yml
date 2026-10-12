@@ -70,6 +70,9 @@ jobs:
             exit 1
           fi
 
+      - name: Unit tests for Electroverse subscriptions
+        run: python -m unittest discover -s tests -p "test_powerdot_electroverse_subscriptions.py" -v
+
       - name: Validate classification
         if: success()
         run: |
@@ -83,7 +86,7 @@ jobs:
           sub=p['mobilityProviders']['electroversePowerdotSubscription']
           assert sub['operatorDirect'] is False
           assert sub['monthlyFeeEur'] == 1.99
-          assert sub['franceDiscountPercent'] == 28.0
+          assert sub['franceDiscountPercent'] == 22.0
           assert sub['historicalPromotionStatus'] == 'expired'
           leasing=p['specialPrograms']['leasingSocial']
           assert leasing['generalPublicTariff'] is False
