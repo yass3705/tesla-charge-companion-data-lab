@@ -9,6 +9,7 @@ import collections
 import gzip
 import hashlib
 import json
+import math
 from pathlib import Path
 
 from dotnl_netherlands_runtime import choose_tariff, date_of
@@ -49,8 +50,10 @@ def fixtures(data):
                     power=float(power)
                 except (ValueError,TypeError):
                     power=0.0
-                if power<0 or power>2000: raise ValueError("Implausible connector power")
+                if not math.isfinite(power):
+                    power=0.0
                 power=round(power,3)
+                implausible=power<=0 or power>2000
                 # Preserve power, physical connector type and operator. A
                 # tariff key reused at different powers must NOT be flattened.
                 ident=(cpo,selected,connector_kind,power)
@@ -59,7 +62,7 @@ def fixtures(data):
                         "cpo":cpo,"tariffKey":selected,
                         "connectorKind":"AC" if connector_kind=="TYPE_2" else "DC",
                         "standard":conn.get("standard"),"powerKw":power,
-                        "count":0,
+                        "count":0,"sourcePowerPlausible":not implausible,
                         "sampleStationId":station.get("stationId"),
                         "sampleEvseId":evse.get("evseId") or evse.get("uid"),
                         "sampleConnectorId":conn.get("id"),
@@ -80,6 +83,7 @@ def fixtures(data):
       "noTariffReference":missing,
       "otherRejected":other,
       "uniquePowerConnectorTariffGroups":len(groups),
+      "implausiblePowerConnectorOccurrences":sum(g["count"] for g in groups.values() if not g["sourcePowerPlausible"]),
       "groups":sorted(groups.values(),key=lambda g:(g["cpo"],g["tariffKey"],g["connectorKind"],g["powerKw"])),
       "publishedToTcc":False
     }
