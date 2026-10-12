@@ -1,0 +1,19 @@
+# UK V9 — consolidation des preuves au 12 octobre 2026
+
+État de référence : Data Lab `04d2b5d192ba7b2ac81cf7cd58c9859ac03e91c5`. La présence dans un candidat Production ne constitue pas une publication Pages.
+
+| CPO | Donnée et audit | Décision tarifaire |
+| --- | --- | --- |
+| Allego | `reports/uk/allego_uk-pcpr-validation-latest.json` : 77 stations, 240 connecteurs, 39 tarifs, 240 prix exacts. | Source et audit à épingler ensemble dans le snapshot V9 ; puissance par prise issue des volts/ampères lorsque le champ OCPI est zéro. |
+| Source EV | `reports/uk/source_ev-pcpr-validation-latest.json` : 36 stations publiques, 323 connecteurs et 323 offres exactes ; empreinte source contrôlée. | Candidat quotidien admissible ; aucun prix hérité d'une autre prise. |
+| Connected Kerb | `reports/uk/connected-kerb-price-exclusions-latest.json` et `data/national/uk_connected_kerb_v9.json.gz` : 2 102 stations, 8 100 connecteurs invités rapprochés de l'app ; 1 381 exclus. | Publier uniquement les 8 100 offres exactes, en UTC selon la preuve app. Les quatre prises Midhope restent dans leur source indépendante, absentes du lot général. |
+| Ubitricity | `reports/uk/ubitricity-pcpr-validation-latest.json` : 13 620 connecteurs chiffrés sur 14 078, mais source V9 sous blocage support. | Les tarifs `6fc1ae3a29994220791ee2b4fb1b4604` et `2ad31c3bf8759020e02523db8d8c7d9e` ont un conflit PCPR/PAYG (398 prises) ; `be724f0ff4cf7e86b56e45fe1b9b9762` manque une preuve PAYG exacte (60 prises). Aucune nouvelle preuve plus récente dans Data Lab : ces 458 prises restent sans prix et le blocage de la source entière reste en vigueur. |
+| ChargePoint | `reports/uk/chargepoint-direct-payg-audit-2026-10-11.json` et `reports/uk/chargepoint-site-access-resolution-latest.json` : 323 sites / 1 142 prises en inventaire, dont 25 sites / 84 prises avec accès public conditionnel vérifié ; zéro prix direct promu. | Classer **prix non disponible** pour toutes les prises sans tarif direct PAYG TTC et canal de paiement invité confirmé. Les 1 035 prix arithmétiques PCPR restent hors classement ; les 11 sites non publics sont exclus de l'inventaire public et les 287 accès non résolus restent en quarantaine. Réouvrir une prise seulement sur nouvelle preuve exacte. |
+
+Pour la consolidation V9, contrôler l'artefact réellement construit, son registre actif, l'exactitude prise par prise, la puissance dérivée et le manifeste. Un statut « complete » dans le registre de suivi UK décrit la collecte ou l'audit de son CPO à sa date ; il ne garantit pas sa présence dans le snapshot courant.
+
+## Écart de couverture du candidat Production
+
+Le ledger compte 32 CPO marqués `complete` ou `complete_v9_runtime_integrated_validated`. Le candidat V9 du 12 octobre en charge 11 en tant qu'inventaire actif : Allego, GRIDSERVE, Blink, MFG EV Power, PoGo Charge, Arnold Clark Charge, ScottishPower Recharge, Clenergy EV, Evolt, Mer et char.gy. Arnold Clark Charge et ScottishPower Recharge n'ont **aucune offre tarifaire** dans l'agrégat chargé. Les neuf autres portent des offres ; certaines prises de char.gy et Evolt restent sans tarif vérifié. Source EV et Connected Kerb sont en plus dans le candidat, avec un statut de suivi distinct de `complete`.
+
+Les 21 CPO marqués terminés mais absents d'une source runtime UK active sont : Osprey Charging, IONITY, Fastned, Be.EV, Applegreen Fast Charge, Wenea, Shell Recharge, Believ, Monta, Zest, Roam, RAW Charging, Lidl, ParkRecharge, GeniePoint, Qwello, TotalEnergies, Charge My Street, Shell Recharge ubitricity, JOLT et 3ti Energy Hubs. Certains fichiers existent dans le snapshot comme entrées de provenance ; un fichier copié sans chargeur actif ne rend aucune offre V9. Ubitricity fait partie de cette liste en raison du blocage support explicite. Ces écarts restent ouverts et ne doivent pas être présentés comme publiés.
