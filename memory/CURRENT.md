@@ -1,5 +1,12 @@
 # État de reprise — 2026-10-12
 
+## Validation NL la plus récente — 12 octobre 2026, 17:01 UTC
+
+- **Candidat d'intégration NL validé, sans publication** : [run #38281196004](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38281196004) vert. Source normalisée du 12/10 SHA-256 `ae40423f595b53c0d6959726a1b7b38db91cb3441d8635545fbcc3e8236ef967` explicitement épinglée, adaptateur Production fusionné `d6f99d6a`. Reconstruction éphémère des tuiles, contrôle de l'inventaire intégral, candidat V9 neuf jeux de données, parité Stable, graphe des assets, smoke runtime et manifeste SHA vérifiés. [Rapport de validation](../reports/netherlands/v9-nl-post-policy-validation-20261012.json).
+- 165 280 occurrences actives Type 2/CCS : 161 328 candidates à une offre EUR, 3 928 sans tarif direct calculable, 24 références à devise non vérifiée (15 CPI/USD et 9 NUO/XXX). Les bornes restent dans l'inventaire ; les 3 952 occurrences sans prix EUR vérifié affichent un **tarif indisponible**. AGO 2 375, GFX 736, LNT 430 constituent les trois principaux écarts. Les 73 557 stations compilées sont toutes conservées par l'adaptateur ; l'UPS CPI reste présente sans prix numérique.
+- **À faire avant intégration réelle** : régénérer et versionner les tuiles runtime NL depuis la source du 12/10 (les tuiles versionnées sont encore du 11/10), épingler leur commit dans le candidat de livraison et relancer le même contrôle sur cette empreinte. Le candidat validé est éphémère, non publié. Le statut AVAILABLE/CHARGING et le prix manquant ne prouvent pas l'accès public individuel.
+- Les sections historiques ci-dessous documentent les étapes antérieures ; en cas de divergence de chiffres ou de politique CPI, cette validation et le rapport lié prévalent.
+
 ## Revue NL et secrets PCPR — 12 octobre 2026, après-midi
 
 - Production #42, #43 et #44 fusionnées séparément ; #44 résout le conflit avec #43 et approuve l'empreinte exacte IONITY DE du refresh du 12/10. Merge #44 `99e557043521a07eb196ce2e8dc4a4458adf153b`. Runs post-fusion NL OCPI `38266686799`, global `38266687039` et développement épinglé `38266686866` réussis ; Pages ignoré. #45 reste banc d'essai non fusionné. Aucun déploiement V9.
