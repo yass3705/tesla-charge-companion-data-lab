@@ -1,0 +1,83 @@
+name: Validate NL inventory and unavailable tariffs (read-only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/v9-nl-post-policy-validation-pr.yml"
+      - "scripts/v9_nl_post_policy_validation_20261012.py"
+permissions:
+  contents: read
+jobs:
+  nl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-production
+          ref: d6f99d6a737b2e20e60452fa6aa369ca1775b5c7
+          path: production-pin
+          persist-credentials: false
+      - name: Recount active Type 2 and CCS prices against current DOT-NL snapshot
+        run: |
+          set -euo pipefail
+          test "$(git -C production-pin rev-parse HEAD)" = "d6f99d6a737b2e20e60452fa6aa369ca1775b5c7"
+          python scripts/v9_nl_post_policy_validation_20261012.py --output "$RUNNER_TEMP/nl-price-validation.json"
+          python - "$RUNNER_TEMP/nl-price-validation.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          c=d["counts"]
+          assert c["totalActiveType2Ccs"] == 165280
+          assert c["NO_COMPUTABLE_SOURCE_TARIFF"] == 3928
+          assert c["CURRENCY_UNVERIFIED"] >= 24
+          assert d["byCpo"]["CPI"]["CURRENCY_UNVERIFIED"] >= 15
+          assert d["byCpo"]["NUO"]["CURRENCY_UNVERIFIED"] >= 9
+          assert c["EUR_OFFER"]+c["NO_COMPUTABLE_SOURCE_TARIFF"]+c["CURRENCY_UNVERIFIED"] == c["totalActiveType2Ccs"]
+          assert d["stationsPreservedWhenPriceUnavailable"] and not d["publishedToTcc"]
+          PY
+      - name: Compile actual runtime tiles without publishing
+        run: |
+          python scripts/dotnl_netherlands_runtime.py data/national/netherlands_dotnl/normalized.json.gz "$RUNNER_TEMP/nl-tiles" "$RUNNER_TEMP/nl-compiler-report.json"
+      - name: Verify full compact inventory with the merged Production adapter
+        run: |
+          node - "$RUNNER_TEMP/nl-tiles/all.json.gz" "$PWD/production-pin" "$RUNNER_TEMP/nl-adapter-validation.json" <<'JS'
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs'),path=require('node:path'),zlib=require('node:zlib');
+          const rows=JSON.parse(zlib.gunzipSync(fs.readFileSync(process.argv[2])));
+          const adapter=require(path.join(process.argv[3],'runtime-overrides/assets/v9/adapters/netherlands-dotnl.js'));
+          let retained=0,cpi=0,cpiOffers=0,invalidConfigs=0,invalidPriced=0;
+          let upsSeen=false,upsPriced=false;
+          for(const row of rows){
+            const site=adapter.normalizeRow(row);
+            assert.ok(site,'a source station was dropped: '+row[0]);
+            retained++;
+            if(String(row[0]).startsWith('NL:CPI:')){cpi++;cpiOffers+=site.offers.length;}
+            if(row[0]==='NL:CPI:NLCPIL7424365'){upsSeen=true;upsPriced=site.offers.length>0;}
+            for(const config of row[8]||[]){
+              const rules=config[5]||[];
+              if(rules.length && rules.some(rule=>!Array.isArray(rule)||String(rule[4]||'').toUpperCase()!=='EUR')){
+                invalidConfigs++;
+                if(site.offers.some(o=>o.metadata?.configurationId===config[0]))invalidPriced++;
+              }
+            }
+          }
+          assert.equal(retained,rows.length);
+          assert.ok(cpi>0&&cpiOffers>0,'retain both CPI inventory and valid EUR prices');
+          assert.ok(upsSeen&&!upsPriced,'UPS stays visible without an invented USD/EUR price');
+          assert.ok(invalidConfigs>0);
+          assert.equal(invalidPriced,0,'non-EUR or missing-currency rules must not create offers');
+          const report={dataLabSha:process.env.GITHUB_SHA,productionSha:'d6f99d6a737b2e20e60452fa6aa369ca1775b5c7',sourceStations:rows.length,retainedStations:retained,cpiStations:cpi,cpiOffers,invalidCurrencyConfigurations:invalidConfigs,invalidCurrencyOffers:invalidPriced,upsRetained:upsSeen,upsHasNumericOffer:upsPriced,publishedToTcc:false};
+          fs.writeFileSync(process.argv[4],JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report));
+          JS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-nl-post-policy-validation
+          path: |
+            ${{ runner.temp }}/nl-price-validation.json
+            ${{ runner.temp }}/nl-compiler-report.json
+            ${{ runner.temp }}/nl-adapter-validation.json
+          retention-days: 14
+      - name: No publish
+        run: echo "Validation only. No V9 release, deployment, or pin update."
