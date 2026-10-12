@@ -1,5 +1,11 @@
 # Journal de la mémoire technique
 
+## 2026-10-12 — Handoff V9 IZIVIA FAST direct Type 2/CCS
+
+- La collecte Data Lab a été validée par [38299651696](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38299651696) (620 prix, 616 sites exploitables). Nouvelle vérification : 12 affectations CHAdeMO dans l'inventaire historique ; elles sont retirées du candidat V9, sans retrait des stations Type 2/CCS. Aucune invention d'identifiants EVSE.
+- [Production PR #52](https://github.com/yass3705/tesla-charge-companion-production/pull/52) : activation sous drapeau explicite, garde de provenance et de tarif, validation [38305905374](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38305905374) réussie ; build complet [38306088010](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38306088010) arrêté par une dépendance UK GeniePoint historique absente du pin. Nouveau run [38306247731](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38306247731) sur configuration FR isolée à vérifier. Aucune fusion ou publication Production.
+
+
 - [Validation effective run #38299651696](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38299651696) **success** : 620 stations et tarifs directs officiels, 616 avec connecteurs éligibles, quatre sans connecteur pris en charge. Détails carte 0 échec, aucune repasse sollicitée, couverture précédente 482 → 616 (+134). 665 codes carte, 45 codes carte hors inventaire ; pas d'élargissement des correspondances exactes. [Artefact](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38299651696/artifacts/11769129182). Le succès de la première passe ne prouve pas l'utilisation des retries. Aucune promotion Production.
 
 ## 2026-10-12 — Récupération IZIVIA FAST (candidate)
