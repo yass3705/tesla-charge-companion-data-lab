@@ -8,6 +8,7 @@ on:
       - scripts/uk_ubitricity_pcpr_collect.py
       - scripts/uk_ubitricity_pcpr_validate.py
       - tests/test_uk_ubitricity_pcpr_collect.py
+      - tests/test_uk_ubitricity_pcpr_tariff_semantics.py
       - .github/workflows/uk-ubitricity-pcpr-refresh.yml
   workflow_dispatch:
     inputs:
@@ -27,7 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test rate-limit retry and pagination
-        run: python -m unittest discover -s tests -p 'test_uk_ubitricity_pcpr_collect.py' -v
+        run: |
+          python -m unittest discover -s tests -p 'test_uk_ubitricity_pcpr_collect.py' -v
+          python -m unittest discover -s tests -p 'test_uk_ubitricity_pcpr_tariff_semantics.py' -v
       - name: Avoid redundant provider calls on scheduled runs
         if: github.event_name == 'schedule'
         id: freshness
