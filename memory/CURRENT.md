@@ -1,5 +1,11 @@
 # État de reprise — 2026-10-12
 
+## Source EV quotidien intégré au pipeline candidat — vérifié le 12 octobre 2026
+
+- Data Lab [#201](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/201) fusionnée au commit `dd53905ab324243a2e3e53459f8b752b7460b203`. Le premier [run 38294034888](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38294034888) avec audit et scan public a réussi et poussé `054c48cbe` : 37 sites Source EV reçus, 36 sites publics actifs, 323 connecteurs Type 2/CCS avec tarif exact, deux tarifs, zéro connecteur public sans prix. La collecte est programmée chaque jour à 03:43 UTC ; chaque nouvelle donnée doit conserver son audit indépendant et son empreinte.
+- Production [#49](https://github.com/yass3705/tesla-charge-companion-production/pull/49) fusionnée au commit `1f1b593b11476405d1179dbe446c4575ac7c4e9c`. Les quatre checks de PR ont réussi ; sur `main`, les builds développement épinglé, r9, Midhope et [V9 global 38294581197](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38294581197) ont réussi. Le run global a chargé Source EV, exécuté le smoke et le parcours navigateur ; Configure Pages, upload et job `deploy` ont été ignorés.
+- Le dernier déploiement Pages observé reste `796e7fca3065382cabf9f4425144304eb7a1bf35` du 11 octobre. Aucun snapshot Source EV n'a été promu dans la configuration de développement immuable ni publié sur Pages. Prochaine action : contrôler la prochaine collecte planifiée, puis décider séparément d'une promotion et publication V9. Evyve reste bloqué par le périmètre du jeton qui renvoie Blink ; l'utilisateur recontactera le support.
+
 ## Source EV UK : collecte quotidienne et intégration candidate — 12 octobre 2026
 
 - Secret `SOURCE_EV_PCPR_TOKEN` présent ; [run 38289984508](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38289984508) réussi. Données collectées : 37 sites Source EV, 36 sites publics actifs, 321 connecteurs Type 2/CCS avec offre exacte, deux tarifs officiels PAYG corroborés pour la TVA. Le statut des données reste `staged_for_audit_not_live`, sans publication V9.
