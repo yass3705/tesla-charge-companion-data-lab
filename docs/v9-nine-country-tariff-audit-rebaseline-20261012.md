@@ -80,3 +80,24 @@ Les six hypothèses sont : charge un jour ouvré, charge en soirée suivie d'une
 La CI épingle le runtime **Production V9** sur `84e86c317af2f4d2380f2fd1543dd4befafc10fe`, importe l'adaptateur réel DOT-NL et son moteur tarifaire, exécute les régressions contractuelles, contrôle les totaux d'EVSE pondérés et publie un **artefact de résultats non déployé**. Seuls les tarifs simples ENERGIE sont comparés à une formule indépendante ; tous les autres succès sont déclarés **moteur a retourné un montant**, et non **prix commercial indépendant validé**. Les éventuels refus exacts sont conservés par profil, CPO, offre et raison.
 
 Aucune correction automatique de prix ou déploiement n'est autorisé par ce workflow.
+
+## Simulation sur moteur V9 épinglé — run 38192029876 (12/10/2026)
+
+**Statut : validation CI réussie, audit en lecture seule, ni prix validés pour l'utilisateur ni déploiement V9.** Le snapshot DOT-NL observé le 11/10 à 10:32 UTC est identifié par SHA-256 `651d3723e67250ff9e5dfe0644a4b7973a8609ff08e3021b3f253cc5ef85ee93`. Le moteur Production V9 est épinglé à `84e86c317af2f4d2380f2fd1543dd4befafc10fe` (SHA-256 moteur `d9a62aa56d7977a142e348d5751f084a32efe9d2ef686f4d61f43f90dffa57a1`). [Run CI avec preuves et artefact détaillé](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38192029876).
+
+Le script a groupé par **CPO + clé tarifaire directe + type de prise + puissance** 13 169 configurations représentant les **161 509** connecteurs dotés d'une offre compilée ; **6 hypothèses de session** ont été simulées, soit **969 054 évaluations pondérées**. Les profils ne sont pas des sessions observées et n'établissent pas à eux seuls la validité contractuelle du montant.
+
+| Profil | Complet pour le moteur | Incomplet ou écart source |
+| --- | ---: | ---: |
+| Jour ouvré | 161 485 | 24 |
+| Soirée avec occupation | 161 485 | 24 |
+| Traversée de minuit | 154 834 | 6 675 |
+| Dimanche | 161 485 | 24 |
+| Session de 4 h | 161 485 | 24 |
+| Transition heure d'hiver | 161 485 | 24 |
+
+**Cause précise** du profil traversant minuit : **6 651** offres classées `tariff_window_crossing_unsupported_components`. Les attributs du **premier segment refusé** se répartissent en **6 630** avec `chargingTimeStepSeconds` et **21** avec `energyStepWh` (groupes disjoints ici, non classes de calculs validés). Principaux CPO : `LNT` 4 935, `IPC` 904, `EVT` 582, `ELD` 117, `BLK` 53, `UFC` 23, `GFX` 21, `ENV` 10, `911` 6. Plusieurs règles refusées comportent **60 secondes de pas TIME mais 0 €/min de frais TIME** : le garde de segmentation du moteur est actuellement plus restrictif que nécessaire pour ces offres, sous réserve d'un correctif testé sans erreur d'arrondi. **Ne pas lever globalement cette protection** : lorsque TIME ou ENERGY sont effectivement facturés au pas, arrondir séparément chaque créneau pourrait sur-facturer une session.
+
+**Données sources à isoler** : 24 connecteurs NL avec devise inattendue (**15 USD** pour `CPI`, **9 `XXX`** sur tarif `NUO:Free` — vérifier si ce dernier correspond à une gratuité sans devise) ; **6** occurrences avec puissance source jugée physiquement atypique ; **341** occurrences d'offres zéro/gratuites nécessitant preuve. Aucune conversion USD → EUR, tarif inventé, ni correction automatique des bornes. Les formules indépendantes sur **685 788 cas pondérés** d'énergie simple ne révèlent **aucun écart** ; cela ne couvre pas les autres conditions commerciales OCPI.
+
+Étapes suivantes : concevoir et tester sur branche Production **un correctif borné** pour les pas de facturation sans composante facturée, tout en laissant les pas TIME/ENERGY effectivement tarifés en échec sûr si l'arrondi global n'est pas prouvé ; re-simuler les profils sur ce candidat, vérifier les restrictions de dates, le contexte d'énergie réellement délivrée, les devises et l'accessibilité publique. Puis traiter les 3 908 références absentes sur le même snapshot indépendamment des tarifs compilés. **Pas de fusion sans validation et consentement.**

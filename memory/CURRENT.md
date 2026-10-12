@@ -1,5 +1,12 @@
 # État de reprise — 2026-10-12
 
+## État opérationnel vérifié après audit DOT-NL (2026-10-12)
+
+- Production `main=84e86c317af2f4d2380f2fd1543dd4befafc10fe` ; **[PR #42](https://github.com/yass3705/tesla-charge-companion-production/pull/42)** correction IONITY provenance en **brouillon non fusionnée**, CI V9/r9/Ubitricity verte, Pages `skipped`. Data Lab `main=3c9588b49ab16efdce4a8a20fcd21d9564cc9856` ; **[PR #197](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/197)** audit NL en **brouillon non fusionnée**.
+- Snapshot DOT-NL 11/10 : **165 418 Type2/CCS AVAILABLE/CHARGING**, 3 908 sans référence nationale, 1 avec règle hors période, **161 509** références acceptées par compilateur ; accès physique public non garanti.
+- [Simulation réelle sur Production V9 épinglée : run 38192029876](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38192029876) : **13 169** configurations, six profils, **969 054** évaluations pondérées, aucun écart sur **685 788** calculs d'énergie simple. Traversée de minuit : **6 651** blocages moteur dus à `chargingTimeStepSeconds` (6 630) ou `energyStepWh` (21) ; **24** cas non-EUR (`USD` 15, `XXX` 9) bloqués sur tous les profils ; six puissances atypiques signalées.
+- **Statut exact : simulation réussie en audit de la PR, pas fiabilité commerciale prouvée ni prix publiés dans V9.** [Documentation et plan de correction](../docs/v9-nine-country-tariff-audit-rebaseline-20261012.md). Ne pas lever en masse les protections de segmentation : éviter double facturation aux frontières de créneaux et arrondis. Reprendre par correctif borné testé en Production sur nouvelle branche et validation du contrat réel.
+
 ## Correctif historique r9 Electra préparé localement — 12 octobre 2026
 
 - Production `origin/main=1dad6fcb38ebd16a08c3d532e8fb4146c457181e` contient #39 et #40 ; Data Lab `origin/main=0150f6efb89803e3577b02148e28c37024a05981` contient #195. Stable est aligné à `b1284080` ; Updater Test local reste derrière son `origin/main` d'un commit. Les branches locales antérieures sont préservées.

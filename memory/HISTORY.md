@@ -77,3 +77,7 @@ Entrées append-only, datées, avec liens vers les documents et commits sources.
 ## Format des prochaines entrées
 
 `YYYY-MM-DD — sujet` ; décision ou constat ; preuves et liens ; fichiers/commits concernés ; vérification ; statut de publication ; action restante. Ne jamais présenter un résultat expérimental comme déployé.
+
+## 2026-10-12 — Simulation nationale DOT-NL sur moteur V9 épinglé
+
+PR Data Lab #197 : audit read-only de 165 418 connecteurs Type2/CCS actifs, 3 908 sans référence DOT-NL, 1 règle hors période, 161 509 offres compilées. [Run 38192029876](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38192029876) : six profils / 969 054 évaluations pondérées, 6 651 refus traversée de minuit (`chargingTimeStepSeconds` 6 630, `energyStepWh` 21), 24 devises non-EUR isolées ; 0 écart sur contrôles indépendants simples. Aucun prix ou snapshot modifié. Deux PR (#42 Production provenance, #197 Data Lab audit) ouvertes en brouillon. Plan : remédiation segmentaire bornée et tests avant promotion ; détaillé dans [le document source](../docs/v9-nine-country-tariff-audit-rebaseline-20261012.md).
