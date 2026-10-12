@@ -155,3 +155,7 @@ Vérifier les runs et les références exactes après chaque fusion, en conserva
 ## Décision ChargePoint NL — 12 octobre, 17 h 57 Europe/Paris
 
 L’utilisateur décide de **ne pas traiter les stations ChargePoint lorsqu’une donnée nécessaire manque et que le site du CPO ne résout pas l’ambiguïté**. Le compact DOT-NL ne transporte pas la preuve d’accès public. La [PR Production #46](https://github.com/yass3705/tesla-charge-companion-production/pull/46) écarte donc les lignes `NL:CPI:` avant normalisation et ajoute un contrôle UPS + autre CPI + autre CPO. La [PR Data Lab #197](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/197) documente cette règle et les sept sites/15 connecteurs échantillonnés. Contrôler les CI et l’intégration de #46 ; ne pas confondre modification proposée et runtime publié.
+
+## Intégration ChargePoint NL — 12 octobre 2026
+
+La [PR Production #46](https://github.com/yass3705/tesla-charge-companion-production/pull/46) a été fusionnée dans `main` par squash `8ff45d23993c4edb65b5a5bbcd63cb66d8901e7a` après trois CI vertes sur le HEAD `39af943` : test DOT-NL `38274770524`, simulation tarifaire gelée `38274770450` (adaptateur de base pour le recensement historique et moteur de la PR), validation du candidat épinglé `38274770485`. Les lignes `NL:CPI:` sont écartées au chargement dans le runtime Production ; le site V9 public n’a pas été déployé par cette fusion. Contrôler les runs `main` suivants et le pin avant de qualifier un déploiement.
