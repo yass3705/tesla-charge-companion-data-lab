@@ -1,4 +1,7 @@
 import importlib.util
+import io
+import json
+from urllib.error import HTTPError
 import sys
 import unittest
 from pathlib import Path
@@ -9,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 spec = importlib.util.spec_from_file_location("izivia_station_tariffs", ROOT / "izivia_station_tariffs.py")
 watch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(watch)
+import izivia_fast_probe as probe
 
 
 class StationTariffWatchTests(unittest.TestCase):
@@ -48,6 +52,35 @@ class StationTariffWatchTests(unittest.TestCase):
         self.assertEqual(watch.compare(before, after)["IZIVIA FAST"]["tariffChangedMapIds"], ["a"])
         with self.assertRaisesRegex(RuntimeError, "coverage fell"):
             watch.compare(before, {"networks": {"IZIVIA FAST": [], "IZIVIA Express": []}})
+
+
+    def test_shared_rate_limit_retries_429_using_retry_after(self):
+        class Response(io.BytesIO):
+            status = 200
+
+        rate_limit = HTTPError(probe.BASE + "map/markers", 429, "rate limit",
+                               {"Retry-After": "7"}, None)
+        response = Response(json.dumps([{"id": "verified"}]).encode())
+        with patch.object(probe, "_pace"), patch.object(probe, "_cooldown") as cooldown:
+            with patch.object(probe.urllib.request, "urlopen",
+                              side_effect=[rate_limit, response]) as opener:
+                status, data = probe.request("map/markers")
+        self.assertEqual((status, data), (200, [{"id": "verified"}]))
+        self.assertEqual(opener.call_count, 2)
+        cooldown.assert_called_once_with(7.0)
+
+    def test_shared_rate_limit_fails_closed_after_bounded_retries(self):
+        def limit(*args, **kwargs):
+            return HTTPError(probe.BASE + "map/markers", 429, "rate limit",
+                             {"Retry-After": "1"}, None)
+
+        with patch.object(probe, "_pace"), patch.object(probe, "_cooldown"):
+            with patch.object(probe.urllib.request, "urlopen",
+                              side_effect=[limit() for _ in range(5)]) as opener:
+                status, _ = probe.request("map/markers")
+        self.assertEqual(status, 429)
+        self.assertEqual(opener.call_count, 5)
+
 
 
 if __name__ == "__main__":
