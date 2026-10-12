@@ -251,21 +251,21 @@
     },
     {
       "name": "evyve",
-      "status": "partial_token_received_github_secret_pending",
-      "access": "official_pcpr_token_received_not_yet_provisioned",
-      "evidence": "User received Evyve PCPR token 2026-10-09. The existing BLINK_PCPR_TOKEN was explicitly tested and returned only 869 Blink Charging locations, so it cannot collect EVYVE. Never label Blink results as Evyve.",
-      "next": "Create Actions secret EVYVE_PCPR_TOKEN containing the Evyve-specific token, then run UK Evyve PCPR collect and validate exact connector tariffs and non-public access before promotion to V9.",
-      "requestStatus": "submitted_2026-10-02",
+      "status": "blocked_provider_token_scope_returns_blink",
+      "access": "evyve_secret_present_distinct_from_blink_but_blink_feed_returned",
+      "evidence": "2026-10-12 GitHub run 38288653559: EVYVE_PCPR_TOKEN differs from BLINK_PCPR_TOKEN, but the PCPR API returns only 869 Blink Charging locations. The collector rejects all records and preserves the prior state; no Evyve inventory is staged.",
+      "next": "Ask PCPR support to verify the Evyve/GB*EVY entitlement or API mapping for this token. Rerun UK Evyve PCPR collect only after provider correction; keep Blink records excluded.",
+      "requestStatus": "support_followup_pending_2026-10-12",
       "requestSubmittedAt": "2026-10-02",
       "workflow": ".github/workflows/uk-evyve-pcpr-collect.yml"
     },
     {
       "name": "Source EV",
-      "status": "blocked_external_pcpr_auth_401",
-      "access": "authenticated_pcpr_token_secret_present_but_rejected",
-      "evidence": "2026-10-09 GitHub run 37935565549: SOURCE_EV_PCPR_TOKEN is present and passed to runner, but Eco-Movement locations endpoint returns HTTP 401. No Source EV inventory or prices staged.",
-      "next": "Check/regenerate Source EV operator-scoped API token with provider and replace only SOURCE_EV_PCPR_TOKEN GitHub secret, then rerun the UK Source EV PCPR collect workflow. Preserve fail-closed no-publication behavior.",
-      "requestStatus": "token_received_http_401_2026-10-09",
+      "status": "validated_daily_pcpr_candidate_pending_v9_integration",
+      "access": "authenticated_source_ev_operator_scoped_pcpr",
+      "evidence": "2026-10-12 GitHub run 38289984508: Source EV only, 37 locations received, 36 public active sites and 321 exact priced Type 2/CCS connectors staged; two tariff IDs, no unpriced public connector. Independent local audit checks CPO, source digest, official PAYG VAT, active EVSE and exact references. Daily workflow runs at 03:43 UTC and will persist collection plus audit atomically after publication of the audit change.",
+      "next": "Review and publish the Data Lab audit and Production candidate integration branches, verify CI and a fresh daily collection; promote an immutable V9 snapshot only with explicit publication authorization.",
+      "requestStatus": "token_accepted_staged_2026-10-12",
       "requestSubmittedAt": "2026-10-02"
     },
     {

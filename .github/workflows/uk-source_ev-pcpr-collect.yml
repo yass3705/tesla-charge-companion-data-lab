@@ -8,6 +8,7 @@ on:
     paths:
       - ".github/workflows/uk-source_ev-pcpr-collect.yml"
       - "scripts/uk_pcpr_cpo_collect.py"
+      - "scripts/uk_source_ev_pcpr_validate.py"
       - "tests/test_uk_pcpr_cpo_collect.py"
 
 permissions:
@@ -57,6 +58,16 @@ jobs:
         if: steps.check.outputs.ready == 'true'
         run: python3 -u scripts/uk_pcpr_cpo_collect.py source_ev
 
+      - name: Audit Source EV source, VAT and exact active connector prices
+        if: steps.check.outputs.ready == 'true'
+        run: python3 scripts/uk_source_ev_pcpr_validate.py
+
+      - name: Check public data safety before persistence
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          python3 scripts/public_safety_check.py data/national
+          python3 scripts/public_safety_check.py reports/uk
+
       - name: Save sanitized PCPR inventory and V9 review staging
         if: steps.check.outputs.ready == 'true'
         shell: bash
@@ -66,6 +77,7 @@ jobs:
             data/national/uk_source_ev_pcpr.json.gz
             data/national/uk_source_ev_pcpr_v9.json.gz
             reports/uk/source_ev-pcpr-latest.json
+            reports/uk/source_ev-pcpr-validation-latest.json
           )
           checkpoint="$(mktemp -d)"
           for path in "${files[@]}"; do
