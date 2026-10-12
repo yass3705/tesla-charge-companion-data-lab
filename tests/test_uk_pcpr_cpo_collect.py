@@ -15,7 +15,7 @@ def location(operator, tariff_ids=None, extra=None):
         "operator": {"name": operator}, "publish": True,
         "coordinates": {"latitude": "51.5", "longitude": "-0.1"},
         "evses": [{"uid": "1", "evse_id": "GB*ABC*E1", "status": "AVAILABLE",
-                   "connectors": [{"id": "1", "max_electric_power": 22000,
+                   "connectors": [{"id": "1", "standard": "IEC_62196_T2", "max_electric_power": 22000,
                                    "tariff_ids": tariff_ids if tariff_ids is not None else ["T1"]}]}],
     }
     item.update(extra or {})
@@ -65,6 +65,30 @@ class TestUkPcpr(unittest.TestCase):
         self.assertEqual(module.eligible_location(location("Source EV", extra={
             "facilities": [{"code": "TRUCK_DEALERSHIP"}]}), cfg), "dealership")
         self.assertEqual(module.eligible_location(location("Allego"), cfg), "wrong_declared_CPO")
+
+    def test_source_ev_fractional_vat_only_for_official_corrobated_prices(self):
+        for tariff_id, net, gross in (("GB*SGB_02", 0.7417, 0.89004),
+                                       ("GB*SGB_02_22Kw_AC", 0.45, 0.54)):
+            raw = tariff(tariff_id)
+            component = raw["elements"][0]["price_components"][0]
+            component.update(price=net, vat=0.2)
+            converted, reason = module.make_tariff(raw, module.provider("source_ev"))
+            self.assertIsNone(reason)
+            self.assertAlmostEqual(converted["elements"][0]["price_components"][0]["price"], gross)
+            self.assertEqual(converted["elements"][0]["price_components"][0]["tccVatRateAppliedPct"], 20)
+            self.assertEqual(module.make_tariff(raw, module.provider("allego_uk"))[1],
+                             "ambiguous_fractional_vat")
+            component["price"] = 0.1
+            self.assertEqual(module.make_tariff(raw, module.provider("source_ev"))[1],
+                             "ambiguous_fractional_vat")
+
+    def test_chademo_is_not_staged(self):
+        raw = location("Source EV")
+        raw["evses"][0]["connectors"].append({"id": "2", "standard": "CHADEMO",
+            "tariff_ids": ["T1"]})
+        _, audit = module.stage([raw], [tariff()], "now", module.provider("source_ev"))
+        self.assertEqual(audit["publicConnectors"], 1)
+        self.assertEqual(audit["excluded"]["unsupported_connector_standard"], 1)
 
     def test_tariff_gbp_and_components(self):
         other = tariff()
