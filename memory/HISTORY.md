@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Vérification finale du pin après les changements UI
+
+- Production `main=9631f4b` ; pin source neuf pays inchangé. [Run épinglé 38324386726](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38324386726) vert : neuf pays + Tesla, 2 442 fichiers et 743 661 633 octets vérifiés. CI globale navigateur #38324386772 verte ; Pages toujours sur `796e7fca` du 11 octobre. Les artefacts #60 et #64 diffèrent par le code Production, pas par les SHA Data Lab/Stable épinglés.
+
 ## 2026-10-13 — Voies tarifaires Tesla, libellés et PR obsolètes
 
 - Production [#61](https://github.com/yass3705/tesla-charge-companion-production/pull/61) fusionnée (`1b23b11`) : Direct/Electra/Electroverse restent visibles aussi sur Tesla, même sans prix ; CI PR et `main` global/pin verts, Pages ignoré. [#62](https://github.com/yass3705/tesla-charge-companion-production/pull/62) fusionnée (`a56f6d0`) : frais fixes, blocs, minimums, paliers et frais différés affichés sans changer les montants ; CI PR et `main` global/pin verts.
