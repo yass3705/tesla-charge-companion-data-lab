@@ -73,6 +73,10 @@ def audit(data, source_sha=None):
                     if len(sample) < 100:
                         sample.append({
                             "stationId": station.get("stationId"),
+                            "stationName": station.get("name"),
+                            "address": station.get("address"),
+                            "city": station.get("city"),
+                            "coordinates": station.get("coordinates"),
                             "evseId": evse.get("evseId") or evse.get("uid"),
                             "connectorId": conn.get("id"),
                             "powerKw": conn.get("powerKw"),
