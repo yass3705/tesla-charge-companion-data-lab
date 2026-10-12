@@ -305,6 +305,8 @@ def main():
     stamp = datetime.now(timezone.utc).isoformat()
     staged, audit = stage(locations, tariffs, stamp, cfg)
     audit["apiRequests"] = {"total": budget[0], "maxPerHour": 30}
+    audit["workflowRunId"] = os.environ.get("GITHUB_RUN_ID")
+    audit["freshCollection"] = True
     slug = cfg["slug"]
     write_json(f"data/national/uk_{slug}_pcpr.json.gz",
                {"source": f"{cfg['name']} PCPR", "collectedAt": stamp,
