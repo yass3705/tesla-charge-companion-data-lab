@@ -79,7 +79,7 @@
   "manualReview": {
     "sourceRun": 38266657238,
     "sourceSnapshotAt": "2026-10-12T10:56:10.446523Z",
-    "scope": "24 active Type 2 occurrences; station sourceAccess is null, so public access and direct free price remain unverified",
+    "scope": "24 active Type 2 occurrences with non-EUR zero FLAT; preserve physical stations, mark direct EUR tariff unavailable unless exact source proof",
     "sites": [
       {
         "stationId": "NL:CPI:NLCPIL6620135",
@@ -286,13 +286,13 @@
         "sourceAccess": null
       }
     ],
-    "decision": "User policy: exclude ChargePoint CPI records with missing required data if the CPO site does not resolve the ambiguity. All 7 sampled CPI sites/15 active Type 2 occurrences are excluded from the confirmed public set, and the current compact NL runtime lacks public-access fields for CPI. Do not assign zero EUR to their USD FLAT zero tariff.",
+    "decision": "Corrected user policy: keep ChargePoint and NUO station/connector inventory; mark only unverified or non-EUR direct price as unavailable. Valid EUR-priced ChargePoint offers remain. Do not infer public access or free charging from source status or zero FLAT.",
     "chargePointAccessReview": {
       "reviewedAt": "2026-10-12",
       "officialChargePointPolicy": "https://www.chargepoint.com/en-ca/support/owner-faq",
       "ownerAccessControl": "The station owner decides who can use a station; network membership, online status, and charging activity do not prove general public access.",
       "publicAccessVerifiedSites": [],
-      "tccEligibility": "EXCLUDE_WHEN_REQUIRED_ACCESS_EVIDENCE_MISSING",
+      "tccEligibility": "INVENTORY_PRESERVED_ACCESS_UNVERIFIED",
       "affectedActiveType2Connectors": 15,
       "affectedSites": [
         {
@@ -303,9 +303,10 @@
             "NLCPIE6620135*1",
             "NLCPIE6620135*2"
           ],
-          "publicAccess": "UNVERIFIED_EXCLUDE",
-          "tccQualified": false,
-          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site."
+          "publicAccess": "UNVERIFIED",
+          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site.",
+          "inventoryTreatment": "KEEP_STATION",
+          "directPriceTreatment": "UNAVAILABLE_FOR_USD_ZERO_FLAT"
         },
         {
           "stationId": "NL:CPI:NLCPIL7003975",
@@ -315,9 +316,10 @@
             "NLCPIE7003975*1",
             "NLCPIE7003975*2"
           ],
-          "publicAccess": "UNVERIFIED_EXCLUDE",
-          "tccQualified": false,
-          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site."
+          "publicAccess": "UNVERIFIED",
+          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site.",
+          "inventoryTreatment": "KEEP_STATION",
+          "directPriceTreatment": "UNAVAILABLE_FOR_USD_ZERO_FLAT"
         },
         {
           "stationId": "NL:CPI:NLCPIL7003995",
@@ -329,9 +331,10 @@
             "NLCPIE7003985*2",
             "NLCPIE7003985*1"
           ],
-          "publicAccess": "UNVERIFIED_EXCLUDE",
-          "tccQualified": false,
-          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site."
+          "publicAccess": "UNVERIFIED",
+          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site.",
+          "inventoryTreatment": "KEEP_STATION",
+          "directPriceTreatment": "UNAVAILABLE_FOR_USD_ZERO_FLAT"
         },
         {
           "stationId": "NL:CPI:NLCPIL7280655",
@@ -341,9 +344,10 @@
             "NLCPIE7280655*2",
             "NLCPIE7280655*1"
           ],
-          "publicAccess": "UNVERIFIED_EXCLUDE",
-          "tccQualified": false,
-          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site."
+          "publicAccess": "UNVERIFIED",
+          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site.",
+          "inventoryTreatment": "KEEP_STATION",
+          "directPriceTreatment": "UNAVAILABLE_FOR_USD_ZERO_FLAT"
         },
         {
           "stationId": "NL:CPI:NLCPIL7280685",
@@ -353,9 +357,10 @@
             "NLCPIE7280685*2",
             "NLCPIE7280685*1"
           ],
-          "publicAccess": "UNVERIFIED_EXCLUDE",
-          "tccQualified": false,
-          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site."
+          "publicAccess": "UNVERIFIED",
+          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site.",
+          "inventoryTreatment": "KEEP_STATION",
+          "directPriceTreatment": "UNAVAILABLE_FOR_USD_ZERO_FLAT"
         },
         {
           "stationId": "NL:CPI:NLCPIL7364315",
@@ -365,9 +370,10 @@
             "NLCPIE7364315*2",
             "NLCPIE7364315*1"
           ],
-          "publicAccess": "UNVERIFIED_EXCLUDE",
-          "tccQualified": false,
-          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site."
+          "publicAccess": "UNVERIFIED",
+          "reviewNote": "Company or facility name is insufficient to establish access restrictions; verify in ChargePoint owner listing or site.",
+          "inventoryTreatment": "KEEP_STATION",
+          "directPriceTreatment": "UNAVAILABLE_FOR_USD_ZERO_FLAT"
         },
         {
           "stationId": "NL:CPI:NLCPIL7424365",
@@ -376,25 +382,22 @@
           "evses": [
             "NLCPIE7424365*1"
           ],
-          "publicAccess": "UNVERIFIED_EXCLUDE",
-          "tccQualified": false,
-          "reviewNote": "UPS facility at Deccaweg 8; Amsterdam official address classifies the building for industrial use. This supports scrutiny but does not itself establish charger access rules."
+          "publicAccess": "UNVERIFIED",
+          "reviewNote": "UPS facility at Deccaweg 8; Amsterdam official address classifies the building for industrial use. This supports scrutiny but does not itself establish charger access rules.",
+          "inventoryTreatment": "KEEP_STATION",
+          "directPriceTreatment": "UNAVAILABLE_FOR_USD_ZERO_FLAT"
         }
       ],
       "upsSiteAdditionalEvidence": "https://data.amsterdam.nl/adressen/0363200000435836",
-      "nextStep": "Keep CPI sites out of TCC while the compact feed lacks public-access evidence. Reconsider only with station-specific public-access and tariff evidence.",
+      "nextStep": "Keep these sites in inventory, show tariff unavailable for the USD FLAT zero evidence; reconsider an exact price only with station-specific official evidence.",
       "policyDecisionAt": "2026-10-12",
-      "policyDecision": "Skip ChargePoint CPI records in TCC when required source fields are missing and the CPO's own site cannot resolve public access or tariff ambiguity. The current compact NL feed lacks public-access evidence for every CPI row; exclude CPI until sufficient station-specific evidence is available.",
+      "policyDecision": "Keep physical ChargePoint CPI stations. For a missing or ambiguous direct tariff, show tariff unavailable; station eligibility remains a distinct access question.",
       "productionImplementation": "https://github.com/yass3705/tesla-charge-companion-production/pull/46",
       "productionIntegration": {
-        "pr": 46,
-        "mergedCommit": "8ff45d23993c4edb65b5a5bbcd63cb66d8901e7a",
-        "status": "MERGED_TO_PRODUCTION_MAIN_NOT_PUBLIC_V9_DEPLOYED",
-        "prValidationRuns": [
-          38274770524,
-          38274770450,
-          38274770485
-        ]
+        "priorPr": 46,
+        "priorCommit": "8ff45d23993c4edb65b5a5bbcd63cb66d8901e7a",
+        "correctionPr": 47,
+        "status": "CORRECTION_PROPOSED_NOT_MERGED"
       }
     }
   }
