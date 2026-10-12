@@ -70,7 +70,7 @@ def audit(data, source_sha=None):
                         continue
                     counts["activeType2CcsOccurrences"] += 1
                     counts[str(conn.get("standard"))] += 1
-                    if len(sample) < 10:
+                    if len(sample) < 100:
                         sample.append({
                             "stationId": station.get("stationId"),
                             "evseId": evse.get("evseId") or evse.get("uid"),
