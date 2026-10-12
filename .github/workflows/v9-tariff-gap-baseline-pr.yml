@@ -22,14 +22,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout immutable October 11 baseline Data Lab files
+        uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-data-lab
+          ref: 3c9588b49ab16efdce4a8a20fcd21d9564cc9856
+          path: frozen-datalab
+          persist-credentials: false
       - name: Validate dated source evidence (read-only)
         run: |
-          python scripts/v9_tariff_gap_baseline_20261012.py --check
+          python scripts/v9_tariff_gap_baseline_20261012.py --root frozen-datalab --check
           python -m unittest discover -s tests -p 'test_v9_tariff_gap_baseline_20261012.py' -v
           python -m unittest discover -s tests -p 'test_v9_nl_type2_ccs_scope_audit_20261012.py' -v
       - name: Audit current DOT-NL Type 2 / CCS connector and active status scope
         run: |
-          python scripts/v9_nl_type2_ccs_scope_audit_20261012.py data/national/netherlands_dotnl/normalized.json.gz --output "$RUNNER_TEMP/nl-type2-ccs-audit.json"
+          python scripts/v9_nl_type2_ccs_scope_audit_20261012.py frozen-datalab/data/national/netherlands_dotnl/normalized.json.gz --output "$RUNNER_TEMP/nl-type2-ccs-audit.json"
           python - "$RUNNER_TEMP/nl-type2-ccs-audit.json" <<'PY'
           import json,sys
           d=json.load(open(sys.argv[1]))
@@ -45,7 +52,7 @@ jobs:
       - name: Analyze DOT-NL active direct-CPO tariff compilability, no runtime publication
         run: |
           python -m unittest discover -s tests -p 'test_v9_nl_direct_tariff_compiler_audit_20261012.py' -v
-          python scripts/v9_nl_direct_tariff_compiler_audit_20261012.py --output "$RUNNER_TEMP/nl-direct-compiler-audit.json"
+          python scripts/v9_nl_direct_tariff_compiler_audit_20261012.py --input frozen-datalab/data/national/netherlands_dotnl/normalized.json.gz --output "$RUNNER_TEMP/nl-direct-compiler-audit.json"
           python - "$RUNNER_TEMP/nl-type2-ccs-audit.json" "$RUNNER_TEMP/nl-direct-compiler-audit.json" <<'PY'
           import json,sys
           scope,compiled=(json.load(open(p)) for p in sys.argv[1:])
@@ -76,7 +83,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_v9_nl_tariff_simulation_fixtures_20261012.py' -v
           node tests/v9_nl_tariff_simulation_regression_20261012.mjs "$PWD/production-pin"
           node production-pin/tests/netherlands-dotnl-ocpi-pricing.test.mjs
-          python scripts/v9_nl_direct_tariff_simulation_fixtures_20261012.py --output "$RUNNER_TEMP/nl-fixtures.json"
+          python scripts/v9_nl_direct_tariff_simulation_fixtures_20261012.py --source frozen-datalab/data/national/netherlands_dotnl/normalized.json.gz --output "$RUNNER_TEMP/nl-fixtures.json"
           node scripts/v9_nl_direct_tariff_simulation_runtime_20261012.cjs "$RUNNER_TEMP/nl-fixtures.json" "$PWD/production-pin" "$RUNNER_TEMP/nl-simulations.json"
           python - "$RUNNER_TEMP/nl-fixtures.json" "$RUNNER_TEMP/nl-simulations.json" <<'PY'
           import json,sys
