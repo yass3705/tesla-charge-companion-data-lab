@@ -66,6 +66,22 @@ class TestUkPcpr(unittest.TestCase):
             "facilities": [{"code": "TRUCK_DEALERSHIP"}]}), cfg), "dealership")
         self.assertEqual(module.eligible_location(location("Allego"), cfg), "wrong_declared_CPO")
 
+    def test_source_ev_fractional_vat_only_for_official_corrobated_prices(self):
+        for tariff_id, net, gross in (("GB*SGB_02", 0.7417, 0.89004),
+                                       ("GB*SGB_02_22Kw_AC", 0.45, 0.54)):
+            raw = tariff(tariff_id)
+            component = raw["elements"][0]["price_components"][0]
+            component.update(price=net, vat=0.2)
+            converted, reason = module.make_tariff(raw, module.provider("source_ev"))
+            self.assertIsNone(reason)
+            self.assertAlmostEqual(converted["elements"][0]["price_components"][0]["price"], gross)
+            self.assertEqual(converted["elements"][0]["price_components"][0]["tccVatRateAppliedPct"], 20)
+            self.assertEqual(module.make_tariff(raw, module.provider("allego_uk"))[1],
+                             "ambiguous_fractional_vat")
+            component["price"] = 0.1
+            self.assertEqual(module.make_tariff(raw, module.provider("source_ev"))[1],
+                             "ambiguous_fractional_vat")
+
     def test_tariff_gbp_and_components(self):
         other = tariff()
         other["currency"] = "EUR"
