@@ -1,9 +1,9 @@
 # UK TCC zero-cost autopilot snapshot
 
-- Generated: 2026-10-09T13:49:09Z
+- Generated: 2026-10-12T18:53:39Z
 - Canonical CPOs: **46**
 - Complete: **33**
-- Actionable partial: **2**
-- Set aside / external blocked: **11**
+- Actionable partial: **1**
+- Set aside / external blocked: **10**
 - Worker state updated: **2026-10-01T17:07:06Z**
 - Global blocked: **False**
