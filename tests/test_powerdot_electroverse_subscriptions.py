@@ -45,7 +45,7 @@ class SubscriptionEvidenceTests(unittest.TestCase):
             
     def test_missing_fee_fails(self):
         with self.assertRaisesRegex(RuntimeError, "Powerdot monthly fee"):
-            parse_electroverse_subscriptions(PAGE.replace("1,99 €", "2,99 €"))
+            parse_electroverse_subscriptions(PAGE.replace("pour seulement 1,99 €", "pour seulement 2,99 €"))
 
     def test_missing_section_boundary_fails_closed(self):
         with self.assertRaisesRegex(RuntimeError, "terminator"):
