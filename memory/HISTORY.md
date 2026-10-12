@@ -1,5 +1,11 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Bélib exact et reprise Electroverse
+
+- Production [#59](https://github.com/yass3705/tesla-charge-companion-production/pull/59) fusionnée (`f923054`), 1 419 règles Bélib liées aux EVSE officiels ; moteur Production corrigé pour conserver l'identité et la puissance du connecteur. Six checks PR et quatre suites `main` réussis ; Pages ignoré.
+- Production [#60](https://github.com/yass3705/tesla-charge-companion-production/pull/60) fusionnée (`2a76090`), nouveau pin de développement à neuf pays `2026-10-13-nine-country-be-belib-exact-candidate`, mêmes sources Data Lab/Stable. [CI PR 38322048812](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38322048812) et `main` #38322194033/#38322193937 vertes, 2 442 empreintes vérifiées ; ancien candidat préservé. Aucun Pages/Cloudflare.
+- Data Lab [#219](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/219) ouverte en brouillon pour le filtre de connecteurs Electroverse FR ; ancienne #191 fermée après portage. Tests et scan public verts, mais recensement EVSE national incomplet (5/16 partitions et aucun manifeste) : pas de fusion ni de pin. La PR Production #28 reste en revue pour ses changements distincts.
+
 ## 2026-10-13 — Lots 2 et 3 : GeniePoint, pin et preuve d'abonnement
 
 - Production [#56](https://github.com/yass3705/tesla-charge-companion-production/pull/56) fusionnée `a3a56c8a` : 46 offres walk-up GeniePoint exactes en plus, 281/1 138 prises tarifées, 857 sans montant ; CI global/pin verts, Pages ignoré. [#57](https://github.com/yass3705/tesla-charge-companion-production/pull/57) fusionnée `15309bf0` : nouveau pin de développement immuable `2026-10-13-uk-geniepoint-ad-hoc-candidate` validé sur PR ; anciens pins conservés. Ubitricity/Evyve bloqués par périmètre fournisseur, Zest/ChargePoint sans preuves tarifaires complètes.
