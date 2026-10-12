@@ -1,5 +1,11 @@
 # Journal de la mémoire technique
 
+## 2026-10-12 — IZIVIA FAST : validation intégrale et promotion du pin de développement
+
+- [Run 38308710299](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38308710299) : 616/616 jointures réelles, 1 212 offres, zéro erreur/extra ; [run 38309263354](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38309263354) : combinaison Data Lab latest UK/FR réussie ; [run 38309567151](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38309567151) : validation développement de bout en bout réussie.
+- Production [PR #52](https://github.com/yass3705/tesla-charge-companion-production/pull/52) fusionnée sur `main` `91b8273acac18dbea4f66fa65f8ee42b24690410`, pin développement actualisé vers `2026-10-12-izivia-fast-direct-candidate`, Data Lab `66ec5a67b5498a5e95ff5896d2d7b9ebc25fde60`. Aucun déploiement Pages, anciens snapshots conservés.
+
+
 - [CI Production #38307932196](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38307932196) entièrement réussie : 616 sites, 6 groupes tarifaires après retrait des 12 affectations CHAdeMO, jointure runtime concrète de FRIZFPFAST1 avec deux tarifs correspondants Type 2 22 kW et CCS 200 kW, calcul horaire/frais vérifié. Groupes de connecteurs anonymes, aucune identité EVSE inventée. La validation de toutes les 616 jointures et la promotion restent séparées. Production #52 draft, non déployée.
 
 - [CI #38306732725](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38306732725) : build complet et scénarios de tarifs réussis après correction des fenêtres horaires verrouillées et de l'arrondi des minutes entamées. [CI #38306958426](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38306958426) : **join IRVE réelle échouée**, FRIZFPFAST1 est interprétée AC 200 kW dans IRVE versus CCS 200/Type 2 22 officiel. L'audit national [38307345098](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38307345098) doit quantifier les écarts. Pas de correspondance EVSE fabriquée, pas de promotion ni Pages.
