@@ -1,5 +1,12 @@
 # Journal de la mémoire technique
 
+## 2026-10-12 — Préparation Powerdot et IONITY dans la mémoire partagée
+
+- Preuve d'abonnement Electroverse officielle : Powerdot FR 22 %, ES 29 %, BE 30 %, PT 25 % (1,99 €/mois) et IONITY France 40 % (11,99 €/mois indicatifs) ; aucune valeur de remise ne se substitue à un prix eMSP par EVSE.
+- Branche Data Lab `fix/electroverse-subscriptions-powerdot-ionity-20261012` : correction de l'analyse de page par opérateur/pays, assert Powerdot 22 %, tests déterministes et registre de preuves `data/emsp/electroverse_subscription_public_evidence_202610.json`. Statut non fusionné, ni déploiement V9 ni changement historique.
+- IZIVIA FAST/Express : [run 38288551568](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38288551568) réussi ; FAST national [38271411552](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38271411552) bloqué sur tarification et rapprochement. Aucune modification de données validées.
+
+
 Entrées append-only, datées, avec liens vers les documents et commits sources. L'historique exhaustif du code reste dans Git (`git log`) et dans les changelogs propres aux dépôts ; ce journal consigne les passages de relais et décisions transverses.
 
 ## 2026-10-12 — Source EV quotidien validé localement, Evyve transmis au support
