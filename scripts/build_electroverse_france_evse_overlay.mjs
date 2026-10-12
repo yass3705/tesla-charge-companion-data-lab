@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import path from 'node:path';
+import {isSupportedElectroverseConnector, filterSupportedElectroverseConnectors, electroverseConnectorStandard, ELECTROVERSE_SUPPORTED_CONNECTOR_CLASSES} from './lib/electroverse_connector_policy.mjs';
 
 const CACHE='data/electroverse/tariff_cache';
 const STATUS_DIR='data/electroverse/live_statuses';
@@ -14,15 +15,31 @@ const statusAt=Date.parse(statusData.generatedAt);
 if(!Number.isFinite(statusAt)||Date.now()-statusAt>72*3600_000)
   throw Error('Cannot publish Electroverse overlay: live EVSE status census is older than 72 hours');
 const statusExcluded={byStatus:{},byStation:{},samples:[]};
+const connectorGate={sourceConnectors:0,acceptedConnectors:0,rejectedConnectors:0,excludedEvses:0,rejectedByStandard:{}};
 let statusAccepted=0,statusSourceTotal=0;
 function filterElectroverseRow(sourceRow,count=false){
   const locPk=String(sourceRow.electroverseLocationPk??'');
   const known=statusData.locations?.[locPk]||{};
   const keep=[];
   for(const e of sourceRow.tariff?.evses||[]){
+    const originalConnectors=e?.connectors||[];
+    const supportedConnectors=filterSupportedElectroverseConnectors(originalConnectors);
+    if(count){
+      connectorGate.sourceConnectors+=originalConnectors.length;
+      connectorGate.acceptedConnectors+=supportedConnectors.length;
+      connectorGate.rejectedConnectors+=originalConnectors.length-supportedConnectors.length;
+      for(const c of originalConnectors){
+        if(!isSupportedElectroverseConnector(c)){
+          const standard=electroverseConnectorStandard(c)||'MISSING';
+          connectorGate.rejectedByStandard[standard]=(connectorGate.rejectedByStandard[standard]||0)+1;
+        }
+      }
+      if(!supportedConnectors.length)connectorGate.excludedEvses++;
+    }
+    if(!supportedConnectors.length)continue;
     const status=String(known[String(e?.pk??'')]||'MISSING').toUpperCase();
     if(count)statusSourceTotal++;
-    if(STATUS_ALLOWED.has(status)){keep.push(e);if(count)statusAccepted++;}
+    if(STATUS_ALLOWED.has(status)){keep.push({...e,connectors:supportedConnectors});if(count)statusAccepted++;}
     else if(count){
       statusExcluded.byStatus[status]=(statusExcluded.byStatus[status]||0)+1;
       statusExcluded.byStation[locPk]=(statusExcluded.byStation[locPk]||0)+1;
@@ -186,6 +203,7 @@ function durationBandsFor(group){
   return{ok:true,bands};
 }
 function compileConnector(c){
+  if(!isSupportedElectroverseConnector(c))return{ok:false,reason:'unsupported_connector'};
   const currency=text(c?.complexPricingDetail?.currency||'EUR').toUpperCase()||'EUR';
   const simple=parseComponents(c?.priceComponents||[]);
   if(!simple.ok)return simple;
@@ -3026,6 +3044,7 @@ const out={
     originalSamePowerRefs:reviewedPriceDisputes.samePowerDisputes?.length||0,
     confirmedPowerSplitRefs:reviewedPriceDisputes.chargezyPowerVariants?.length||0,
     quarantine:reviewedQuarantine},
+  connectorGate:{...connectorGate,allowedClasses:ELECTROVERSE_SUPPORTED_CONNECTOR_CLASSES,strict:true},
   statusGate:{generatedAt:statusData.generatedAt,allowedStatuses:[...STATUS_ALLOWED],
     excludedStatuses:statusExcluded.byStatus,excludedByStationCount:Object.keys(statusExcluded.byStation).length,
     excludedEvseCount:statusSourceTotal-statusAccepted,acceptedEvseCount:statusAccepted,
@@ -3127,6 +3146,8 @@ const out={
     proximityInference:false,
     heterogeneousConnectorsWithinEvseFailClosed:true,
     unsupportedPricingFailClosed:true,
+    unsupportedConnectorTypesFailClosed:true,
+    onlyEFType2CCS:true,
     duplicateSamePriceDeduplicated:true,
     duplicateConflictingPriceFailClosed:true,
     dateRestrictedPricingUsesActiveFranceLocalDate:true,
