@@ -22,7 +22,10 @@ jobs:
           import json,sys
           d=json.load(open(sys.argv[1]))
           assert d["publishedToTcc"] is False
-          assert d["inputCompressedSha256"]=="651d3723e67250ff9e5dfe0644a4b7973a8609ff08e3021b3f253cc5ef85ee93"
+          import re
+          assert re.fullmatch(r"[0-9a-f]{64}",d["inputCompressedSha256"])
+          assert d["dataObservedAt"], "Rolling source timestamp must be recorded"
+          print("Current source SHA and time:",d["inputCompressedSha256"],d["dataObservedAt"])
           pairs={"NL:CPI:NLCPIT2QP*1*0":("USD",15),
                  "NL:NUO:Free":("XXX",9)}
           for k,(currency,n) in pairs.items():
