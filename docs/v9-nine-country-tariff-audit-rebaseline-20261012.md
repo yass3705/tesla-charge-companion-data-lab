@@ -38,3 +38,9 @@ Pour chaque pays, mesurer séparément, **sur les versions exactes courantes des
 Priorité : **NL** pour le recensement exhaustif et les 5 246 cas à requalifier ; puis **France Electra/Electroverse** (dont Lidl/Allego et 78 frais différés) ; enfin balayage neuf pays en conservant les sources Tesla, OCPI/PCPR, les fuseaux horaires et les spécificités MA. Utiliser les collectes courantes seulement après validation du statut de publication et de provenance.
 
 **Aucun tarif, snapshot ou moteur n'est changé par ce dossier.** Les limites des anciennes mesures sont affichées, sans présenter ce pré-audit comme une solution exhaustive.
+
+## Extension read-only DOT-NL Type 2 / CCS (PR)
+
+Le workflow de cette PR produit également un **artefact de contrôle** `v9-nl-type2-ccs-scope-audit` depuis `data/national/netherlands_dotnl/normalized.json.gz` du commit analysé. Script : `scripts/v9_nl_type2_ccs_scope_audit_20261012.py`. Il filtre les connecteurs Type 2/CCS et conserve séparément la disponibilité (AVAILABLE/CHARGING), les références tarifaires nationales présentes et les références absentes, par CPO et avec SHA-256 de la source.
+
+**Important :** ce deuxième résultat est un décompte de connecteurs candidats, **pas** une preuve d'accès public ni une simulation de prix ; il n'attribue pas « calculable » à une référence tarifaire qui n'a pas encore été simulée. Les autres prises et statuts non actifs sont exclus de la sélection active et reportés dans les diagnostics. L'artefact n'est pas publié dans TCC.
