@@ -259,6 +259,8 @@ def main():
     stamp = datetime.now(timezone.utc).isoformat()
     staged, audit = stage(locations, tariffs, stamp)
     audit['apiRequests'] = {'locations': location_calls, 'tariffs': tariff_calls}
+    audit['workflowRunId'] = os.environ.get('GITHUB_RUN_ID')
+    audit['freshCollection'] = True
     write_json('data/national/uk_evyve_pcpr.json.gz', {'source': 'Evyve PCPR', 'collectedAt': stamp,
                                                          'locations': locations, 'tariffs': tariffs})
     write_json('data/national/uk_evyve_pcpr_v9.json.gz', staged)
