@@ -1,5 +1,6 @@
 # Journal de la mémoire technique
 
+- [CI #38306732725](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38306732725) : build complet et scénarios de tarifs réussis après correction des fenêtres horaires verrouillées et de l'arrondi des minutes entamées. [CI #38306958426](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38306958426) : **join IRVE réelle échouée**, FRIZFPFAST1 est interprétée AC 200 kW dans IRVE versus CCS 200/Type 2 22 officiel. L'audit national [38307345098](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38307345098) doit quantifier les écarts. Pas de correspondance EVSE fabriquée, pas de promotion ni Pages.
 ## 2026-10-12 — Handoff V9 IZIVIA FAST direct Type 2/CCS
 
 - La collecte Data Lab a été validée par [38299651696](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38299651696) (620 prix, 616 sites exploitables). Nouvelle vérification : 12 affectations CHAdeMO dans l'inventaire historique ; elles sont retirées du candidat V9, sans retrait des stations Type 2/CCS. Aucune invention d'identifiants EVSE.
