@@ -1,5 +1,13 @@
 # État de reprise — 2026-10-12
 
+## Revue NL et secrets PCPR — 12 octobre 2026, après-midi
+
+- Production #42, #43 et #44 fusionnées séparément ; #44 résout le conflit avec #43 et approuve l'empreinte exacte IONITY DE du refresh du 12/10. Merge #44 `99e557043521a07eb196ce2e8dc4a4458adf153b`. Runs post-fusion NL OCPI `38266686799`, global `38266687039` et développement épinglé `38266686866` réussis ; Pages ignoré. #45 reste banc d'essai non fusionné. Aucun déploiement V9.
+- DOT-NL 12/10 : 165 280 occurrences actives Type 2/CCS, 3 928 sans prix direct exploitable selon le rapport national (3 726 sans tarif, 201 références non résolues, une offre non courante). La réconciliation de PR #197 distingue 3 927 sans référence et une hors période ; différence de classification à conserver. AGO 2 375, GFX 736, LNT 430 principaux trous. Tous ont statut AVAILABLE/CHARGING et type de prise éligible ; accès public individuel non attesté. Aucun prix CPO ajouté sans preuve exacte ; prix absent reste indisponible.
+- Devises NL : 15 occurrences CPI/USD et 9 NUO/XXX, toutes Type 2 et AVAILABLE/CHARGING, mais `sourceAccess=null`. Zéro FLAT dans le flux ne certifie ni gratuité ni accès public. Liste des 12 stations et 24 EVSE dans `reports/netherlands/v9-nl-currency-zero-flat-review-20261012.json` sur cette PR ; contrôle manuel CPO requis.
+- Reruns PCPR : EVYVE `38239592116` tentative 2 : secret différent de Blink, mais réponse API 869 Blink/0 Evyve, aucune publication. SOURCE EV `38241979579` tentative 2 : `SOURCE_EV_PCPR_TOKEN` toujours vide pour le job, collecte ignorée ; run vert n'est pas preuve de token. Vérifier nom et portée du secret dans Data Lab ; aucune réponse API Source EV nouvelle.
+
+
 
 ## Agri Go (AGO) : tarifs officiels candidats et classification des 927 sites — 12 octobre 2026
 
