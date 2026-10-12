@@ -1,5 +1,12 @@
 # État de reprise — 2026-10-12
 
+## Source EV UK : collecte quotidienne et intégration candidate — 12 octobre 2026
+
+- Secret `SOURCE_EV_PCPR_TOKEN` présent ; [run 38289984508](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38289984508) réussi. Données collectées : 37 sites Source EV, 36 sites publics actifs, 321 connecteurs Type 2/CCS avec offre exacte, deux tarifs officiels PAYG corroborés pour la TVA. Le statut des données reste `staged_for_audit_not_live`, sans publication V9.
+- Branche Data Lab locale `feat/source-ev-daily-audit-20261012`, commit fonctionnel `d099e7a10`, puis fusion locale sans conflit de `origin/main=ac74a9ff0` (HEAD `8da6c953b`) : audit indépendant du périmètre CPO, de la TVA, des connecteurs et de l'empreinte du fichier. La collecte quotidienne à 03:43 UTC doit enregistrer l'audit et la donnée dans le même commit ; une erreur conserve le snapshot précédent. Branche Production locale `feat/v9-source-ev-integration-20261012` depuis `origin/main=39fbd05` : activation du candidat seulement si la donnée, le rapport et l'audit épinglés concordent. Voir `docs/V9_SOURCE_EV_DAILY_INTEGRATION.md` dans cette branche. Build V9 local sous pins Stable `3b2d4776` et Data Lab `8da6c953b` réussi ; validateur de snapshot, manifeste SHA-256, test des 321 offres exactes et smoke runtime près d'Alloa réussis. Aucun push, PR, fusion distante ni déploiement de ces branches à ce stade.
+- Evyve : [run 38288653559](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38288653559) en échec ; les secrets Evyve et Blink diffèrent, mais l'API renvoie 869 sites Blink. Aucun site Evyve n'est enregistré. L'utilisateur recontactera le support pour vérifier le rattachement du jeton à Evyve/GB*EVY.
+- Après validation locale et revue : demander l'autorisation de publier les deux branches, observer la CI et la première collecte quotidienne avec audit ; une publication Pages Production exige toujours `workflow_dispatch` et `publish=true`.
+
 ## Correctif historique r9 Electra préparé localement — 12 octobre 2026
 
 - Production `origin/main=1dad6fcb38ebd16a08c3d532e8fb4146c457181e` contient #39 et #40 ; Data Lab `origin/main=0150f6efb89803e3577b02148e28c37024a05981` contient #195. Stable est aligné à `b1284080` ; Updater Test local reste derrière son `origin/main` d'un commit. Les branches locales antérieures sont préservées.
