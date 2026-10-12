@@ -21,6 +21,16 @@ jobs:
           ref: d6f99d6a737b2e20e60452fa6aa369ca1775b5c7
           path: production-pin
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-data-lab
+          ref: c7173fd03143a89f9fd41e4eed6e2c6d71531b52
+          path: current-source
+          persist-credentials: false
+      - name: Pin the 12 October normalized source
+        run: |
+          test "$(git -C current-source rev-parse HEAD)" = "c7173fd03143a89f9fd41e4eed6e2c6d71531b52"
+          cp current-source/data/national/netherlands_dotnl/normalized.json.gz data/national/netherlands_dotnl/normalized.json.gz
       - name: Recount active Type 2 and CCS prices against current DOT-NL snapshot
         run: |
           set -euo pipefail
@@ -88,7 +98,7 @@ jobs:
           cp -a "$RUNNER_TEMP/nl-tiles" data/national/netherlands_dotnl/runtime
           python production-pin/scripts/build_refresh_candidate_config.py \
             --base production-pin/config/snapshots/2026-09-30-r9-electra-fr.json \
-            --datalab-sha "$source_sha" --use-datalab-nl \
+            --datalab-sha "c7173fd03143a89f9fd41e4eed6e2c6d71531b52" --use-datalab-nl \
             --snapshot-id "nl-policy-validation-${source_sha:0:12}" \
             --out "$RUNNER_TEMP/nl-candidate-config.json"
           python production-pin/scripts/validate_snapshot.py "$RUNNER_TEMP/nl-candidate-config.json"
