@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/checkout@v4
         with:
           repository: yass3705/tesla-charge-companion-production
@@ -71,6 +73,45 @@ jobs:
           fs.writeFileSync(process.argv[4],JSON.stringify(report,null,2)+'\n');
           console.log(JSON.stringify(report));
           JS
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-stable
+          ref: 0a6d2c3415504397310d3dc92fae40be843b2435
+          path: stable-pin
+          persist-credentials: false
+      - name: Build current-source NL candidate and smoke test it
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          test "$source_sha" = "${{ github.event.pull_request.head.sha }}"
+          rm -rf data/national/netherlands_dotnl/runtime
+          cp -a "$RUNNER_TEMP/nl-tiles" data/national/netherlands_dotnl/runtime
+          python production-pin/scripts/build_refresh_candidate_config.py \
+            --base production-pin/config/snapshots/2026-09-30-r9-electra-fr.json \
+            --datalab-sha "$source_sha" --use-datalab-nl \
+            --snapshot-id "nl-policy-validation-${source_sha:0:12}" \
+            --out "$RUNNER_TEMP/nl-candidate-config.json"
+          python production-pin/scripts/validate_snapshot.py "$RUNNER_TEMP/nl-candidate-config.json"
+          python production-pin/scripts/validate_electra_platform_overlay.py .
+          python production-pin/scripts/build_snapshot.py \
+            --stable stable-pin --datalab . \
+            --config "$RUNNER_TEMP/nl-candidate-config.json" \
+            --out "$RUNNER_TEMP/v9-nl-candidate"
+          python production-pin/scripts/validate_built_snapshot.py "$RUNNER_TEMP/v9-nl-candidate" "nl-policy-validation-${source_sha:0:12}"
+          python production-pin/scripts/validate_stable_parity.py stable-pin "$RUNNER_TEMP/v9-nl-candidate" --allow-nl-override --allow-pricing-engine-override
+          python production-pin/scripts/validate_browser_asset_graph.py "$RUNNER_TEMP/v9-nl-candidate"
+          node production-pin/tests/runtime-e2e-smoke.mjs "$RUNNER_TEMP/v9-nl-candidate"
+          python production-pin/scripts/verify_candidate_manifest.py "$RUNNER_TEMP/v9-nl-candidate"
+          python - "$RUNNER_TEMP/v9-nl-candidate" "$RUNNER_TEMP/nl-candidate-validation.json" <<'PY'
+          import json,sys,pathlib
+          root=pathlib.Path(sys.argv[1])
+          shell=json.loads((root/"v9-production-shell/shell-config.json").read_text())
+          out={"snapshotId":shell.get("snapshotId"),"mode":shell.get("mode"),
+               "sourceSnapshotAt":"2026-10-12T10:56:10.446523Z",
+               "normalizedSourceRecompiledInRun":True,"publishedToTcc":False}
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(out,indent=2)+"\n")
+          print(json.dumps(out))
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: v9-nl-post-policy-validation
@@ -78,6 +119,7 @@ jobs:
             ${{ runner.temp }}/nl-price-validation.json
             ${{ runner.temp }}/nl-compiler-report.json
             ${{ runner.temp }}/nl-adapter-validation.json
+            ${{ runner.temp }}/nl-candidate-validation.json
           retention-days: 14
       - name: No publish
         run: echo "Validation only. No V9 release, deployment, or pin update."
