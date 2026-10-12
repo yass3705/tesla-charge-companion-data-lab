@@ -188,6 +188,47 @@ def parse_inventory(csv_text: str) -> dict:
     }
 
 
+
+def parse_electroverse_subscriptions(page_text: str) -> dict:
+    """Extract eMSP discounts inside CPO-specific sections; fail closed on ambiguity.
+
+    The public article is converted from HTML to plain text before this call.
+    Never search all 'France: XX%' matches globally: different operators differ.
+    """
+    page = norm(page_text)
+    ionity_start = re.search(r"\bionity\b", page)
+    powerdot_start = re.search(r"\bpowerdot\b", page)
+    if not ionity_start or not powerdot_start or powerdot_start.start() <= ionity_start.start():
+        raise RuntimeError("Electroverse IONITY/Powerdot sections missing or reordered")
+    ionity = page[ionity_start.start():powerdot_start.start()]
+    powerdot_end = re.search(r"royaume-uni uniquement|\bbe\.ev\b", page[powerdot_start.end():])
+    if not powerdot_end:
+        raise RuntimeError("Electroverse Powerdot section terminator missing")
+    powerdot = page[powerdot_start.start():powerdot_start.end() + powerdot_end.start()]
+    def percentage(section: str, country: str) -> float:
+        values = re.findall(r"\b" + re.escape(country) + r"\s*:\s*(\d{1,2})\s*%", section)
+        if len(values) != 1:
+            raise RuntimeError(f"Electroverse {country} subscription evidence missing or ambiguous")
+        n = float(values[0])
+        if n <= 0 or n >= 100:
+            raise RuntimeError(f"Electroverse {country} discount outside valid range")
+        return n
+    if not re.search(r"11,99\s*€", ionity):
+        raise RuntimeError("Electroverse IONITY indicative monthly fee evidence missing")
+    if not re.search(r"1,99\s*€\s*par\s*mois", powerdot):
+        raise RuntimeError("Electroverse Powerdot monthly fee evidence missing")
+    return {
+        "ionity": {"FR": {"discountPercent": percentage(ionity, "france"),
+                           "monthlyFeeEurIndicative": 11.99}},
+        "powerdot": {
+            "FR": {"discountPercent": percentage(powerdot, "france"), "monthlyFeeEur": 1.99},
+            "ES": {"discountPercent": percentage(powerdot, "espagne"), "monthlyFeeEur": 1.99},
+            "BE": {"discountPercent": percentage(powerdot, "belgique"), "monthlyFeeEur": 1.99},
+            "PT": {"discountPercent": percentage(powerdot, "portugal"), "monthlyFeeEur": 1.99},
+        },
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="out/powerdot")
@@ -217,12 +258,8 @@ def main() -> None:
     require_any(faq, ("miio", "chargemap", "electromaps"), "Powerdot current mobility-app discovery")
 
     electro = norm(fetched["electroverseSubscription"])
-    discount_matches = re.findall(r"france\s*:\s*(\d{1,2})\s*%", electro)
-    if "powerdot" not in electro or len(set(discount_matches)) != 1:
-        raise RuntimeError("Electroverse Powerdot France subscription evidence missing")
-    discount = float(discount_matches[0])
-    if "1,99 € par mois" not in electro:
-        raise RuntimeError("Electroverse Powerdot monthly fee evidence missing")
+    subscriptions = parse_electroverse_subscriptions(electro)
+    discount = subscriptions["powerdot"]["FR"]["discountPercent"]
 
     august_credit_historical = 10.0 if ("aout 2026" in electro and "10 €" in electro) else None
     preauth_amounts = []
