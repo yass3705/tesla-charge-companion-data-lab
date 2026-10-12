@@ -1,0 +1,54 @@
+name: Powerdot live evidence verification (no publication)
+
+on:
+  push:
+    branches: ["fix/electroverse-subscriptions-powerdot-ionity-20261012"]
+    paths:
+      - ".github/workflows/powerdot-live-evidence-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan public repository
+        run: python scripts/public_safety_check.py .
+      - name: Run offline subscription regressions
+        run: python -m unittest discover -s tests -p 'test_powerdot_electroverse_subscriptions.py' -v
+      - name: Collect current Powerdot evidence without publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check selenium
+          python scripts/powerdot_official.py --out out/powerdot
+          cat out/powerdot/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify CPO/eMSP separation and current FR discount
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/powerdot/powerdot_official_france.json').read_text())
+          s=p['mobilityProviders']['electroversePowerdotSubscription']
+          assert s['classification']=='third_party_eMSP_subscription'
+          assert s['operatorDirect'] is False
+          assert s['franceDiscountPercent']==22.0
+          assert s['monthlyFeeEur']==1.99
+          assert s['exactResultingEurPerKwh'] is None
+          assert p['classification']['singleGuaranteedNationalTariff'] is False
+          assert p['operatorDirect']['adHocQr']['exactPriceLookupRequired'] is True
+          print('PASS: Powerdot official evidence and CPO/eMSP isolation')
+          PY
+      - name: Upload collected evidence for review only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: powerdot-live-validation
+          path: out/powerdot/
+          if-no-files-found: ignore
+          retention-days: 7
