@@ -2,7 +2,7 @@
 
 ## 2026-10-13 — Exploration de collecte eMSP internationale et identité CPO
 
-- IT, CH, DE, ES, NL, GB et BE étudiés, MA exclu explicitement. Sondage borné de la liste Electra multicountry : 322 938 lieux annoncés, charge utile de 19,6 Ko en listing léger contre 107,8 Ko pour les mêmes 100 lieux avec tarifs complets ; aucun débit soutenu extrapolé. Les tuiles Electroverse restent un index d'IDs sans tarifs, et son recensement de statuts FR reste bloqué. Proposition versionnée : découverte en deux phases, collecte ciblée, rafraîchissement tarifaire périodique et graphe d'identité EVSE/prise traçable, pilote UK basé sur les flux CPO existants. [Méthode, preuves et critères](../docs/v9-emsp-international-acquisition-crosswalk-2026-10-13.md). Aucun tarif, pin Production, Pages ou Cloudflare modifié.
+- IT, CH, DE, ES, NL, GB et BE étudiés, MA exclu explicitement. Sondage borné de la liste Electra multicountry : 322 938 lieux annoncés, charge utile de 19,6 Ko en listing léger contre 107,8 Ko pour les mêmes 100 lieux avec tarifs complets ; aucun débit soutenu extrapolé. Sept pages Electra espacées (700 lieux au total) attestent BE/NL/DE/FR/IT/ES/CH dans l'échantillon, zéro GB observé sans conclusion de couverture nationale. Les tuiles Electroverse restent un index d'IDs sans tarifs, et son recensement de statuts FR reste bloqué. Proposition versionnée : découverte en deux phases, collecte ciblée, rafraîchissement tarifaire périodique et graphe d'identité EVSE/prise traçable ; pilote GB Electroverse, BE/NL Electra. [Méthode, preuves et critères](../docs/v9-emsp-international-acquisition-crosswalk-2026-10-13.md). Aucun tarif, pin Production, Pages ou Cloudflare modifié.
 
 ## 2026-10-13 — EnergyVision BE direct staging succeeded, not released
 
