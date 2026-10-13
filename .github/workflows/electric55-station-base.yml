@@ -128,7 +128,8 @@ jobs:
           assert len(all_evse)==p['stats']['chargePointCount']
           assert p['tccIntegration']['statusMustBeJoinedExternally'] is True
           assert p['tccIntegration']['unparsedTariffsMustRemainUnranked'] is True
-          assert p['tccIntegration']['operatorDirectTariffsReady'] is True
+          assert p['tccIntegration']['operatorDirectTariffsReady'] is (p['stats']['chargePointCountWithMachineReadablePricing'] > 0)
+          assert p['stats']['directTariffProfileCount'] == len(p['directTariffProfiles'])
           assert p['tccIntegration']['thirdPartyEmspTariffsMustRemainSeparate'] is True
           PY
           python scripts/public_safety_check.py .
