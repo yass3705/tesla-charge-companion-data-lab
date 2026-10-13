@@ -95,6 +95,7 @@ def interpret_static(body: bytes) -> dict:
             "sourceSiteId": attr(site_node),
             "name": get(site_node, "brand", "values", "value"),
             "sourceSiteType": get(site_node, "typeOfSite"),
+            "sourceSiteEnergyRateCount": sum(len(kids(pr, "energyRate")) for pr in kids(site_node, "energyProduct")),
             "city": get(site_node, "entrance", "_locationExtension", "afirFacilityLocation", "address", "city"),
             "postalCode": get(site_node, "entrance", "_locationExtension", "afirFacilityLocation", "address", "postcode"),
             "latitude": latitude,
@@ -106,6 +107,7 @@ def interpret_static(body: bytes) -> dict:
                 "sourceStationId": attr(station_node),
                 "maximumPowerSource": get(station_node, "totalMaximumPower"),
                 "declaredRefillPoints": get(station_node, "numberOfRefillPoints"),
+                "sourceStationEnergyRateCount": sum(len(kids(pr, "energyRate")) for pr in kids(station_node, "energyProduct")),
                 "authenticationMethods": [scalar(m) for m in kids(station_node, "authenticationAndIdentificationMethods")],
                 "refillPoints": [],
                 "stationRatesUnassignedToEvse": [],
@@ -121,6 +123,7 @@ def interpret_static(body: bytes) -> dict:
                     })
                 station["refillPoints"].append({
                     "sourceRefillPointId": attr(point_node),
+                    "sourcePointEnergyRateCount": sum(len(kids(pr, "energyRate")) for pr in kids(point_node, "energyProduct")),
                     "currentType": get(point_node, "currentType"),
                     "sourcePowerW": get(point_node, "availableChargingPower"),
                     "connectors": connectors,
