@@ -1,0 +1,22 @@
+# V9 — collecte nationale progressive Electra NL / Electroverse UK
+
+Statut au 13/10/2026 : **staging source**, aucune offre internationale eMSP promue dans Production. Le [pilote validé](v9-emsp-bounded-pilots-2026-10-13.md) couvre les témoins d'identité et les gardes tarifaires ; il ne certifie ni couverture nationale ni montant final payable.
+
+## Electra Pays-Bas
+
+L'API GraphQL renvoie `totalCount=322940` lieux mondiaux et plafonne `limit` à **100** même lorsqu'on demande 500 ou 1000. Ses filtres `country` et `filter.country` sont refusés ; un balayage global avec filtrage local NL est donc nécessaire. Le [collecteur](../scripts/electra_nl_emsp_national_stage.py) découpe ce balayage en lots immuables de **60 pages maximum**, trois workers par défaut, trois tentatives par page et vérification du nombre de réponses. Il ne persiste que les EVSE de NL joints par ID normalisé **unique**, GPS ≤120 m et connecteur national prise normale/Type 2/CCS. Les EVSE non joints restent dans les compteurs, sans tarif ni prise inférée. Les grilles Electra sont conservées **comme source de lieu**, sans sélection automatique pour une prise multigrille ni transfert au Direct DOT-NL.
+
+Le [premier lot réel, pages 0–59](../data/platforms/electra/netherlands/emsp-source-staging/pages-0000-0059.json.gz) (`SHA-256 de5219a703e86eb12ecb7176154e5afe0aeb1433eb67e37bda4840cf7bcd5608`) a réussi : 6 000 lieux mondiaux lus, **4 548 lieux NL**, 4 711 EVSE source NL, **4 476 occurrences EVSE exactes/GPS avec prise autorisée**, 4 420 lieux conservés et 235 ID sans correspondance unique. L'[audit de couverture initial](../reports/emsp-national/electra-nl-stage-audit.json) indique **4 474 EVSE distincts** : deux occurrences répétées doivent être réconciliées avant toute attribution. **60/3 230 pages** seulement sont présentes. Ces compteurs ne sont pas des offres tarifaires calculables. Le [workflow manuel](../.github/workflows/electra-nl-emsp-national-stage.yml) peut reprendre les pages restantes et produire un artefact complet ; l'auditeur contrôle pages manquantes, dérive de `totalCount`, empreinte DOT-NL et doublons entre lots. Un résultat complet avec dérive ou doublons exige une revue avant intégration.
+
+## Electroverse Royaume-Uni
+
+La [file nationale de lieux CPO](../data/platforms/electroverse/uk-national-cpo-seeds.json.gz) (`SHA-256 6fedf6f43e2839d2b50d849e5df70e1ac39a46d9e74ed13601d00764a52dedfa`) est construite à partir de **huit sources UK épinglées**. Elle retient uniquement les sites `publish=true` en GB, aux coordonnées valides, ayant au moins un EVSE `AVAILABLE`/`CHARGING` et une prise normale/Type 2/CCS. **19 239 lieux CPO** satisfont ces critères. Ce nombre est une file de rapprochement, **pas un nombre de lieux Electroverse** ; une absence de ce référentiel ne prouve pas une absence du réseau eMSP.
+
+Le [collecteur de tuiles](../scripts/electroverse_uk_national_tiles.mjs) déduplique les tuiles zoom 10 couvrant ces lieux et leurs voisins immédiats à ±0,002° ; il lit au plus **60 tuiles par run**, avec 750 ms d'intervalle, s'arrête au premier échec et conserve les PK Electroverse sans les attribuer aux CPO. Une tuile contenant au moins 1 950 PK est signalée pour subdivision, car une troncature à forte densité est possible. Le [workflow manuel](../.github/workflows/emsp-national-staging.yml) garde le jeton côté Actions et publie chaque lot en artefact. Après listing, les PK seront reliés par ID exact, puis par groupe GPS/prise/puissance/prix homogène et univoque, avec les gardes du pilote. Les détails tarifaires demanderont des lots bornés supplémentaires.
+
+## Conditions avant prix classable
+
+- Vérifier la complétude des balayages, les doublons et les variations de la source.
+- Valider pour chaque offre l'identité EVSE ou le groupe homogène univoque, le statut, la grille applicable et les composants facturés.
+- Élucider les éventuels frais opérateur non renvoyés par la surface Electra NL et la signification du `VAT rate: 0%` Electroverse UK ; rejeter les couches tarifaires contradictoires comme Source EV Milton Gate.
+- Construire un overlay **candidat** seulement pour les offres prouvées, puis exécuter les tests du moteur et du snapshot avant tout pin. Aucun changement Pages ou Cloudflare dans ce chantier.
