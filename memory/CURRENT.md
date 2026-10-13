@@ -1,3 +1,10 @@
+## 13 octobre 2026 — PR #97 : 31 composants dont 4 adaptateurs historiques
+
+- Le lot précédent de 27 modules a passé la validation complète de snapshot épinglé : [run 38474975648](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38474975648), SHA `cfa711aa`.
+- Nouvelle tranche sur [PR #97 Production](https://github.com/yass3705/tesla-charge-companion-production/pull/97) : les adaptateurs `france-crosswalk.js`, `france-irve-status.js`, `legacy-direct-stations.js`, `legacy-direct-tariffs.js` ont été repris à contenu identique depuis le Stable pin dans `Production/runtime-owned/assets/v9/adapters/`. Le builder en sélectionne désormais **31 composants** propriété Production, commit `7ec08522` et garde tests commit `9011d8ff`.
+- Validation du nouveau SHA : [run 38475552629](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38475552629) **queued** lors du contrôle. PR non fusionnée ; aucun workflow Updater Test supprimé, aucune modification de Tesla via Mac, aucune promotion du live.
+- Restent les autres dépendances au socle Stable, les datasets ES/IT et l'audit des ressources finales avant retrait de Stable.
+
 ## 13 octobre 2026 — PR #97 : 27 modules Production-owned, tests en cours
 
 - Validation du lot précédent de 24 composants **réussie** : [run 38474198000](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38474198000), commit `2f2337b5`.
