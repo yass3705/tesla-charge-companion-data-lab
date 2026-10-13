@@ -1,0 +1,89 @@
+name: Prepare immutable EnergyVision Belgium source branch (no V9 publication)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/energyvision-be-durable-source.yml"
+      - "scripts/energyvision_datex_independent_cpo.py"
+      - "tests/test_energyvision_datex_independent_cpo.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/energyvision-be-durable-source.yml"
+      - "scripts/energyvision_datex_independent_cpo.py"
+      - "tests/test_energyvision_datex_independent_cpo.py"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify isolated source inventory and no fictitious PDC prices
+        run: python -m unittest discover -s tests -p test_energyvision_datex_independent_cpo.py -v
+
+  durable-source:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Retrieve authenticated immutable DATEX staging with rate-scope metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: energyvision-datex-staging-38441644658
+          run-id: 38441644658
+          path: .input
+          github-token: ${{ github.token }}
+      - name: Build official isolated CPO source and verify the exact rate hierarchy
+        run: |
+          python -m scripts.energyvision_datex_independent_cpo \
+            --stage .input/artifacts/energyvision-datex-stage.json.gz \
+            --manifest data/belgium/nap-belgium-manifest.json \
+            --output data/belgium/energyvision-official-2026-10-13.json.gz \
+            --report reports/belgium/energyvision-official-2026-10-13-audit.json
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          source=json.load(gzip.open("data/belgium/energyvision-official-2026-10-13.json.gz","rt"))
+          c=source["counts"]
+          assert c["sites"]==1238 and c["sourcePDC"]==3795
+          assert c["activePDC"]>3500 and c["unassignedStationRates"]==1228
+          assert c["distinctExternalEvseIds"]==3795 and c["dynamicReferencesNotInStatic"]==0
+          assert source["napCrosswalk"]["unmatchedIds"]==3795
+          assert source["v9PricedPDC"]==0 and source["v9PublicationReady"] is False
+          assert len(source["sourceSha256"])==64
+          stations=[st for site in source["sites"] for st in site["stations"]]
+          assert sum(len(st["sourceStationRatesUnassignedToPdc"]) for st in stations)==1228
+          assert all(st["sourceStationEnergyRateCount"]==len(st["sourceStationRatesUnassignedToPdc"]) for st in stations)
+          assert all(site["sourceSiteEnergyRateCount"]==0 for site in source["sites"])
+          assert all(p["sourcePointEnergyRateCount"]==0 for st in stations for p in st["pdc"])
+          print("OFFICIAL_SOURCE_SCOPE_VERIFIED",c["sourcePDC"],c["unassignedStationRates"])
+          PY
+      - name: Write data only to an isolated branch for review
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="data/energyvision-be-official-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add data/belgium/energyvision-official-2026-10-13.json.gz reports/belgium/energyvision-official-2026-10-13-audit.json
+          git commit -m "data(be): pin official EnergyVision 3795-PDC DATEX source and tariff hierarchy"
+          git push origin "HEAD:refs/heads/$branch"
+          echo "DATA_BRANCH=$branch" >> "$GITHUB_STEP_SUMMARY"
+          echo "No changes to Production, release pins, Pages or Cloudflare." >> "$GITHUB_STEP_SUMMARY"
