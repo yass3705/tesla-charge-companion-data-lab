@@ -1,5 +1,11 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Supplément EnergyVision CPO indépendant vérifié, tarif Place Lully consigné
+
+- Data Lab [#262](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/262) fusionnée `2ff9e647`, correctif de variation [#263](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/263) fusionnée `3635cef7`. [Run principal EnergyVision #38435009280](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38435009280) **success** : **1 238 sites, 3 795 PDC, 3 633 actifs**, 1 228 grilles station non rattachées, 0 correspondance EVSE au NAP sélectionné. Artefact CPO autonome de sept jours, aucune offre V9 publiée. Accès public site par site et seuils minutes restent à qualifier ; source [EnergyVision Public Charging Network](https://transportdata.be/en/dataset/energyvision-public-charging-network-afir-datex). [Détail](../docs/integrations/energyvision-independent-cpo-supplement-2026-10-13.md).
+- Observation utilisateur Electric 55 Place Lully : **0,60 €/session + 0,08 €/min charge et 0,08 €/min parking entre 07–23h ; 0,06 €/min charge et 0,06 €/min parking entre 23–07h**. [Source séparée à PDC non identifié](../data/station_verifications/electric55_place_lully_direct_portal_user_2026_10_13.json), conservée sans attribution de prix avant clarification EVSE et nature du stationnement. Aucun nouveau pin ni Pages/Cloudflare.
+
+
 ## 2026-10-13 — Pilotes eMSP UK/NL fusionnés, CI verte
 
 - Data Lab [#260](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/260) fusionnée `301364b6bdaf278bc3f5a663d57053a02ed427f5`, [CI PR #38432749548](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38432749548) réussie sans appel fournisseur ; scan public local OK. Deux groupes GPS UK candidats sur trois sites, Source EV bloqué par conflit 0,89/0,71 £ et MFG 0,69 £ encore sous vérification TVA/périmètre ; 342 candidats identité+puissance+grille Electra NL, sans promotion. Production/pin/Pages inchangés. Prochaines preuves : prix payable Electroverse UK avec TVA et type de prise/grille eMSP Electra NL.
