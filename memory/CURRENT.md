@@ -1,3 +1,11 @@
+## 14 octobre 2026 — PR #97 : audit et verrou CI sur sources Espagne/Italie
+
+- Le dernier lot JS est **validé** : [run Production 38477702912](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38477702912), SHA `c8250ca3`.
+- Dans Production PR #97, inventaire des données **réellement héritées du Stable SHA `0a6d2c34`** : Espagne `spain-static` + `spain-reve-offers` : 170 fichiers, 5 684 327 octets ; Italie `italy-static`, `italy-offers.json`, `italy-build-report.json` : 76 fichiers, 90 323 159 octets. Ce sont des mesures de l'arborescence Stable épinglée, pas des comptages station/EVSE.
+- [`config/migration/es-it-stable-to-datalab-audit.json`](https://github.com/yass3705/tesla-charge-companion-production/blob/migration/production-owned-pwa-manifest-20261013/config/migration/es-it-stable-to-datalab-audit.json) ajouté (commit `30069188`). Candidats Data Lab identifiés : flux REVE de tarifs/statuts ES ; offres opérateurs nationaux IT, mais **aucune preuve d'équivalence** des tuiles nationales/EVSE/offres existantes. Ne pas changer `primarySource` avant parité complète.
+- Test de garde [`tests/test_es_it_migration_source_guard.py`](https://github.com/yass3705/tesla-charge-companion-production/blob/migration/production-owned-pwa-manifest-20261013/tests/test_es_it_migration_source_guard.py) ajouté (commit `349f6267`) et branché au workflow de validation épinglée (commit `9825f8ad`). [Run 38478371585](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38478371585) **pending** au dernier contrôle ; ne pas annoncer réussite ni changement de données.
+- Aucun pin live modifié, aucune fusion, aucun workflow Updater Test supprimé ; Tesla/Mac reste en Updater Test.
+
 ## 14 octobre 2026 — PR #97, reprise complète du répertoire historique JS V9
 
 - **Run précédent à 37 modules validé** : [38476999251](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38476999251), SHA `14870885`, success.
