@@ -1,12 +1,12 @@
 # Bump variable tariff parser
 
-- Expected variable points: **681**
-- Parsed points: **681**
+- Expected variable points: **1039**
+- Parsed points: **1039**
 - Failed points: **0**
-- Parsed distinct patterns: **14**
+- Parsed distinct patterns: **19**
 - Duration guards: **1h15=75, 2h=120, 4h=240 minutes**
 
-## 606 points
+## 617 points
 
 ```json
 [
@@ -31,6 +31,27 @@
 ]
 ```
 
+## 318 points
+
+```json
+[
+  {
+    "kind": "minimum_total",
+    "amountEur": 0.5
+  },
+  {
+    "kind": "flat_fee",
+    "amountEur": 0.555,
+    "conditions": []
+  },
+  {
+    "kind": "charging_duration_surcharge",
+    "eurPerMinute": 0.01,
+    "afterMinutes": 0
+  }
+]
+```
+
 ## 16 points
 
 ```json
@@ -44,7 +65,7 @@
     "eurPerKwh": 0.69
   },
   {
-    "kind": "session_duration_surcharge",
+    "kind": "charging_duration_surcharge",
     "eurPerMinute": 0.29,
     "afterMinutes": 75
   }
@@ -72,6 +93,46 @@
   {
     "kind": "energy",
     "eurPerKwh": 0.4
+  }
+]
+```
+
+## 11 points
+
+```json
+[
+  {
+    "kind": "minimum_total",
+    "amountEur": 0.5
+  },
+  {
+    "kind": "energy",
+    "eurPerKwh": 0.59
+  },
+  {
+    "kind": "post_charge_occupancy",
+    "eurPerMinute": 0.3,
+    "graceMinutes": 15
+  }
+]
+```
+
+## 9 points
+
+```json
+[
+  {
+    "kind": "minimum_total",
+    "amountEur": 0.5
+  },
+  {
+    "kind": "energy",
+    "eurPerKwh": 0.29
+  },
+  {
+    "kind": "post_charge_occupancy",
+    "eurPerMinute": 0.1,
+    "graceMinutes": 30
   }
 ]
 ```
@@ -121,6 +182,26 @@
   {
     "kind": "energy",
     "eurPerKwh": 0.55
+  }
+]
+```
+
+## 6 points
+
+```json
+[
+  {
+    "kind": "minimum_total",
+    "amountEur": 0.5
+  },
+  {
+    "kind": "energy",
+    "eurPerKwh": 0.34
+  },
+  {
+    "kind": "post_charge_occupancy",
+    "eurPerMinute": 0.1,
+    "graceMinutes": 15
   }
 ]
 ```
@@ -225,9 +306,29 @@
     "eurPerKwh": 0.69
   },
   {
-    "kind": "session_duration_surcharge",
+    "kind": "charging_duration_surcharge",
     "eurPerMinute": 0.29,
     "afterMinutes": 120
+  }
+]
+```
+
+## 3 points
+
+```json
+[
+  {
+    "kind": "minimum_total",
+    "amountEur": 0.5
+  },
+  {
+    "kind": "energy",
+    "eurPerKwh": 0.48
+  },
+  {
+    "kind": "post_charge_occupancy",
+    "eurPerMinute": 0.5,
+    "graceMinutes": 0
   }
 ]
 ```
@@ -290,7 +391,7 @@
     "eurPerKwh": 0.336
   },
   {
-    "kind": "session_duration_surcharge",
+    "kind": "charging_duration_surcharge",
     "eurPerMinute": 0.048,
     "afterMinutes": 240
   }

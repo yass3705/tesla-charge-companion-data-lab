@@ -2,7 +2,7 @@
 
 ## 13 octobre 2026 — contrôle des collectes directes France après le pin
 
-- [Audit différentiel des sources BUMP, ETotem et WAAT](../docs/v9-france-post-pin-direct-source-gate-2026-10-13.md) : BUMP 1 605 stations/2 516 points mais 0 prix explicite ; ETotem 641/3 350 mais 0 texte tarifaire ; WAAT Monta 550 stations rapprochées, 407 groupes directs, 0 EVSE explicite et 0 station classable ; QualiCharge 7 663 stations parcourues mais 0 WAAT retenue. Le catalogue WAAT publié historique demeure inchangé : 452 stations/507 configurations classables au 26 août. **Aucune offre supplémentaire ni repin sûr** avec ces nouvelles collectes ; l'identité EVSE et les frais WAAT doivent être démontrés. Candidat Production et snapshot public inchangés.
+- [Audit différentiel des sources BUMP, ETotem et WAAT](../docs/v9-france-post-pin-direct-source-gate-2026-10-13.md) : l'inventaire BUMP 1 605 stations/2 516 points ne porte aucun prix, mais sa source GraphQL distincte contient 2 316 points avec tarif et son parseur variable vient d'être corrigé (1 039/1 039 règles, snapshot Data Lab 2 295/2 500 points français classables, 54 correspondances auparavant classables désormais perdues et gardées hors classement). ETotem 641/3 350 n'a aucun texte tarifaire ; WAAT Monta rapproche 550 stations et 407 groupes directs mais zéro EVSE explicite/zéro station classable ; QualiCharge ne trouve aucune WAAT. Le catalogue WAAT historique reste à 452 stations/507 configurations. Les nouvelles collectes ne changent **aucun pin Production** ; identifier les 54 pertes BUMP avant une promotion éventuelle. Candidat et snapshot public inchangés.
 
 ## 13 octobre 2026 — Neuilly horaire résolu sous garde, candidat à 740 offres exactes
 

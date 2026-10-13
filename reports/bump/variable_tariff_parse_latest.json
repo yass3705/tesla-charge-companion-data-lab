@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.1",
-  "sourceGeneratedAt": "2026-08-26T00:29:01.355353Z",
-  "variablePointsExpected": 681,
-  "parsedPoints": 681,
+  "sourceGeneratedAt": "2026-10-13T12:13:25.713615Z",
+  "variablePointsExpected": 1039,
+  "parsedPoints": 1039,
   "failedPoints": 0,
-  "parsedPatternCount": 14,
+  "parsedPatternCount": 19,
   "durationUnitTests": {
     "1h15": 75,
     "2h": 120,
@@ -14,7 +14,7 @@
   },
   "patterns": [
     {
-      "pointCount": 606,
+      "pointCount": 617,
       "rules": [
         {
           "kind": "minimum_total",
@@ -39,6 +39,27 @@
       "sourceParking": null
     },
     {
+      "pointCount": 318,
+      "rules": [
+        {
+          "kind": "minimum_total",
+          "amountEur": 0.5
+        },
+        {
+          "kind": "flat_fee",
+          "amountEur": 0.555,
+          "conditions": []
+        },
+        {
+          "kind": "charging_duration_surcharge",
+          "eurPerMinute": 0.01,
+          "afterMinutes": 0
+        }
+      ],
+      "sourceLong": "While charging:\nFixed price: 0,555 €\n\nDuration: 0,01 €/minute\n\nWhile parking (no energy delivered):\nDuration: 0,00 €/minute\n\nMinimum 0,50 € Inc. VAT",
+      "sourceParking": "Duration: 0,00 €/minute"
+    },
+    {
       "pointCount": 16,
       "rules": [
         {
@@ -50,13 +71,13 @@
           "eurPerKwh": 0.69
         },
         {
-          "kind": "session_duration_surcharge",
+          "kind": "charging_duration_surcharge",
           "eurPerMinute": 0.29,
           "afterMinutes": 75
         }
       ],
-      "sourceLong": "Energy consumption: 0,69 €/kWh\n\nDuration: 0,29 €/minute after 1h15 of usage\n\nMinimum 0,50 € Inc. VAT",
-      "sourceParking": null
+      "sourceLong": "While charging:\nEnergy consumption: 0,69 €/kWh\n\nDuration: 0,29 €/minute after 1h15 of usage\n\nWhile parking (no energy delivered):\nDuration: 0,00 €/minute\n\nMinimum 0,50 € Inc. VAT",
+      "sourceParking": "Duration: 0,00 €/minute"
     },
     {
       "pointCount": 14,
@@ -82,6 +103,46 @@
       ],
       "sourceLong": "Fixed price: 1,00 € above 0.5kWh consumed\n\nEnergy consumption: 0,40 €/kWh\n\nMinimum 0,50 € Inc. VAT",
       "sourceParking": null
+    },
+    {
+      "pointCount": 11,
+      "rules": [
+        {
+          "kind": "minimum_total",
+          "amountEur": 0.5
+        },
+        {
+          "kind": "energy",
+          "eurPerKwh": 0.59
+        },
+        {
+          "kind": "post_charge_occupancy",
+          "eurPerMinute": 0.3,
+          "graceMinutes": 15
+        }
+      ],
+      "sourceLong": "While charging:\nEnergy consumption: 0,59 €/kWh\n\nWhile parking (no energy delivered):\nDuration: 0,30 €/minute after 15 minutes of usage\n\nMinimum 0,50 € Inc. VAT",
+      "sourceParking": "Duration: 0,30 €/minute after 15 minutes of usage"
+    },
+    {
+      "pointCount": 9,
+      "rules": [
+        {
+          "kind": "minimum_total",
+          "amountEur": 0.5
+        },
+        {
+          "kind": "energy",
+          "eurPerKwh": 0.29
+        },
+        {
+          "kind": "post_charge_occupancy",
+          "eurPerMinute": 0.1,
+          "graceMinutes": 30
+        }
+      ],
+      "sourceLong": "While charging:\nEnergy consumption: 0,29 €/kWh\n\nWhile parking (no energy delivered):\nDuration: 0,10 €/minute after 30 minutes of usage\n\nMinimum 0,50 € Inc. VAT",
+      "sourceParking": "Duration: 0,10 €/minute after 30 minutes of usage"
     },
     {
       "pointCount": 9,
@@ -131,6 +192,26 @@
       ],
       "sourceLong": "Fixed price: 1,20 € above 1kWh consumed and after 1 minutes of usage\n\nEnergy consumption: 0,55 €/kWh\n\nMinimum 0,50 € Inc. VAT",
       "sourceParking": null
+    },
+    {
+      "pointCount": 6,
+      "rules": [
+        {
+          "kind": "minimum_total",
+          "amountEur": 0.5
+        },
+        {
+          "kind": "energy",
+          "eurPerKwh": 0.34
+        },
+        {
+          "kind": "post_charge_occupancy",
+          "eurPerMinute": 0.1,
+          "graceMinutes": 15
+        }
+      ],
+      "sourceLong": "While charging:\nEnergy consumption: 0,34 €/kWh\n\nWhile parking (no energy delivered):\nDuration: 0,10 €/minute after 15 minutes of usage\n\nMinimum 0,50 € Inc. VAT",
+      "sourceParking": "Duration: 0,10 €/minute after 15 minutes of usage"
     },
     {
       "pointCount": 6,
@@ -231,13 +312,33 @@
           "eurPerKwh": 0.69
         },
         {
-          "kind": "session_duration_surcharge",
+          "kind": "charging_duration_surcharge",
           "eurPerMinute": 0.29,
           "afterMinutes": 120
         }
       ],
-      "sourceLong": "Energy consumption: 0,69 €/kWh\n\nDuration: 0,29 €/minute after 2h of usage\n\nMinimum 0,50 € Inc. VAT",
-      "sourceParking": null
+      "sourceLong": "While charging:\nEnergy consumption: 0,69 €/kWh\n\nDuration: 0,29 €/minute after 2h of usage\n\nWhile parking (no energy delivered):\nDuration: 0,00 €/minute\n\nMinimum 0,50 € Inc. VAT",
+      "sourceParking": "Duration: 0,00 €/minute"
+    },
+    {
+      "pointCount": 3,
+      "rules": [
+        {
+          "kind": "minimum_total",
+          "amountEur": 0.5
+        },
+        {
+          "kind": "energy",
+          "eurPerKwh": 0.48
+        },
+        {
+          "kind": "post_charge_occupancy",
+          "eurPerMinute": 0.5,
+          "graceMinutes": 0
+        }
+      ],
+      "sourceLong": "While charging:\nEnergy consumption: 0,48 €/kWh\n\nWhile parking (no energy delivered):\nDuration: 0,50 €/minute\n\nMinimum 0,50 € Inc. VAT",
+      "sourceParking": "Duration: 0,50 €/minute"
     },
     {
       "pointCount": 2,
@@ -296,13 +397,13 @@
           "eurPerKwh": 0.336
         },
         {
-          "kind": "session_duration_surcharge",
+          "kind": "charging_duration_surcharge",
           "eurPerMinute": 0.048,
           "afterMinutes": 240
         }
       ],
-      "sourceLong": "Energy consumption: 0,336 €/kWh\n\nDuration: 0,048 €/minute after 4h of usage\n\nMinimum 0,50 € Inc. VAT",
-      "sourceParking": null
+      "sourceLong": "While charging:\nEnergy consumption: 0,336 €/kWh\n\nDuration: 0,048 €/minute after 4h of usage\n\nWhile parking (no energy delivered):\nDuration: 0,00 €/minute\n\nMinimum 0,50 € Inc. VAT",
+      "sourceParking": "Duration: 0,00 €/minute"
     },
     {
       "pointCount": 2,
