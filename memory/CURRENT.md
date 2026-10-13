@@ -1,3 +1,10 @@
+## 14 octobre 2026 — REVE progressif confirmé ; chantier IT lancé en parallèle
+
+- Espagne : Data Lab `spain-reve-v9-stream-refresh.yml` est un collecteur **incrémental** (5 requêtes/page-lots max par exécution, cron horaire), la dernière collecte 13/10 19:23 UTC est **success**, état `PRE_INTEGRATION_ONLY` avec tarifs 397/468 pages et statuts 265/454 pages. Les compteurs incomplets reflètent la progression planifiée, **pas un échec d'exécution**. Ne pas basculer Production sur les données partielles ; continuer le flux. À auditer séparément : inventaire des stations/tuiles ES, non reconstruit par ce flux de tarifs/statuts.
+- Italie : début d'un chantier **parallèle dédié** [Data Lab PR brouillon #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301), branche `audit/italy-v9-source-migration-20261014`. Script `scripts/audit_italy_v9_migration.py`, workflow `.github/workflows/italy-v9-source-migration-audit.yml`, run [38479978673](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38479978673) **in_progress** au dernier contrôle. Lecture seule, rapport en artifact, sans mutation du snapshot Production.
+- Baseline PUN Italie dans `docs/italy-cpo-progress-2026-09.json` : 30 675 stations / 75 738 EVSE / 92 party IDs (20/09), `inventoryComplete=false`, 26 traités, 66 partiels. Une source PUN certifiée complète et ses tuiles/offres doivent être validées avant bascule depuis Stable.
+- Tesla via Mac **reste** dans Updater Test ; aucun workflow historique supprimé ni publication live.
+
 ## 14 octobre 2026 — ES/IT migration, blocage REVE vérifié
 
 - [Production PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) : validation préalable de l'audit ES/IT [run 38478371585](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38478371585) **success** sur `9825f8ad`.
