@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Pilotes eMSP UK/NL fusionnés, CI verte
+
+- Data Lab [#260](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/260) fusionnée `301364b6bdaf278bc3f5a663d57053a02ed427f5`, [CI PR #38432749548](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38432749548) réussie sans appel fournisseur ; scan public local OK. Deux groupes GPS UK candidats sur trois sites, Source EV bloqué par conflit 0,89/0,71 £ et MFG 0,69 £ encore sous vérification TVA/périmètre ; 342 candidats identité+puissance+grille Electra NL, sans promotion. Production/pin/Pages inchangés. Prochaines preuves : prix payable Electroverse UK avec TVA et type de prise/grille eMSP Electra NL.
+
 ## 2026-10-13 — Équivalence GPS eMSP UK autorisée, conflit Source EV détecté
 
 - [Pilote #38431179952](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38431179952) : 8/8 prises de même puissance, type et GPS pour Source EV et MFG malgré IDs EVSE différents ; aucune offre promue. Source EV présente deux montants Electroverse incompatibles (0,89/0,71 £/kWh) : statut incalculable. MFG 0,69 £/kWh homogène reste candidat avec TVA à vérifier. La règle de groupe GPS autorisée par l'utilisateur est documentée dans le [rapport des pilotes](../docs/v9-emsp-bounded-pilots-2026-10-13.md) et un contrôle des deux couches tarifaires est ajouté. [Sonde API #38431374082](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38431374082) : 60/60 HTTP 200, aucun 429 ni en-tête de quota, limite maximale inconnue. Aucune modification Production ni Pages.
