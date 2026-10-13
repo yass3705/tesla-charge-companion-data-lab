@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — BUMP Direct exact, supplément IRVE actif et pin de développement
+
+- Production #90 `c6b9ea9` a épinglé le catalogue BUMP Direct courant : 1 744 EVSE exacts/55 groupes, 543 EVSE tarifés source non joints ; oracle charge seule 1,055 €, CI candidat `38405972501` et `main` `38406305858` vertes. Production #91 `f08c5d6` ajoute 21 stations/39 EVSE positivement actifs et démontrés dans l’IRVE plus récent, sans substituer la base entière : 1 783 EVSE tarifés/58 groupes, 504 non joints, trois conflits géographiques exclus. CI PR `38408105581` et preview `38408105702` vertes ; CI `main` `38408405218` et preview `38408405107` réussies, navigateur compris ; déploiement ignoré. Le nouveau candidat `2026-10-13-fr-bump-active-supplement-candidate` garde Data Lab `e39a44660`, Stable `0a6d2c34`, BUMP isolé `e22c23b1c`. Pages HTTP reste sur `2026-10-13-nine-country-be-belib-exact-candidate`, sans déploiement. Production #92 `a61164e` synchronise le rapport consolidé après CI, sans code runtime. Détails et blocages dans `CURRENT.md` et le rapport Production.
+
+
 ## 2026-10-13 — UK flux ouverts post-pin et CI BUMP
 
 - Collecte UK 12/12 réussie au run `38400775080`, commit Data Lab `49bd7ced1`, mais deux sources partielles : `char.gy` cinq tarifs absents/1 128 EVSE, ChargePlace Scotland deux tarifs absents/116 EVSE. Pin antérieur : une source partielle, `char.gy` 1 092 EVSE affectés, ChargePlace complet. Pas de repin ni de transfert des tarifs ChargePlace historiques 2024. Voir `docs/v9-uk-open-feeds-post-pin-diff-2026-10-13.md`.
