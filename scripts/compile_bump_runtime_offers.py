@@ -38,8 +38,13 @@ def normalize_pricing(point):
     elif kind=='energy':
       rule['pricePerKwh']=source['eurPerKwh']
     elif kind=='flat_fee':
-      if source.get('conditions'):return None,'conditional_flat_fee_unrepresented'
-      rule['sessionFeeEur']=source['amountEur']
+      conditions=source.get('conditions') or []
+      if conditions:
+        if not all(condition.get('kind')=='energy_above_kwh' and isinstance(condition.get('value'),(int,float)) and condition['value']>=0 for condition in conditions):
+          return None,'conditional_flat_fee_duration_or_unknown'
+        pricing.setdefault('conditionalSessionFees',[]).append({'amountEur':source['amountEur'],'conditions':conditions})
+      else:
+        rule['sessionFeeEur']=source['amountEur']
     elif kind=='charging_duration_surcharge':
       if source.get('afterMinutes')!=0:return None,'delayed_charging_fee_unrepresented'
       rule['chargingTimePerMinuteEur']=source['eurPerMinute']
@@ -52,6 +57,9 @@ def normalize_pricing(point):
   for source_key,normalized_key,multiplier in checks:
     source_value=components.get(source_key)
     target_value=(pricing if normalized_key=='minimumTotalEur' else rule).get(normalized_key)
+    if source_key=='flatFeeEur' and target_value is None:
+      fees=pricing.get('conditionalSessionFees') or []
+      if len(fees)==1:target_value=fees[0]['amountEur']
     if isinstance(source_value,(int,float)) and (target_value is None or abs(source_value-target_value*multiplier)>0.001):
       return None,'component_mismatch_'+source_key
   return pricing,None
