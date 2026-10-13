@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Première V9 GitHub Pages publiée
+
+- [Workflow manuel Production #38326551657](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38326551657) terminé : `candidate=success`, `deploy=success`, déploiement `7026921334` avec statut GitHub `success`. Publication autorisée et approuvée par l'utilisateur, SHA `6e3eaef101d72bf6d4855a819bcc2e4408e94528`. URL https://yass3705.github.io/tesla-charge-companion-production/ servie et redirigée vers V9, `shell-config.json` public confirme le snapshot `2026-10-13-nine-country-be-belib-exact-candidate` et FR/NL/IT/ES/CH/DE/GB/MA/BE. La validation de l'interactivité utilisateur reste post-publication, distincte du succès Pages.
+
+
 ## 2026-10-13 — Préparation sécurisée de la première V9 publique
 
 - Production [PR #65](https://github.com/yass3705/tesla-charge-companion-production/pull/65) fusionnée `6e3eaef101d72bf6d4855a819bcc2e4408e94528`. Elle ajoute un workflow manuel autonome `publish-v9-pinned-pages.yml` qui reproduit exactement le snapshot de développement épinglé plutôt que la variante dynamique R14 du workflow Global Mac. [CI sans publication #38325871695](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38325871695) verte. Pages est uniquement autorisé sous `workflow_dispatch`, `publish=true` et après validation du snapshot, des neuf pays, du navigateur et des SHA-256.
