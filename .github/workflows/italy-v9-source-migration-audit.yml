@@ -9,6 +9,8 @@ on:
       - "scripts/audit_italy_v9_migration.py"
       - "scripts/verify_italy_v9_runtime_parity.py"
       - "tests/test_italy_v9_runtime_parity.py"
+      - "scripts/audit_italy_pun_evse_integrity.py"
+      - "tests/test_italy_pun_evse_integrity.py"
       - ".github/workflows/italy-v9-source-migration-audit.yml"
       - "docs/italy-cpo-progress-2026-09.json"
 
@@ -25,6 +27,8 @@ jobs:
         run: python scripts/audit_italy_v9_migration.py
       - name: Test static-tile parity contract
         run: python -m unittest discover -s tests -p test_italy_v9_runtime_parity.py -v
+      - name: Test PUN EVSE membership and non-rankable tariff policy
+        run: python -m unittest discover -s tests -p test_italy_pun_evse_integrity.py -v
       - name: Save source-readiness report
         uses: actions/upload-artifact@v4
         if: always()
