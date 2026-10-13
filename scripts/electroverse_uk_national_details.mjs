@@ -2,7 +2,7 @@
 import fs from 'node:fs/promises';
 import zlib from 'node:zlib';
 import {pathToFileURL} from 'node:url';
-import {DirectElectroverseClient, EVSE_FIELDS} from './lib/electroverse_direct_client.mjs';
+import {DirectElectroverseClient, EVSE_FIELDS, PAGED_LOCATION_QUERY} from './lib/electroverse_direct_client.mjs';
 import {connectorKind} from './electroverse_uk_cpo_pilot.mjs';
 
 const INPUT='data/platforms/electroverse/uk-coarse-location-candidates.json.gz';
@@ -20,7 +20,8 @@ export function retainAllowed(location){
   }).filter(Boolean);
   return {chargingLocationPk:location.chargingLocationPk,name:location.name,
     coordinates:location.coordinates,operator:location.operator,
-    hasMoreEvses:Boolean(location.evses?.pageInfo?.hasNextPage),evses};
+    hasMoreEvses:Boolean(location.evses?.pageInfo?.hasNextPage),
+    endCursor:location.evses?.pageInfo?.endCursor||null,evses};
 }
 
 function query(pks){
@@ -45,13 +46,28 @@ export async function main(args=process.argv.slice(2)){
   const rows=[];let requests=0;
   for(let start=0;start<slice.length;start+=5){
     const group=slice.slice(start,start+5);
-    if(++requests>20)throw Error('request cap exceeded');
+    if(++requests>30)throw Error('request cap exceeded');
     const response=await client.request(query(group.map(x=>x.electroversePk)),{}, {attempts:1});
     if(response.status!==200||response.json?.errors?.length||!response.json?.data)
       throw Error(`GraphQL batch failed at offset ${offset+start}: HTTP ${response.status}; ${(response.json?.errors||[]).map(x=>x.message).join(';').slice(0,160)}`);
     for(let i=0;i<group.length;i++){
       const source=retainAllowed(response.json.data[`s${i}`]);
-      if(source?.hasMoreEvses)throw Error(`EVSE pagination required at PK ${group[i].electroversePk}`);
+      while(source?.hasMoreEvses){
+        if(!source.endCursor||++requests>30)throw Error(`EVSE pagination/cap at PK ${group[i].electroversePk}`);
+        await pause(1000);
+        const next=await client.request(PAGED_LOCATION_QUERY,
+          {pk:group[i].electroversePk,first:100,after:source.endCursor},{attempts:1});
+        if(next.status!==200||next.json?.errors?.length||!next.json?.data?.chargingLocation)
+          throw Error(`EVSE page failed at PK ${group[i].electroversePk}: HTTP ${next.status}`);
+        const page=retainAllowed(next.json.data.chargingLocation);
+        if(!page||String(page.chargingLocationPk)!==group[i].electroversePk)
+          throw Error(`EVSE page PK mismatch at ${group[i].electroversePk}`);
+        source.evses.push(...page.evses);
+        if(page.hasMoreEvses&&page.endCursor===source.endCursor)
+          throw Error(`EVSE cursor did not advance at ${group[i].electroversePk}`);
+        source.hasMoreEvses=page.hasMoreEvses;
+        source.endCursor=page.endCursor;
+      }
       if(source&&String(source.chargingLocationPk)!==group[i].electroversePk)
         throw Error(`PK mismatch at ${group[i].electroversePk}`);
       rows.push({electroversePk:group[i].electroversePk,
