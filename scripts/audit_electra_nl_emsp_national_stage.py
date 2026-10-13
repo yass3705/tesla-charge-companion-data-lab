@@ -15,6 +15,10 @@ def main():
     shards = []
     seen_pages = set()
     identities = Counter()
+    first_occurrence = {}
+    duplicate_examples = []
+    duplicate_tariff_conflicts = 0
+    duplicate_cpo_labels = 0
     totals = set()
     national_shas = set()
     aggregate = Counter()
@@ -33,7 +37,16 @@ def main():
         aggregate.update(value['counts'])
         for location in value['locations']:
             for evse in location['matchedAllowedEvses']:
-                identities[evse['nationalEvseId']] += 1
+                evse_id = evse['nationalEvseId']
+                identities[evse_id] += 1
+                occurrence = {'locationId': location['locationId'], 'cpo': location['cpo'],
+                              'tariffIds': sorted(t.get('chargeTariffId') for t in location['chargeTariffs'])}
+                previous = first_occurrence.setdefault(evse_id, occurrence)
+                if previous is not occurrence:
+                    duplicate_tariff_conflicts += occurrence['tariffIds'] != previous['tariffIds']
+                    duplicate_cpo_labels += occurrence['cpo'] != previous['cpo']
+                    if len(duplicate_examples) < 30:
+                        duplicate_examples.append({'evseId': evse_id, 'first': previous, 'other': occurrence})
         shards.append({'path': str(path), 'startPage': begin, 'pages': size,
                        'sourceTotalCount': value['sourceTotalCount'], 'counts': value['counts']})
     if not shards or len(national_shas) != 1:
@@ -49,6 +62,9 @@ def main():
               'missingPagesFirst20': missing[:20], 'nationalSha256': national_shas.pop(),
               'aggregateCounts': dict(aggregate), 'distinctMatchedAllowedEvseIds': len(identities),
               'repeatedMatchedAllowedEvseOccurrences': repeated,
+              'repeatedWithDifferentTariffIds': duplicate_tariff_conflicts,
+              'repeatedWithDifferentCpoLabel': duplicate_cpo_labels,
+              'duplicateExamplesFirst30': duplicate_examples,
               'shards': shards, 'publicationStatus': 'no_emsp_tariff_promotion'}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
