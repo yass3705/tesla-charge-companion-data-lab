@@ -1,0 +1,27 @@
+name: Electroverse UK CPO bounded pilot
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate pilot syntax
+        run: node --check scripts/electroverse_uk_cpo_pilot.mjs
+      - name: Run bounded read-only pilot
+        run: node scripts/electroverse_uk_cpo_pilot.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: electroverse-uk-cpo-pilot
+          path: reports/emsp-pilots/electroverse-uk-cpo.json
+          if-no-files-found: warn
+          retention-days: 7

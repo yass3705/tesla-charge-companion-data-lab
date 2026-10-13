@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Pilote Electra NL réel ; sonde Electroverse GB préparée
+
+- Script reproductible Electra sur quatre pages GraphQL et base DOT-NL courante : 257 lieux, 597 EVSE, 367 identités EVSE/GPS uniques, 356 statuts positifs bilatéraux, 351 prises situées sur une grille Electra unique, 16 multigrilles, 360 avec référence Direct DOT-NL. Aucun prix attaché ou publié ; [résultat et limites](../docs/v9-emsp-bounded-pilots-2026-10-13.md), rapport JSON et SHA source. Workflow manuel Electroverse GB borné à trois sites CPO UK, sans exposition du secret ni modification canonique ; run à effectuer après validation du code. Aucun Pages/Cloudflare.
+
 ## 2026-10-13 — Exploration de collecte eMSP internationale et identité CPO
 
 - IT, CH, DE, ES, NL, GB et BE étudiés, MA exclu explicitement. Sondage borné de la liste Electra multicountry : 322 938 lieux annoncés, charge utile de 19,6 Ko en listing léger contre 107,8 Ko pour les mêmes 100 lieux avec tarifs complets ; aucun débit soutenu extrapolé. Sept pages Electra espacées (700 lieux au total) attestent BE/NL/DE/FR/IT/ES/CH dans l'échantillon, zéro GB observé sans conclusion de couverture nationale. Les tuiles Electroverse restent un index d'IDs sans tarifs, et son recensement de statuts FR reste bloqué. Proposition versionnée : découverte en deux phases, collecte ciblée, rafraîchissement tarifaire périodique et graphe d'identité EVSE/prise traçable ; pilote GB Electroverse, BE/NL Electra. [Méthode, preuves et critères](../docs/v9-emsp-international-acquisition-crosswalk-2026-10-13.md). Aucun tarif, pin Production, Pages ou Cloudflare modifié.
