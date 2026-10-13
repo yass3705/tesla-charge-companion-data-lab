@@ -89,6 +89,7 @@ def analyze(stage, nap_identity=None):
                 counts["sourcePDC"] += 1
                 points.append({
                     "sourcePointId": pid,
+                    "sourcePointEnergyRateCount": point.get("sourcePointEnergyRateCount"),
                     "externalEvseId": external_id,
                     "connectorType": kind,
                     "powerW": round(power, 3),
@@ -102,11 +103,15 @@ def analyze(stage, nap_identity=None):
                 "declaredRefillPoints": station.get("declaredRefillPoints"),
                 "authenticationMethods": station.get("authenticationMethods", []),
                 "unassignedStationRateIds": [rate.get("sourceRateId") for rate in rates],
+                "sourceStationEnergyRateCount": station.get("sourceStationEnergyRateCount"),
+                "sourceStationRatesUnassignedToPdc": rates,
                 "pdc": points,
             })
         sites.append({
             "sourceSiteId": site_id,
             "sourceSiteType": site.get("sourceSiteType"),
+            "sourceSiteEnergyRateCount": site.get("sourceSiteEnergyRateCount"),
+            "name": site.get("name"),
             "latitude": lat, "longitude": lon,
             "city": site.get("city"), "postalCode": site.get("postalCode"),
             "publicAccessVerified": False,
