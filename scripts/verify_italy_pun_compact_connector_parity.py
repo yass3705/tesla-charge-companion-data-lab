@@ -13,14 +13,14 @@ def inventory(pun):
     for st in pun["stations"]:
         for ev in st.get("evses",[]):
             eid=str(ev.get("evseId") or "").strip()
-            for c in ev.get("connectors",[]):
+            for index,c in enumerate(ev.get("connectors",[])):
                 kind=str(c.get("standard") or "").upper()
                 if "COMBO" in kind or "CCS" in kind: kind="CCS"
                 elif "TYPE_2" in kind or "TYPE2" in kind: kind="TYPE2"
                 else: skipped[kind]+=1;continue
                 power=c.get("maxPowerKw")
                 if not isinstance(power,(int,float)) or power<=0: skipped["missing_power"]+=1;continue
-                cid=str(c.get("connectorId") or st.get("stationKey"))
+                cid=str(c.get("connectorId") or index)
                 result[(eid,cid,kind,round(float(power),6))]+=1
     return result,skipped
 
