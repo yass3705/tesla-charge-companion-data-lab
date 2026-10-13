@@ -1,3 +1,8 @@
+## 13 octobre 2026 — E55C Place Lully B01 identifiée ; EnergyVision candidat validé, couverture partielle
+
+- L'utilisateur confirme **station B01**, EVSE exact `FR*55C*EFR78210*P21PL*0`, puissance **22 kW**. Preuve mise à jour dans [le relevé E55C](../data/station_verifications/electric55_place_lully_direct_portal_user_2026_10_13.json). Le tarif affiché est **0,60 €/session**, puis deux composantes charge/parking à **0,08 €/min de 07–23 h** et **0,06 €/min de 23–07 h**. Le déclenchement parking, l'arrondi minute, le traitement des créneaux et la TVA restent à vérifier ; **pas de prix calculable promu** pour ce seul EVSE avant clarification, aucune généralisation réseau.
+- **EnergyVision BE** : Production [#94](https://github.com/yass3705/tesla-charge-companion-production/pull/94) et [#95](https://github.com/yass3705/tesla-charge-companion-production/pull/95) déjà fusionnées ; CI main [#38448522469](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38448522469) **success**, pin développement `2026-10-13-be-energyvision-official-cpo-candidate`, **3 795** PDC, **3 633** à statut positif, **778** offres Direct numériquement calculables. Les autres grilles horaires/minutes/frais conditionnels ne sont **pas finalisées** et demeurent sans valeur numérique. Aucun déploiement Pages/Cloudflare ; ne pas confondre validation du candidat et publication publique.
+
 ## 13 octobre 2026 — exigence supplémentaire : prouver les consommateurs TCC effectifs
 
 - L'utilisateur demande de ne **pas** se limiter à l'état d'activation des workflows : tracer fichiers, imports, dispatchs, artefacts, snapshots, compilation et runtime V9 pour décider si une source historique est encore utilisée.
