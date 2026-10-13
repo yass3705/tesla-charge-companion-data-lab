@@ -9,10 +9,13 @@ STATIC = b"""<?xml version="1.0"?>
  <energyInfrastructureTable>
   <energyInfrastructureSite id="BE_SITE_1">
    <brand><values><value>Example CPO</value></values></brand>
+   <typeOfSite><value>onStreet</value></typeOfSite>
    <entrance><pointByCoordinates><pointCoordinates>
     <latitude>50.85</latitude><longitude>4.35</longitude>
    </pointCoordinates></pointByCoordinates></entrance>
    <energyInfrastructureStation id="STATION_1">
+   <numberOfRefillPoints>2</numberOfRefillPoints>
+   <authenticationAndIdentificationMethods><value>apps</value></authenticationAndIdentificationMethods>
     <refillPoint id="EVSE_A">
       <currentType><value>ac</value></currentType>
       <availableChargingPower>22000</availableChargingPower>
@@ -59,7 +62,10 @@ class StageEnergyVisionTests(unittest.TestCase):
     def test_station_rate_is_not_promoted_to_evse(self):
         parsed = interpret_static(STATIC)
         self.assertEqual(len(parsed["sites"]), 1)
+        self.assertEqual(parsed["sites"][0]["sourceSiteType"], "onStreet")
         station = parsed["sites"][0]["stations"][0]
+        self.assertEqual(station["declaredRefillPoints"], "2")
+        self.assertEqual(station["authenticationMethods"], ["apps"])
         self.assertEqual(len(station["refillPoints"]), 2)
         self.assertEqual(len(station["stationRatesUnassignedToEvse"]), 2)
         self.assertEqual(station["stationRatesUnassignedToEvse"][0]["sourceRateId"], "RATE_1")
