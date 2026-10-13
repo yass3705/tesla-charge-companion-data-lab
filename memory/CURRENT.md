@@ -1,3 +1,9 @@
+## 14 octobre 2026 — IT PR #301 : extraction PUN bloquée puis relancée (dépendance Python)
+
+- [Run candidate 38482136569](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38482136569) **failure** avant toute collecte : `ModuleNotFoundError: No module named requests_aws4auth` dans `scripts/pun_italy_national.py`. Aucun artefact national produit, contrôle EVSE non exécuté.
+- Correctif appliqué au workflow de branche d'audit uniquement : installer `requests-aws4auth` en plus de `requests` et `boto3` (commit `00f3e9f6`), relance par push [run 38482336455](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38482336455) **queued** au dernier contrôle. Ne pas annoncer extraction réussie sans inspecter ce run, ses éventuels artefacts et le rapport EVSE.
+- [PR Data Lab #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) toujours brouillon. Pas de bascule IT dans Production, pas de publication. REVE ES incrémental inchangé ; Tesla/Mac dans Updater Test ; pas de workflow historique supprimé.
+
 ## 14 octobre 2026 — extraction nationale PUN italienne déclenchée (artifact-only)
 
 - PR Data Lab brouillon [#301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) : test de correspondance EVSE corrigé validé par [run 38481670046](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38481670046), conclusion success, commit `bd668c51`.
