@@ -1,3 +1,9 @@
+## 14 octobre 2026 — ES/IT migration, blocage REVE vérifié
+
+- [Production PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) : validation préalable de l'audit ES/IT [run 38478371585](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38478371585) **success** sur `9825f8ad`.
+- Analyse Data Lab `spain-reve-v9-stream-refresh.yml` : collecte horaire de pages **tarif + statut uniquement**, **pas** reconstructeur d'inventaire national complet ; dernier rapport `data/spain_reve/tariff_status_stream_last_run.json` daté du 13/10/2026 19:23Z : `PRE_INTEGRATION_ONLY`, `complete=false`, tarifs **397/468 pages, 31 149 lignes**, statuts **265/454 pages, 21 742 lignes**. Basculer ES sur Data Lab à ce stade ferait courir un risque de perte de couverture.
+- [Inventaire ES/IT](https://github.com/yass3705/tesla-charge-companion-production/blob/migration/production-owned-pwa-manifest-20261013/config/migration/es-it-stable-to-datalab-audit.json) enrichi avec ces compteurs et le blocage (commit `3ab08a48`), test anti-basculement renforcé (commit `b9ed8a48`). Nouveau run [38479289822](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38479289822) **queued** au dernier contrôle. Pas de bascule des datasets, ni de fusion/publication, ni de suppression de workflows. Tesla via Mac inchangé dans Updater Test.
+
 ## 14 octobre 2026 — PR #97 : audit et verrou CI sur sources Espagne/Italie
 
 - Le dernier lot JS est **validé** : [run Production 38477702912](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38477702912), SHA `c8250ca3`.
