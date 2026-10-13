@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Audit V9 : abonnement, classement, devises Tesla et contrôle global des identités
+
+- Production #70 `ed4d34a`, #71 `323645a` et #72 `e18e58e` fusionnées après CI globale et pin vertes, Pages toujours ignoré. Les tarifs Electra+ ne sont dérivés que sur 320 grilles directes uniques. Le tri explicite devient strict. Tesla PT utilise la carte commune ; les prix Tesla GBP/CHF/MAD conservent leur devise source.
+- Le contrôle des 187 362 offres eMSP FR du pin public trouve 92 850 Electra et 86 782 Electroverse rattachées à une station unique, zéro EVSE national dupliqué et zéro offre multistation ; 4 521 et 3 209 offres restent non jointes. Production #73 `269811f` a créé un nouvel identifiant candidat à sources inchangées et enregistre ce garde en CI. Production #74 `0ecb47d` corrige les unités AC IRVE (675 groupes / 663 stations), marque neuf groupes DC / six stations incalculables, et archive des captures Firefox comparatives ; CI globales et épinglées vertes, Pages ignoré. Production #75 `3a0c6ae` fusionnée après CI globales et pin vertes ; libellé source opérateur + adresse pour les titres techniques, IDs tarifaires préservés. Voir [CURRENT.md](CURRENT.md) et le rapport Production #73. Aucune publication Pages/Cloudflare.
+
 ## 2026-10-13 — Audit public V9 : restauration Electra, résumé tarifaire et carte Tesla
 
 - Production #66 (tarifs directs Electra), #67 (résumé du tarif réellement appliqué) et #69 (Tesla Portugal en carte V9) fusionnées après CI globale et pin verts ; runs respectifs `38330916176/38330916172`, `38330924891/38330924854`, `38331242520/38331242524`. Jobs Pages ignorés.
