@@ -1,3 +1,10 @@
+## 14 octobre 2026 — Italie PR #301, contrôle d'intégrité PUN EVSE avant génération des tuiles
+
+- La validation précédente du contrat de manifeste V9 a réussi : [run 38481149372](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38481149372), SHA `b4ea875d`.
+- [PR Data Lab #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) enrichie avec `scripts/audit_italy_pun_evse_integrity.py` (commit `aa7a5e2f`), tests `tests/test_italy_pun_evse_integrity.py` (commit `30b49440`) et intégration CI (commit `dcfa5990`). Le contrôle est **read-only** sur un futur fichier PUN national : pays/source, seuil minimal 29 696 stations et 75 025 EVSE, unicité des identifiants, bijection exacte entre EVSE nationaux et EVSE embarqués dans les stations, cohérence des comptes, interdiction de calculer des tarifs PUN non validés.
+- La CI de tests du nouveau contrôle est [run 38481423333](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38481423333), **queued** au dernier contrôle. Aucun jeu national réel reconstruit ou comparé encore, source Production IT reste Stable ; pas de fusion, pas de publication.
+- Espagne REVE incrémental inchangé ; Tesla/Mac reste dans Updater Test, aucun workflow historique supprimé.
+
 ## 14 octobre 2026 — Italie PR #301, contrat de parité V9 introduit
 
 - [Audit IT run 38480682930](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38480682930) **success** au SHA `2e361fd9`. Cette réussite valide le contrôle des inputs, non la reconstruction nationale.
