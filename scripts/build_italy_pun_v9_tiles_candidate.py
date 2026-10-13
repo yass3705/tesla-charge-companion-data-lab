@@ -32,6 +32,31 @@ def coordinates(station):
     return lat, lon
 
 
+def compact_row(station):
+    """V9 national-compact row; direct PUN prices stay empty."""
+    coords = station.get("coordinates") or [None, None]
+    configs = []
+    for evse in station.get("evses", []):
+        eid = str(evse.get("evseId") or "").strip()
+        for index, c in enumerate(evse.get("connectors") or []):
+            standard = str(c.get("standard") or "").upper()
+            if "COMBO" in standard or "CCS" in standard:
+                kind = "CCS"
+            elif "TYPE_2" in standard or "TYPE2" in standard:
+                kind = "TYPE2"
+            else:
+                continue
+            power = c.get("maxPowerKw")
+            if not isinstance(power, (int, float)) or power <= 0:
+                continue
+            cid = str(c.get("connectorId") or index)
+            configs.append([f"{eid}:connector:{cid}", str(station.get("operator") or "PUN"), kind, power, 1, [], [eid]])
+    state = {"operational":"AVAILABLE", "non_operational":"OUT_OF_SERVICE"}.get(station.get("operationalState"), "UNKNOWN")
+    return [station.get("stationId") or station.get("stationKey"), station.get("name"),
+            station.get("address"), coords[0], coords[1], station.get("operator"),
+            len(configs), [], configs, None, state, station.get("operator")]
+
+
 def build(payload, destination):
     if payload.get("country") != "IT" or payload.get("dataset") != "pun-national-italy":
         raise ValueError("not an Italy PUN dataset")
@@ -43,11 +68,11 @@ def build(payload, destination):
     for station in stations:
         lat, lon = coordinates(station)
         tiled[(math.floor(lat), math.floor(lon))].append(station)
-    all_sha = write_gz(destination/"all.json.gz", stations)
+    all_sha = write_gz(destination/"all.json.gz", [compact_row(s) for s in stations])
     tiles = []
     for (lat_tile, lon_tile), entries in sorted(tiled.items()):
         name = f"tile_{lat_tile}_{lon_tile}.json.gz"
-        sha = write_gz(destination/name, entries)
+        sha = write_gz(destination/name, [compact_row(s) for s in entries])
         cs = [coordinates(s) for s in entries]
         tiles.append({"file":name,"count":len(entries),"minLat":min(c[0] for c in cs),"maxLat":max(c[0] for c in cs),"minLon":min(c[1] for c in cs),"maxLon":max(c[1] for c in cs),"sha256":sha})
     manifest = {"schemaVersion":4,"country":"IT","source":"PUN experimental candidate — not V9 parity certified",
