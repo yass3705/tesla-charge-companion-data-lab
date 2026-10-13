@@ -1,5 +1,11 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — EnergyVision BE : quatre endpoints DATEX authentifiés, inventaire recueilli
+
+- [Run Data Lab #38417695881](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38417695881) `success` : `metadata`, `health`, `energy-infrastructure-table`, `energy-infrastructure-status` tous `HTTP 200` avec secret `ENERGYVISION_API_KEY` ; 13 498 261 octets statiques, 1 807 691 dynamiques. XML : **1 236 sites**, **1 236 stations**, **3 791 refillPoint**, **1 226 energyRate**, **4 778 energyPrice** ; dynamique **1 238 sites / 3 795 statuts de PDC**. Ce sont des comptages d'éléments XML, non des offres V9 validées. [Rapport et provenance](../docs/integrations/energyvision-datex-live-evidence-2026-10-13.md), artefact de structure CI disponible sept jours.
+- [PR Data Lab #250](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/250) fusionnée `d98d4cc` (tests sécurisés, aucune source brute publiée). [PR #251](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/251) poursuit le **staging séparé station/rate/EVSE** et la réconciliation statique/dynamique. Aucune affectation des prix au PDC ni intégration Production avant vérification tarifs ad-hoc, périodes, TVA, statut public et jointure NAP exacte. Aucune publication Pages/Cloudflare.
+
+
 ## 13 octobre 2026 — EnergyVision Belgique : authentification validée, collecte DATEX diagnostique en validation
 
 - L'ancien workflow [EnergyVision credential probe #38288652812](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38288652812) (12/10) a confirmé `200` et XML non vide sur `/datex/metadata` et `/datex/health`, en utilisant le secret Actions `ENERGYVISION_API_KEY` sans le divulguer.
