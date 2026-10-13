@@ -6,12 +6,16 @@ on:
       - ".github/workflows/energyvision-datex-stage.yml"
       - "scripts/energyvision_datex_semantic_stage.py"
       - "tests/test_energyvision_datex_semantic_stage.py"
+      - "scripts/energyvision_datex_independent_cpo.py"
+      - "tests/test_energyvision_datex_independent_cpo.py"
   push:
     branches: [main]
     paths:
       - ".github/workflows/energyvision-datex-stage.yml"
       - "scripts/energyvision_datex_semantic_stage.py"
       - "tests/test_energyvision_datex_semantic_stage.py"
+      - "scripts/energyvision_datex_independent_cpo.py"
+      - "tests/test_energyvision_datex_independent_cpo.py"
   workflow_dispatch:
 
 permissions:
@@ -29,7 +33,9 @@ jobs:
       - name: Install safe XML parser
         run: python -m pip install defusedxml==0.7.1
       - name: Test exact DATEX static/dynamic identities and no pricing promotion
-        run: python -m unittest discover -s tests -p 'test_energyvision_datex_semantic_stage.py' -v
+        run: |
+          python -m unittest discover -s tests -p 'test_energyvision_datex_semantic_stage.py' -v
+          python -m unittest discover -s tests -p 'test_energyvision_datex_independent_cpo.py' -v
 
   stage:
     if: github.event_name != 'pull_request'
@@ -47,6 +53,22 @@ jobs:
         run: python -m pip install defusedxml==0.7.1
       - name: Stage exact charging point IDs, statuses and source pricing groups separately
         run: python -m scripts.energyvision_datex_semantic_stage --report reports/belgium/energyvision-datex-semantic-audit.json --staging artifacts/energyvision-datex-stage.json.gz
+      - name: Cross-check independent CPO PDC inventory and prices kept unassigned
+        run: |
+          python -m scripts.energyvision_datex_independent_cpo \
+            --stage artifacts/energyvision-datex-stage.json.gz \
+            --manifest data/belgium/nap-belgium-manifest.json \
+            --output artifacts/energyvision-independent-cpo-supplement.json.gz \
+            --report reports/belgium/energyvision-cpo-supplement-audit.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("reports/belgium/energyvision-cpo-supplement-audit.json").read_text())
+          assert report["counts"]["sourcePDC"]==3791
+          assert report["counts"]["distinctExternalEvseIds"]==3791
+          assert report["v9PricedPDC"]==0 and not report["v9PublicationReady"]
+          print("INVENTORY_ONLY_NO_DIRECT_TARIFF",report["counts"]["sourcePDC"])
+          PY
       - name: Store short-lived source staging (NOT used by V9)
         if: always()
         uses: actions/upload-artifact@v4
@@ -55,5 +77,7 @@ jobs:
           path: |
             reports/belgium/energyvision-datex-semantic-audit.json
             artifacts/energyvision-datex-stage.json.gz
+            artifacts/energyvision-independent-cpo-supplement.json.gz
+            reports/belgium/energyvision-cpo-supplement-audit.json
           if-no-files-found: warn
           retention-days: 7
