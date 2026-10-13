@@ -23,7 +23,7 @@ class ItalianEvseIntegrityTests(unittest.TestCase):
 
     def test_missing_evse_in_station_rejected(self):
         p = self.example()
-        p["stations"][0]["evses"].pop()
+        p["stations"][0]["evses"] = p["stations"][0]["evses"][:-1]
         p["stations"][0]["evseCount"] -= 1
         self.assertIn("station EVSE membership not a bijection", mod.audit(p)["errors"])
 
