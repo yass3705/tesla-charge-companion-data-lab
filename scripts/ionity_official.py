@@ -145,7 +145,7 @@ def main() -> None:
         raise RuntimeError("IONITY Motion monthly fee missing/implausible on current pricing page")
     if not (0.0 < tariffs["powerMonthly"]["monthlyFeeEur"] < 100.0):
         raise RuntimeError("IONITY Power monthly fee missing/implausible on current pricing page")
-    require(texts["terms"], "23 pays", "IONITY subscription terms")
+    require(texts["terms"], "24 pays", "IONITY subscription terms")
     require(texts["preauth"], "40 EUR", "IONITY preauthorization")
     require(texts["priceChange"], "1er juillet 2026", "IONITY price change")
 
