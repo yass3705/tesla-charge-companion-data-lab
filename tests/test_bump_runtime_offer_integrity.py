@@ -46,9 +46,18 @@ class BumpRuntimeOfferIntegrityTest(unittest.TestCase):
 
     def test_unrepresented_conditions_stay_unpriced(self):
         reasons = {row["reason"] for row in self.runtime["quarantinedSourceRankableEvse"]}
-        self.assertIn("conditional_flat_fee_unrepresented", reasons)
+        self.assertIn("conditional_flat_fee_duration_or_unknown", reasons)
         self.assertIn("unsupported_rule_energy_time_bands", reasons)
         self.assertIn("unsupported_rule_post_charge_occupancy_time_bands", reasons)
+
+    def test_energy_condition_has_exact_strict_threshold(self):
+        offer = next(offer for offer in self.runtime["directOffers"]
+                     if offer["pricing"].get("conditionalSessionFees"))
+        fee = offer["pricing"]["conditionalSessionFees"][0]
+        self.assertGreater(fee["amountEur"], 0)
+        self.assertEqual([c["kind"] for c in fee["conditions"]], ["energy_above_kwh"])
+        self.assertGreater(fee["conditions"][0]["value"], 0)
+        self.assertNotIn("sessionFeeEur", offer["pricing"]["rules"][0])
 
 
 if __name__ == "__main__":
