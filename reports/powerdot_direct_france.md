@@ -1,6 +1,6 @@
 # Powerdot France — direct CPO national extraction
 
-Generated: 2026-10-12T07:21:42.071938+00:00
+Generated: 2026-10-13T07:43:37.871177+00:00
 
 ## Coverage
 - irveRows: **7733**
