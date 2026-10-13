@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
       - run: python3 scripts/compile_bump_runtime_offers.py
+      - name: Verify exact EVSE accounting and runtime rule schema
+        run: python3 -m unittest discover -s tests -p test_bump_runtime_offer_integrity.py
       - name: Publish
         run: |
           set -euo pipefail
