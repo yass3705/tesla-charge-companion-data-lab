@@ -1,3 +1,10 @@
+## 13 octobre 2026 — tranche runtime Production suivante : 6 moteurs copiés, validation en cours
+
+- La dernière validation complète de la tranche à trois moteurs de [Production PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) a **réussi** : run `38465363075`. Les précédents runs annulés résultaient de nouveaux commits.
+- Nouvelle tranche non fusionnée : `pricing-engine.js`, `runtime-engine.js`, `session-engine.js` sont copiés à contenu identique depuis le SHA Stable épinglé dans `runtime-owned/assets/v9/` de Production. Avec les trois moteurs transférés précédemment, **6 moteurs** sont désormais sélectionnés depuis les fichiers détenus par Production dans `scripts/build_snapshot.py` (commit `53e88a1c`), test de présence étendu (commit `9c14ea6a`).
+- La validation de **cette nouvelle tranche** est encore en cours : [run `38466956222`](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38466956222), dernière observation `pending`. Ne pas déclarer la tranche validée ni fusionner avant confirmation des tests. Aucun déploiement live volontaire, aucune suppression d'Updater Test ; collecte Tesla/Mac inchangée.
+- La migration du gros socle runtime Stable, des datasets ES/IT et des dernières dépendances structurelles reste à faire.
+
 ## 13 octobre 2026 — E55C Parking du Tennis Lourmarin, correspondance exacte confirmée
 
 - L'utilisateur confirme la borne **`FR*55C*EFR84160*178MA1*0`** comme l'unique borne premium : frais fixes **0,60 €/session** ; recharge **0,08 €/min 07:00–23:00** et **0,06 €/min 23:00–07:00**. Les bornes **`FR*55C*EFR84160*178MA1*1`**, **`*2`**, **`*3`** : 0,60 €/session + **0,04 €/min 07:00–23:00** et **0,03 €/min 23:00–07:00**. Pour chacune, parking après fin de recharge au même taux minute, seulement si départ/fin explicite ; sinon débranchement immédiat par défaut. Horaire Europe/Paris, cas B segmenté provisoire. Statut : identité tarifaire des quatre bornes confirmée par utilisateur ; TVA, arrondi minute et vérification directe checkout par identifiant restent non prouvés. Ne pas extrapoler à d'autres stations.
