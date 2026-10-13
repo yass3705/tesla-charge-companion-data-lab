@@ -255,14 +255,15 @@ def _rule_from_item(item: dict[str, Any], definition: dict[str, Any]) -> dict[st
     return rule
 
 
-def parse_tariff_profile(payload: dict[str, Any]) -> dict[str, Any] | None:
+def parse_tariff_profile(payload: dict[str, Any], *, own_emsp_fallback: bool = False) -> dict[str, Any] | None:
     """Normalize the exact price definitions returned to E55C Scan Pay."""
     definitions = [
         definition
         for definition in payload.get("definitions") or []
         if isinstance(definition, dict)
         and definition.get("isMatching") is True
-        and str(definition.get("method") or "").upper() != "ROAMING_EMPS"
+        and (str(definition.get("method") or "").upper() == "ROAMING_EMPS" if own_emsp_fallback else str(definition.get("method") or "").upper() != "ROAMING_EMPS")
+        and (not own_emsp_fallback or str(definition.get("name") or "").strip().casefold() == "electric 55 charging x e55c")
     ]
     if not definitions:
         return None
@@ -298,9 +299,11 @@ def parse_tariff_profile(payload: dict[str, Any]) -> dict[str, Any] | None:
         json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()[:16]
     return {
-        "profileId": f"e55c-scanpay-{digest}",
+        "profileId": f"e55c-{'own-emsp-fallback' if own_emsp_fallback else 'scanpay'}-{digest}",
         "channel": "E55C Scan Pay",
-        "priceAuthority": "exact public pre-payment tariff display",
+        "priceAuthority": "CPO-labelled own-EMSP tariff fallback, not independently verified ad-hoc Direct" if own_emsp_fallback else "exact public pre-payment tariff display",
+        "tariffChannel": "own_emsp_fallback" if own_emsp_fallback else "cpo_direct",
+        "adHocDirectVerified": not own_emsp_fallback,
         "currency": "EUR",
         "taxIncluded": True,
         "displayTextFr": normalized["displayTextFr"],
@@ -365,9 +368,12 @@ def enrich(
     profiles: dict[str, dict[str, Any]] = {}
     parsed_by_key: dict[str, dict[str, Any] | None] = {}
     failed_keys: set[str] = set()
+    fallback_by_key: dict[str, dict[str, Any] | None] = {}
+    fallback_profiles: dict[str, dict[str, Any]] = {}
     for key, result in tariff_results.items():
         if result.get("ok") is True:
             parsed_by_key[key] = parse_tariff_profile(result.get("payload") or {})
+            fallback_by_key[key] = parse_tariff_profile(result.get("payload") or {}, own_emsp_fallback=True) if parsed_by_key[key] is None else None
         else:
             failed_keys.add(key)
 
@@ -387,6 +393,7 @@ def enrich(
     verified_direct_points = 0
     resolved_points = 0
     no_tariff_points = 0
+    fallback_points = 0
     current_keys: set[str] = set()
     for point in _all_points(payload):
         key = evse_key(point.get("localEvseId"))
@@ -416,6 +423,11 @@ def enrich(
                 "reason": "no_exact_link_in_current_e55c_public_map",
             }
 
+        fallback = fallback_by_key.get(key)
+        if fallback:
+            fallback_profiles[fallback["profileId"]] = fallback
+            point["fallbackPricing"] = {"status":"own_emsp_fallback", "profileId":fallback["profileId"], "source":"e55c_exact_scanpay_tariff_display", "isDirectVerified":False}
+            fallback_points += 1
         profile = parsed_by_key.get(key)
         prior = previous_points.get(key) or {}
         if (
@@ -494,8 +506,10 @@ def enrich(
     )
     payload["schemaVersion"] = "1.1.0"
     payload["directTariffProfiles"] = sorted(profiles.values(), key=lambda item: item["profileId"])
+    payload["ownEmspFallbackTariffProfiles"] = sorted(fallback_profiles.values(), key=lambda item: item["profileId"])
     payload.setdefault("scope", {}).update({
-        "directE55cScanPayTariffsIncluded": True,
+        "directE55cScanPayTariffsIncluded": bool(profiles),
+        "ownOperatorEmspFallbackPreservedSeparately": True,
         "thirdPartyEmspTariffsIncluded": False,
         "dynamicStatusIncluded": False,
     })
@@ -528,6 +542,8 @@ def enrich(
         "chargePointCountWithoutResolvedDirectTariff": no_tariff_points,
         "directTariffCoverageRatio": round(resolved_points / total_points, 6) if total_points else 0,
         "directTariffProfileCount": len(profiles),
+        "chargePointCountWithOwnEmspFallback": fallback_points,
+        "ownEmspFallbackTariffProfileCount": len(fallback_profiles),
         "e55cMapPaymentLinkCount": len(links),
         "e55cMapLinksMatchedToStaticInventory": len(matched_map_keys),
         "e55cMapLinksOutsideCurrentStaticInventory": len(set(links) - current_keys),
@@ -537,6 +553,8 @@ def enrich(
     payload.setdefault("tccIntegration", {}).update({
         "operatorDirectTariffsReady": resolved_points > 0,
         "directPaymentUrlsReady": linked_points > 0,
+        "ownEmspFallbackTariffsReady": fallback_points > 0,
+        "ownEmspFallbackMustNotBeRelabelledDirect": True,
         "chargingAndParkingTariffDimensionsSeparated": True,
         "directTariffProfileJoin": "offer.pricingProfileId -> directTariffProfiles.profileId",
         "thirdPartyEmspTariffsMustRemainSeparate": True,
