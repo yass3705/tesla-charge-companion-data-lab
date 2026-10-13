@@ -1,3 +1,9 @@
+## 14 octobre 2026 — Italie : PUN complet réussi ; essai de reconstruction des tuiles lancé
+
+- [Run Italie PUN #38482336455](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38482336455) **success**, SHA `00f3e9f6` : **31 057 stations, 77 801 EVSE, 116 opérateurs**, 779/779 lots de détail sans échec ; coordonnées 100 %, 71 408 EVSE temps réel ; **0 tarif PUN directement rankable**. Artifact `italy-pun-national-v9-candidate` id 11858046422 (~6,5 Mo ZIP) contient extraction et rapports ; pas de publication.
+- [PR Data Lab #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) enrichie d'un générateur **EXPÉRIMENTAL** de tuiles `scripts/build_italy_pun_v9_tiles_candidate.py` (commit `a293ea18`) : regroupe les stations par coordonnées arrondies vers le bas, construit `all.json.gz`, tuiles gzip et manifeste v4, sans offres ni prix. Workflow candidat complété pour lancer générateur et contrôle de forme du manifeste (commit `7e361e70`). Nouveau [run 38483520539](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38483520539) **queued** au dernier relevé. ATTENTION : ce format candidat n'a pas encore été comparé au schéma détaillé du payload Stable ni aux ID/puissances/offres ; ne pas déclarer compatible runtime ni promouvoir.
+- Production reste sur source IT Stable, PR #97 non fusionnée ; REVE ES poursuit son flux incrémental ; Tesla/Mac reste Updater Test ; aucun workflow supprimé.
+
 ## 14 octobre 2026 — IT PR #301 : extraction PUN bloquée puis relancée (dépendance Python)
 
 - [Run candidate 38482136569](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38482136569) **failure** avant toute collecte : `ModuleNotFoundError: No module named requests_aws4auth` dans `scripts/pun_italy_national.py`. Aucun artefact national produit, contrôle EVSE non exécuté.
