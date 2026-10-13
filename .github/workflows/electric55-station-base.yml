@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          refresh_args=()
+          refresh_args=(--full-refresh)
           if [ "${{ inputs.full_tariff_refresh || 'false' }}" = "true" ] || [ "$(date -u +%u)" = "7" ]; then
             refresh_args+=(--full-refresh)
           fi
@@ -90,7 +90,8 @@ jobs:
           assert p['scope']['dynamicStatusIncluded'] is False
           assert p['scope']['dynamicStatusAuthorityForTcc']==['Electroverse','Electra']
           assert p['scope']['roamingTariffsIncluded'] is False
-          assert p['scope']['directE55cScanPayTariffsIncluded'] is True
+          assert p['scope']['directE55cScanPayTariffsIncluded'] is bool(p['directTariffProfiles'])
+          assert p['scope']['ownOperatorEmspFallbackPreservedSeparately'] is True
           assert p['scope']['thirdPartyEmspTariffsIncluded'] is False
           assert p['filterEvidence']['field']=='nom_operateur'
           assert p['filterEvidence']['publisherAloneNeverQualifiesARow'] is True
@@ -98,9 +99,12 @@ jobs:
           assert p['stats']['chargePointCount'] >= p['stats']['stationCount']
           assert p['stats']['matchedE55cOperatorRows'] >= p['stats']['chargePointCount']
           assert 0 <= p['stats']['directTariffCoverageRatio'] <= 1
-          assert all('ROAMING_EMPS' not in [str(m).upper() for m in profile.get('sourceMethods',[])] for profile in p['directTariffProfiles'])
+          assert all('ROAMING_EMPS' not in [str(m).upper() for m in profile.get('sourceMethods',[])] or (p['source']['directTariff']['nationalOwnEmspOnlyVerified'] and profile.get('classificationBasis')=='national_sole_E55C_ROAMING_EMPS') for profile in p['directTariffProfiles'])
+          assert all(profile['tariffChannel']=='own_emsp_fallback' and profile['sourceMethods']==['ROAMING_EMPS'] and not profile['adHocDirectVerified'] for profile in p['ownEmspFallbackTariffProfiles'])
+          assert p['stats']['ownEmspFallbackTariffProfileCount']==len(p['ownEmspFallbackTariffProfiles'])
           assert p['stats']['chargePointCountWithDirectPaymentLink'] >= int(p['stats']['chargePointCount'] * 0.95)
           assert p['stats']['directTariffProfileCount'] >= 0
+          assert p['stats']['chargePointCountWithOwnEmspFallback'] >= 0
           profile_ids={profile['profileId'] for profile in p['directTariffProfiles']}
           station_ids=[s['stationId'] for s in p['stations']]
           assert len(station_ids)==len(set(station_ids))
@@ -160,6 +164,7 @@ jobs:
                   'stats':payload.get('stats'),
                   'tccIntegration':payload.get('tccIntegration'),
                   'directTariffProfiles':payload.get('directTariffProfiles'),
+                  'ownEmspFallbackTariffProfiles':payload.get('ownEmspFallbackTariffProfiles'),
                   'stations':payload.get('stations'),
               }
 

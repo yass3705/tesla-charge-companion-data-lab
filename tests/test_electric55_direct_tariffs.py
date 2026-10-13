@@ -68,6 +68,18 @@ class Electric55DirectTariffTests(unittest.TestCase):
         self.assertIn("t=e55c", link["paymentUrl"])
         self.assertIn("b=FR%2A55C%2AEFR39000%2AP7PPFG%2A1", link["paymentUrl"])
 
+    def test_own_emsp_fallback_is_preserved_separately_not_as_direct(self) -> None:
+        payload = tariff_payload()
+        payload["definitions"][0]["method"] = "ROAMING_EMPS"
+        self.assertIsNone(parse_tariff_profile(payload))
+        fallback = parse_tariff_profile(payload, own_emsp_fallback=True)
+        self.assertIsNotNone(fallback)
+        self.assertEqual(fallback["tariffChannel"], "own_emsp_fallback")
+        self.assertFalse(fallback["adHocDirectVerified"])
+        self.assertEqual(fallback["sourceMethods"], ["ROAMING_EMPS"])
+        payload["definitions"][0]["name"] = "Third Party CPO"
+        self.assertIsNone(parse_tariff_profile(payload, own_emsp_fallback=True))
+
     def test_roaming_emps_excluded_from_direct_import(self) -> None:
         payload = tariff_payload()
         payload["definitions"][0]["method"] = "ROAMING_EMPS"
@@ -140,6 +152,37 @@ class Electric55DirectTariffTests(unittest.TestCase):
         self.assertEqual(enriched["stats"]["directTariffCoverageRatio"], 1.0)
         self.assertEqual(enriched["stations"][0]["offers"][0]["pricingProfileId"], point["pricing"]["profileId"])
         self.assertEqual(enriched["directTariffProfiles"][0]["rules"][1]["chargingTimeEurPerMinute"], 0.084)
+
+    def test_sole_e55c_roaming_method_is_promoted_to_direct_on_full_audit(self) -> None:
+        evse = "FR*55C*EFR84160*178MA1*0"
+        row = {
+            "nom_station": "Parking du Tennis Lourmarin",
+            "adresse_station": "17 Avenue du 8 Mai 84160 Lourmarin",
+            "coordonneesxy": "[5.366592,43.763965]",
+            "id_station_itinerance": "FR55CP84160M0UTENN1S",
+            "id_pdc_itinerance": "FR55CEFR84160178MA100",
+            "id_pdc_local": evse,
+            "nom_operateur": "Electric 55 Charging",
+            "paiement_acte": "true",
+            "gratuit": "false",
+            "prise_type_2": "true",
+            "puissance_nominale": "22.08",
+        }
+        links = {evse: {"chargingStationId":evse, "connectorId":1,
+                        "paymentUrl":"https://ev-qr.com/?t=e55c&b=exact&c=1"}}
+        roaming = tariff_payload()
+        roaming["definitions"][0]["method"] = "ROAMING_EMPS"
+        enriched = enrich(build([row], source={"sha256":"test"}),
+            links=links, tariff_results={evse:{"ok":True,"payload":roaming}},
+            map_evidence={"paymentLinkCount":1}, full_refresh=True)
+        point = enriched["stations"][0]["chargePoints"][0]
+        self.assertEqual(point["pricing"]["status"], "resolved_e55c_scan_pay")
+        self.assertEqual(enriched["stats"]["chargePointCountWithMachineReadablePricing"], 1)
+        self.assertEqual(enriched["stats"]["chargePointCountWithOwnEmspFallback"], 0)
+        self.assertEqual(len(enriched["directTariffProfiles"]), 1)
+        self.assertEqual(len(enriched["ownEmspFallbackTariffProfiles"]), 0)
+        self.assertTrue(enriched["source"]["directTariff"]["nationalOwnEmspOnlyVerified"])
+        self.assertEqual(enriched["directTariffProfiles"][0]["classificationBasis"], "national_sole_E55C_ROAMING_EMPS")
 
     def test_endpoint_404_does_not_keep_a_stale_cached_tariff(self) -> None:
         local_evse_id = "FR*55C*EFR39000*P7PPFG*1"
