@@ -1,3 +1,10 @@
+## 13 octobre 2026 — tranche de 22 moteurs sur Production PR #97
+
+- Suite à la validation réussie du lot 18 moteurs (run `38473198294`, SHA `c63e74e3`), 4 moteurs à contenu inchangé du Stable pin ont été ajoutés au `runtime-owned/assets/v9/` de Production : `enrollment-engine.js`, `self-enrollment-engine.js`, `whitelist-engine.js`, `canary-policy-engine.js`.
+- Le builder sélectionne désormais 22 moteurs Production-owned après la copie du socle historique, commit `8649919d`; le test vérifie ces 22 fichiers, commit `ec88fa51`. [PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) non fusionnée.
+- Nouvelle validation du SHA final [run `38473826493`](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38473826493) **pending** au dernier relevé : ne pas déclarer ce lot réussi sans contrôle. Aucun workflow supprimé, Tesla/Mac demeure dans Updater Test, aucun changement volontaire au live.
+- Migration structurelle Stable toujours incomplète, notamment les centaines de fichiers runtime et les datasets ES/IT.
+
 ## 13 octobre 2026 — migration Production PR #97, 18 moteurs
 
 - La validation du lot précédent à 14 moteurs est **réussie** : run `38472652540`.
