@@ -21,8 +21,20 @@ const decoder=new TextDecoder();
 function tileIds(b){const ids=[];for(const layer of fields(b).filter(x=>x.key===3&&x.wire===2)){const f=fields(layer.data),name=f.find(x=>x.key===1)?.data;if(!name||decoder.decode(name)!=='hits')continue;const keys=f.filter(x=>x.key===3).map(x=>decoder.decode(x.data));const vals=f.filter(x=>x.key===4).map(x=>{const v=fields(x.data).find(y=>[1,4,5,7].includes(y.key));return v?.wire===2?decoder.decode(v.data):v?.value;});for(const feature of f.filter(x=>x.key===2)){const packed=fields(feature.data).find(x=>x.key===2)?.data;if(!packed)continue;let p=0;while(p<packed.length){let ki,vi;[ki,p]=varint(packed,p);[vi,p]=varint(packed,p);if(keys[ki]==='_id'&&vals[vi]!=null){ids.push(String(vals[vi]));break;}}}}return [...new Set(ids)];}
 function xy(lat,lon){const n=2**Z,r=lat*Math.PI/180;return[Math.floor((lon+180)/360*n),Math.floor((1-Math.asinh(Math.tan(r))/Math.PI)/2*n)];}
 function distanceM(a,b){const lat=Number(b?.latitude??b?.lat),lon=Number(b?.longitude??b?.lon);return Number.isFinite(lat)&&Number.isFinite(lon)?Math.round(111195*Math.hypot(a.lat-lat,(a.lon-lon)*Math.cos(a.lat*Math.PI/180))):null;}
-const connectorKind=s=>String(s||'').includes('T2_COMBO')?'CCS':String(s||'').includes('T2')?'TYPE2':null;
-const cpoPower=c=>Number(c.max_electric_power)>0?Number(c.max_electric_power)/1000:null;
+export function connectorKind(value){
+  const s=String(value||'').toUpperCase();
+  if(['DOMESTIC_E','DOMESTIC_F','CEE_7_3','CEE_7_4'].includes(s))return 'NORMAL';
+  if(['IEC_62196_T2_COMBO','CCS2'].includes(s))return 'CCS';
+  if(['IEC_62196_T2','TYPE_2'].includes(s))return 'TYPE2';
+  return null;
+}
+const cpoPower=c=>{
+  if(Number(c.max_electric_power)>0)return Number(c.max_electric_power)/1000;
+  const voltage=Number(c.max_voltage),amperage=Number(c.max_amperage);
+  if(voltage>0&&amperage>0&&c.power_type==='AC_3_PHASE')return voltage*amperage*3/1000;
+  if(voltage>0&&amperage>0&&c.power_type==='AC_1_PHASE')return voltage*amperage/1000;
+  return null;
+};
 const compactPrice=c=>({pk:c.pk,kilowatts:c.kilowatts,standard:c.standard?.name||null,
   priceComponents:c.priceComponents||[],complexPricingDetail:c.complexPricingDetail||null});
 function nonzeroComponents(components){return (components||[]).map(c=>[c.__typename,c.formattedValue,
@@ -46,8 +58,8 @@ export function homogeneousGpsGroups(cpoEvses,nearbyDetails,maxDistanceM=10){
     }))).filter(x=>x.kind&&x.powerKw);
     const cpo=[...cpoEvses.values()].flatMap(e=>(e.connectors||[]).map(c=>({evseId:e.evse_id,
       kind:connectorKind(c.standard),powerKw:cpoPower(c),status:e.status,tariffIds:c.tariff_ids||[]})));
-    for(const kind of ['TYPE2','CCS'])for(const powerKw of [...new Set(emsp.filter(x=>x.kind===kind).map(x=>x.powerKw))]){
-      const es=emsp.filter(x=>x.kind===kind&&x.powerKw===powerKw),cs=cpo.filter(x=>x.kind===kind&&x.powerKw===powerKw);
+    for(const kind of ['NORMAL','TYPE2','CCS'])for(const powerKw of [...new Set(emsp.filter(x=>x.kind===kind).map(x=>x.powerKw))]){
+      const es=emsp.filter(x=>x.kind===kind&&x.powerKw===powerKw),cs=cpo.filter(x=>x.kind===kind&&x.powerKw!=null&&Math.abs(x.powerKw-powerKw)<=0.5);
       if(!es.length||!cs.length)continue;
       const prices=[...new Set(es.map(x=>x.priceKey))];
       const exactIds=es.filter(x=>cs.some(c=>norm(c.evseId)===norm(x.evseId))).length;
@@ -81,7 +93,11 @@ async function target(spec){
   if(!loc||loc.publish!==true)throw Error('missing/public target '+spec.id);
   const point={lat:Number(loc.coordinates?.latitude),lon:Number(loc.coordinates?.longitude)};
   if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))throw Error('target coordinates invalid');
-  const cpoEvses=new Map((loc.evses||[]).filter(e=>['AVAILABLE','CHARGING'].includes(e.status)).map(e=>[norm(e.evse_id),e]));
+  const sourceConnectorCount=(loc.evses||[]).filter(e=>['AVAILABLE','CHARGING'].includes(e.status))
+    .reduce((n,e)=>n+(e.connectors||[]).length,0);
+  const cpoEvses=new Map((loc.evses||[]).filter(e=>['AVAILABLE','CHARGING'].includes(e.status))
+    .map(e=>({...e,connectors:(e.connectors||[]).filter(c=>connectorKind(c.standard))}))
+    .filter(e=>e.connectors.length).map(e=>[norm(e.evse_id),e]));
   const [cx,cy]=xy(point.lat,point.lon),ids=new Set(),tileCounts=[];
   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
     const x=cx+dx,y=cy+dy,url=`https://api.electroverse.com/rest/locations/tiles/elastic/${Z}/${x}/${y}`;
@@ -108,7 +124,13 @@ async function target(spec){
     for(const edge of detail?.evses?.edges||[]){
       const evse=edge.node,key=norm(evse?.physicalReference),cpo=cpoEvses.get(key);
       if(!key||!cpo)continue;
-      const connectors=(evse.connectors?.edges||[]).map(x=>x.node).filter(Boolean);
+      const cpoConnectors=cpo.connectors||[];
+      const connectors=(evse.connectors?.edges||[]).map(x=>x.node).filter(c=>{
+        const kind=connectorKind(c?.standard?.name),power=Number(c?.kilowatts);
+        return kind&&cpoConnectors.some(ref=>connectorKind(ref.standard)===kind&&
+          (cpoPower(ref)==null||Math.abs(cpoPower(ref)-power)<=0.5));
+      });
+      if(!connectors.length)continue;
       matches.push({electroversePk:candidate.pk,distanceM:candidate.distanceM,cpoEvseId:cpo.evse_id,sourceEvsePk:evse.pk,
         cpoStatus:cpo.status,electroverseStatus:evse.status,
         cpoConnectorCount:(cpo.connectors||[]).length,electroverseConnectorCount:connectors.length,
@@ -118,7 +140,10 @@ async function target(spec){
   }
   const duplicateMatches=[...new Set(matches.map(x=>x.cpoEvseId))].filter(id=>matches.filter(x=>x.cpoEvseId===id).length>1);
   const gpsGroups=homogeneousGpsGroups(cpoEvses,nearbyDetails);
-  return {cpo:spec.name,cpoLocationId:loc.id,cpoEvseCount:cpoEvses.size,tileCounts,candidatePkCount:ids.size,nearbyCount:nearby.length,
+  const eligibleCpoConnectorCount=[...cpoEvses.values()].reduce((n,e)=>n+e.connectors.length,0);
+  return {cpo:spec.name,cpoLocationId:loc.id,cpoEvseCount:cpoEvses.size,
+    sourceConnectorCount,eligibleCpoConnectorCount,excludedCpoConnectorCount:sourceConnectorCount-eligibleCpoConnectorCount,
+    tileCounts,candidatePkCount:ids.size,nearbyCount:nearby.length,
     exactEvseMatches:matches.length,duplicateMatches,matchingProof:'normalized exact EVSE ID, distance <=120m; no tariff promotion',
     gpsGroups,matches};
 }

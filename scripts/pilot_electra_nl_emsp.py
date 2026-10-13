@@ -37,9 +37,11 @@ def distance(a, b):
 
 def kind(value):
     value = str(value or '').upper()
-    if 'T2_COMBO' in value or 'CCS' in value:
+    if value in ('DOMESTIC_E', 'DOMESTIC_F', 'CEE_7_3', 'CEE_7_4'):
+        return 'NORMAL'
+    if value in ('IEC_62196_T2_COMBO', 'CCS2'):
         return 'CCS'
-    if 'T2' in value or 'TYPE_2' in value:
+    if value in ('IEC_62196_T2', 'TYPE_2'):
         return 'TYPE2'
     return None
 
@@ -91,6 +93,7 @@ def main():
     counts = collections.Counter()
     examples = []
     qualification = []
+    validated_sample = []
     pages = []
     total_counts = []
     for offset in OFFSETS:
@@ -117,6 +120,11 @@ def main():
                 if d is None or d > 120:
                     counts['evse_distance_rejected'] += 1
                     continue
+                supported_connectors = [c for c in direct_evse.get('connectors') or []
+                                        if kind(c.get('standard'))]
+                if not supported_connectors:
+                    counts['evse_without_allowed_connector'] += 1
+                    continue
                 counts['evse_exact_geoverified'] += 1
                 if evse.get('status') in ('AVAILABLE', 'CHARGING', 'OCCUPIED'):
                     counts['evse_emsp_positive_status'] += 1
@@ -129,7 +137,7 @@ def main():
                     counts['evse_at_single_tariff_location'] += 1
                 elif len(tariffs) > 1:
                     counts['evse_at_multitariff_location'] += 1
-                direct_keys = sorted({key for c in direct_evse.get('connectors') or []
+                direct_keys = sorted({key for c in supported_connectors
                                       for key in c.get('tariffKeys') or []})
                 if direct_keys:
                     counts['evse_with_direct_tariff_reference'] += 1
@@ -137,7 +145,7 @@ def main():
                 # Electra location.maxPower is expressed in W; DOT-NL powerKw is kW.
                 source_max_w = float(location.get('maxPower') or 0)
                 source_max_kw = source_max_w / 1000
-                for connector in direct_evse.get('connectors') or []:
+                for connector in supported_connectors:
                     ckind, power = kind(connector.get('standard')), float(connector.get('powerKw') or 0)
                     if not ckind or power <= 0:
                         continue
@@ -172,6 +180,16 @@ def main():
                                'multitariff_connector_ambiguous'] += 1
                     if assigned:
                         counts['connector_identity_tariff_candidates'] += 1
+                    if (evse.get('evseId') in ('NLLMSE1000055828*1', 'NLLMSE1000055829*1')
+                            and ckind == 'TYPE2' and assigned and len(tariffs) == 1):
+                        direct = [national['tariffs'].get(key) for key in connector.get('tariffKeys') or []]
+                        validated_sample.append({
+                            'evseId': evse['evseId'], 'electraLocationId': location['id'],
+                            'dotnlStationId': station['stationId'], 'distanceM': d,
+                            'connector': {'kind': ckind, 'powerKw': power},
+                            'electraTariff': assigned, 'directTariffs': [x for x in direct if x],
+                            'sourceStatus': evse.get('status'), 'nationalStatus': direct_evse.get('status'),
+                        })
                     if len(qualification) < 15 and (not assigned or not connector.get('tariffKeys')):
                         qualification.append({'evseId': evse.get('evseId'),
                                               'electraLocationId': location.get('id'),
@@ -208,6 +226,7 @@ def main():
         'totalCounts': total_counts, 'pages': pages, 'counts': dict(counts),
         'examples': examples,
         'qualificationExamples': qualification,
+        'validatedSample': validated_sample,
         'publicationStatus': 'read_only_pilot_no_tariff_promotion',
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

@@ -5,7 +5,9 @@ on:
       - .github/workflows/electroverse-uk-cpo-pilot.yml
       - scripts/electroverse_uk_cpo_pilot.mjs
       - scripts/electroverse_rate_limit_probe.mjs
+      - scripts/pilot_electra_nl_emsp.py
       - tests/test_electroverse_uk_gps_group.mjs
+      - tests/test_emsp_allowed_connectors.py
   workflow_dispatch:
     inputs:
       rate_probe:
@@ -27,6 +29,8 @@ jobs:
         run: node --check scripts/electroverse_uk_cpo_pilot.mjs && node --check scripts/electroverse_rate_limit_probe.mjs
       - name: Check GPS tariff guards
         run: node --test tests/test_electroverse_uk_gps_group.mjs
+      - name: Check allowed connector filter
+        run: python3 -m unittest tests/test_emsp_allowed_connectors.py
       - name: Run bounded read-only pilot
         if: ${{ github.event_name == 'workflow_dispatch' && !inputs.rate_probe }}
         env:
