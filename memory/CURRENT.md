@@ -1,3 +1,9 @@
+## 14 octobre 2026 — IT PR #301 : correction du test EVSE + préparation de l'extraction PUN complète
+
+- [Run 38481423333](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38481423333) **failure** : le test `test_missing_evse_in_station_rejected` partageait la même liste Python entre EVSE nationaux et stations ; supprimer un EVSE modifiait les deux listes et contournait la rupture de bijection attendue. Erreur du **fixture de test**, pas preuve de défaut du jeu PUN. Test corrigé via slicing indépendant (commit `bd668c51`). [Run 38481670046](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38481670046) **in_progress** au dernier contrôle.
+- [PR IT #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) : workflow indépendant `.github/workflows/italy-pun-national-candidate.yml` (commit `54c8ec15`), `workflow_dispatch` uniquement. Produit un **fichier national PUN candidat comme artifact**, plus rapports qualité et contrôle EVSE ; ne modifie pas Production ni Data Lab main et ne publie rien. **Ce workflow n'a pas été dispatché** dans cette session ; le nouveau contrôle doit réussir et le workflow candidate doit être explicitement lancé avant de déclarer une vraie extraction nationale effectuée.
+- ES REVE collecte incrémentale préintégration maintenue, Tesla via Mac exclusivement Updater Test, aucun workflow historique supprimé ni source switch ES/IT.
+
 ## 14 octobre 2026 — Italie PR #301, contrôle d'intégrité PUN EVSE avant génération des tuiles
 
 - La validation précédente du contrat de manifeste V9 a réussi : [run 38481149372](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38481149372), SHA `b4ea875d`.
