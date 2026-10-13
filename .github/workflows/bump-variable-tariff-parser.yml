@@ -24,15 +24,20 @@ jobs:
           python-version: "3.12"
       - name: Parse all Bump variable tariff descriptions
         run: python scripts/bump_variable_tariff_parser.py
+      - name: Check charging and parking duration semantics
+        run: python -m unittest discover -s tests -p test_bump_variable_tariff_parser.py
       - name: Require complete deterministic coverage
         run: |
           python - <<'PY'
-          import json
+          import gzip,json
           from pathlib import Path
           p=json.loads(Path('reports/bump/variable_tariff_parse_latest.json').read_text())
+          src=json.loads(gzip.decompress(Path('data/national/bump_direct_tariffs_graphql_france.json.gz').read_bytes()))
           assert p['failedPoints'] == 0
-          assert p['parsedPoints'] == p['variablePointsExpected'] == 681
-          assert p['parsedPatternCount'] == 14
+          assert p['sourceGeneratedAt'] == src['generatedAt']
+          assert p['parsedPoints'] == p['variablePointsExpected'] == src['counts']['timeChangingPricedPoints']
+          assert p['parsedPoints'] >= 681
+          assert p['parsedPatternCount'] == len(p['patterns']) >= 14
           print({'parsed':p['parsedPoints'],'patterns':p['parsedPatternCount']})
           PY
       - name: Publish parser report

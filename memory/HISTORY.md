@@ -2,7 +2,7 @@
 
 ## 2026-10-13 — Gate des collectes directes France post-pin
 
-- Comparaison des sources BUMP, ETotem, WAAT Monta et WAAT QualiCharge arrivées après le pin Data Lab `e39a44660`. BUMP et ETotem ne portent aucun tarif consommateur ; Monta rapproche 550 stations mais ses 407 groupes directs ne contiennent aucun EVSE explicite et ses 550 stations restent non classables ; QualiCharge ne retourne aucune station WAAT. Le catalogue WAAT publié du 26 août est identique au pin (452 stations/507 configurations classables). Voir `docs/v9-france-post-pin-direct-source-gate-2026-10-13.md`. Pas de repin ni de publication publique ; prochaine action : preuve EVSE/frais fournisseur pour WAAT et prix consommateur pour BUMP/ETotem.
+- Comparaison des sources post-pin : l'inventaire BUMP et ETotem ne portent aucun prix, mais le catalogue GraphQL distinct de BUMP contient 2 316 points avec objet tarif. Le parseur BUMP variable a été corrigé : 343 échecs locaux sur cinq formes deviennent 0/1 039, frais pendant et après charge séparés ; TCC-ready 2 295/2 500 points classables, contre 2 290/2 480 au 4 octobre. 54 points perdent leur mapping courant et restent non classables. Monta rapproche 550 stations mais 407 groupes directs sans EVSE explicite ; QualiCharge ne retourne aucune WAAT. WAAT historique du 26 août inchangé (452 stations/507 configurations). Voir `docs/v9-france-post-pin-direct-source-gate-2026-10-13.md`. Pas de repin ni de publication publique ; prochaine action : preuves EVSE/frais WAAT et audit des 54 pertes BUMP.
 
 ## 2026-10-13 — Neuilly horaire #87 et bilan #88
 

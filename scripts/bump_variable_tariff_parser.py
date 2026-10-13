@@ -56,6 +56,7 @@ def parse_tariff(t: dict[str, Any]) -> dict[str, Any]:
     long = str(t.get("long") or "").replace("\u202f", " ")
     parking = str(t.get("parkingText") or "").replace("\u202f", " ")
     rules: list[dict[str, Any]] = []
+    charging_section = long.split("While charging:", 1)[-1].split("While parking (no energy delivered):", 1)[0]
 
     m = re.search(rf"Minimum\s+{MONEY}\s*€\s*Inc\.\s*VAT", long, re.I)
     if m:
@@ -94,6 +95,18 @@ def parse_tariff(t: dict[str, Any]) -> dict[str, Any]:
         if em:
             rules.append({"kind": "energy", "eurPerKwh": num(em.group(1))})
 
+    # A duration line before the parking heading is charged only while energy is delivered.
+    # Keep it separate from the parking minute rate; both can occur in one tariff.
+    for line in re.findall(r"^Duration:[^\n]+", charging_section, re.M):
+        dm = re.fullmatch(rf"Duration:\s*{MONEY}\s*€/minute(?:\s+after\s+(.+?)\s+of\s+usage)?", line, re.I)
+        if not dm:
+            raise ValueError(f"unsupported charging duration rule: {line!r}")
+        rules.append({
+            "kind": "charging_duration_surcharge",
+            "eurPerMinute": num(dm.group(1)),
+            "afterMinutes": parse_duration_minutes(dm.group(2)) if dm.group(2) else 0,
+        })
+
     if "While parking (no energy delivered):" in long:
         if not parking:
             raise ValueError("parking section without parkingText")
@@ -115,12 +128,14 @@ def parse_tariff(t: dict[str, Any]) -> dict[str, Any]:
         else:
             pm = re.fullmatch(rf"Duration:\s*{MONEY}\s*€/minute\s+after\s+(.+?)\s+of\s+usage", parking_clean, re.I)
             if not pm:
-                raise ValueError(f"unsupported parking rule: {parking!r}")
-            rules.append({"kind": "post_charge_occupancy", "eurPerMinute": num(pm.group(1)), "graceMinutes": parse_duration_minutes(pm.group(2))})
-    else:
-        dm = re.search(rf"Duration:\s*{MONEY}\s*€/minute\s+after\s+([^\n]+?)\s+of\s+usage", long, re.I)
-        if dm:
-            rules.append({"kind": "session_duration_surcharge", "eurPerMinute": num(dm.group(1)), "afterMinutes": parse_duration_minutes(dm.group(2))})
+                pm = re.fullmatch(rf"Duration:\s*{MONEY}\s*€/minute", parking_clean, re.I)
+                if not pm:
+                    raise ValueError(f"unsupported parking rule: {parking!r}")
+                grace_minutes = 0
+            else:
+                grace_minutes = parse_duration_minutes(pm.group(2))
+            if num(pm.group(1)) > 0:
+                rules.append({"kind": "post_charge_occupancy", "eurPerMinute": num(pm.group(1)), "graceMinutes": grace_minutes})
 
     if not rules:
         raise ValueError("no supported rules parsed")
