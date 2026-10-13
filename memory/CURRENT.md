@@ -1,3 +1,9 @@
+## 13 octobre 2026 — Production PR #97 : 24 composants runtime (non encore validés)
+
+- Poursuite de la migration incrémentale dans [PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) : `canary-identity.js` et `canary-telemetry.js` ont été copiés à contenu identique depuis le SHA Stable épinglé vers `Production/runtime-owned/assets/v9/`. Le builder sélectionne désormais 24 composants détenus par Production (commit `b844bd45`) et le test couvre ces 24 fichiers (commit `2f2337b5`).
+- La validation précédente à 22 moteurs, run `38473826493`, était en cours avant les nouveaux commits puis **annulée** à cause de la concurrence des nouveaux runs ; aucune réussite de ce lot n'a été confirmée. La nouvelle validation au SHA final est [run `38474198000`](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38474198000), `pending` à la dernière vérification. Ne pas fusionner avant résultat positif.
+- Toujours aucune suppression de workflows, ni publication volontaire, ni changement de l'acquisition Tesla via Mac dans Updater Test. La majorité du runtime Stable et les données ES/IT restent à migrer.
+
 ## 13 octobre 2026 — tranche de 22 moteurs sur Production PR #97
 
 - Suite à la validation réussie du lot 18 moteurs (run `38473198294`, SHA `c63e74e3`), 4 moteurs à contenu inchangé du Stable pin ont été ajoutés au `runtime-owned/assets/v9/` de Production : `enrollment-engine.js`, `self-enrollment-engine.js`, `whitelist-engine.js`, `canary-policy-engine.js`.
