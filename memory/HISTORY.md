@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Frais Electric 55 omis après passage du créneau horaire
+
+- Production #77 `fabeda6` fusionnée après CI globale/pin et régressions NL/IZIVIA vertes, Pages ignoré. Les minutes après charge sont ventilées par créneau et facturées une fois ; le résumé affiche seulement les composantes du créneau réellement facturé. L’oracle des offres EVSE exactes Place Lully/Bois-d’Arcy trouve 1,80/3,60 € contre 1,50/3,00 € avant correction au scénario 22h45 + 45 min charge + 10 min stationnement. Une comparaison nationale déterministe montre 2 222 offres Electroverse FR corrigées à la hausse parmi 3 859 offres horaires avec stationnement ; aucun montant ne baisse. Rapport Production #78 pour les limites.
+
 ## 2026-10-13 — Audit V9 : abonnement, classement, devises Tesla et contrôle global des identités
 
 - Production #70 `ed4d34a`, #71 `323645a` et #72 `e18e58e` fusionnées après CI globale et pin vertes, Pages toujours ignoré. Les tarifs Electra+ ne sont dérivés que sur 320 grilles directes uniques. Le tri explicite devient strict. Tesla PT utilise la carte commune ; les prix Tesla GBP/CHF/MAD conservent leur devise source.
