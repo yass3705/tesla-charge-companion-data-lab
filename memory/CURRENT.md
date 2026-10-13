@@ -1,5 +1,10 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — pilotes eMSP Electra NL et Electroverse GB en cours
+
+- [Pilotes et preuves](../docs/v9-emsp-bounded-pilots-2026-10-13.md) : quatre pages Electra NL réelles, 257 lieux/597 EVSE source ; 367 EVSE joints par ID unique et GPS à DOT-NL, dont 356 à statut positif des deux côtés, 351 sur lieu à grille unique et 16 sur lieu multigrille. Les chevauchements ne sont pas une couverture tarifaire certifiée ; aucun prix promu. Rapport JSON conserve SHA et exemples Direct/eMSP distincts.
+- Le pilote Electroverse GB vise trois lieux CPO Source EV, Allego et MFG, avec tuiles et requêtes limitées, via le secret GitHub Actions. Résultat authentifié à relever après workflow manuel. Aucun changement Production, pin V9 ou Pages.
+
 ## 13 octobre 2026 — méthode internationale eMSP explorée, aucune offre promue
 
 - [Étude de collecte et de correspondance](../docs/v9-emsp-international-acquisition-crosswalk-2026-10-13.md) pour IT, CH, DE, ES, NL, GB et BE ; **MA exclu** sur instruction utilisateur. Le candidat Production conserve uniquement les overlays EVSE eMSP France. L'étude n'ajoute aucun prix, pin ou déploiement.
