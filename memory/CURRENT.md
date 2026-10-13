@@ -1,3 +1,10 @@
+## 13 octobre 2026 — PR #97 : 27 modules Production-owned, tests en cours
+
+- Validation du lot précédent de 24 composants **réussie** : [run 38474198000](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38474198000), commit `2f2337b5`.
+- Nouvelle tranche : `browser-loaders.js`, `browser-routing.js`, `v8-shadow-adapter.js` sont désormais copiés depuis le Stable épinglé vers `Production/runtime-owned/assets/v9/`. `scripts/build_snapshot.py` sélectionne **27 modules** Production-owned (commit `5a10f3fb`), garde de tests complétée (commit `cfa711aa`). [PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) non fusionnée.
+- Dernier run de validation [38474975648](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38474975648), **queued** à la dernière vérification ; ne pas annoncer validation avant résultat. La majeure partie du runtime et les données ES/IT sont encore héritées de Stable.
+- Tesla/Mac reste en Updater Test, aucun workflow historique supprimé et aucune publication live volontaire.
+
 ## 13 octobre 2026 — E55C : exclusion ROAMING_EMPS validée, aucun tarif Direct vérifié dans le lot
 
 - Workflow [Electric 55 operated station base #38473451187](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38473451187) **success**, après correctif [PR #297](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/297). Collecte du lot : **1 923/1 923 connecteurs interrogés**. [Rapport national](../reports/electric55/station_base_summary.md) désormais publié : **649 stations / 1 977 PDC / 1 923 liens de paiement / 0 profil Direct / 0 PDC à prix Direct vérifié**. La grille `ROAMING_EMPS` est exclue du parseur ET des caches historiques dans [PR #296](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/296). Pas de tarif eMSP injecté dans Direct. Le succès technique de la collecte n'implique PAS que le CPO soit finalisé tarifairement ; par défaut **prix non disponible** sur la colonne Direct faute de source confirmée.
