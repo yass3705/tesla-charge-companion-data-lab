@@ -1,3 +1,8 @@
+## 2026-10-13 — rationalisation des GitHub Actions historiques
+
+- Règle confirmée : updater-test réservé au Tesla/Mac historique, Data Lab canonique pour CPO/eMSP ; supprimer seulement les doublons vérifiés.
+- 92 workflows historiques recensés ; 8 YAML non-Tesla supprimés dans updater-test (Electroverse bootstrap, Greenspot, GOFAST, Swisscharge, CPO counts Suisse, PowerUp, target CPO full/second pass). 84 restants et prochaines vérifications documentés dans [l'audit](../docs/updater-test-data-lab-workflow-migration-audit-2026-10-13.md). Aucune modification des workflows Tesla.
+
 # Journal de la mémoire technique
 
 ## 2026-10-13 — extraction nationale eMSP par checkpoints engagée
