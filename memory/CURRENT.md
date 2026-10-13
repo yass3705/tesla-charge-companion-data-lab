@@ -1,6 +1,6 @@
 # État de reprise — 2026-10-13
 
-## 13 octobre 2026 — candidat de correction de l'audit public en validation
+## 13 octobre 2026 — correctifs de l'audit public validés, non publiés
 
 - Production [#70](https://github.com/yass3705/tesla-charge-companion-production/pull/70) fusionnée `ed4d34a` ; Electra+ calculé sur 320/521 stations FR Electra à grille directe unique, 201 stations multigrilles restant sans remise calculée. CI globale `38331807487` et pin `38331807703` verts ; Pages ignoré.
 - Production [#71](https://github.com/yass3705/tesla-charge-companion-production/pull/71) fusionnée `323645a` ; tri strict prix/distance/temps total/coût par km, stations sans prix visibles en fin de classement. CI globale `38332098854` et pin `38332098931` verts ; Pages ignoré.
