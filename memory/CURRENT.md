@@ -1,3 +1,9 @@
+## 13 octobre 2026 — règle corrigée : Production destination finale de V9
+
+- Correction utilisateur : **Stable n'est pas une destination de publication actuelle**, même s'il reste une référence historique/parité. Évaluer les anciennes Actions d'Updater Test par leur chemin de consommation **jusqu'au dépôt Production**, pas seulement vers Stable ni par leur statut planifié.
+- Snapshot Production candidat sélectionné `2026-10-13-be-energyvision-official-cpo-candidate` : `TESLA`, `ES` et `IT` pointent encore vers Stable épinglé au SHA `0a6d2c34`; cette dépendance éventuelle de build doit être prouvée, puis remplacée par des sources Data Lab validées si possible. Le workflow REVE updater-test → Stable ne démontre **pas** une mise à jour de Production car pin immuable/promotion manuelle. Requalifier REVE en *candidat à migration*, et non « à conserver impérativement ».
+- [Audit et doctrine mis à jour](../docs/updater-test-data-lab-workflow-migration-audit-2026-10-13.md), commit `2ff9e816`. Aucun autre workflow supprimé ; migrations Production et tests restent à faire.
+
 ## 13 octobre 2026 — traçage effectif des dépendances : REVE et sources historiques
 
 - **REVE Espagne est une dépendance historique de publication à préserver** : le workflow mensuel updater-test collecte REVE puis écrit dans Stable `v9-production-runtime/data/v9/spain-static` et `spain-reve-offers`; Production sélectionne Stable pour ES. Dernier run mensuel 01/10 échec ; le manifeste Stable du 27/09 compte 13 980 stations et 42 887 EVSE uniques. Data Lab a un rafraîchissement REVE horaire mais l'équivalence du consommateur Stable n'est pas démontrée. Ne pas supprimer le workflow historique avant migration validée.
