@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {connectorKind,homogeneousGpsGroups} from '../scripts/electroverse_uk_cpo_pilot.mjs';
+import {connectorKind,homogeneousGpsGroups,tileHits} from '../scripts/electroverse_uk_cpo_pilot.mjs';
+
+const vi=n=>{const out=[];do{let b=n&127;n=Math.floor(n/128);if(n)b|=128;out.push(b);}while(n);return out;};
+const bytes=(key,payload)=>[...vi((key<<3)|2),...vi(payload.length),...payload];
+const str=s=>[...new TextEncoder().encode(s)];
+
+test('MVT point coordinates are discovery hints tied to their PK',()=>{
+  const feature=[...bytes(2,[0,0]),...vi((3<<3)|0),1,...bytes(4,[9,...vi(4096),...vi(4096)])];
+  const layer=[...bytes(1,str('hits')),...bytes(2,feature),...bytes(3,str('_id')),
+    ...bytes(4,bytes(1,str('site-1'))),...vi((5<<3)|0),...vi(4096)];
+  const hits=tileHits(new Uint8Array(bytes(3,layer)),10,512,512);
+  assert.equal(hits.length,1);assert.equal(hits[0].pk,'site-1');
+  assert.ok(Number.isFinite(hits[0].latitude));assert.ok(Number.isFinite(hits[0].longitude));
+  assert.ok(Math.abs(hits[0].latitude)<0.3&&Math.abs(hits[0].longitude)<0.3);
+});
 
 const rate=value=>({__typename:'ConsumptionRate',formattedValue:`Consumption rate: £${value} kWh`});
 function fixture(general='0.69',detail='0.69'){
