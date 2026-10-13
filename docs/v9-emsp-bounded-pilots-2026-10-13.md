@@ -26,4 +26,14 @@ Exemple source exact : `NLLMSE1000055828*1`, statut `AVAILABLE` des deux côtés
 
 Le [workflow manuel](../.github/workflows/electroverse-uk-cpo-pilot.yml) exécute le [script](../scripts/electroverse_uk_cpo_pilot.mjs) dans GitHub Actions avec le secret déjà configuré, sans l'afficher. Il vise trois lieux CPO publics et actifs issus des sources épinglées : Source EV Milton Gate, Allego Liddington Road et MFG St Albans. Pour chacun : neuf tuiles zoom 18 autour du CPO, puis interrogation des seuls PK proches et de leurs EVSE/tarifs. Limites strictes : 80 PK/témoin, 12 lieux détaillés/témoin et 100 requêtes au total. Une erreur ou un dépassement arrête le témoin ; aucun prix n'est deviné. Rapport JSON en artefact Actions conservé sept jours, aucune écriture dans les données canoniques.
 
-La comparaison porte sur l'ID EVSE normalisé exact et le GPS proche. Les composants Electroverse ne sont consignés comme **preuve de collecte** que pour ces correspondances ; le script ne produit aucun overlay V9. Les IDs tarifaires PCPR des CPO demeurent dans la voie Direct. Résultat du run authentifié à compléter après exécution.
+La comparaison porte sur l'ID EVSE normalisé exact et le GPS proche. Les composants Electroverse ne sont consignés comme **preuve de collecte** que pour ces correspondances ; le script ne produit aucun overlay V9. Les IDs tarifaires PCPR des CPO demeurent dans la voie Direct.
+
+Le [run authentifié #38429086271](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38429086271), sur `main=44760b5f5c03a86598285d6c6426cebb8dba97aa`, est **réussi** : 35 requêtes, zéro erreur. [Rapport du run](../reports/emsp-pilots/electroverse-uk-cpo.json), SHA-256 `04fe3a7eddc8ff5c5ab59259097c67b7681a19ef289befb30ed2e6bc538ee506`.
+
+| CPO ciblé | EVSE CPO actifs | PK Electroverse dans les tuiles | Lieux proches ≤120 m | EVSE exacts | Résultat |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Source EV, Milton Gate | 8 | 2 | 1 | 0 | Lieu proche, aucun ID EVSE exact ; pas de prix rattaché. |
+| Allego, Liddington Road | 2 | 4 | 3 | 2 | `GBALLEGO0010161` et `GBALLEGO0010162`, tous deux `AVAILABLE`, GPS identique, Type 2 22 kW dans Electroverse. |
+| MFG EV Power, St Albans | 8 | 2 | 1 | 0 | Lieu proche, aucun ID EVSE exact ; pas de prix rattaché. |
+
+Pour les deux EVSE Allego, Electroverse expose `ConsumptionRate £0.63/kWh`, frais temps/stationnement/connexion nuls et une restriction `DATE_BASED` commençant le 17/03/2023 sans fin déclarée. Sa métadonnée formatée indique `VAT rate: 0%`. Le flux CPO Direct lie les deux prises au tarif `2099`, `ENERGY £0.63/kWh` TTC, avec prix source £0.525 HT et TVA UK de 20 % appliquée lors de la normalisation. Le flux CPO porte `230 V`, `32 A`, `AC_3_PHASE`, soit environ 22 kW malgré `max_electric_power=0` dans le brut. **L'égalité des montants ne fusionne pas les voies**. Avant toute promotion eMSP, contrôler la signification du 0 % Electroverse, la validité actuelle de la grille et la correspondance des frais sur le scénario facturé. Les deux autres sites ne doivent pas hériter d'un prix par voisinage ; le présent essai ne prouve pas qu'ils sont absents du réseau Electroverse.
