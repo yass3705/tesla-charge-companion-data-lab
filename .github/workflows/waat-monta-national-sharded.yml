@@ -172,9 +172,23 @@ jobs:
           git add data/national/waat_monta_direct_tariffs_france.json.gz data/reports/waat_monta_national_tariffs_report.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'data: publish validated sharded WAAT Monta tariffs'
+          # Never replace another publisher's newer WAAT snapshot with stale data.
+          base_sha="$(git rev-parse HEAD^)"
           for attempt in 1 2 3 4 5; do
-            git pull --rebase origin main
-            git push origin HEAD:main && exit 0
+            git fetch origin main
+            if ! git diff --quiet "$base_sha" origin/main -- \
+              data/national/waat_monta_direct_tariffs_france.json.gz \
+              data/reports/waat_monta_national_tariffs_report.json; then
+              echo "::warning::WAAT files changed upstream; validated run artifact retained, publication skipped."
+              exit 0
+            fi
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              echo "::error::Unexpected rebase conflict outside WAAT output; no data published."
+              exit 1
+            fi
+            if git push origin HEAD:main; then exit 0; fi
             sleep $((attempt*2))
           done
+          echo "::error::Could not publish after five safe retries; validated artifact remains available."
           exit 1
