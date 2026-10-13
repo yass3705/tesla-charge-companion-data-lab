@@ -1,5 +1,11 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — EnergyVision Belgique : authentification validée, collecte DATEX diagnostique en validation
+
+- L'ancien workflow [EnergyVision credential probe #38288652812](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38288652812) (12/10) a confirmé `200` et XML non vide sur `/datex/metadata` et `/datex/health`, en utilisant le secret Actions `ENERGYVISION_API_KEY` sans le divulguer.
+- [PR Data Lab #250](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/250) prépare un diagnostic en lecture seule des flux `energy-infrastructure-table` et `energy-infrastructure-status` : bornes de taille, parseur XML sécurisé, tests sans secret en PR, rapport de structure anonymisé en artefact CI 7 jours après fusion, aucune tarification/identité publiée et aucun changement Production/Pages. CI PR [#38417218344](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38417218344) tests verts, collecte secrète ignorée sur PR. Les résultats réels des deux flux devront être lus **après le premier push sur main**, avant tout nouveau modèle de tarification.
+
+
 ## 13 octobre 2026 — résidu GeniePoint UK qualifié, sans faux prix
 
 - [Diagnostic ciblé des 857 prises GeniePoint hors prix](../docs/uk-geniepoint-residual-semantics-2026-10-13.md) sur la source officielle épinglée : **852** ont une grille OCPI à `PARKING_TIME` non nul, second élément `min_duration` et `step_size` de 90 minutes (648 prises), quatre heures (166), 24 heures (34) ou trois heures (quatre). **Cinq** n'ont aucun ID tarifaire. Parmi les 852, 645 sont `AVAILABLE` et 49 `CHARGING`. Le prix ENERGY seul serait incomplet. L'issue OCPI #225 laisse l'interprétation du seuil de stationnement ouverte ; une réponse tarifaire/CDR GeniePoint sur quatre scénarios est nécessaire avant une promotion. Le candidat conserve **281/1 138** prix directs exacts ; aucun pin ni code modifié par ce diagnostic.
