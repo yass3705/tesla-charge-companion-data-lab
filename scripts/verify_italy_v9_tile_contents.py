@@ -20,16 +20,16 @@ def verify(root):
     all_stations, all_digest = read(root / manifest["allFile"])
     if all_digest != manifest.get("allSha256"):
         errors.append("all.json.gz sha256 mismatch")
-    national = collections.Counter(str(s.get("stationKey") or "") for s in all_stations)
+    national = collections.Counter(str(s[0] or "") for s in all_stations)
     tiled = collections.Counter()
     for tile in manifest.get("tiles", []):
         rows, digest = read(root / tile["file"])
         if digest != tile.get("sha256") or len(rows) != tile.get("count"):
             errors.append("tile hash/count mismatch: " + tile["file"])
         for station in rows:
-            key = str(station.get("stationKey") or "")
+            key = str(station[0] or "")
             tiled[key] += 1
-            coords = station.get("coordinates") or []
+            coords = station[3:5]
             if len(coords) != 2 or not all(isinstance(x, (int, float)) and math.isfinite(x) for x in coords):
                 errors.append("missing or invalid coordinate for " + key)
                 continue
@@ -40,6 +40,8 @@ def verify(root):
         errors.append("duplicate or missing stationKey in national inventory")
     if national != tiled:
         errors.append("national/tile station membership is not bijective")
+    if any(not isinstance(s, list) or len(s) < 12 or not isinstance(s[8], list) for s in all_stations):
+        errors.append("V9 compact row layout invalid")
     if len(all_stations) != manifest.get("stationCount"):
         errors.append("national station count differs from manifest")
     return {"country":"IT","stations":len(all_stations),"tiles":len(manifest.get("tiles", [])),
