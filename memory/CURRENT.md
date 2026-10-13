@@ -1,3 +1,9 @@
+## 13 octobre 2026, 22h34 Paris — migration Production PR #97, tranche PWA étendue
+
+- [PR brouillon #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97), branche `migration/production-owned-pwa-manifest-20261013` : **les 3 fichiers PWA** `manifest.webmanifest`, `app-version.json`, `service-worker.js` sont désormais sous `Production/deployment/` et `scripts/build_snapshot.py` les lit depuis Production (au lieu de Stable). Copies initialement identiques au Stable SHA épinglé ; test dédié étendu. Commit builder `13807756`, test `142cf2d2`.
+- Précédents contrôles réussis sur PR : développement épinglé run `38462687459`, candidat IZIVIA run `38462687810`. **Les nouvelles validations après extension PWA sont encore en cours/queued** : run développement `38463930043`, candidat IZIVIA `38463929956`. Ne pas déclarer cette extension validée ni fusionner sans succès.
+- Aucun workflow Updater Test supprimé ; Tesla via Mac demeure dans Updater Test ; aucune modification du pin Production `main`. Les workflows de prévisualisation Mac peuvent se déclencher sur PR, sans qu'un déploiement live ait été confirmé.
+
 ## 13 octobre 2026 — migration exécutée, tranche 1 Production, PR #97
 
 - **Première modification réelle (non fusionnée)** dans `tesla-charge-companion-production`, branche `migration/production-owned-pwa-manifest-20261013`, [PR brouillon #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) : manifeste PWA déplacé sous propriété Production `deployment/manifest.webmanifest`, builder `scripts/build_snapshot.py` lit la copie Production et non Stable pour ce fichier ; test de garde ajouté.
