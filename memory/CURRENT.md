@@ -1,3 +1,10 @@
+## 14 octobre 2026 — PR #97, reprise complète du répertoire historique JS V9
+
+- **Run précédent à 37 modules validé** : [38476999251](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38476999251), SHA `14870885`, success.
+- Audit d'arborescence Stable au SHA `0a6d2c34` : **39 fichiers** sous `v9-production-runtime/assets/v9/`. La comparaison avec `runtime-owned/` et `runtime-overrides/` de la branche PR ne laisse qu'un fichier sans copie Production : `assets/v9/adapters/morocco-public.js`. Il a été importé à contenu identique sous `runtime-owned/` (commit `71a38404`), référencé dans le builder (commit `84cd7724`) et tests (commit `c8250ca3`). **38 composants repris au fil de la PR, le 39e déjà présent dans un override Production** (vérifier la sélection finale et l'ordre des overlays).
+- Nouveau [run snapshot 38477702912](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38477702912) pending au dernier relevé. Ne pas fusionner ni promouvoir avant succès.
+- Le build copie toujours depuis Stable l'arborescence complète du runtime (données incluses), ses autres dossiers de compatibilité et ses datasets ES/IT/TESLA : **l'indépendance structurelle n'est pas encore réalisée**, même si tous les fichiers JS du sous-répertoire historique ont une version dans Production. Tesla via Mac reste dans Updater Test. Aucun workflow supprimé.
+
 ## 14 octobre 2026 — migration PR #97 : 37 modules Production-owned
 
 - La validation des **34 modules** a réussi : [run 38476329989](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38476329989), SHA `c7946524`.
