@@ -1,6 +1,11 @@
 name: Electroverse UK CPO bounded pilot
 on:
   workflow_dispatch:
+    inputs:
+      rate_probe:
+        description: Run the capped 60-request rate probe instead of the three-site identity pilot
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -15,13 +20,19 @@ jobs:
         with:
           node-version: '22'
       - name: Validate pilot syntax
-        run: node --check scripts/electroverse_uk_cpo_pilot.mjs
+        run: node --check scripts/electroverse_uk_cpo_pilot.mjs && node --check scripts/electroverse_rate_limit_probe.mjs
       - name: Run bounded read-only pilot
+        if: ${{ !inputs.rate_probe }}
         run: node scripts/electroverse_uk_cpo_pilot.mjs
+      - name: Run capped rate probe
+        if: ${{ inputs.rate_probe }}
+        run: node scripts/electroverse_rate_limit_probe.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: electroverse-uk-cpo-pilot
-          path: reports/emsp-pilots/electroverse-uk-cpo.json
+          path: |
+            reports/emsp-pilots/electroverse-uk-cpo.json
+            reports/emsp-pilots/electroverse-rate-limit.json
           if-no-files-found: warn
           retention-days: 7
