@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — GeniePoint UK, 857 prises hors prix
+
+- Relecture de la source OCPI officielle épinglée et du compilateur Production : 852 connecteurs ont un frais `PARKING_TIME` avec `min_duration`/`step_size` par paliers (648/166/34/4), cinq n'ont pas de référence tarifaire. 281/1 138 restent tarifés exactement ; aucun prix partiel ajouté. L'ambiguïté OCPI de la base temporelle et de l'arrondi est documentée dans `docs/uk-geniepoint-residual-semantics-2026-10-13.md` avec une demande précise au support GeniePoint. Aucun code, pin ou Pages modifié.
+
 ## 2026-10-13 — BUMP Direct exact, supplément IRVE actif et pin de développement
 
 - Production #90 `c6b9ea9` a épinglé le catalogue BUMP Direct courant : 1 744 EVSE exacts/55 groupes, 543 EVSE tarifés source non joints ; oracle charge seule 1,055 €, CI candidat `38405972501` et `main` `38406305858` vertes. Production #91 `f08c5d6` ajoute 21 stations/39 EVSE positivement actifs et démontrés dans l’IRVE plus récent, sans substituer la base entière : 1 783 EVSE tarifés/58 groupes, 504 non joints, trois conflits géographiques exclus. CI PR `38408105581` et preview `38408105702` vertes ; CI `main` `38408405218` et preview `38408405107` réussies, navigateur compris ; déploiement ignoré. Le nouveau candidat `2026-10-13-fr-bump-active-supplement-candidate` garde Data Lab `e39a44660`, Stable `0a6d2c34`, BUMP isolé `e22c23b1c`. Pages HTTP reste sur `2026-10-13-nine-country-be-belib-exact-candidate`, sans déploiement. Production #92 `a61164e` synchronise le rapport consolidé après CI, sans code runtime. Détails et blocages dans `CURRENT.md` et le rapport Production.
