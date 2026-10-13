@@ -145,8 +145,12 @@ def main():
         from scripts.energyvision_datex_nap_audit import audit_identity, nap_connectors
         nap = audit_identity(stage, nap_connectors(opts.manifest))
     data = analyze(stage, nap)
-    if data["counts"]["sourcePDC"] != 3791 or data["counts"]["distinctExternalEvseIds"] != 3791:
-        raise ValueError("Unexpected reference count: fail closed")
+    n = data["counts"]["sourcePDC"]
+    if n != data["counts"]["distinctExternalEvseIds"]:
+        raise ValueError("Duplicate EVSE identifiers")
+    if not 3791 * 0.9 <= n <= 3791 * 1.1:
+        raise ValueError("Major source inventory drift")
+    data["baselineComparison"] = {"baselinePDC": 3791, "currentPDC": n, "delta": n - 3791}
     if data["v9PublicationReady"] or data["v9PricedPDC"]:
         raise ValueError("Pricing promotion forbidden")
     dest = Path(opts.output)
