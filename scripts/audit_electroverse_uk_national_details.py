@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Audit source-only UK detail shards; never promote a CPO/eMSP tariff here."""
 import gzip
+import hashlib
 import json
 import math
 import re
@@ -72,6 +73,79 @@ def exact_candidates(evse, source_point, by_evse_id):
     return options
 
 
+def gps_group_candidates(rows, by_location_id):
+    """Return station-level candidates only; no individual EVSE identity is asserted."""
+    source_by_seed = defaultdict(list)
+    for row in rows.values():
+        source = row['source']
+        source_point = point(source.get('coordinates')) if source else None
+        if source_point is None:
+            continue
+        close = []
+        for seed_ref in row['nearbyCpoSeeds']:
+            key = (seed_ref['sourceFile'], str(seed_ref['locationId']))
+            seed = by_location_id.get(key)
+            if seed and distance_m(source_point, (seed['latitude'], seed['longitude'])) <= 10:
+                close.append((key, seed))
+        if len(close) == 1:
+            key, seed = close[0]
+            source_by_seed[key].append((row, seed))
+    examples = []
+    counts = Counter()
+    for entries in source_by_seed.values():
+        if len(entries) != 1:
+            counts['seedWithMultipleNearbyElectroversePk'] += 1
+            continue
+        row, seed = entries[0]
+        counts['uniqueGpsLocationPairs'] += 1
+        source_groups = defaultdict(list)
+        cpo_groups = defaultdict(list)
+        for evse in row['source']['evses']:
+            if evse.get('status') not in {'AVAILABLE', 'CHARGING'}:
+                continue
+            for connector in evse['connectors']:
+                kw = float(connector.get('kilowatts') or 0)
+                if kw > 0:
+                    source_groups[(kind(connector['standard']['name']), round(kw, 1))].append(connector)
+        for evse in seed['evses']:
+            if evse.get('status') not in {'AVAILABLE', 'CHARGING'}:
+                continue
+            for connector in evse['connectors']:
+                kw = float(connector.get('maxElectricPowerW') or 0) / 1000
+                if kw > 0:
+                    cpo_groups[(connector['kind'], round(kw, 1))].append(connector)
+        for (connector_kind, power_kw), source_connectors in source_groups.items():
+            possible = [(key, value) for key, value in cpo_groups.items()
+                        if key[0] == connector_kind and abs(key[1] - power_kw) <= 0.5]
+            if len(possible) != 1:
+                counts['groupsWithoutUniqueCpoKindPower'] += 1
+                continue
+            _, cpo_connectors = possible[0]
+            if len(source_connectors) != len(cpo_connectors):
+                counts['groupsWithDifferentConnectorCount'] += 1
+                continue
+            if any(not (c.get('priceComponents') or c.get('complexPricingDetail'))
+                   for c in source_connectors):
+                counts['groupsWithoutSourcePriceComponents'] += 1
+                continue
+            tariff_keys = {json.dumps({'priceComponents': c.get('priceComponents'),
+                                       'complexPricingDetail': c.get('complexPricingDetail')},
+                                      sort_keys=True) for c in source_connectors}
+            if len(tariff_keys) != 1:
+                counts['groupsWithNonHomogeneousEmspPrice'] += 1
+                continue
+            counts['homogeneousGpsKindPowerGroupCandidates'] += 1
+            counts['connectorsInHomogeneousGpsGroups'] += len(source_connectors)
+            if len(examples) < 30:
+                examples.append({'electroversePk': row['electroversePk'],
+                                 'cpoSource': seed['sourceFile'], 'cpoLocationId': seed['locationId'],
+                                 'kind': connector_kind, 'powerKw': power_kw,
+                                 'connectors': len(source_connectors),
+                                 'emspTariffFingerprint': hashlib.sha256(next(iter(tariff_keys)).encode()).hexdigest(),
+                                 'status': 'station_group_candidate_only_no_individual_evse_alias'})
+    return dict(sorted(counts.items())), examples
+
+
 def main():
     with gzip.open(QUEUE, 'rt') as handle:
         queue = json.load(handle)
@@ -114,6 +188,7 @@ def main():
                        'requests': data['requests'], 'nextOffset': data.get('nextOffset', data['offset'] + len(data['rows']))})
     counts = Counter()
     exact = []
+    gps_counts, gps_examples = gps_group_candidates(rows, by_location_id)
     for row in rows.values():
         source = row['source']
         if source is None:
@@ -148,6 +223,8 @@ def main():
            'distinctPkWithDetails': len(rows), 'remainingPkWithoutDetails': len(ordered) - len(rows),
            'duplicatePkOccurrences': repeats, 'duplicatePkWithDifferentSourcePayload': conflicts,
            'counts': dict(sorted(counts.items())), 'uniqueExactExamplesFirst50': exact,
+           'homogeneousGpsGroupCounts': gps_counts,
+           'homogeneousGpsGroupExamplesFirst30': gps_examples,
            'shards': shards}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2) + '\n')
