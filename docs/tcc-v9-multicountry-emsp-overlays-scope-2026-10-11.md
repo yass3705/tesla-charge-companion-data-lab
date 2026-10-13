@@ -11,3 +11,9 @@
 - Déploiement progressif après validation des sources : commencer par un inventaire du support pays des deux eMSP et de leurs méthodes existantes en FR et NL, puis étendre en gardant les pays non supportés vides.
 
 **État au 11/10/2026 :** cible enregistrée, **aucune publication internationale supplémentaire prétendue**. L'analyse du direct CPO NL (Laadnet / Agri Go / StellaPower / WattHub) demeure prioritaire.
+
+## Rectification utilisateur du 13/10/2026 — équivalence de groupe
+
+Pour l'extension internationale, **MA est exclu** tant que les applications ne sont pas compatibles. Lorsqu'un lien EVSE exact n'aboutit pas, l'utilisateur autorise à considérer une équivalence entre l'eMSP et les EVSE CPO d'une **même station et même coordonnée GPS**, pour une **même puissance**, si le prix eMSP est identique entre les prises de cette puissance. Cette règle permet de rattacher une **offre uniforme à un groupe démontré** ; elle ne crée pas un alias individuel EVSE et ne permet pas de transférer le prix Direct vers l'eMSP ou inversement.
+
+Garde d'intégration : vérifier type de connecteur, station publique, statuts, effectifs et absence d'autre lieu concurrent au même GPS ; vérifier l'opérateur/réseau lorsque les données le permettent. Les composants généraux et les grilles détaillées doivent concorder. Si plusieurs prix eMSP existent pour la même puissance ou si une couche tarifaire contredit l'autre, laisser l'offre incalculable. [Pilote UK et contre-exemple Source EV](v9-emsp-bounded-pilots-2026-10-13.md). L'équivalence GPS ne remplace pas la vérification de TVA, de validité et du calcul avant classement.

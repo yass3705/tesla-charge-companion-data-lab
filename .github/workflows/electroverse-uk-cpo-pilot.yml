@@ -1,27 +1,48 @@
 name: Electroverse UK CPO bounded pilot
 on:
+  pull_request:
+    paths:
+      - .github/workflows/electroverse-uk-cpo-pilot.yml
+      - scripts/electroverse_uk_cpo_pilot.mjs
+      - scripts/electroverse_rate_limit_probe.mjs
+      - tests/test_electroverse_uk_gps_group.mjs
   workflow_dispatch:
+    inputs:
+      rate_probe:
+        description: Run the capped 60-request rate probe instead of the three-site identity pilot
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   pilot:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Validate pilot syntax
-        run: node --check scripts/electroverse_uk_cpo_pilot.mjs
+        run: node --check scripts/electroverse_uk_cpo_pilot.mjs && node --check scripts/electroverse_rate_limit_probe.mjs
+      - name: Check GPS tariff guards
+        run: node --test tests/test_electroverse_uk_gps_group.mjs
       - name: Run bounded read-only pilot
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.rate_probe }}
+        env:
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
         run: node scripts/electroverse_uk_cpo_pilot.mjs
+      - name: Run capped rate probe
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.rate_probe }}
+        env:
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+        run: node scripts/electroverse_rate_limit_probe.mjs
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && github.event_name == 'workflow_dispatch' }}
         with:
           name: electroverse-uk-cpo-pilot
-          path: reports/emsp-pilots/electroverse-uk-cpo.json
+          path: |
+            reports/emsp-pilots/electroverse-uk-cpo.json
+            reports/emsp-pilots/electroverse-rate-limit.json
           if-no-files-found: warn
           retention-days: 7

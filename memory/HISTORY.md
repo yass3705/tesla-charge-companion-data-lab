@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Équivalence GPS eMSP UK autorisée, conflit Source EV détecté
+
+- [Pilote #38431179952](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38431179952) : 8/8 prises de même puissance, type et GPS pour Source EV et MFG malgré IDs EVSE différents ; aucune offre promue. Source EV présente deux montants Electroverse incompatibles (0,89/0,71 £/kWh) : statut incalculable. MFG 0,69 £/kWh homogène reste candidat avec TVA à vérifier. La règle de groupe GPS autorisée par l'utilisateur est documentée dans le [rapport des pilotes](../docs/v9-emsp-bounded-pilots-2026-10-13.md) et un contrôle des deux couches tarifaires est ajouté. [Sonde API #38431374082](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38431374082) : 60/60 HTTP 200, aucun 429 ni en-tête de quota, limite maximale inconnue. Aucune modification Production ni Pages.
+- Qualification Electra NL sur quatre pages : 367 liens EVSE/GPS exacts et puissance compatible ; 366 types de connecteur non renseignés par la source Electra, 342 candidats à grille unique/statut positif, 14 multigrilles encore ambigus et 11 statuts rejetés. Unité `maxPower` source corrigée en watts. Aucun prix Electra NL promu.
+
 ## 2026-10-13 — Electroverse GB, test authentifié réussi
 
 - [Run #38429086271](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38429086271) après Data Lab #255 `44760b5f5` : 35 requêtes, aucune erreur ; deux EVSE Allego exacts et actifs avec composants eMSP source £0.63/kWh ; Source EV et MFG zéro EVSE exact malgré lieux proches. Direct CPO Allego 2099 reste distinct ; métadonnée TVA eMSP 0 % versus normalisation CPO 20 % à clarifier. [Rapport source](../reports/emsp-pilots/electroverse-uk-cpo.json), [interprétation](../docs/v9-emsp-bounded-pilots-2026-10-13.md). Aucun overlay tarifaire V9, pin, Pages ou Cloudflare modifié.
