@@ -3,7 +3,7 @@
 import fs from 'node:fs/promises';
 import zlib from 'node:zlib';
 import {DirectElectroverseClient} from './lib/electroverse_direct_client.mjs';
-import {tileIds,xy} from './electroverse_uk_cpo_pilot.mjs';
+import {tileHits,xy} from './electroverse_uk_cpo_pilot.mjs';
 
 const Z=10,MAX_TILES=60;
 const batchIndex=Number(process.argv[2]??0),batchSize=Number(process.argv[3]??40);
@@ -35,15 +35,17 @@ for(const tile of selected){
       retryAfter:response.headers?.get('retry-after')||null});
     break;
   }
-  const ids=tileIds(new Uint8Array(await response.arrayBuffer()));
-  rows.push({tile,ids,possibleTruncation:ids.length>=1950});
+  const [x,y]=tile.split('/').map(Number);
+  const hits=tileHits(new Uint8Array(await response.arrayBuffer()),Z,x,y);
+  rows.push({tile,hits,possibleTruncation:hits.length>=1950});
   await new Promise(resolve=>setTimeout(resolve,750));
 }
 const report={schemaVersion:1,generatedAt:new Date().toISOString(),country:'GB',
   status:errors.length?'incomplete':'tile_ids_only_no_emsp_tariffs',
   seedLocationCount:source.locationCount,z:Z,totalTiles:tiles.length,
   batchIndex,batchSize,selectedTiles:selected.length,completedTiles:rows.length,
-  distinctLocationPks:new Set(rows.flatMap(x=>x.ids)).size,
+  distinctLocationPks:new Set(rows.flatMap(x=>x.hits.map(h=>h.pk))).size,
+  hitsWithoutCoarsePosition:rows.reduce((n,r)=>n+r.hits.filter(h=>h.latitude==null||h.longitude==null).length,0),
   possibleTruncatedTiles:rows.filter(x=>x.possibleTruncation).map(x=>x.tile),
   rows,errors};
 await fs.mkdir('reports/emsp-national/electroverse-uk-tiles',{recursive:true});

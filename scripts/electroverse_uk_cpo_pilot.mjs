@@ -19,6 +19,37 @@ function varint(b,p){let v=0,shift=0,x;do{if(p>=b.length)throw Error('truncated 
 function fields(b){const out=[];let p=0;while(p<b.length){let tag;[tag,p]=varint(b,p);const key=tag>>3,wire=tag&7;if(wire===2){let n;[n,p]=varint(b,p);if(p+n>b.length)throw Error('truncated field');out.push({key,wire,data:b.slice(p,p+n)});p+=n;}else if(wire===0){let v;[v,p]=varint(b,p);out.push({key,wire,value:v});}else if(wire===5)p+=4;else if(wire===1)p+=8;else throw Error('unsupported wire');}return out;}
 const decoder=new TextDecoder();
 export function tileIds(b){const ids=[];for(const layer of fields(b).filter(x=>x.key===3&&x.wire===2)){const f=fields(layer.data),name=f.find(x=>x.key===1)?.data;if(!name||decoder.decode(name)!=='hits')continue;const keys=f.filter(x=>x.key===3).map(x=>decoder.decode(x.data));const vals=f.filter(x=>x.key===4).map(x=>{const v=fields(x.data).find(y=>[1,4,5,7].includes(y.key));return v?.wire===2?decoder.decode(v.data):v?.value;});for(const feature of f.filter(x=>x.key===2)){const packed=fields(feature.data).find(x=>x.key===2)?.data;if(!packed)continue;let p=0;while(p<packed.length){let ki,vi;[ki,p]=varint(packed,p);[vi,p]=varint(packed,p);if(keys[ki]==='_id'&&vals[vi]!=null){ids.push(String(vals[vi]));break;}}}}return [...new Set(ids)];}
+// MVT geometry is only a coarse discovery coordinate; GraphQL must verify a
+// candidate before an EVSE or tariff can be attributed to a CPO station.
+export function tileHits(b,z,x,y){
+  const found=new Map(),n=2**z;
+  for(const layer of fields(b).filter(v=>v.key===3&&v.wire===2)){
+    const entries=fields(layer.data),name=entries.find(v=>v.key===1)?.data;
+    if(!name||decoder.decode(name)!=='hits')continue;
+    const extent=entries.find(v=>v.key===5)?.value||4096;
+    const keys=entries.filter(v=>v.key===3).map(v=>decoder.decode(v.data));
+    const values=entries.filter(v=>v.key===4).map(v=>{const w=fields(v.data).find(q=>[1,4,5,7].includes(q.key));return w?.wire===2?decoder.decode(w.data):w?.value;});
+    for(const entry of entries.filter(v=>v.key===2)){
+      const f=fields(entry.data),packed=f.find(v=>v.key===2)?.data,geometry=f.find(v=>v.key===4)?.data;
+      if(!packed)continue;
+      let id=null,p=0;
+      while(p<packed.length){let ki,vi;[ki,p]=varint(packed,p);[vi,p]=varint(packed,p);if(keys[ki]==='_id')id=values[vi];}
+      if(id==null)continue;
+      let latitude=null,longitude=null;
+      if(geometry){
+        let cmd,dx,dy,g=0;[cmd,g]=varint(geometry,g);
+        if((cmd&7)===1&&(cmd>>3)>=1){
+          [dx,g]=varint(geometry,g);[dy,g]=varint(geometry,g);
+          const px=(dx>>>1)^-(dx&1),py=(dy>>>1)^-(dy&1);
+          longitude=Number(((x+px/extent)/n*360-180).toFixed(6));
+          latitude=Number((Math.atan(Math.sinh(Math.PI*(1-2*(y+py/extent)/n)))*180/Math.PI).toFixed(6));
+        }
+      }
+      found.set(String(id),{pk:String(id),latitude,longitude});
+    }
+  }
+  return [...found.values()];
+}
 export function xy(lat,lon,z=Z){const n=2**z,r=lat*Math.PI/180;return[Math.floor((lon+180)/360*n),Math.floor((1-Math.asinh(Math.tan(r))/Math.PI)/2*n)];}
 function distanceM(a,b){const lat=Number(b?.latitude??b?.lat),lon=Number(b?.longitude??b?.lon);return Number.isFinite(lat)&&Number.isFinite(lon)?Math.round(111195*Math.hypot(a.lat-lat,(a.lon-lon)*Math.cos(a.lat*Math.PI/180))):null;}
 export function connectorKind(value){
