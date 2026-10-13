@@ -1,3 +1,9 @@
+## 13 octobre 2026 — exigence supplémentaire : prouver les consommateurs TCC effectifs
+
+- L'utilisateur demande de ne **pas** se limiter à l'état d'activation des workflows : tracer fichiers, imports, dispatchs, artefacts, snapshots, compilation et runtime V9 pour décider si une source historique est encore utilisée.
+- Production `main`, `config/refresh-policy.json` : sources CPO/eMSP orientées Data Lab et snapshot de développement épinglé. Le snapshot sélectionné conserve les métadonnées `legacyUpdater` et `germanyRecovery` ; dix jeux nationaux déclarés au total (TESLA compris) choisissent Data Lab ou Stable comme source primaire. **Références de provenance non qualifiées comme dépendances effectives.**
+- Vérification des 84 YAML restants et des consommateurs actifs encore incomplète. **Aucune suppression supplémentaire autorisée avant preuve de non-utilisation ou de remplacement complet.** Rapport et preuves : [audit de migration](../docs/updater-test-data-lab-workflow-migration-audit-2026-10-13.md), commit `5719f778`.
+
 ## 13 octobre 2026 — migration des workflows updater-test vers Data Lab
 
 - Décision utilisateur : **processus Tesla/Mac conservé dans updater-test ; collectes CPO et eMSP canoniques dans Data Lab**, doublons historiques à supprimer après vérification de couverture (et non sur simple égalité de nom).
