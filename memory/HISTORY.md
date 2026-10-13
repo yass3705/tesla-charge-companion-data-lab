@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — extraction nationale eMSP par checkpoints engagée
+
+- Electra NL : collecte source des pages mondiales 0–59 sur 3 230 attendues, 4 548 lieux NL et 4 476 occurrences EVSE jointes par ID/GPS avec prise normale/Type 2/CCS ; 4 474 ID distincts. Deux répétitions et couverture incomplète restent à résoudre. Electroverse UK : 19 239 lieux CPO éligibles issus de huit sources forment une file de découverte nationale, sans présumer d'une offre eMSP. Scripts, workflows manuels, empreintes et limites détaillés dans `docs/v9-emsp-national-staging-2026-10-13.md`. Aucun tarif ni snapshot V9 promu, aucun déploiement.
+
 ## 2026-10-13 — EnergyVision BE, source de tarification simple isolée
 
 - [Data Lab #267](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/267), fusion `658b0852`, [CI #38436662460](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38436662460) verte : **248 stations / 817 PDC à source TTC kWh simple**, dont **778 à état positif**, avec arithmétique de preuve indépendante. L'applicabilité EVSE et le prix checkout restent non confirmés, donc **0 tarifs V9 promus**. Rapport [preuve EnergyVision](../docs/integrations/energyvision-simple-kwh-proof-audit-2026-10-13.md). Aucun nouveau pin ni déploiement.
