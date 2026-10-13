@@ -16,7 +16,15 @@ on:
         required: true
         default: '0'
       batch_size:
-        description: Tiles per run, maximum 60
+        description: Root tiles per batch, maximum 40
+        required: true
+        default: '40'
+      root_offset:
+        description: First root inside this batch (for dense-tile resume)
+        required: true
+        default: '0'
+      root_count:
+        description: Root count in this run (default 40; reduce for dense batches)
         required: true
         default: '40'
 permissions:
@@ -39,7 +47,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
-        run: node scripts/electroverse_uk_national_tiles.mjs "${{ inputs.batch_index }}" "${{ inputs.batch_size }}"
+        run: node scripts/electroverse_uk_national_tiles.mjs "${{ inputs.batch_index }}" "${{ inputs.batch_size }}" "${{ inputs.root_offset }}" "${{ inputs.root_count }}"
       - uses: actions/upload-artifact@v4
         if: ${{ always() && github.event_name == 'workflow_dispatch' }}
         with:
