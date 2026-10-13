@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Offre directe Electric 55 exacte préservée
+
+- Production #80 `ed8f470` fusionnée après CI globale/pin et smoke neuf pays verts, Pages ignoré. La source directe nationale Electric 55 ne publie aucun prix consommateur général ; une offre de checkout indépendante, déjà validée pour l'EVSE de Lons-le-Saunier `FR55CEFR39000P7PPFG1`, est bien compilée et jointe à la seule station nationale `FR55CP39000LSAP7PPFG`. Nouveau garde contre sa perte ou sa propagation aux autres stations. Place Lully et Bois-d'Arcy restent sans tarif direct exact ; leur Electroverse exact demeure applicable. Rapport Production mis à jour.
+
 ## 2026-10-13 — Frais Electric 55 omis après passage du créneau horaire
 
 - Production #77 `fabeda6` fusionnée après CI globale/pin et régressions NL/IZIVIA vertes, Pages ignoré. Les minutes après charge sont ventilées par créneau et facturées une fois ; le résumé affiche seulement les composantes du créneau réellement facturé. L’oracle des offres EVSE exactes Place Lully/Bois-d’Arcy trouve 1,80/3,60 € contre 1,50/3,00 € avant correction au scénario 22h45 + 45 min charge + 10 min stationnement. Une comparaison nationale déterministe montre 2 222 offres Electroverse FR corrigées à la hausse parmi 3 859 offres horaires avec stationnement ; aucun montant ne baisse. Rapport Production #78 pour les limites.
