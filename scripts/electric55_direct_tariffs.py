@@ -260,7 +260,9 @@ def parse_tariff_profile(payload: dict[str, Any]) -> dict[str, Any] | None:
     definitions = [
         definition
         for definition in payload.get("definitions") or []
-        if isinstance(definition, dict) and definition.get("isMatching") is True
+        if isinstance(definition, dict)
+        and definition.get("isMatching") is True
+        and str(definition.get("method") or "").upper() != "ROAMING_EMPS"
     ]
     if not definitions:
         return None
