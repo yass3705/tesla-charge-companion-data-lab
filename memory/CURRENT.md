@@ -1,5 +1,9 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — contrôle des collectes directes France après le pin
+
+- [Audit différentiel des sources BUMP, ETotem et WAAT](../docs/v9-france-post-pin-direct-source-gate-2026-10-13.md) : BUMP 1 605 stations/2 516 points mais 0 prix explicite ; ETotem 641/3 350 mais 0 texte tarifaire ; WAAT Monta 550 stations rapprochées, 407 groupes directs, 0 EVSE explicite et 0 station classable ; QualiCharge 7 663 stations parcourues mais 0 WAAT retenue. Le catalogue WAAT publié historique demeure inchangé : 452 stations/507 configurations classables au 26 août. **Aucune offre supplémentaire ni repin sûr** avec ces nouvelles collectes ; l'identité EVSE et les frais WAAT doivent être démontrés. Candidat Production et snapshot public inchangés.
+
 ## 13 octobre 2026 — Neuilly horaire résolu sous garde, candidat à 740 offres exactes
 
 - [Production #87](https://github.com/yass3705/tesla-charge-companion-production/pull/87) fusionnée `56dc2f7a` : nouveau candidat immuable `2026-10-13-fr-spie-neuilly-timewindow-candidate`, mêmes pins Data Lab `e39a44660` et Stable `0a6d2c34`. Les **740/740 EVSE Métropolis exacts** ont une offre directe source et attachée : 726 règles standard et 14 règles de post-charge Neuilly, réparties sur trois stations, à 0,20 €/min (08h–20h) / 0,10 €/min (20h–08h), franchise dix minutes. Un calcul sans heure de fin de charge/fuseau, avec chevauchement, ou avec une minute entamée traversant 08h/20h reste **incalculable**. L'interface indique les seules plages réellement facturées. Les voies eMSP et les autres CPO SPIE ne reçoivent aucun prix transféré.
