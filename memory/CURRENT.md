@@ -7,6 +7,13 @@
 
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — EnergyVision BE intégré au candidat Production, 778 tarifs directs calculables
+
+- [Production PR #94](https://github.com/yass3705/tesla-charge-companion-production/pull/94) fusionnée `7f40cb12` : supplément officiel EnergyVision BE autonome NAP, 1 238 sites / 3 795 PDC exacts, 1 228 grilles adHoc station, pin **`2026-10-13-be-energyvision-official-cpo-candidate`** (Data Lab à SHA immuable `94d4fc6785a0c1d2ed4df1d01b5a30d203bd4cd3`). Première passe **776 PDC** à tarif simple kWh TTC calculable, le reste conservé non tarifé selon garde-fous. [PR Production #95](https://github.com/yass3705/tesla-charge-companion-production/pull/95) fusionnée `77d56025` : ajout de deux PDC Type 2 22 kW au tarif **0,37 €/kWh + 2,04 €/session** (une seule facturation fixe), exemple oracle 20 kWh **9,44 €**. Total **778 PDC avec offre directe complète**. CI PR du candidat [#38445027765](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38445027765) et contrôle snapshot [#38445031463](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38445031463) réussis ; la CI main post-merge [#38448522469](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38448522469) doit être contrôlée pour clôture si elle est encore en cours. **Aucune publication Pages/Cloudflare.**
+- La grande majorité des **980 autres grilles complexes** à la source (fenêtres horaires, seuils minutes, composants cumulés) restent non tarifées par principe de non-invention. Il reste aussi les statuts non positifs/absences de grilles, et la preuve de fraîcheur des prix réellement pratiqués (nombreuses dates tarif sources anciennes). Cela ne remet pas en cause l'intégrité du supplément inventaire.
+- E55C Place Lully : puissance 22 kW confirmée par l'utilisateur ; [preuve manuelle](../data/station_verifications/electric55_place_lully_direct_portal_user_2026_10_13.json) déjà mise à jour avec `powerKw=22`. Restent numéro exact du PDC et conditions du parking avant classement Direct, malgré le prix observé 0,60 €/session + 0,08 €/min jour / 0,06 €/min nuit pour charge et parking.
+
+
 ## 13 octobre 2026 — staging national eMSP NL/UK en cours, aucun prix promu
 
 - [Plan et preuves](../docs/v9-emsp-national-staging-2026-10-13.md) : Electra NL GraphQL plafonne à 100 lieux/page et ne propose pas de filtre pays accepté ; balayage global par checkpoints de 60 pages. Premier lot réel **60/3 230 pages** : 4 548 lieux NL vus, 4 476 occurrences EVSE ID/GPS exacts à prise autorisée sur 4 420 lieux ; 4 474 ID distincts, deux répétitions à auditer. Tarif conservé au niveau source de lieu uniquement, aucun prix eMSP par EVSE publié.

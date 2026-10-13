@@ -5,6 +5,11 @@
 
 # Journal de la mémoire technique
 
+## 2026-10-13 — EnergyVision BE : supplément Direct V9 à 778 PDC, Lully 22 kW confirmé
+
+- [Production #94](https://github.com/yass3705/tesla-charge-companion-production/pull/94) fusionnée : 3 795 PDC source EnergyVision, 776 offres directes simples à identité exacte dans le nouveau candidat de développement `2026-10-13-be-energyvision-official-cpo-candidate`. [Production #95](https://github.com/yass3705/tesla-charge-companion-production/pull/95) fusionnée `77d56025`, deux PDC supplémentaires à 0,37 €/kWh + 2,04 €/session, oracle de 20 kWh = 9,44 €. Total 778 Direct calculables ; les grilles conditionnelles/minutes sans validation restent indisponibles ou incalculables, sans faux tarif. CI PR [38445027765](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38445027765) verte ; vérifier la [CI main 38448522469](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38448522469). Aucune publication du candidat.
+- Electric 55 Place Lully : 22 kW ajouté à la preuve de portail par confirmation utilisateur ; PDC exact et nature du parking non prouvés, pas de propagation au réseau.
+
 ## 2026-10-13 — extraction nationale eMSP par checkpoints engagée
 
 - Electra NL : collecte source des pages mondiales 0–59 sur 3 230 attendues, 4 548 lieux NL et 4 476 occurrences EVSE jointes par ID/GPS avec prise normale/Type 2/CCS ; 4 474 ID distincts. Deux répétitions et couverture incomplète restent à résoudre. Electroverse UK : 19 239 lieux CPO éligibles issus de huit sources forment une file de découverte nationale, sans présumer d'une offre eMSP. Scripts, workflows manuels, empreintes et limites détaillés dans `docs/v9-emsp-national-staging-2026-10-13.md`. Aucun tarif ni snapshot V9 promu, aucun déploiement.
