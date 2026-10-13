@@ -1,3 +1,10 @@
+## 13 octobre 2026 — migration des workflows updater-test vers Data Lab
+
+- Décision utilisateur : **processus Tesla/Mac conservé dans updater-test ; collectes CPO et eMSP canoniques dans Data Lab**, doublons historiques à supprimer après vérification de couverture (et non sur simple égalité de nom).
+- Audit des workflows historiques : 92 fichiers initialement ; 8 workflows CPO/eMSP supprimés dans updater-test après rapprochement avec Data Lab ; 84 restent. Le détail et la liste exhaustive des 84 fichiers encore présents sont dans [le rapport de migration](../docs/updater-test-data-lab-workflow-migration-audit-2026-10-13.md).
+- Supprimés : Electroverse bootstrap, Greenspot France, GOFAST audit, Swisscharge full collection, Swiss national CPO counts, PowerUp full scan, target CPO full scan, target CPO second pass. **Aucune suppression Tesla.** Les workflows OZECAR, REVE et les autres workflows historiques restent à qualifier avant retrait.
+- Prochaine action : comparer fonction, schedule, déclencheurs, scripts, sorties, consommateurs et dernières collectes réussies des 84 restants, notamment les collectes encore programmées ; protéger les snapshots validés et la séparation CPO/eMSP.
+
 # État de reprise — 2026-10-13
 
 ## 13 octobre 2026 — staging national eMSP NL/UK en cours, aucun prix promu
