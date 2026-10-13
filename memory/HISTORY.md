@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Production #82 fusionnée après CI navigateur
+
+- Production #82 fusionnée `d459fa0d` ; nouveau pin de développement Belib exact + Connected Kerb, Data Lab `2cc230af`, Stable `0a6d2c34`. CI PR `38391773395` entièrement verte, navigateur et SHA-256 inclus ; job Pages ignoré. Vérification HTTP après fusion : le site public sert encore `2026-10-13-nine-country-be-belib-exact-candidate`. Le rapport différentiel dans Production garde 62 anciens sites DOT-NL tarifés sans identité actuelle prouvée comme résidu à investiguer avant publication publique.
+
 ## 2026-10-13 — Audit IRVE #233 fusionné, candidat Belib/Connected Kerb #82 en validation
 
 - Data Lab #233 fusionné `2cc230af` : comparaison exacte du pin FR et de la source du 13/10. Production #82 construit localement le supplément de 4 stations / 17 EVSE Belib actifs et remplace l'assertion fixe Connected Kerb par la parité aux rapports épinglés. Premier run CI complet avec navigateur `38390558857` vert, Pages ignoré ; nouvelle CI du commit documentaire `95e8f12` en attente. Différentiel de couverture détaillé dans la PR Production : 62 anciens sites DOT-NL tarifés sans identité actuelle prouvée restent en investigation. Aucun pin public ni prix historique ambigu promu.
