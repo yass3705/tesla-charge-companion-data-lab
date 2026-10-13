@@ -22,6 +22,8 @@ Le [collecteur de détails](../scripts/electroverse_uk_national_details.mjs) dem
 
 Après ajout d'une relance transitoire bornée, le [run 38446171723](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38446171723) a livré **100/100 lieux** sur les offsets 10–109, **259 EVSE à prise autorisée**, en 20 appels GraphQL. Le [workflow séquentiel](../.github/workflows/electroverse-uk-national-chunks.yml) peut poursuivre au plus dix blocs de 100 PK par exécution, avec 30 secondes de repos entre blocs, sur la file dont l'empreinte SHA-256 est vérifiée. Chaque bloc est un artefact distinct ; le premier échec arrête le run et laisse les blocs précédents auditables. La récupération de tous les détails reste distincte de leur rattachement tarifaire.
 
+L'[audit initial des détails](../reports/emsp-national/electroverse-uk-detail-audit.json) porte sur **110 PK distincts** et **440 EVSE source à prise autorisée** (les cinq PK du témoin isolé recouvrent le bloc 10–109 avec charge utile identique). Seuls **16 EVSE** sont des candidats à jointure par ID normalisé unique, GPS officiel ≤120 m, type de prise et puissance compatibles ; **424** n'ont pas cette preuve exacte. Un PK dont la tuile paraissait proche d'un CPO ne l'est plus selon les coordonnées officielles, donc n'est pas joint. Le rapport ne calcule ni ne publie aucun prix. Les 440 incluent des statuts hors service ou inconnus ; ils ne sont pas des offres utilisables. Les regroupements GPS/puissance/prix homogène restent à auditer séparément.
+
 ## Conditions avant prix classable
 
 - Vérifier la complétude des balayages, les doublons et les variations de la source.
