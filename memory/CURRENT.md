@@ -1,3 +1,10 @@
+## 14 octobre 2026 — Italie, vérification réussie et séparation PUN / offres / tuiles
+
+- [PR Data Lab #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) : audit source Italie initial [run 38479978673](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38479978673) **success** ; artifact `italy-v9-source-migration-readiness` disponible. Le succès prouve que l'audit des fichiers d'entrée a tourné, **pas** la parité des données Italy runtime avec Stable.
+- Le script `scripts/pun_italy_national.py` existe et produit par défaut `data/national/pun_italy_national.json.gz`, mais cet artefact et les chemins `data/national/italy-static/manifest.json`, `data/national/italy-offers.json` ne sont pas présents dans l'arbre Data Lab main examiné. PUN = couche nationale technique, les tarifs PUN restent non-rankables sans validation ; overlays CPO directs séparés.
+- Script d'audit enrichi dans PR #301, commit `2e361fd9`, pour tracer ces 3 prérequis nationaux indépendants de l'existence des sources directes. Nouveau [run 38480682930](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38480682930) **queued** au dernier contrôle. Pas de bascule vers Data Lab ni fusion.
+- REVE ES : dernier run connu success, état incrémental `PRE_INTEGRATION_ONLY`; ne pas confondre flux tarifs/statuts et tuiles nationales. Tesla via Mac continue dans Updater Test ; aucun workflow supprimé.
+
 ## 14 octobre 2026 — REVE progressif confirmé ; chantier IT lancé en parallèle
 
 - Espagne : Data Lab `spain-reve-v9-stream-refresh.yml` est un collecteur **incrémental** (5 requêtes/page-lots max par exécution, cron horaire), la dernière collecte 13/10 19:23 UTC est **success**, état `PRE_INTEGRATION_ONLY` avec tarifs 397/468 pages et statuts 265/454 pages. Les compteurs incomplets reflètent la progression planifiée, **pas un échec d'exécution**. Ne pas basculer Production sur les données partielles ; continuer le flux. À auditer séparément : inventaire des stations/tuiles ES, non reconstruit par ce flux de tarifs/statuts.
