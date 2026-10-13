@@ -1,3 +1,7 @@
+## 13 octobre 2026 — E55C Parking du Tennis Lourmarin, correspondance exacte confirmée
+
+- L'utilisateur confirme la borne **`FR*55C*EFR84160*178MA1*0`** comme l'unique borne premium : frais fixes **0,60 €/session** ; recharge **0,08 €/min 07:00–23:00** et **0,06 €/min 23:00–07:00**. Les bornes **`FR*55C*EFR84160*178MA1*1`**, **`*2`**, **`*3`** : 0,60 €/session + **0,04 €/min 07:00–23:00** et **0,03 €/min 23:00–07:00**. Pour chacune, parking après fin de recharge au même taux minute, seulement si départ/fin explicite ; sinon débranchement immédiat par défaut. Horaire Europe/Paris, cas B segmenté provisoire. Statut : identité tarifaire des quatre bornes confirmée par utilisateur ; TVA, arrondi minute et vérification directe checkout par identifiant restent non prouvés. Ne pas extrapoler à d'autres stations.
+
 ## 13 octobre 2026 — migration runtime V9 Production (PR #97, en validation)
 
 - La branche de la [PR Production #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) comporte désormais trois moteurs de base prélevés à contenu identique sur le commit Stable épinglé puis copiés sous propriété Production : `runtime-owned/assets/v9/access-router-engine.js`, `offer-engine.js`, `data-engine.js`.
