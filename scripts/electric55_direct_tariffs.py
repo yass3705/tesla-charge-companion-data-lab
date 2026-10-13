@@ -377,6 +377,45 @@ def enrich(
         else:
             failed_keys.add(key)
 
+    # National-only classification: E55C's own ROAMING_EMPS becomes Direct
+    # iff a complete source pass shows it is the sole applicable tariff family.
+    # On incremental runs reuse the last FULL audit's explicit classification;
+    # never infer nationwide exclusivity from a partial refresh.
+    previous_source = ((previous or {}).get("source") or {}).get("directTariff") or {}
+    observed_methods = {
+        str(d.get("method") or "").upper()
+        for result in tariff_results.values() if result.get("ok") is True
+        for d in (result.get("payload") or {}).get("definitions") or []
+        if isinstance(d, dict) and d.get("isMatching") is True
+    }
+    nationwide_e55c_only = (
+        full_refresh
+        and len(tariff_results) == len(set(links) & {evse_key(p.get("localEvseId")) for p in _all_points(payload)})
+        and len(failed_keys) == 0
+        and observed_methods == {"ROAMING_EMPS"}
+        and all(
+            not (result.get("payload") or {}).get("definitions")
+            or all(
+                str(d.get("name") or "").strip().casefold() == "electric 55 charging x e55c"
+                for d in (result.get("payload") or {}).get("definitions") or []
+                if isinstance(d, dict) and d.get("isMatching") is True
+            )
+            for result in tariff_results.values()
+        )
+    )
+    if not full_refresh:
+        nationwide_e55c_only = previous_source.get("nationalOwnEmspOnlyVerified") is True
+    if nationwide_e55c_only:
+        for key, fallback in fallback_by_key.items():
+            if fallback and parsed_by_key.get(key) is None:
+                promoted = dict(fallback)
+                promoted["tariffChannel"] = "cpo_direct_sole_e55c_source"
+                promoted["priceAuthority"] = "E55C own Scan Pay tariff, sole national tariff family after full source audit"
+                promoted["adHocDirectVerified"] = True
+                promoted["classificationBasis"] = "national_sole_E55C_ROAMING_EMPS"
+                parsed_by_key[key] = promoted
+                fallback_by_key[key] = None
+
     # During an incremental refresh, one representative per global tariff
     # profile is checked. Its new profile safely updates all EVSEs that shared
     # the previous globally-scoped profile; new EVSEs are always checked exactly.
@@ -528,6 +567,8 @@ def enrich(
         "tariffEndpointTemplate": TARIFF_ENDPOINT,
         "tariffEndpointMode": "public_read_only_exact_charge_point",
         "fullRefresh": full_refresh,
+        "nationalOwnEmspOnlyVerified": nationwide_e55c_only,
+        "observedApplicableMethods": sorted(observed_methods),
         "dynamicStatusRequested": False,
     }
     payload.setdefault("stats", {}).update({
@@ -554,6 +595,7 @@ def enrich(
         "operatorDirectTariffsReady": resolved_points > 0,
         "directPaymentUrlsReady": linked_points > 0,
         "ownEmspFallbackTariffsReady": fallback_points > 0,
+        "ownEmspSoleSourcePromotedToDirect": nationwide_e55c_only,
         "ownEmspFallbackMustNotBeRelabelledDirect": True,
         "chargingAndParkingTariffDimensionsSeparated": True,
         "directTariffProfileJoin": "offer.pricingProfileId -> directTariffProfiles.profileId",
