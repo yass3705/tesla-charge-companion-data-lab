@@ -43,8 +43,11 @@
     "tariffTimezone": "Europe/Paris",
     "taxIncluded": null,
     "minuteRoundingPolicy": "NOT_VERIFIED",
-    "parkingFeeTrigger": "NOT_VERIFIED__DOES_IT_START_ONLY_AFTER_CHARGING_OR_ACCRUE_DURING_CONNECTION",
-    "switchingTariffAtBoundary": "NOT_VERIFIED__CLOCK_WINDOWS_SHOULD_BE_TESTED"
+    "parkingFeeTrigger": "USER_CONFIRMED__STARTS_ONLY_AFTER_CHARGING_COMPLETES_IF_VEHICLE_REMAINS_CONNECTED",
+    "switchingTariffAtBoundary": "NOT_VERIFIED__CLOCK_WINDOWS_SHOULD_BE_TESTED",
+    "clockBoundarySimulationRule": "USER_POLICY__PRORATE_BY_ACTUAL_LOCAL_TIME_WINDOWS_UNTIL_CPO_DISPROVES",
+    "defaultDepartureSimulation": "ASSUME_DISCONNECT_IMMEDIATELY_AT_CHARGE_END__NO_PARKING_CHARGE",
+    "explicitDepartureSimulation": "APPLY_PARKING_RATE_AFTER_CHARGE_END_UNTIL_USER_DEFINED_DEPARTURE"
   },
   "crossSourceSeparation": {
     "electraEmspIndependent": true,
@@ -54,12 +57,12 @@
   "publicationGate": {
     "siteSpecificProofPresent": true,
     "exactEvseAndPowerProofPresent": true,
-    "parkingFeeSemanticsVerified": false,
+    "parkingFeeSemanticsVerified": true,
     "sessionMinuteRoundingVerified": false,
     "readyForDirectV9Price": false,
     "applyTariffToEntireElectric55Network": false,
     "applyTariffToAllPlaceLullyPdc": false,
     "powerClassVerified": true
   },
-  "followUp": "B01 exact identifier and 22 kW are user-confirmed. Determine whether the parking clock starts simultaneously with charge or only on completion, minute rounding, clock boundary handling and VAT before assigning a numeric Direct V9 offer. Scope only this EVSE, never the entire network."
+  "followUp": "User confirmed parking starts after charging. For default simulation idle is zero; with explicit departure charge parking only for post-charge connected time. Day/night split follows actual time segments provisionally. Still verify rounded minutes, VAT and checkout crossover. No network-wide propagation."
 }
