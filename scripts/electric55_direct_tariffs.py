@@ -328,6 +328,8 @@ def _previous_state(previous: dict[str, Any] | None) -> tuple[dict[str, dict[str
         str(profile.get("profileId")): profile
         for profile in previous.get("directTariffProfiles") or []
         if profile.get("profileId")
+        and "ROAMING_EMPS" not in {str(method).upper() for method in profile.get("sourceMethods") or []}
+        and bool(profile.get("sourceMethods"))
     }
     return points, profiles
 
