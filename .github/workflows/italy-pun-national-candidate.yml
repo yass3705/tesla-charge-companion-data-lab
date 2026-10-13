@@ -7,6 +7,7 @@ on:
       - audit/italy-v9-source-migration-20261014
     paths:
       - .github/workflows/italy-pun-national-candidate.yml
+      - scripts/build_italy_pun_v9_tiles_candidate.py
 
 permissions:
   contents: read
@@ -33,6 +34,10 @@ jobs:
           python scripts/audit_italy_pun_evse_integrity.py \
             --input /tmp/pun_italy_national.json.gz \
             --report /tmp/pun_italy_evse_integrity_report.json
+      - name: Generate experimental PUN tiles and verify static manifest shape
+        run: |
+          python scripts/build_italy_pun_v9_tiles_candidate.py --input /tmp/pun_italy_national.json.gz --out-dir /tmp/italy-static
+          python scripts/verify_italy_v9_runtime_parity.py --candidate /tmp/italy-static/manifest.json --report /tmp/italy_manifest_parity_report.json
       - name: Upload immutable candidate and diagnostics, do not publish
         if: always()
         uses: actions/upload-artifact@v4
@@ -42,4 +47,6 @@ jobs:
             /tmp/pun_italy_national.json.gz
             /tmp/pun_italy_national_report.json
             /tmp/pun_italy_evse_integrity_report.json
+            /tmp/italy_manifest_parity_report.json
+            /tmp/italy-static/
           retention-days: 7
