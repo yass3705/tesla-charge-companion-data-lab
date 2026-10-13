@@ -1,3 +1,9 @@
+## 14 octobre 2026 — Italie PR #301, contrat de parité V9 introduit
+
+- [Audit IT run 38480682930](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38480682930) **success** au SHA `2e361fd9`. Cette réussite valide le contrôle des inputs, non la reconstruction nationale.
+- [PR IT #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) : ajout du validateur read-only `scripts/verify_italy_v9_runtime_parity.py` (commit `de12f616`) et tests `tests/test_italy_v9_runtime_parity.py` (commit `4dbf9737`). Référence pinned Stable IT manifeste V9 : schema 4, 29 696 stations, 72 tuiles, all.json.gz SHA `8cbeeb5daa8f4945dc7d872525991993895af5db6aaf813770c7edb726f5f752` ; le validateur rejette régression stations, erreurs de somme tuiles, hash manquant et doublons. **Pas encore de fichier national IT reconstruit testé**, aucune parité EVSE/tarifs certifiée ; `readyForProductionSwitch=false` explicitement.
+- Workflow CI de PR enrichi (commit `b4ea875d`), nouveau run [38481149372](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38481149372) **queued** au dernier contrôle. Aucune fusion, source switch ni publication. REVE ES reste incrémental ; Tesla/Mac demeure dans updater-test.
+
 ## 14 octobre 2026 — Italie, vérification réussie et séparation PUN / offres / tuiles
 
 - [PR Data Lab #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) : audit source Italie initial [run 38479978673](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38479978673) **success** ; artifact `italy-v9-source-migration-readiness` disponible. Le succès prouve que l'audit des fichiers d'entrée a tourné, **pas** la parité des données Italy runtime avec Stable.
