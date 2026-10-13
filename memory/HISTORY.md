@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — EnergyVision BE DATEX static/dynamic acquisition confirmed
+
+- [Data Lab authenticated workflow #38417695881](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38417695881) succeeded on all four routes (`200`): 1,236 static sites / 3,791 refillPoint elements / 4,778 energyPrice components, 1,238 dynamic site statuses / 3,795 refillPoint status elements. This is XML structural coverage, not validated payable tariffs. [Proof and safe staging plan](../docs/integrations/energyvision-datex-live-evidence-2026-10-13.md), [PR #250](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/250) merged and [PR #251](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/251) prepares exact site/point/rate/status staging. No prices deployed or guessed.
+
+
 ## 2026-10-13 — EnergyVision BE : première collecte XML sûre préparée
 
 - Secret `ENERGYVISION_API_KEY` déjà validé sur deux routes authentifiées `/metadata` et `/health` par le [run #38288652812](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38288652812). [PR #250](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/250) ajoute un diagnostic des flux DATEX statique/dynamique, journalisant seulement formes XML, volumes et SHA-256. La PR valide ses tests sans secret, puis un merge en main déclenche une collecte authentifiée, sans publication. L'identité EVSE et les prix directs consommateurs devront être certifiés dans une phase suivante.
