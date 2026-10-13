@@ -1,3 +1,10 @@
+## 13 octobre 2026, 23h39 — migration Production PR #97, dix moteurs V9
+
+- Validation de la tranche précédente (six moteurs) **réussie** : run Production `38466974031`. Les runs antérieurs annulés ne constituent pas des échecs fonctionnels.
+- Nouvelle tranche sur [PR Production #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) : copie identique au SHA Stable épinglé, sous `runtime-owned/assets/v9/`, des moteurs `charge-model-engine.js`, `session-planner-engine.js`, `station-score-engine.js`, `routing-engine.js`. Le builder sélectionne maintenant **10 moteurs** Production-owned après le socle de compatibilité Stable, commit `2598a06f` ; test ajusté `c6f4226d`.
+- Nouveau run de validation épinglée `38472265289` **pending** au dernier contrôle : ne pas annoncer réussite de cette nouvelle tranche avant vérification. PR non fusionnée, aucun changement du snapshot épinglé `main`, aucune suppression d'Updater Test. Tesla/Mac reste expressément dans Updater Test.
+- Reste à migrer les autres moteurs, les données ES/IT et la dépendance structurelle au runtime Stable ; conserver les protections tarifaires.
+
 ## 13 octobre 2026 — E55C : rapprochement national vérifié, non clôturable comme Direct sans preuve de canal tarifaire
 - [PR Data Lab #292](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/292) fusionnée : [preuve manuelle exacte Lourmarin](../data/station_verifications/electric55_lourmarin_user_exact_2026_10_13.json), 4 EVSE ; premium `FR*55C*EFR84160*178MA1*0` (0,60 €/session + 0,08 €/min jour, 0,06 nuit), *1/*2/*3 (0,60 €/session + 0,04 €/min jour, 0,03 nuit) ; parking uniquement après fin de charge avec départ explicite.
 - [Run Direct #38467109804](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38467109804) réussi : 55 IDs PAN testés, 54 réponses CPO exactes mais toutes définies `ROAMING_EMPS` et donc **0 prix ad-hoc Direct supplémentaires validés** ; 1 ID PAN restant non réconcilié (Lourmarin `FR55CEFR84160178MA103`).
