@@ -1,3 +1,9 @@
+## 13 octobre 2026 — traçage effectif des dépendances : REVE et sources historiques
+
+- **REVE Espagne est une dépendance historique de publication à préserver** : le workflow mensuel updater-test collecte REVE puis écrit dans Stable `v9-production-runtime/data/v9/spain-static` et `spain-reve-offers`; Production sélectionne Stable pour ES. Dernier run mensuel 01/10 échec ; le manifeste Stable du 27/09 compte 13 980 stations et 42 887 EVSE uniques. Data Lab a un rafraîchissement REVE horaire mais l'équivalence du consommateur Stable n'est pas démontrée. Ne pas supprimer le workflow historique avant migration validée.
+- **OZECAR** : dernier run historique 08/10 réussi, produit snapshot historique ; aucune sortie inter-dépôts directe dans son YAML, mais lecture indirecte non écartée. **Ze-Watt** : publication historique sur demande, équivalent direct non prouvé. **Export Charge Companion** : opération Tesla/Mac à conserver.
+- Aucune suppression supplémentaire. [Preuves et statut](../docs/updater-test-data-lab-workflow-migration-audit-2026-10-13.md), commit `5d961aa`. Analyse des consommateurs fichiers et des transferts transversaux à poursuivre.
+
 ## 13 octobre 2026 — E55C Place Lully B01 identifiée ; EnergyVision candidat validé, couverture partielle
 
 - L'utilisateur confirme **station B01**, EVSE exact `FR*55C*EFR78210*P21PL*0`, puissance **22 kW**. Preuve mise à jour dans [le relevé E55C](../data/station_verifications/electric55_place_lully_direct_portal_user_2026_10_13.json). Le tarif affiché est **0,60 €/session**, puis deux composantes charge/parking à **0,08 €/min de 07–23 h** et **0,06 €/min de 23–07 h**. Le déclenchement parking, l'arrondi minute, le traitement des créneaux et la TVA restent à vérifier ; **pas de prix calculable promu** pour ce seul EVSE avant clarification, aucune généralisation réseau.
