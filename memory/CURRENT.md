@@ -1,5 +1,11 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — première V9 GitHub Pages publiée et vérifiée
+
+- **Publication effective réussie** : l'utilisateur a approuvé l'environnement `github-pages`. Workflow Production manuel [run #38326551657](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38326551657), SHA `6e3eaef101d72bf6d4855a819bcc2e4408e94528` : `candidate=success`, `deploy=success`, déploiement GitHub `7026921334`, statut final `success`. URL officielle : https://yass3705.github.io/tesla-charge-companion-production/ ; racine redirige vers `/v9-production-shell/` (page `TCC V9 production shell`). Le fichier public `v9-production-shell/shell-config.json` annonce `snapshotId=2026-10-13-nine-country-be-belib-exact-candidate` et neuf pays `FR,NL,IT,ES,CH,DE,GB,MA,BE`. Configuration récupérée depuis l'URL publique, sans supposer le résultat à partir de la seule CI.
+- **Distinction** : publication réelle et shell public confirmés, tests de parcours navigateur en CI réussis ; les parcours interactifs sur différents appareils utilisateurs et la fiabilité du géocodage distant restent des vérifications post-publication. Aucune activation anticipée de tarifs Ubitricity/EVYVE ou autres sans preuves officielles. Conserver le snapshot immuable et le rollback.
+
+
 ## 13 octobre 2026 — première publication publique V9 préparée et validée (Pages non déclenché)
 
 - Décision utilisateur : aucune version actuellement utilisée ; choix d'une **première V9 publique GitHub Pages** plutôt que d'une nouvelle preview expérimentale. Préserver le candidat V9 épinglé `2026-10-13-nine-country-be-belib-exact-candidate` (Data Lab `047e1911a5dfd4dcce741ad9b461c6096effb9cd`, Stable `0a6d2c3415504397310d3dc92fae40be843b2435`) et l'ensemble des sources UK, BE, FR, Tesla.
