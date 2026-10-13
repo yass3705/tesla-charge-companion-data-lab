@@ -1,5 +1,12 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — réconciliation IRVE France en cours, pin inchangé
+
+- Audit exact du pin FR Stable `0a6d2c34` (48 058 stations, 165 792 EVSE) contre la collecte Data Lab du 13/10 09:26 UTC (49 185 stations, 165 129 EVSE, SHA-256 `7113daf751ff34922474d8c9ead10c8e998ca651400d56a08f4964d3e66cf94f`). [Rapport](../docs/v9-france-irve-pinned-transition-2026-10-13.md), [JSON](../reports/france/irve/pinned-transition-2026-10-13.json), script `scripts/france/audit_pinned_irve_transition.py` sur la branche `audit/v9-irve-reconciliation-20261013`.
+- 7 843 EVSE propres à l'ancien référentiel, 7 180 propres au nouveau ; 23 978 EVSE identiques changent d'ID de station, dont 22 950 gardent nom, adresse et coordonnées. Sur les overlays eMSP inchangés depuis le pin, substitution simple : Electra +4 514 jointures, −34 ; Electroverse +2 173, −3 955. **Aucune promotion IRVE** : les prix nouvellement joints ne sont que des candidats et les pertes exigent un contrôle de statut.
+- Belib : sur sept configurations absentes du pin, quatre stations (17 EVSE exacts) sont présentes et explicitement actives dans la nouvelle base dynamique du 13/10 10:39 UTC ; trois parkings (17 EVSE) n'ont ni jointure statique ni preuve dynamique positive. Aucun tarif ne leur a été attribué par proximité. Prochaine action : contrôler CPO, prises, puissance et accès des quatre candidates, puis construire un complément conservateur et le valider sur un candidat épinglé.
+- Dernière vérification distante : Production `main=520ab802`, Data Lab `main=c861553b0` au départ de cet audit ; Pages toujours sur `2026-10-13-nine-country-be-belib-exact-candidate`. Data Lab Evyve run `38385141067` échoue car le jeton retourne 869 sites Blink ; IONITY run `38386987676` échoue sur HTTP 412 ; Source EV run `38387968094` était en cours. Aucun déploiement Pages/Cloudflare.
+
 ## 13 octobre 2026 — correctifs de l'audit public validés, non publiés
 
 - Production [#70](https://github.com/yass3705/tesla-charge-companion-production/pull/70) fusionnée `ed4d34a` ; Electra+ calculé sur 320/521 stations FR Electra à grille directe unique, 201 stations multigrilles restant sans remise calculée. CI globale `38331807487` et pin `38331807703` verts ; Pages ignoré.
