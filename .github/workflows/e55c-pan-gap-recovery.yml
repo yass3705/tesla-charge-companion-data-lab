@@ -1,4 +1,5 @@
 name: France E55C PAN gap recovery
+# reconciliation refresh 2026-10-13, requested 55 gaps and Place Lully check
 on:
   workflow_dispatch:
   push:
@@ -83,7 +84,8 @@ jobs:
               if dist is not None:near.append((dist,u))
             near.sort(key=lambda x:x[0]);near=[{'distanceM':round(d,1),**u} for d,u in near[:5]]
             recovered.append({'pan':p,'probes':probes,'nearestUmap':near})
-          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'gapCount':len(gaps),'recovered':recovered}
+          lully=[x for x in (snap.get('connectors') or []) if '78210' in str(x.get('evse') or '') and ('P21PL' in str(x.get('evse') or '') or 'LULLY' in str(x.get('station') or '').upper())]
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'gapCount':len(gaps),'recovered':recovered,'placeLully':{'exactExpectedId':'FR*55C*EFR78210*P21PL*0','foundInCollectedConnectors':any(norm(x.get('evse'))==norm('FR*55C*EFR78210*P21PL*0') for x in lully),'matchedConnectors':[{'station':x.get('station'),'evse':x.get('evse'),'powerW':x.get('powerW'),'httpStatus':x.get('httpStatus'),'priceProfileCount':len(x.get('pricingDefinitionIds') or [])} for x in lully]}}
           pathlib.Path('reports/france/e55c/pan-gap-recovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(out,ensure_ascii=False,indent=2)[:60000])
           PY
