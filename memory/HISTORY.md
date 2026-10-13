@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Production #83 Tesla congestion et preuve runtime Belib
+
+- Production #83 fusionnée `32e20e22` après CI `38393330007` verte, navigateur inclus ; nouveau pin de développement `2026-10-13-fr-belib-tesla-congestion-evidence-candidate`, sans modification Pages. La règle Tesla officielle exige l'occupation du site ; les 1 112 montants source restent non facturables et portent `conditionVerified:false`. Test runtime renforcé : quatre directs Belib calculables, 17 jointures Electra et 12 Electroverse supplémentaires. Le différentiel France exact et les résidus NL/UK sont dans les rapports Production #82/#83.
+
 ## 2026-10-13 — Production #82 fusionnée après CI navigateur
 
 - Production #82 fusionnée `d459fa0d` ; nouveau pin de développement Belib exact + Connected Kerb, Data Lab `2cc230af`, Stable `0a6d2c34`. CI PR `38391773395` entièrement verte, navigateur et SHA-256 inclus ; job Pages ignoré. Vérification HTTP après fusion : le site public sert encore `2026-10-13-nine-country-be-belib-exact-candidate`. Le rapport différentiel dans Production garde 62 anciens sites DOT-NL tarifés sans identité actuelle prouvée comme résidu à investiguer avant publication publique.
