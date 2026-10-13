@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Audit IRVE #233 fusionné, candidat Belib/Connected Kerb #82 en validation
+
+- Data Lab #233 fusionné `2cc230af` : comparaison exacte du pin FR et de la source du 13/10. Production #82 construit localement le supplément de 4 stations / 17 EVSE Belib actifs et remplace l'assertion fixe Connected Kerb par la parité aux rapports épinglés. Premier run CI complet avec navigateur `38390558857` vert, Pages ignoré ; nouvelle CI du commit documentaire `95e8f12` en attente. Différentiel de couverture détaillé dans la PR Production : 62 anciens sites DOT-NL tarifés sans identité actuelle prouvée restent en investigation. Aucun pin public ni prix historique ambigu promu.
+
 ## 2026-10-13 — Comparaison différentielle du pin France IRVE
 
 - Script, JSON et rapport ajoutés sur `audit/v9-irve-reconciliation-20261013` : base du 13/10 (49 185 stations, 165 129 EVSE) comparée au pin public (48 058/165 792). Une substitution perdrait 3 955 jointures Electroverse et 34 Electra tout en en gagnant 2 173 et 4 514 ; elle est refusée. Quatre stations Belib absentes du pin ont 17 EVSE exacts et actifs dans la nouvelle source ; les trois autres restent sans statut positif. Aucun prix ni pin modifié. Détails et preuves dans `docs/v9-france-irve-pinned-transition-2026-10-13.md`.
