@@ -1,3 +1,8 @@
+## 14 octobre 2026 — E55C Data Lab validé après règle sole-family, Production non raccordée
+
+- [Run national E55C #38475200095](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38475200095) **SUCCESS** : 649 stations, 1 977 PDC, 1 923 PDC tarifés (97,27 %), 5 profils exacts, 54 PDC sans tarif structuré. [Rapport actuel](../reports/electric55/station_base_summary.md). La PR #299 (merge `7d886fa9`) applique l'exception demandée : grille `ROAMING_EMPS` attribuée à E55C et seule famille observée à l'échelle nationale = source tarifaire Direct dans ce CPO ; refus des autres eMSP ou de toute famille concurrente, sans généralisation inter-CPO. Les grilles Lourmarin par EVSE et les 54 correspondances PAN sont conservées.
+- Audit **Production main** de `scripts/build_snapshot.py` et `scripts/build_runtime_registry.py` : pas d'ingestion explicite de `data/national/electric55_stations_france.json`, pas d'adaptateur E55C raccordé aux offres runtime. Le snapshot Development utilise un commit Data Lab immuable antérieur à la publication E55C. **Ne pas déclarer ce CPO déployé dans TCC V9**. Dernière étape : pinner la base E55C validée, convertir les cinq profils (flat/charging_time/parking_time et fenêtres Europe/Paris) en règles V9 à EVSE exact, préserver débranchement à fin de charge par défaut, ajouter source runtime, exécuter test navigateur + CI, puis déployer séparément. Aucune publication Production effectuée dans cette passe.
+
 ## 13 octobre 2026 — Production PR #97 : 34 modules ; validation de la tranche précédente OK
 
 - Validation des 31 modules confirmée : [run 38475552629](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38475552629) **success**, SHA `9011d8ff`.
