@@ -1,5 +1,11 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Début de l'audit fonctionnel du site publié
+
+- Contrôle HTTP du pin et des six stations citées. Deux prix eMSP supposés mal affectés sont liés à des EVSE exacts : Lidl Electra 0,39 €/kWh et Electric 55 Bois-d'Arcy Electra 0,084 €/min ; les offres Electroverse Electric 55 sont également exactes. La source directe Electric 55 locale reste non publiable.
+- Défaut reproduit du chargement direct Electra : `kind: direct` devenait un type de prise `DIRECT`, ce qui supprimait 724 règles avant calcul. [Production #66](https://github.com/yass3705/tesla-charge-companion-production/pull/66) ouverte, test ciblé et rebuild local validés. La liaison de plusieurs grilles à chaque EVSE reste à prouver.
+- Base France du site plus ancienne que celle des overlays eMSP ; remplacement brut refusé après mesure des liens restaurés et perdus. [Production #67](https://github.com/yass3705/tesla-charge-companion-production/pull/67) prépare les descriptions de tarifs utilisés ; [#68](https://github.com/yass3705/tesla-charge-companion-production/pull/68) répare le test de garde Pages devenu obsolète, fusionnée à `4f2cae2` après CI verte. Aucun nouveau déploiement.
+
 ## 2026-10-13 — Première V9 GitHub Pages publiée
 
 - [Workflow manuel Production #38326551657](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38326551657) terminé : `candidate=success`, `deploy=success`, déploiement `7026921334` avec statut GitHub `success`. Publication autorisée et approuvée par l'utilisateur, SHA `6e3eaef101d72bf6d4855a819bcc2e4408e94528`. URL https://yass3705.github.io/tesla-charge-companion-production/ servie et redirigée vers V9, `shell-config.json` public confirme le snapshot `2026-10-13-nine-country-be-belib-exact-candidate` et FR/NL/IT/ES/CH/DE/GB/MA/BE. La validation de l'interactivité utilisateur reste post-publication, distincte du succès Pages.
