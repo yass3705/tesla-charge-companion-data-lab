@@ -1,0 +1,135 @@
+name: Validate NL inventory and unavailable tariffs (read-only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/v9-nl-post-policy-validation-pr.yml"
+      - "scripts/v9_nl_post_policy_validation_20261012.py"
+permissions:
+  contents: read
+jobs:
+  nl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-production
+          ref: d6f99d6a737b2e20e60452fa6aa369ca1775b5c7
+          path: production-pin
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-data-lab
+          ref: c7173fd03143a89f9fd41e4eed6e2c6d71531b52
+          path: current-source
+          persist-credentials: false
+      - name: Pin the 12 October normalized source
+        run: |
+          test "$(git -C current-source rev-parse HEAD)" = "c7173fd03143a89f9fd41e4eed6e2c6d71531b52"
+          cp current-source/data/national/netherlands_dotnl/normalized.json.gz data/national/netherlands_dotnl/normalized.json.gz
+      - name: Recount active Type 2 and CCS prices against current DOT-NL snapshot
+        run: |
+          set -euo pipefail
+          test "$(git -C production-pin rev-parse HEAD)" = "d6f99d6a737b2e20e60452fa6aa369ca1775b5c7"
+          python scripts/v9_nl_post_policy_validation_20261012.py --output "$RUNNER_TEMP/nl-price-validation.json"
+          python - "$RUNNER_TEMP/nl-price-validation.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          c=d["counts"]
+          assert c["totalActiveType2Ccs"] == 165280
+          assert c["NO_COMPUTABLE_SOURCE_TARIFF"] == 3928
+          assert c["CURRENCY_UNVERIFIED"] >= 24
+          assert d["byCpo"]["CPI"]["CURRENCY_UNVERIFIED"] >= 15
+          assert d["byCpo"]["NUO"]["CURRENCY_UNVERIFIED"] >= 9
+          assert c["EUR_OFFER"]+c["NO_COMPUTABLE_SOURCE_TARIFF"]+c["CURRENCY_UNVERIFIED"] == c["totalActiveType2Ccs"]
+          assert d["stationsPreservedWhenPriceUnavailable"] and not d["publishedToTcc"]
+          PY
+      - name: Compile actual runtime tiles without publishing
+        run: |
+          python scripts/dotnl_netherlands_runtime.py data/national/netherlands_dotnl/normalized.json.gz "$RUNNER_TEMP/nl-tiles" "$RUNNER_TEMP/nl-compiler-report.json"
+      - name: Verify full compact inventory with the merged Production adapter
+        run: |
+          node - "$RUNNER_TEMP/nl-tiles/all.json.gz" "$PWD/production-pin" "$RUNNER_TEMP/nl-adapter-validation.json" <<'JS'
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs'),path=require('node:path'),zlib=require('node:zlib');
+          const rows=JSON.parse(zlib.gunzipSync(fs.readFileSync(process.argv[2])));
+          const adapter=require(path.join(process.argv[3],'runtime-overrides/assets/v9/adapters/netherlands-dotnl.js'));
+          let retained=0,cpi=0,cpiOffers=0,invalidConfigs=0,invalidPriced=0;
+          let upsSeen=false,upsPriced=false;
+          for(const row of rows){
+            const site=adapter.normalizeRow(row);
+            assert.ok(site,'a source station was dropped: '+row[0]);
+            retained++;
+            if(String(row[0]).startsWith('NL:CPI:')){cpi++;cpiOffers+=site.offers.length;}
+            if(row[0]==='NL:CPI:NLCPIL7424365'){upsSeen=true;upsPriced=site.offers.length>0;}
+            for(const config of row[8]||[]){
+              const rules=config[5]||[];
+              if(rules.length && rules.some(rule=>!Array.isArray(rule)||String(rule[4]||'').toUpperCase()!=='EUR')){
+                invalidConfigs++;
+                if(site.offers.some(o=>o.metadata?.configurationId===config[0]))invalidPriced++;
+              }
+            }
+          }
+          assert.equal(retained,rows.length);
+          assert.ok(cpi>0&&cpiOffers>0,'retain both CPI inventory and valid EUR prices');
+          assert.ok(upsSeen&&!upsPriced,'UPS stays visible without an invented USD/EUR price');
+          assert.ok(invalidConfigs>0);
+          assert.equal(invalidPriced,0,'non-EUR or missing-currency rules must not create offers');
+          const report={dataLabSha:process.env.GITHUB_SHA,productionSha:'d6f99d6a737b2e20e60452fa6aa369ca1775b5c7',sourceStations:rows.length,retainedStations:retained,cpiStations:cpi,cpiOffers,invalidCurrencyConfigurations:invalidConfigs,invalidCurrencyOffers:invalidPriced,upsRetained:upsSeen,upsHasNumericOffer:upsPriced,publishedToTcc:false};
+          fs.writeFileSync(process.argv[4],JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report));
+          JS
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-stable
+          ref: 0a6d2c3415504397310d3dc92fae40be843b2435
+          path: stable-pin
+          persist-credentials: false
+      - name: Build current-source NL candidate and smoke test it
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          test "$source_sha" = "${{ github.event.pull_request.head.sha }}"
+          rm -rf data/national/netherlands_dotnl/runtime
+          cp -a "$RUNNER_TEMP/nl-tiles" data/national/netherlands_dotnl/runtime
+          python production-pin/scripts/build_refresh_candidate_config.py \
+            --base production-pin/config/snapshots/2026-09-30-r9-electra-fr.json \
+            --datalab-sha "$source_sha" --use-datalab-nl \
+            --snapshot-id "nl-policy-validation-${source_sha:0:12}" \
+            --out "$RUNNER_TEMP/nl-candidate-config.json"
+          python production-pin/scripts/validate_snapshot.py "$RUNNER_TEMP/nl-candidate-config.json"
+          python production-pin/scripts/validate_electra_platform_overlay.py .
+          python production-pin/scripts/build_snapshot.py \
+            --stable stable-pin --datalab . \
+            --config "$RUNNER_TEMP/nl-candidate-config.json" \
+            --out "$RUNNER_TEMP/v9-nl-candidate"
+          python production-pin/scripts/validate_built_snapshot.py "$RUNNER_TEMP/v9-nl-candidate" "nl-policy-validation-${source_sha:0:12}"
+          python production-pin/scripts/validate_stable_parity.py stable-pin "$RUNNER_TEMP/v9-nl-candidate" --allow-nl-override --allow-pricing-engine-override
+          python production-pin/scripts/validate_browser_asset_graph.py "$RUNNER_TEMP/v9-nl-candidate"
+          node production-pin/tests/runtime-e2e-smoke.mjs "$RUNNER_TEMP/v9-nl-candidate"
+          python production-pin/scripts/verify_candidate_manifest.py "$RUNNER_TEMP/v9-nl-candidate"
+          python - "$RUNNER_TEMP/v9-nl-candidate" "$RUNNER_TEMP/nl-candidate-validation.json" <<'PY'
+          import json,sys,pathlib
+          root=pathlib.Path(sys.argv[1])
+          shell=json.loads((root/"v9-production-shell/shell-config.json").read_text())
+          out={"snapshotId":shell.get("snapshotId"),"mode":shell.get("mode"),
+               "sourceSnapshotAt":"2026-10-12T10:56:10.446523Z",
+               "normalizedSourceRecompiledInRun":True,"publishedToTcc":False}
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(out,indent=2)+"\n")
+          print(json.dumps(out))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-nl-post-policy-validation
+          path: |
+            ${{ runner.temp }}/nl-price-validation.json
+            ${{ runner.temp }}/nl-compiler-report.json
+            ${{ runner.temp }}/nl-adapter-validation.json
+            ${{ runner.temp }}/nl-candidate-validation.json
+          retention-days: 14
+      - name: No publish
+        run: echo "Validation only. No V9 release, deployment, or pin update."

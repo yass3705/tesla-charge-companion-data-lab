@@ -1,0 +1,104 @@
+name: Validate TCC V9 dated tariff-gap baseline (no publish)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/v9_tariff_gap_baseline_20261012.py"
+      - "tests/test_v9_tariff_gap_baseline_20261012.py"
+      - "scripts/v9_nl_type2_ccs_scope_audit_20261012.py"
+      - "tests/test_v9_nl_type2_ccs_scope_audit_20261012.py"
+      - "scripts/v9_nl_direct_tariff_compiler_audit_20261012.py"
+      - "scripts/v9_nl_direct_tariff_simulation_fixtures_20261012.py"
+      - "scripts/v9_nl_direct_tariff_simulation_runtime_20261012.cjs"
+      - "tests/test_v9_nl_tariff_simulation_fixtures_20261012.py"
+      - "tests/v9_nl_tariff_simulation_regression_20261012.mjs"
+      - "tests/test_v9_nl_direct_tariff_compiler_audit_20261012.py"
+      - "docs/v9-nine-country-tariff-audit-rebaseline-20261012.md"
+      - ".github/workflows/v9-tariff-gap-baseline-pr.yml"
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout immutable October 11 baseline Data Lab files
+        uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-data-lab
+          ref: 3c9588b49ab16efdce4a8a20fcd21d9564cc9856
+          path: frozen-datalab
+          persist-credentials: false
+      - name: Validate dated source evidence (read-only)
+        run: |
+          python scripts/v9_tariff_gap_baseline_20261012.py --root frozen-datalab --check
+          python -m unittest discover -s tests -p 'test_v9_tariff_gap_baseline_20261012.py' -v
+          python -m unittest discover -s tests -p 'test_v9_nl_type2_ccs_scope_audit_20261012.py' -v
+      - name: Audit current DOT-NL Type 2 / CCS connector and active status scope
+        run: |
+          python scripts/v9_nl_type2_ccs_scope_audit_20261012.py frozen-datalab/data/national/netherlands_dotnl/normalized.json.gz --output "$RUNNER_TEMP/nl-type2-ccs-audit.json"
+          python - "$RUNNER_TEMP/nl-type2-ccs-audit.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          assert d["totals"]["type2CcsConnectorOccurrences"]>1000
+          assert d["publication"] is False
+          print(json.dumps({"source":d["inputCompressedSha256"],"dataAt":d["datasetGeneratedAt"],"scope":d["scope"],"totals":d["totals"],"operatorRows":d["operatorRows"]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-nl-type2-ccs-scope-audit
+          path: ${{ runner.temp }}/nl-type2-ccs-audit.json
+          retention-days: 7
+      - name: Analyze DOT-NL active direct-CPO tariff compilability, no runtime publication
+        run: |
+          python -m unittest discover -s tests -p 'test_v9_nl_direct_tariff_compiler_audit_20261012.py' -v
+          python scripts/v9_nl_direct_tariff_compiler_audit_20261012.py --input frozen-datalab/data/national/netherlands_dotnl/normalized.json.gz --output "$RUNNER_TEMP/nl-direct-compiler-audit.json"
+          python - "$RUNNER_TEMP/nl-type2-ccs-audit.json" "$RUNNER_TEMP/nl-direct-compiler-audit.json" <<'PY'
+          import json,sys
+          scope,compiled=(json.load(open(p)) for p in sys.argv[1:])
+          assert compiled["totalActiveType2CcsConnectorOccurrences"]==scope["totals"]["activeAvailableOrCharging"], "Active Type 2/CCS census mismatch"
+          assert compiled["counts"]["noNationalReference"]==scope["totals"]["activeWithoutTariffReference"], "Missing tariff ref mismatch"
+          assert compiled["publishedToTcc"] is False
+          print("DOT-NL direct-CPO compiler census reconciles with source scope.")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-nl-direct-compiler-audit
+          path: ${{ runner.temp }}/nl-direct-compiler-audit.json
+          retention-days: 7
+
+      - name: Checkout pinned Production V9 pricing runtime (no deployment)
+        uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-production
+          ref: 84e86c317af2f4d2380f2fd1543dd4befafc10fe
+          path: production-pin
+          persist-credentials: false
+      - name: Generate EVSE/power-weighted DOT-NL fixtures and simulate six charging scenarios
+        env:
+          TCC_PRODUCTION_SHA: 84e86c317af2f4d2380f2fd1543dd4befafc10fe
+        run: |
+          set -euo pipefail
+          test "$(git -C production-pin rev-parse HEAD)" = "$TCC_PRODUCTION_SHA"
+          python -m unittest discover -s tests -p 'test_v9_nl_tariff_simulation_fixtures_20261012.py' -v
+          node tests/v9_nl_tariff_simulation_regression_20261012.mjs "$PWD/production-pin"
+          node production-pin/tests/netherlands-dotnl-ocpi-pricing.test.mjs
+          python scripts/v9_nl_direct_tariff_simulation_fixtures_20261012.py --source frozen-datalab/data/national/netherlands_dotnl/normalized.json.gz --output "$RUNNER_TEMP/nl-fixtures.json"
+          node scripts/v9_nl_direct_tariff_simulation_runtime_20261012.cjs "$RUNNER_TEMP/nl-fixtures.json" "$PWD/production-pin" "$RUNNER_TEMP/nl-simulations.json"
+          python - "$RUNNER_TEMP/nl-fixtures.json" "$RUNNER_TEMP/nl-simulations.json" <<'PY'
+          import json,sys
+          inp,out=(json.load(open(s)) for s in sys.argv[1:])
+          assert inp["compiledConnectors"]==161509
+          assert inp["activeConnectors"]==165418
+          assert inp["noTariffReference"]==3908
+          assert inp["otherRejected"]==1
+          assert out["representedActiveCompiledConnectors"]==inp["compiledConnectors"]
+          assert out["weightedEvaluationCount"]==inp["compiledConnectors"]*6
+          assert out["independentOracleMismatchWeight"]==0
+          assert out["publishedToTcc"] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-nl-six-profile-runtime-simulations
+          path: ${{ runner.temp }}/nl-simulations.json
+          retention-days: 14
