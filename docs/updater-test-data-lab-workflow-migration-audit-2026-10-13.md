@@ -118,3 +118,19 @@ Ces fichiers sont inventoriés mais **non certifiés doublons**. La majorité pa
 - Le dépôt updater-test possède 1 228 éléments de tree Git versionné, dont 84 YAML après les huit suppressions. Production : 271 éléments versionnés et 51 YAML. Le listing Data Lab via l'API Contents atteint une première page de 1 000 workflows et ne doit PAS être traité comme un recensement exhaustif.
 - **Conclusion provisoire seulement** : la politique de sélection des sources oriente les nouveaux snapshots CPO/eMSP vers Data Lab, mais le graphe complet des lecteurs et artefacts actifs n'est pas encore prouvé. Ne pas supprimer les 84 YAML restants, fichiers de données ni chemins de secours sur la seule base de la cadence ou des noms.
 - Suite : pour chaque fichier produit par `updater-test`, relever ses lecteurs directs et indirects dans les quatre dépôts, les appels API/checkout d'un SHA historique, les dispatchs inter-dépôts, les runs et artefacts, puis classer `runtime active`, `build/pin active`, `historical provenance only`, `orphan proven`, ou `not yet proven`. Ne supprimer que les orphelins prouvés ou doublons couverts ; préserver Tesla/Mac.
+
+## 13 octobre, revue consommateurs : REVE, OZECAR, Tesla et Electroverse
+
+### REVE Espagne — dépendance inter-dépôts prouvée, **ne pas supprimer**
+- Workflow historique `.github/workflows/reve-v2-monthly-production-refresh.yml` : checkout de la branche historique `reve-v2-web-extraction`, construction REVE, puis checkout du dépôt **`tesla-charge-companion-stable`** et copie vers `v9-production-runtime/data/v9/spain-static` et `spain-reve-offers`, commit/push sous validation. Exécution planifiée chaque premier du mois ; [échec 2026-10-01](https://github.com/yass3705/tesla-stations-updater-test/actions/runs/36847109484), réussite non présumée.
+- Le manifeste Stable Espagne actuellement consulté a `generatedAt=2026-09-27T09:08:02.333Z`, `stationCount=13980`, `uniqueEvseIds=42887` et `ambiguousEvseIds=139` ; le snapshot Production de développement sélectionne `primarySource=stable` pour ES. **Dépendance de publication historique potentiellement encore nécessaire**, même si dernier run en échec.
+- Data Lab dispose de `spain-reve-v9-stream-refresh.yml` avec cadence horaire, mais ce pipeline ne prouve pas à lui seul le remplacement du transfert vers Stable. Toute migration doit inclure consommation du snapshot ES, offers et garde d'équivalence.
+
+### OZECAR — activité historique mais consommation Production non établie
+- `ozecar-france-extract.yml` programmé chaque jeudi, écriture `data/ozecar/france/ozecar-france-current.json.gz` et rapport dans updater-test ; [run 2026-10-08 réussi](https://github.com/yass3705/tesla-stations-updater-test/actions/runs/37770196420). Aucun chemin de copie vers Production constaté dans le YAML inspecté. Un pipeline national WAAT/Monta Data Lab existe, mais équivalence d'IDs, prix et consommateurs OZECAR non prouvée. **Conserver** en attendant preuve.
+
+### Autres
+- `export-charge-companion.yml` fonctionne sur Mac self-hosted et compare un export Tesla à SuC Tracker ; conserver avec Tesla.
+- `electroverse-incremental-refresh.yml` est manuel ou sur fichier trigger (pas de cadence schedule) et écrit dans l'ancien dépôt ; Data Lab dispose de `electroverse-france-daily-delta.yml` programmé. Ne pas déduire l'inutilité des caches historiques sans rechercher les lecteurs des chemins correspondants.
+- `ze-watt-france-extract.yml` est manuel ou push sur script ; il publie un snapshot Ze-Watt dans l'ancien dépôt. Aucun homonyme direct trouvé lors du contrôle Data Lab ; **conserver en attendant analyse des consommateurs**.
+- Huit suppressions antérieures portaient sur des YAML ; rien ne démontre encore que toutes les données déjà extraites soient devenues inutiles, donc garder les fichiers de données historiques.
