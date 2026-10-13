@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Bilan candidat #84 et synchronisation de reprise
+
+- Data Lab #237 fusionnée `fb6ec091`, preuve normalisée des 62 anciens IDs DOT-NL absents ; Production #84 fusionnée `5b23b7d8`, rapport transversal `docs/v9-technical-tariff-readiness-2026-10-13.md`. Pin de développement inchangé, CI du code candidat `38393575432` réussie, shell Pages encore sur l'ancien snapshot. Les collectes Data Lab ultérieures au pin restent non promues ; fournisseurs requis pour les identités et prix manquants. Aucun déploiement public.
+
 ## 2026-10-13 — Diagnostic source des 62 sites DOT-NL sortants
 
 - Script et rapport de transition exacts entre les pins Data Lab `047e1911` et `2cc230af` ; 62 anciens sites tarifés sans remplacement ont aussi zéro correspondance d'ancien ID dans la source normalisée du 13/10. Cinquante et un étaient auparavant `IN_SERVICE`, onze `UNKNOWN`. Huit autres anciens sites ont un candidat au même lieu avec son propre tarif nouveau, sans transfert historique. Voir `docs/v9-dotnl-pinned-transition-2026-10-13.md`. Aucune donnée tarifaire ni pin modifié ; correspondance d'identité et statut fournisseur requis pour les 62.
