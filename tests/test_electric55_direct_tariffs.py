@@ -68,6 +68,18 @@ class Electric55DirectTariffTests(unittest.TestCase):
         self.assertIn("t=e55c", link["paymentUrl"])
         self.assertIn("b=FR%2A55C%2AEFR39000%2AP7PPFG%2A1", link["paymentUrl"])
 
+    def test_own_emsp_fallback_is_preserved_separately_not_as_direct(self) -> None:
+        payload = tariff_payload()
+        payload["definitions"][0]["method"] = "ROAMING_EMPS"
+        self.assertIsNone(parse_tariff_profile(payload))
+        fallback = parse_tariff_profile(payload, own_emsp_fallback=True)
+        self.assertIsNotNone(fallback)
+        self.assertEqual(fallback["tariffChannel"], "own_emsp_fallback")
+        self.assertFalse(fallback["adHocDirectVerified"])
+        self.assertEqual(fallback["sourceMethods"], ["ROAMING_EMPS"])
+        payload["definitions"][0]["name"] = "Third Party CPO"
+        self.assertIsNone(parse_tariff_profile(payload, own_emsp_fallback=True))
+
     def test_roaming_emps_excluded_from_direct_import(self) -> None:
         payload = tariff_payload()
         payload["definitions"][0]["method"] = "ROAMING_EMPS"
