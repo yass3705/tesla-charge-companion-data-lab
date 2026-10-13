@@ -1,5 +1,11 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — pilote EnergyVision BE prix simples, 248 stations / 817 PDC, aucune offre publiée
+
+- [Data Lab PR #267](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/267) fusionnée `658b0852`; [CI main #38436662460](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38436662460) **success** sur l'artefact DATEX authentifié `38435009280`. **248 stations homogènes / 817 PDC** à grille unique ad-hoc TTC au kWh sans composante de durée/frais fixe ; **778 PDC** à statut positif. Distribution prix source : 0,28 € (56 PDC), 0,38 € (366), 0,39 € (64), 0,48 € (323), 0,61 € (8). Horodatages tarif source mars 2025 à avril 2026 ; contrôle checkout/fraîcheur encore requis.
+- **Pilote strictement hors tarification V9** : zéro prix attaché en Production. Rapport [preuve et blocages](../docs/integrations/energyvision-simple-kwh-proof-audit-2026-10-13.md), artefact 7 jours `energyvision-kwh-proof-38436662460`. Confirmer portée grille de station sur PDC exacts et prix affiché au consommateur avant promotion ; les 980 grilles complexes ne sont pas simplifiées. Pages/Cloudflare inchangés.
+
+
 ## 13 octobre 2026 — filtre prises admissibles et témoin Electra NL validé
 
 - [Data Lab PR #264](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/264) fusionnée `c182a73aaedf62a9300699a5f6d2de43ed29dabf` : les deux pilotes internationaux ne retiennent que prise normale, Type 2 ou CCS ; CHAdeMO, Type 1 et prises industrielles sont exclus des correspondances. Tests locaux Node (4) et Python (2) verts ; [CI finale #38436011014](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38436011014) verte. [Rejeu Electra NL](../reports/emsp-pilots/electra-nl-allowed-validation.json) : 257 lieux découverts, 596 EVSE source, 365 ID exacts/GPS avec prise autorisée, 341 candidats connecteur/statut/grille unique, 14 multigrilles ambigus, 10 rejets de statut. Les compteurs ont légèrement bougé depuis le précédent essai : ne pas les additionner.

@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — EnergyVision BE, source de tarification simple isolée
+
+- [Data Lab #267](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/267), fusion `658b0852`, [CI #38436662460](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38436662460) verte : **248 stations / 817 PDC à source TTC kWh simple**, dont **778 à état positif**, avec arithmétique de preuve indépendante. L'applicabilité EVSE et le prix checkout restent non confirmés, donc **0 tarifs V9 promus**. Rapport [preuve EnergyVision](../docs/integrations/energyvision-simple-kwh-proof-audit-2026-10-13.md). Aucun nouveau pin ni déploiement.
+
+
 ## 2026-10-13 — pilotes eMSP internationaux limités aux prises admissibles
 
 - [Data Lab #264](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/264) fusionnée `c182a73aaedf62a9300699a5f6d2de43ed29dabf` après [CI #38436011014](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38436011014) verte : filtre explicite prise normale/Type 2/CCS dans les scripts Electra NL et Electroverse UK, tests de rejet CHAdeMO/Type 1, et rapport Electra NL renouvelé. Deux EVSE Type 2 exacts/GPS du lieu Electra `fae3d27f-4a75-4824-bf52-a1853729b4fe` validés comme échantillon d'identité et de grille source ; voies eMSP 0,61 €/kWh et Direct 0,605 € TTC/kWh séparées. [Run Electroverse UK #38435395373](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38435395373) réussi : 2 Type 2 Allego exacts, 8 CCS MFG en groupe candidat, 8 CCS Source EV rejetés pour tarif eMSP contradictoire. Prix finaux eMSP et publication restent suspendus aux preuves de frais/TVA. Détails dans `docs/v9-emsp-bounded-pilots-2026-10-13.md` ; aucun déploiement.
