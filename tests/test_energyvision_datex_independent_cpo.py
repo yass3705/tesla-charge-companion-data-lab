@@ -51,6 +51,9 @@ class IndependentSupplementTests(unittest.TestCase):
         self.assertFalse(site["publicAccessVerified"])
         self.assertEqual(site["sourceSiteType"], "onStreet")
         self.assertEqual(site["stations"][0]["unassignedStationRateIds"], ["RATE1"])
+        self.assertEqual(site["stations"][0]["sourceStationRatesUnassignedToPdc"][0]["priceComponents"][0]["amountSource"], "0.35")
+        self.assertEqual(site["stations"][0]["pdc"][0]["sourcePointEnergyRateCount"], None)
+        self.assertFalse(site["stations"][0]["pdc"][0]["priceable"])
         point = site["stations"][0]["pdc"][0]
         self.assertFalse(point["priceable"])
         self.assertFalse(point["publicAccessVerified"])
