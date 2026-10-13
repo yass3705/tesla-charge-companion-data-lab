@@ -1,3 +1,7 @@
+## 2026-10-13 — B01 Electric 55 identifiée ; frontière de clôture EnergyVision
+
+- Preuve E55C Place Lully enrichie avec borne B01, EVSE exact `FR*55C*EFR78210*P21PL*0` et 22 kW ; les conditions de déclenchement du parking restent non établies, donc aucune promotion tarifaire V9 pour ce point. EnergyVision Production #94/#95 et CI main #38448522469 vérifiées : 778 tarifs Direct calculables dans le candidat, grilles complexes non résolues, déploiement public non déclenché. Voir [état courant](CURRENT.md).
+
 ## 2026-10-13 — rationalisation des GitHub Actions historiques
 
 - Règle confirmée : updater-test réservé au Tesla/Mac historique, Data Lab canonique pour CPO/eMSP ; supprimer seulement les doublons vérifiés.
