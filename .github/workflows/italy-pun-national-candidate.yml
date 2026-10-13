@@ -10,6 +10,7 @@ on:
       - scripts/build_italy_pun_v9_tiles_candidate.py
       - scripts/verify_italy_v9_tile_contents.py
       - scripts/audit_italy_pun_evse_integrity.py
+      - scripts/verify_italy_pun_compact_connector_parity.py
 
 permissions:
   contents: read
@@ -41,6 +42,7 @@ jobs:
           python scripts/build_italy_pun_v9_tiles_candidate.py --input /tmp/pun_italy_national.json.gz --out-dir /tmp/italy-static
           python scripts/verify_italy_v9_runtime_parity.py --candidate /tmp/italy-static/manifest.json --report /tmp/italy_manifest_parity_report.json
           python scripts/verify_italy_v9_tile_contents.py --dir /tmp/italy-static --report /tmp/italy_tile_content_report.json
+          python scripts/verify_italy_pun_compact_connector_parity.py --pun /tmp/pun_italy_national.json.gz --compact /tmp/italy-static/all.json.gz --report /tmp/italy_connector_parity_report.json
       - name: Upload immutable candidate and diagnostics, do not publish
         if: always()
         uses: actions/upload-artifact@v4
@@ -52,5 +54,6 @@ jobs:
             /tmp/pun_italy_evse_integrity_report.json
             /tmp/italy_manifest_parity_report.json
             /tmp/italy_tile_content_report.json
+            /tmp/italy_connector_parity_report.json
             /tmp/italy-static/
           retention-days: 7
