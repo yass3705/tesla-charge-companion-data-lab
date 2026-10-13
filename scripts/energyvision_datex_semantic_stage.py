@@ -94,6 +94,7 @@ def interpret_static(body: bytes) -> dict:
         site = {
             "sourceSiteId": attr(site_node),
             "name": get(site_node, "brand", "values", "value"),
+            "sourceSiteType": get(site_node, "typeOfSite"),
             "city": get(site_node, "entrance", "_locationExtension", "afirFacilityLocation", "address", "city"),
             "postalCode": get(site_node, "entrance", "_locationExtension", "afirFacilityLocation", "address", "postcode"),
             "latitude": latitude,
@@ -104,6 +105,8 @@ def interpret_static(body: bytes) -> dict:
             station = {
                 "sourceStationId": attr(station_node),
                 "maximumPowerSource": get(station_node, "totalMaximumPower"),
+                "declaredRefillPoints": get(station_node, "numberOfRefillPoints"),
+                "authenticationMethods": [scalar(m) for m in kids(station_node, "authenticationAndIdentificationMethods")],
                 "refillPoints": [],
                 "stationRatesUnassignedToEvse": [],
             }
