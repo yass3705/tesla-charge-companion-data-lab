@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Métropolis direct #85, pin e39 et bilan #86
+
+- Production #85 fusionnée `30f2c275` : 726 offres Métropolis Direct à EVSE exact publiées dans le **candidat de développement**, 14 exceptions horaires Neuilly exclues. Data Lab pin `e39a44660`, Stable `0a6d2c34`, manifest 2 447 fichiers / 745 853 449 octets. CI PR `38398045169`, `main` `38398355560` et previews `38398045097`/`38398355687` vertes ; jobs Pages ignorés. Production #86 fusionnée `ee86a060` : bilan consolidé actualisé. Les collectes Data Lab ultérieures, dont BUMP `30d8c050b`, ne sont pas automatiquement dans le pin ; snapshot public Pages inchangé. Voir `memory/CURRENT.md` et le rapport Production `docs/v9-spie-metropolis-exact-candidate-2026-10-13.md`.
+
 ## 2026-10-13 — Bilan candidat #84 et synchronisation de reprise
 
 - Data Lab #237 fusionnée `fb6ec091`, preuve normalisée des 62 anciens IDs DOT-NL absents ; Production #84 fusionnée `5b23b7d8`, rapport transversal `docs/v9-technical-tariff-readiness-2026-10-13.md`. Pin de développement inchangé, CI du code candidat `38393575432` réussie, shell Pages encore sur l'ancien snapshot. Les collectes Data Lab ultérieures au pin restent non promues ; fournisseurs requis pour les identités et prix manquants. Aucun déploiement public.
