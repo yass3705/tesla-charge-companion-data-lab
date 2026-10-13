@@ -1,3 +1,10 @@
+## 13 octobre 2026, 22h44 Paris — migration Production PR #97 : shell autonome (non fusionné)
+
+- Sur la branche `migration/production-owned-pwa-manifest-20261013`, [PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) : `v9-production-shell/index.html` et `shell-config.json` repris depuis le Stable SHA épinglé, `bridge.js` déjà détenu par Production ; `scripts/build_snapshot.py` copie désormais le **shell Production** et charge sa configuration locale. Commit `01a084c7`, test `7663ebc9`.
+- La tranche PWA précédente a été validée par le run développement `38463930043` (success). **Le nouveau changement shell n'est pas validé** : run épinglé `38465051784` queued à la dernière vérification. Ne pas fusionner ou annoncer la parité avant résultat.
+- Reste : retirer les copies de `v9-production-runtime` (~791 fichiers/146,2 Mo au SHA Stable contrôlé), `assets` (~13 fichiers/227 Ko), `data` (~432 fichiers/20,8 Mo), et les sources ES/IT/Tesla encore sélectionnées Stable. Tester indépendamment les consommateurs et préserver Mac/Tesla dans Updater Test.
+- Aucun workflow historique supprimé ; aucune publication live délibérée.
+
 ## 13 octobre 2026, 22h34 Paris — migration Production PR #97, tranche PWA étendue
 
 - [PR brouillon #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97), branche `migration/production-owned-pwa-manifest-20261013` : **les 3 fichiers PWA** `manifest.webmanifest`, `app-version.json`, `service-worker.js` sont désormais sous `Production/deployment/` et `scripts/build_snapshot.py` les lit depuis Production (au lieu de Stable). Copies initialement identiques au Stable SHA épinglé ; test dédié étendu. Commit builder `13807756`, test `142cf2d2`.
