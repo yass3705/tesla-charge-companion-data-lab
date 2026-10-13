@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Audit public V9 : restauration Electra, résumé tarifaire et carte Tesla
+
+- Production #66 (tarifs directs Electra), #67 (résumé du tarif réellement appliqué) et #69 (Tesla Portugal en carte V9) fusionnées après CI globale et pin verts ; runs respectifs `38330916176/38330916172`, `38330924891/38330924854`, `38331242520/38331242524`. Jobs Pages ignorés.
+- Production #70 en validation : Electra+ ne réduit que l'énergie de 320 stations FR à grille directe unique et vérifiée ; 201 stations à plusieurs grilles attendent une preuve d'attribution EVSE. Aucun déploiement ; pin public inchangé. Reprise détaillée dans [CURRENT.md](CURRENT.md).
+
 ## 2026-10-13 — Début de l'audit fonctionnel du site publié
 
 - Contrôle HTTP du pin et des six stations citées. Deux prix eMSP supposés mal affectés sont liés à des EVSE exacts : Lidl Electra 0,39 €/kWh et Electric 55 Bois-d'Arcy Electra 0,084 €/min ; les offres Electroverse Electric 55 sont également exactes. La source directe Electric 55 locale reste non publiable.
