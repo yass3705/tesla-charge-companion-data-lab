@@ -2019373,6 +2019373,7 @@
         },
         "dataset": "electric55-place-lully-direct-portal-manual-observation",
         "directAdHocConsumerTariffObservation": {
+          "clockBoundarySimulationRule": "USER_POLICY__PRORATE_BY_ACTUAL_LOCAL_TIME_WINDOWS_UNTIL_CPO_DISPROVES",
           "currency": "EUR",
           "day": {
             "chargingEurPerMinute": "0.08",
@@ -2019380,6 +2019381,8 @@
             "parkingEurPerMinute": "0.08",
             "startLocal": "07:00"
           },
+          "defaultDepartureSimulation": "ASSUME_DISCONNECT_IMMEDIATELY_AT_CHARGE_END__NO_PARKING_CHARGE",
+          "explicitDepartureSimulation": "APPLY_PARKING_RATE_AFTER_CHARGE_END_UNTIL_USER_DEFINED_DEPARTURE",
           "minuteRoundingPolicy": "NOT_VERIFIED",
           "night": {
             "chargingEurPerMinute": "0.06",
@@ -2019387,21 +2019390,21 @@
             "parkingEurPerMinute": "0.06",
             "startLocal": "23:00"
           },
-          "parkingFeeTrigger": "NOT_VERIFIED__DOES_IT_START_ONLY_AFTER_CHARGING_OR_ACCRUE_DURING_CONNECTION",
+          "parkingFeeTrigger": "USER_CONFIRMED__STARTS_ONLY_AFTER_CHARGING_COMPLETES_IF_VEHICLE_REMAINS_CONNECTED",
           "sessionFeeEur": "0.60",
           "switchingTariffAtBoundary": "NOT_VERIFIED__CLOCK_WINDOWS_SHOULD_BE_TESTED",
           "tariffTimezone": "Europe/Paris",
           "taxIncluded": null
         },
         "evidenceClass": "user_transcribed_public_ad_hoc_checkout_tariff_before_payment",
-        "followUp": "B01 exact identifier and 22 kW are user-confirmed. Determine whether the parking clock starts simultaneously with charge or only on completion, minute rounding, clock boundary handling and VAT before assigning a numeric Direct V9 offer. Scope only this EVSE, never the entire network.",
+        "followUp": "User confirmed parking starts after charging. For default simulation idle is zero; with explicit departure charge parking only for post-charge connected time. Day/night split follows actual time segments provisionally. Still verify rounded minutes, VAT and checkout crossover. No network-wide propagation.",
         "observedOn": "2026-10-13",
         "operator": "Electric 55 Charging",
         "publicationGate": {
           "applyTariffToAllPlaceLullyPdc": false,
           "applyTariffToEntireElectric55Network": false,
           "exactEvseAndPowerProofPresent": true,
-          "parkingFeeSemanticsVerified": false,
+          "parkingFeeSemanticsVerified": true,
           "powerClassVerified": true,
           "readyForDirectV9Price": false,
           "sessionMinuteRoundingVerified": false,
