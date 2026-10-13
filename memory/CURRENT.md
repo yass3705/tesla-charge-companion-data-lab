@@ -1,3 +1,10 @@
+## 14 octobre 2026 — migration PR #97 : 37 modules Production-owned
+
+- La validation des **34 modules** a réussi : [run 38476329989](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38476329989), SHA `c7946524`.
+- Sur [PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97), trois adaptateurs repris à contenu identique du Stable SHA épinglé : `direct-offers.js`, `national-compact.js`, `morocco-shell-vivo-diagnostic.js` dans `Production/runtime-owned/assets/v9/adapters/`. Le builder sélectionne désormais **37 modules** Production-owned (commit `09f77101`), test étendu (commit `14870885`).
+- Nouveau run snapshot final : [38476999251](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38476999251), **queued** au dernier contrôle. Lot 37 non encore validé. Pas de fusion, de promotion du snapshot principal ou de suppression de workflows.
+- Rappel : Tesla via Mac reste exclusivement dans updater-test. La migration du runtime Stable et des données nationales ES/IT reste incomplète.
+
 ## 14 octobre 2026 — E55C Data Lab validé après règle sole-family, Production non raccordée
 
 - [Run national E55C #38475200095](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38475200095) **SUCCESS** : 649 stations, 1 977 PDC, 1 923 PDC tarifés (97,27 %), 5 profils exacts, 54 PDC sans tarif structuré. [Rapport actuel](../reports/electric55/station_base_summary.md). La PR #299 (merge `7d886fa9`) applique l'exception demandée : grille `ROAMING_EMPS` attribuée à E55C et seule famille observée à l'échelle nationale = source tarifaire Direct dans ce CPO ; refus des autres eMSP ou de toute famille concurrente, sans généralisation inter-CPO. Les grilles Lourmarin par EVSE et les 54 correspondances PAN sont conservées.
