@@ -1,3 +1,10 @@
+## 14 octobre 2026 — Italie : contrôle EVSE/puissance validé, audit des sources CPO lancé
+
+- Le run candidat PUN [38486446342](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38486446342) a terminé **success**, vérifications de parité connecteur/EVSE/puissance et tuiles comprises ; **ne constitue pas la validation des tarifs directs**.
+- Sur [PR Italie #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301), ajout du script read-only `scripts/audit_italy_direct_overlay_inputs.py` (commit `6c776d1f`) pour inventorier types/schémas de 7 sources directes : Allego, Atlante, Ewiva, Free To X, Ionity, Neogy/Alperia, Repower. Pas encore de correspondance tarifaire EVSE validée et pas d'estimation fictive de couverture.
+- Audit ajouté au workflow CI de la PR (commit `98df100d`) : [run 38487339174](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38487339174) état in_progress/pending à la vérification. Le prochain chantier devra implémenter des adaptateurs par schéma et mesurer les correspondances exactes EVSE + puissance, et préserver « prix non disponible » lorsque la source directe est absente.
+- Aucun changement Production, pas de fusion, REVE ES collecte incrémentale, Tesla/Mac reste dans Updater Test.
+
 ## 14 octobre 2026 — Italie : parité connecteurs validée ; audit des schémas CPO lancé
 
 - [Run PUN #38486446342](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38486446342) **success** au commit `b7ae16df` : vérification multiensemble des identifiants EVSE, connecteurs Type2/CCS et puissances kW entre extraction nationale PUN et tuiles compactes V9 passée. Cela n'atteste pas la correspondance des **offres CPO**.
