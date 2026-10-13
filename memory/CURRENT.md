@@ -1,3 +1,9 @@
+## 14 octobre 2026 — IT tuiles V9 validées structurellement, audit de contenu déclenché
+
+- [Run Italie PUN #38483520539](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38483520539) **success**, SHA `7e361e70` : candidat de cette extraction **31 051 stations / 77 805 EVSE / 72 tuiles**, intégrité EVSE OK, manifeste v4 et somme des stations OK ; `evseTariffParityVerified=false`, `readyForProductionSwitch=false`. Diffère légèrement du run national précédent (31 057 stations / 77 801 EVSE) ; sources live collectées à des moments différents.
+- [PR Data Lab #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) : nouveau contrôle strict `scripts/verify_italy_v9_tile_contents.py` (commit `47c4c768`) : vérification de SHA gzip du fichier national et de chaque tuile, de l'unicité des stationKey, de la bijection complète national ↔ tuiles, des coordonnées et des cellules géographiques. Étape intégrée au workflow candidat (commit `743e77d1`), [run 38484243638](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38484243638) **queued** au dernier relevé. La parité du payload exact avec le runtime Stable, les correspondances EVSE et les tarifs directs restent non démontrées ; ne pas promouvoir Italie Production.
+- Espagne REVE incrémental, Tesla/Mac Updater Test, aucun workflow supprimé ni PR fusionnée.
+
 ## 14 octobre 2026 — Italie : PUN complet réussi ; essai de reconstruction des tuiles lancé
 
 - [Run Italie PUN #38482336455](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38482336455) **success**, SHA `00f3e9f6` : **31 057 stations, 77 801 EVSE, 116 opérateurs**, 779/779 lots de détail sans échec ; coordonnées 100 %, 71 408 EVSE temps réel ; **0 tarif PUN directement rankable**. Artifact `italy-pun-national-v9-candidate` id 11858046422 (~6,5 Mo ZIP) contient extraction et rapports ; pas de publication.
