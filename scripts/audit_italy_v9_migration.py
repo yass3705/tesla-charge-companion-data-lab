@@ -27,6 +27,9 @@ report = {
  "ledger":{"inventoryComplete":ledger.get("inventoryComplete"),"treated":ledger["counters"]["treated"],"partialCurrent":ledger["counters"]["partialCurrent"]},
  "directInputs":inputs,
  "compiledNationalSnapshotPresent":(ROOT/"data/national/italy-static/manifest.json").exists(),
+ "nationalBuilder":{"path":"scripts/pun_italy_national.py","present":(ROOT/"scripts/pun_italy_national.py").is_file(),"defaultOutput":"data/national/pun_italy_national.json.gz"},
+ "sourceSeparation":{"punNationalInventory":"technical and location baseline; numeric PUN tariffs not rankable without independent validation","directCpo":"operator-specific exact connector overlays","legacyItalyTiles":"must be regenerated and parity-tested before source switch"},
+ "requiredBeforeSwitch":{"nationalGzipPresent":(ROOT/"data/national/pun_italy_national.json.gz").is_file(),"legacyStaticManifestRegenerated":(ROOT/"data/national/italy-static/manifest.json").is_file(),"legacyDirectOffersRegenerated":(ROOT/"data/national/italy-offers.json").is_file()},
  "readyForProductionSwitch":False,
  "blockers":["Full PUN station/EVSE static output and tiles are not yet certified equal to pinned Stable", "Validate EVSE connector/power/status and direct pricing against pinned Stable before modifying Production"],
 }
