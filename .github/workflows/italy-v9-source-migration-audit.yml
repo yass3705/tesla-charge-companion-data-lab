@@ -7,6 +7,7 @@ on:
       - audit/italy-v9-source-migration-20261014
     paths:
       - "scripts/audit_italy_v9_migration.py"
+      - "scripts/audit_italy_cpo_offer_shapes.py"
       - "scripts/verify_italy_v9_runtime_parity.py"
       - "tests/test_italy_v9_runtime_parity.py"
       - "scripts/audit_italy_pun_evse_integrity.py"
@@ -29,10 +30,14 @@ jobs:
         run: python -m unittest discover -s tests -p test_italy_v9_runtime_parity.py -v
       - name: Test PUN EVSE membership and non-rankable tariff policy
         run: python -m unittest discover -s tests -p test_italy_pun_evse_integrity.py -v
+      - name: Inspect Italian direct CPO schemas before exact EVSE tariff joins
+        run: python scripts/audit_italy_cpo_offer_shapes.py
       - name: Save source-readiness report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: italy-v9-source-migration-readiness
-          path: reports/migration/italy-source-readiness-20261014.json
+          path: |
+            reports/migration/italy-source-readiness-20261014.json
+            reports/migration/italy-cpo-offer-shape-20261014.json
           retention-days: 14
