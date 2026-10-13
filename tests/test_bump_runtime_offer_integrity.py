@@ -44,20 +44,34 @@ class BumpRuntimeOfferIntegrityTest(unittest.TestCase):
         self.assertNotIn("postChargeFee", offer["pricing"])
         self.assertNotIn("idlePerMinute", rule)
 
-    def test_unrepresented_conditions_stay_unpriced(self):
+    def test_unrepresented_time_windows_stay_unpriced(self):
         reasons = {row["reason"] for row in self.runtime["quarantinedSourceRankableEvse"]}
-        self.assertIn("conditional_flat_fee_duration_or_unknown", reasons)
         self.assertIn("unsupported_rule_energy_time_bands", reasons)
         self.assertIn("unsupported_rule_post_charge_occupancy_time_bands", reasons)
 
     def test_energy_condition_has_exact_strict_threshold(self):
         offer = next(offer for offer in self.runtime["directOffers"]
-                     if offer["pricing"].get("conditionalSessionFees"))
-        fee = offer["pricing"]["conditionalSessionFees"][0]
+                     if any([c["kind"] for c in fee["conditions"]] == ["energy_above_kwh"]
+                            for fee in offer["pricing"].get("conditionalSessionFees", [])))
+        fee = next(fee for fee in offer["pricing"]["conditionalSessionFees"]
+                   if [c["kind"] for c in fee["conditions"]] == ["energy_above_kwh"])
         self.assertGreater(fee["amountEur"], 0)
         self.assertEqual([c["kind"] for c in fee["conditions"]], ["energy_above_kwh"])
         self.assertGreater(fee["conditions"][0]["value"], 0)
         self.assertNotIn("sessionFeeEur", offer["pricing"]["rules"][0])
+
+    def test_duration_fees_preserve_their_separate_clock(self):
+        conditional = next(offer for offer in self.runtime["directOffers"]
+                           if any(c["kind"] == "session_duration_after_minutes"
+                                  for fee in offer["pricing"].get("conditionalSessionFees", [])
+                                  for c in fee["conditions"]))
+        self.assertFalse(conditional["pricing"].get("postChargeFee"))
+        delayed = next(offer for offer in self.runtime["directOffers"]
+                       if offer["pricing"]["rules"][0].get("afterMinutesComponent") == "TIME")
+        rule = delayed["pricing"]["rules"][0]
+        self.assertGreater(rule["afterMinutesThreshold"], 0)
+        self.assertGreater(rule["afterMinutesRate"], 0)
+        self.assertNotIn("chargingTimePerMinuteEur", rule)
 
 
 if __name__ == "__main__":

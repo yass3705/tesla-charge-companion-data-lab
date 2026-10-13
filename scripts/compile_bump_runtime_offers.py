@@ -40,14 +40,23 @@ def normalize_pricing(point):
     elif kind=='flat_fee':
       conditions=source.get('conditions') or []
       if conditions:
-        if not all(condition.get('kind')=='energy_above_kwh' and isinstance(condition.get('value'),(int,float)) and condition['value']>=0 for condition in conditions):
-          return None,'conditional_flat_fee_duration_or_unknown'
+        supported={'energy_above_kwh','session_duration_after_minutes'}
+        if not all(condition.get('kind') in supported and isinstance(condition.get('value'),(int,float)) and condition['value']>=0 for condition in conditions):
+          return None,'conditional_flat_fee_unknown'
+        if any(condition['kind']=='session_duration_after_minutes' for condition in conditions) and components.get('parkingText'):
+          return None,'conditional_duration_with_parking_unresolved'
         pricing.setdefault('conditionalSessionFees',[]).append({'amountEur':source['amountEur'],'conditions':conditions})
       else:
         rule['sessionFeeEur']=source['amountEur']
     elif kind=='charging_duration_surcharge':
-      if source.get('afterMinutes')!=0:return None,'delayed_charging_fee_unrepresented'
-      rule['chargingTimePerMinuteEur']=source['eurPerMinute']
+      if source.get('afterMinutes')==0:
+        rule['chargingTimePerMinuteEur']=source['eurPerMinute']
+      elif isinstance(source.get('afterMinutes'),(int,float)) and source['afterMinutes']>0:
+        rule.update({'afterMinutesRate':source['eurPerMinute'],
+                     'afterMinutesThreshold':source['afterMinutes'],
+                     'afterMinutesComponent':'TIME'})
+      else:
+        return None,'invalid_charging_duration_threshold'
     elif kind=='post_charge_occupancy':
       pricing['postChargeFee']={'eurPerMinute':source['eurPerMinute'],'graceMinutes':source['graceMinutes']}
     else:
@@ -57,6 +66,8 @@ def normalize_pricing(point):
   for source_key,normalized_key,multiplier in checks:
     source_value=components.get(source_key)
     target_value=(pricing if normalized_key=='minimumTotalEur' else rule).get(normalized_key)
+    if source_key=='timeEurPerHour' and target_value is None and rule.get('afterMinutesComponent')=='TIME':
+      target_value=rule['afterMinutesRate']
     if source_key=='flatFeeEur' and target_value is None:
       fees=pricing.get('conditionalSessionFees') or []
       if len(fees)==1:target_value=fees[0]['amountEur']
