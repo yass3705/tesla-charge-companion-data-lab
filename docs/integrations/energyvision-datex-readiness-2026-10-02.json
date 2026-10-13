@@ -2,7 +2,7 @@
   "provider": "EnergyVision",
   "country": "BE",
   "protocol": "DATEX II v3.7 / AFIR",
-  "status": "metadata_health_authenticated_validated_static_dynamic_diagnostic_pending",
+  "status": "authenticated_static_dynamic_xml_verified_identity_and_price_staging_pending",
   "documentedAt": "2026-10-02",
   "baseUrl": "https://datex.cpo.energyvision.be/datex",
   "authentication": {
@@ -44,11 +44,29 @@
     "Use 24h static cadence and a bounded dynamic cadence appropriate for production/action-minute budget.",
     "Track API-key expiry and request renewal before six months."
   ],
-  "currentBlocker": "Static and dynamic DATEX feed payloads have not yet been inspected or reconciled to exact station/EVSE/connector identities and consumer ad-hoc tariffs.",
+  "currentBlocker": "Needs exact static/dynamic ID reconciliation, Belgian NAP EVSE join, priceGroup/time applicability and tax verification; no direct EnergyVision price is published.",
   "nextUserAction": null,
   "validationWorkflow": ".github/workflows/energyvision-datex-credential-probe.yml",
   "authenticatedProbeVerifiedAt": "2026-10-12T18:06:19Z",
   "authenticatedProbeRun": "https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38288652812",
   "structuralCollectionWorkflow": ".github/workflows/energyvision-datex-inventory-probe.yml",
-  "structuralCollectionMode": "Read-only bounded XML inspection; structural report artifact only, no EVSE/price publication or V9 integration."
+  "structuralCollectionMode": "Read-only bounded XML inspection; structural report artifact only, no EVSE/price publication or V9 integration.",
+  "liveCollectionRun": "https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38417695881",
+  "liveCollectionAt": "2026-10-13T14:57:44Z",
+  "liveStaticXml": {
+    "bytes": 13498261,
+    "sites": 1236,
+    "stations": 1236,
+    "refillPointOccurrences": 3791,
+    "connectorOccurrences": 3791,
+    "energyRates": 1226,
+    "energyPriceElements": 4778
+  },
+  "liveDynamicXml": {
+    "bytes": 1807691,
+    "siteStatuses": 1238,
+    "stationStatuses": 1238,
+    "refillPointStatusOccurrences": 3795
+  },
+  "semanticStagingWorkflow": ".github/workflows/energyvision-datex-stage.yml"
 }
