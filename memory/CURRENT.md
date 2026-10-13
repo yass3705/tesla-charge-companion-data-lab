@@ -1,5 +1,12 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — EnergyVision BE : audit NAP exact 0/3 791, aucune promotion tarifaire
+
+- [PR audit Data Lab #258](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/258) fusionnée `9c4c2c2`; [CI main #38431651109](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38431651109) **success**, 8 tests et comparaison des **17 pages NAP** avec le staging EnergyVision authentifié du run `38419429972`. **3 791 ID de connecteurs EnergyVision distincts**, tous `BE*NRG`, **zéro** jointure exacte ou normalisée unique au pin NAP : aucune offre assignée au PDC. Ce n'est pas la preuve d'absence physique : couverture NAP sélectionnée et identité officielle doivent être vérifiées.
+- Tarifs : **246 grilles simples kWh**, **980 grilles à composantes/conditions nécessitant une preuve d'interprétation**, dont **810** avec fenêtres horaires et **979** avec seuil de minutes (chevauchement). SourceLastUpdated entre mars 2025 et mai 2026 malgré collecte en octobre. Rapport [audit EnergyVision et piste Electric 55](../docs/integrations/energyvision-datex-nap-crosswalk-2026-10-13.md). Aucun pin Production, Pages ou Cloudflare modifié.
+- E55C : le tutoriel public confirme tarif exact avant paiement, mais `e55c.evse-portal.com` n'a pas livré de tarif exploitable dans les vérifications distantes. Prix consommateur des sites Place Lully et Bois-d'Arcy toujours manquant ; collecte de captures prépaiement EVSE nécessaire, ne pas utiliser tarifs de gros.
+
+
 ## 13 octobre 2026 — pilotes eMSP Electra NL et Electroverse GB en cours
 
 - [Pilotes et preuves](../docs/v9-emsp-bounded-pilots-2026-10-13.md) : quatre pages Electra NL réelles, 257 lieux/597 EVSE source ; 367 EVSE joints par ID unique et GPS à DOT-NL, dont 356 à statut positif des deux côtés, 351 sur lieu à grille unique et 16 sur lieu multigrille. Les chevauchements ne sont pas une couverture tarifaire certifiée ; aucun prix promu. Rapport JSON conserve SHA et exemples Direct/eMSP distincts.
