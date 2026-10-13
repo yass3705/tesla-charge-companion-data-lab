@@ -18,6 +18,8 @@ Le [balayage des tuiles des CPO semences](../reports/emsp-national/electroverse-
 
 Le [rapprochement géographique préparatoire](../reports/emsp-national/electroverse-uk-coarse-candidates.json) retient **24 448 PK** situés à ≤250 m d'au moins un des 19 239 lieux CPO semences ; **17 874 PK** n'ont aucun lieu semence proche. Parmi les 24 448, **17 591** ont plusieurs lieux CPO proches : ils ne sont pas joints automatiquement. La [file de candidats](../data/platforms/electroverse/uk-coarse-location-candidates.json.gz) n'est qu'une priorité d'appels GraphQL. Ce balayage couvre les tuiles autour des CPO connus du Data Lab, **pas tous les lieux Electroverse UK indépendamment de ces sources**. Aucune prise ni offre eMSP n'a été attribuée à partir des seules tuiles.
 
+Le [collecteur de détails](../scripts/electroverse_uk_national_details.mjs) demande au plus 100 PK de cette file par run (20 requêtes GraphQL de cinq lieux), avec une seconde entre lots. Il ne conserve que les EVSE munis d'une prise normale, Type 2 ou CCS et échoue si une page EVSE supplémentaire ou une erreur GraphQL apparaît. Il garde les grilles brutes au niveau connecteur et la position officielle ; aucune attribution CPO/EVSE ni prix classable n'en découle directement. Le [workflow manuel](../.github/workflows/electroverse-uk-national-details.yml) garde le jeton dans Actions et publie les lots uniquement en artefacts pour audit.
+
 ## Conditions avant prix classable
 
 - Vérifier la complétude des balayages, les doublons et les variations de la source.
