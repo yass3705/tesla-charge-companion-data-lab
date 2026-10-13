@@ -1,5 +1,11 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — EnergyVision BE : staging national probant, prix V9 volontairement non publiés
+
+- [Run staging #38419429972](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38419429972) `success` après fusion [Data Lab PR #251](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/251) `7f753b7` : **1 236 sites / 3 791 PDC, 3 791 connecteurs (3 667 Type 2, 124 CCS)** ; **3 791/3 791 IDs statiques retrouvés dans le statut dynamique**, quatre références supplémentaires dynamiques non inventoriées. Statuts : 2 628 disponibles, 988 en charge, 146 inconnus, 24 inopérants, 9 en défaut. **1 226 grilles ad-hoc au niveau station**, dix stations sans grille ; 4 778 composants XML (3 656 €/kWh, 979 à la minute, 143 fixes), EUR/TTC 21% indiqués source. Une partie majeure (810 grilles) utilise des conditions de plage horaire/minutes, nécessitant validation d'interprétation. Aucune attribution EVSE ni tarif V9 publiés. [Détail et SHA source](../docs/integrations/energyvision-datex-live-evidence-2026-10-13.md). Staging JSON et audit disponibles sept jours en artefact du run.
+- Prochaines actions : correspondance NAP par ID exact+connecteur+puissance, frais/paliers/windows oracle indépendant et date de validité, certification accès public et statut ; puis PR adaptateur BE distincte et validation d'un nouveau pin développement, aucun Pages/Cloudflare sans accord.
+
+
 ## 13 octobre 2026 — EnergyVision BE : quatre endpoints DATEX authentifiés, inventaire recueilli
 
 - [Run Data Lab #38417695881](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38417695881) `success` : `metadata`, `health`, `energy-infrastructure-table`, `energy-infrastructure-status` tous `HTTP 200` avec secret `ENERGYVISION_API_KEY` ; 13 498 261 octets statiques, 1 807 691 dynamiques. XML : **1 236 sites**, **1 236 stations**, **3 791 refillPoint**, **1 226 energyRate**, **4 778 energyPrice** ; dynamique **1 238 sites / 3 795 statuts de PDC**. Ce sont des comptages d'éléments XML, non des offres V9 validées. [Rapport et provenance](../docs/integrations/energyvision-datex-live-evidence-2026-10-13.md), artefact de structure CI disponible sept jours.
