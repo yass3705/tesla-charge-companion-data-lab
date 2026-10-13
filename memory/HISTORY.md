@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Electroverse GB, test authentifié réussi
+
+- [Run #38429086271](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38429086271) après Data Lab #255 `44760b5f5` : 35 requêtes, aucune erreur ; deux EVSE Allego exacts et actifs avec composants eMSP source £0.63/kWh ; Source EV et MFG zéro EVSE exact malgré lieux proches. Direct CPO Allego 2099 reste distinct ; métadonnée TVA eMSP 0 % versus normalisation CPO 20 % à clarifier. [Rapport source](../reports/emsp-pilots/electroverse-uk-cpo.json), [interprétation](../docs/v9-emsp-bounded-pilots-2026-10-13.md). Aucun overlay tarifaire V9, pin, Pages ou Cloudflare modifié.
+
 ## 2026-10-13 — Pilote Electra NL réel ; sonde Electroverse GB préparée
 
 - Script reproductible Electra sur quatre pages GraphQL et base DOT-NL courante : 257 lieux, 597 EVSE, 367 identités EVSE/GPS uniques, 356 statuts positifs bilatéraux, 351 prises situées sur une grille Electra unique, 16 multigrilles, 360 avec référence Direct DOT-NL. Aucun prix attaché ou publié ; [résultat et limites](../docs/v9-emsp-bounded-pilots-2026-10-13.md), rapport JSON et SHA source. Workflow manuel Electroverse GB borné à trois sites CPO UK, sans exposition du secret ni modification canonique ; run à effectuer après validation du code. Aucun Pages/Cloudflare.

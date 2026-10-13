@@ -3,7 +3,7 @@
 ## 13 octobre 2026 — pilotes eMSP Electra NL et Electroverse GB en cours
 
 - [Pilotes et preuves](../docs/v9-emsp-bounded-pilots-2026-10-13.md) : quatre pages Electra NL réelles, 257 lieux/597 EVSE source ; 367 EVSE joints par ID unique et GPS à DOT-NL, dont 356 à statut positif des deux côtés, 351 sur lieu à grille unique et 16 sur lieu multigrille. Les chevauchements ne sont pas une couverture tarifaire certifiée ; aucun prix promu. Rapport JSON conserve SHA et exemples Direct/eMSP distincts.
-- Le pilote Electroverse GB vise trois lieux CPO Source EV, Allego et MFG, avec tuiles et requêtes limitées, via le secret GitHub Actions. Résultat authentifié à relever après workflow manuel. Aucun changement Production, pin V9 ou Pages.
+- [Run Electroverse GB #38429086271](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38429086271) `success` : 35 requêtes, zéro erreur, trois CPO ciblés. Allego Liddington : deux EVSE exacts `GBALLEGO0010161/2`, `AVAILABLE`, Type 2 22 kW, prix eMSP source £0.63/kWh ; Direct CPO `2099` porte séparément £0.63/kWh TTC. Métadonnée TVA eMSP `0%` contre base Direct à 20 % : sémantique à vérifier avant promotion. Source EV/MFG ont un lieu proche mais zéro EVSE exact, donc aucun prix joint. [Rapport complet](../reports/emsp-pilots/electroverse-uk-cpo.json), SHA-256 et limites dans la [fiche des pilotes](../docs/v9-emsp-bounded-pilots-2026-10-13.md). PR #255 fusionnée `44760b5f5`; aucun changement Production, pin V9 ou Pages.
 
 ## 13 octobre 2026 — méthode internationale eMSP explorée, aucune offre promue
 
