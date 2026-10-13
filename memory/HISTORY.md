@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Comparaison différentielle du pin France IRVE
+
+- Script, JSON et rapport ajoutés sur `audit/v9-irve-reconciliation-20261013` : base du 13/10 (49 185 stations, 165 129 EVSE) comparée au pin public (48 058/165 792). Une substitution perdrait 3 955 jointures Electroverse et 34 Electra tout en en gagnant 2 173 et 4 514 ; elle est refusée. Quatre stations Belib absentes du pin ont 17 EVSE exacts et actifs dans la nouvelle source ; les trois autres restent sans statut positif. Aucun prix ni pin modifié. Détails et preuves dans `docs/v9-france-irve-pinned-transition-2026-10-13.md`.
+
 ## 2026-10-13 — Pertes de jointure des catalogues directs France
 
 - Production #81 documente la jointure au pin IRVE des catalogues directs français. BUMP 1 750/1 750, Belib 466/473, Electric 55 1/1, Freshmile 2/2, IZIVIA 54/54, Ze-Watt 39/39, Zephyre 16/16, IONITY 4/4 offres avec EVSE explicite jointes ; Loadmotion 37/41. Une offre ETotem à station explicite ne joint pas. Les sept stations Belib absentes du pin nécessitent une vérification de statut et d’identité avant une éventuelle extension de l’inventaire. Aucune offre non jointe n’est affectée par ressemblance ou proximité.
