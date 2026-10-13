@@ -10,7 +10,7 @@ permissions:
 jobs:
   recover:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - name: Probe PAN-only IDs and nearest UMap identities
@@ -89,11 +89,26 @@ jobs:
           pathlib.Path('reports/france/e55c/pan-gap-recovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(out,ensure_ascii=False,indent=2)[:60000])
           PY
+      - name: Check recovered PDCs against direct checkout pricing only
+        run: python scripts/e55c_recovered_direct_validation.py
+      - name: Validate E55C manual mapping consistency
+        shell: bash
+        run: |
+          python -m py_compile scripts/e55c_recovered_direct_validation.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('reports/france/e55c/recovered-direct-tariff-validation.json').read_text())
+          assert p['pdcChecked']==55
+          assert not p['publicationReady']
+          assert p['lourmarin']['premiumEvseId']=='FR*55C*EFR84160*178MA1*0'
+          print(p['statusCounts'])
+          PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add reports/france/e55c/pan-gap-recovery.json
+          git add reports/france/e55c/pan-gap-recovery.json reports/france/e55c/recovered-direct-tariff-validation.json
           git commit -m 'France E55C: publish PAN gap recovery probe' || exit 0
           for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
           exit 1
