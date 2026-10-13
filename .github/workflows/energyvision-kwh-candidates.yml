@@ -1,0 +1,53 @@
+name: EnergyVision BE kWh proof-only pilot
+on:
+  pull_request:
+    paths:
+      - scripts/energyvision_simple_kwh_candidates.py
+      - tests/test_energyvision_simple_kwh_candidates.py
+      - .github/workflows/energyvision-kwh-candidates.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/energyvision_simple_kwh_candidates.py
+      - tests/test_energyvision_simple_kwh_candidates.py
+      - .github/workflows/energyvision-kwh-candidates.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Unit tests
+        run: python -m unittest discover -s tests -p test_energyvision_simple_kwh_candidates.py -v
+      - name: Retrieve validated source staging
+        uses: actions/download-artifact@v4
+        with:
+          name: energyvision-datex-staging-38435009280
+          path: .input
+          run-id: 38435009280
+          github-token: ${{ github.token }}
+      - name: Check exact simple grids without creating EVSE prices
+        run: |
+          python -m scripts.energyvision_simple_kwh_candidates --stage .input/artifacts/energyvision-datex-stage.json.gz
+          python - <<'PY'
+          import json
+          r=json.load(open('reports/belgium/energyvision-kwh-proof-audit.json'))
+          assert r['counts']['homogeneousStations']==248
+          assert r['counts']['candidateSourcePDC']==817
+          assert r['counts']['activeSourcePDC']==778
+          assert r['v9PricedPDC']==0 and not r['v9PublicationReady']
+          PY
+      - name: Keep temporary proof only
+        uses: actions/upload-artifact@v4
+        with:
+          name: energyvision-kwh-proof-${{ github.run_id }}
+          path: |
+            artifacts/energyvision-kwh-proof-candidates.json.gz
+            reports/belgium/energyvision-kwh-proof-audit.json
+          retention-days: 7
