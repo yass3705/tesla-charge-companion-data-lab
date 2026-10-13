@@ -1,5 +1,11 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Préparation sécurisée de la première V9 publique
+
+- Production [PR #65](https://github.com/yass3705/tesla-charge-companion-production/pull/65) fusionnée `6e3eaef101d72bf6d4855a819bcc2e4408e94528`. Elle ajoute un workflow manuel autonome `publish-v9-pinned-pages.yml` qui reproduit exactement le snapshot de développement épinglé plutôt que la variante dynamique R14 du workflow Global Mac. [CI sans publication #38325871695](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38325871695) verte. Pages est uniquement autorisé sous `workflow_dispatch`, `publish=true` et après validation du snapshot, des neuf pays, du navigateur et des SHA-256.
+- **En attente** : lancement GitHub Actions par utilisateur authentifié, puis vérification du job Pages et de l'URL; aucun lancement, aucune publication live affirmée.
+
+
 ## 2026-10-13 — Vérification finale du pin après les changements UI
 
 - Production `main=9631f4b` ; pin source neuf pays inchangé. [Run épinglé 38324386726](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38324386726) vert : neuf pays + Tesla, 2 442 fichiers et 743 661 633 octets vérifiés. CI globale navigateur #38324386772 verte ; Pages toujours sur `796e7fca` du 11 octobre. Les artefacts #60 et #64 diffèrent par le code Production, pas par les SHA Data Lab/Stable épinglés.
