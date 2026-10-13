@@ -1,3 +1,10 @@
+## 13 octobre 2026 — Production PR #97 : 34 modules ; validation de la tranche précédente OK
+
+- Validation des 31 modules confirmée : [run 38475552629](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38475552629) **success**, SHA `9011d8ff`.
+- Trois adaptateurs supplémentaires copiés depuis le pin Stable vers `Production/runtime-owned/assets/v9/adapters/` : `morocco-evone-policy.js`, `morocco-kilowatt-tariff.js`, `tesla-json.js`. Il s'agit de copies du **code**, pas du collecteur ou des données Tesla/Mac. Le builder charge désormais **34 composants** Production-owned (commit `08616a1d`), tests mis à jour (commit `c7946524`). [PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) non fusionnée.
+- Nouveau run au SHA final : [38476329989](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38476329989), **queued** au dernier relevé. Ne pas annoncer validation du lot 34 avant résultat.
+- Aucune modification du workflow de collecte Tesla via Mac dans Updater Test, aucun workflow supprimé, pas de changement du live. Reste le gros socle Stable et ES/IT ; migration structurelle incomplète.
+
 ## 13 octobre 2026 — PR #97 : 31 composants dont 4 adaptateurs historiques
 
 - Le lot précédent de 27 modules a passé la validation complète de snapshot épinglé : [run 38474975648](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38474975648), SHA `cfa711aa`.
