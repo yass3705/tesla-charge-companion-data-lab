@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — EnergyVision BE direct staging succeeded, not released
+
+- [Data Lab stage run #38419429972](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38419429972) succeeded: 1,236 sites, 3,791 Type2/CCS PDC with 100% exact static/dynamic ID reachability, four status-only extras, 1,226 station-level ad-hoc rates with 4,778 XML price components, ten stations lacking a rate. No invented direct offer in Production. [Evidence and next reconciliation requirements](../docs/integrations/energyvision-datex-live-evidence-2026-10-13.md).
+
+
 ## 2026-10-13 — EnergyVision BE DATEX static/dynamic acquisition confirmed
 
 - [Data Lab authenticated workflow #38417695881](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38417695881) succeeded on all four routes (`200`): 1,236 static sites / 3,791 refillPoint elements / 4,778 energyPrice components, 1,238 dynamic site statuses / 3,795 refillPoint status elements. This is XML structural coverage, not validated payable tariffs. [Proof and safe staging plan](../docs/integrations/energyvision-datex-live-evidence-2026-10-13.md), [PR #250](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/250) merged and [PR #251](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/251) prepares exact site/point/rate/status staging. No prices deployed or guessed.
