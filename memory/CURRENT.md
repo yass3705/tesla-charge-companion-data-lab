@@ -1,5 +1,9 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — résidu GeniePoint UK qualifié, sans faux prix
+
+- [Diagnostic ciblé des 857 prises GeniePoint hors prix](../docs/uk-geniepoint-residual-semantics-2026-10-13.md) sur la source officielle épinglée : **852** ont une grille OCPI à `PARKING_TIME` non nul, second élément `min_duration` et `step_size` de 90 minutes (648 prises), quatre heures (166), 24 heures (34) ou trois heures (quatre). **Cinq** n'ont aucun ID tarifaire. Parmi les 852, 645 sont `AVAILABLE` et 49 `CHARGING`. Le prix ENERGY seul serait incomplet. L'issue OCPI #225 laisse l'interprétation du seuil de stationnement ouverte ; une réponse tarifaire/CDR GeniePoint sur quatre scénarios est nécessaire avant une promotion. Le candidat conserve **281/1 138** prix directs exacts ; aucun pin ni code modifié par ce diagnostic.
+
 ## 13 octobre 2026 — candidat BUMP actif #90/#91, Pages inchangé
 
 - Production [#90](https://github.com/yass3705/tesla-charge-companion-production/pull/90) fusionnée `c6b9ea9` : tarif direct BUMP tiré de l’artefact Data Lab `e22c23b1ce6e59a3d834145624c78ea88803e7bb` à SHA verrouillé ; 2 287 EVSE source calculables, 1 744 joints à l’IRVE figé, 543 non joints, huit grilles horaires en quarantaine. 1 690 des 1 750 anciennes prises restent jointes ; 54 nouveaux liens exacts, 60 anciens retirés faute de preuve actuelle. L’oracle `FRBMPEBMP0837` facture 50 minutes de charge + 0,555 € fixe = 1,055 €, sans facturer 10 minutes de stationnement à tort. CI candidat `38405972501` et `main` `38406305858` vertes, navigateur inclus.
