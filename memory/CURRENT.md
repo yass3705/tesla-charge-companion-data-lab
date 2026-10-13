@@ -1,3 +1,8 @@
+## 13 octobre 2026 — décisions tarifaires EnergyVision : trois EVSE confirmés
+
+- Validation utilisateur consignées dans [l'audit des grilles complexes](../docs/integrations/energyvision-complex-rate-family-audit-2026-10-13.md) : Bruxelles `BE*NRG*EEDCC0014EVSE*1`, pénalité 0,06 €/min seulement après 360 min **suivant la fin de charge** ; Aalter `BE*NRG*E05116*1`, supplément 0,02 €/min après 1 080 min de branchement ; Aalter `BE*NRG*E09261*1`, pénalité 0,33 €/min **après charge**, origine du seuil 45 min encore à confirmer. Sans horaire de départ explicite : débranchement immédiat à la fin de charge et zéro frais post-charge. **Pas de généralisation nationale ni de changement Production publié** : l'adaptateur actuel ne supporte pas encore ces offres ; faire tests d'oracle et contrôle des autres grilles avant promotion.
+- E55C Place Lully B01 : preuve déjà enregistrée, mais arrondis et TVA du checkout ad-hoc non confirmés ; complétude nationale E55C versus IRVE/TCC non auditée. **Validation finale E55C non prononcée**.
+
 ## 13 octobre 2026 — règle corrigée : Production destination finale de V9
 
 - Correction utilisateur : **Stable n'est pas une destination de publication actuelle**, même s'il reste une référence historique/parité. Évaluer les anciennes Actions d'Updater Test par leur chemin de consommation **jusqu'au dépôt Production**, pas seulement vers Stable ni par leur statut planifié.
