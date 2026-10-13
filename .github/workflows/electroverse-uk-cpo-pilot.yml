@@ -21,6 +21,8 @@ jobs:
           node-version: '22'
       - name: Validate pilot syntax
         run: node --check scripts/electroverse_uk_cpo_pilot.mjs && node --check scripts/electroverse_rate_limit_probe.mjs
+      - name: Check GPS tariff guards
+        run: node --test tests/test_electroverse_uk_gps_group.mjs
       - name: Run bounded read-only pilot
         if: ${{ !inputs.rate_probe }}
         run: node scripts/electroverse_uk_cpo_pilot.mjs

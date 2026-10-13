@@ -6,18 +6,19 @@ import hashlib
 import json
 import math
 import re
+import os
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
 SOURCE = Path('data/national/netherlands_dotnl/normalized.json.gz')
-OUT = Path('reports/emsp-pilots/electra-nl-dotnl.json')
+OUT = Path(os.environ.get('PILOT_REPORT', 'reports/emsp-pilots/electra-nl-dotnl.json'))
 OFFSETS = (0, 50000, 250000, 300000)
 QUERY = '''query {locations(limit:100,offset:OFFSET){totalCount items{
- id name country coordinates{latitude longitude} cpo{name} operator{name}
+ id name country coordinates{latitude longitude} connectorTypes maxPower cpo{name} operator{name}
  evses{evseId status physicalReference}
  chargeTariffs{chargeTariffId currency currentPricePerKwh elements{
- restrictions{minPower maxPower startTime endTime minDuration maxDuration}
+ restrictions{minPower maxPower startTime endTime minDuration maxDuration startDate endDate}
  priceComponents{type price}}}}}}'''
 
 
@@ -32,6 +33,32 @@ def distance(a, b):
         return round(111195 * math.hypot(x - xx, (y - yy) * math.cos(math.radians(x))))
     except (TypeError, ValueError, KeyError):
         return None
+
+
+def kind(value):
+    value = str(value or '').upper()
+    if 'T2_COMBO' in value or 'CCS' in value:
+        return 'CCS'
+    if 'T2' in value or 'TYPE_2' in value:
+        return 'TYPE2'
+    return None
+
+
+def power_scope(tariff):
+    scopes = []
+    for element in tariff.get('elements') or []:
+        r = element.get('restrictions') or {}
+        low, high = r.get('minPower'), r.get('maxPower')
+        if low is None and high is None:
+            return None
+        low, high = 0 if low is None else float(low), math.inf if high is None else float(high)
+        if low < 0 or high <= 0 or low > high:
+            return None
+        scopes.append((low, high))
+    if not scopes:
+        return None
+    low, high = max(x[0] for x in scopes), min(x[1] for x in scopes)
+    return (low, high) if low <= high else None
 
 
 def fetch(offset):
@@ -63,6 +90,7 @@ def main():
                 by_evse[key].append((station, evse))
     counts = collections.Counter()
     examples = []
+    qualification = []
     pages = []
     total_counts = []
     for offset in OFFSETS:
@@ -105,6 +133,56 @@ def main():
                                       for key in c.get('tariffKeys') or []})
                 if direct_keys:
                     counts['evse_with_direct_tariff_reference'] += 1
+                source_kinds = {kind(x) for x in location.get('connectorTypes') or []} - {None}
+                # Electra location.maxPower is expressed in W; DOT-NL powerKw is kW.
+                source_max_w = float(location.get('maxPower') or 0)
+                source_max_kw = source_max_w / 1000
+                for connector in direct_evse.get('connectors') or []:
+                    ckind, power = kind(connector.get('standard')), float(connector.get('powerKw') or 0)
+                    if not ckind or power <= 0:
+                        continue
+                    counts['supported_direct_connectors'] += 1
+                    if not source_kinds:
+                        counts['source_connector_type_unspecified'] += 1
+                    elif ckind not in source_kinds:
+                        counts['connector_kind_rejected'] += 1
+                        continue
+                    else:
+                        counts['source_connector_type_correlated'] += 1
+                    if not source_max_kw:
+                        counts['source_power_unspecified'] += 1
+                    elif power > source_max_kw + 0.1:
+                        counts['connector_power_rejected'] += 1
+                        continue
+                    else:
+                        counts['source_power_correlated'] += 1
+                    if not (evse.get('status') in ('AVAILABLE', 'CHARGING', 'OCCUPIED')
+                            and direct_evse.get('status') in ('AVAILABLE', 'CHARGING', 'OCCUPIED')):
+                        counts['connector_status_rejected'] += 1
+                        continue
+                    scopes = [power_scope(t) for t in tariffs]
+                    if len(tariffs) == 1:
+                        assigned = tariffs[0]
+                        counts['single_tariff_connector_candidates'] += 1
+                    else:
+                        selected = [t for t, scope in zip(tariffs, scopes)
+                                    if scope and scope[0] <= power <= scope[1]]
+                        assigned = selected[0] if len(selected) == 1 else None
+                        counts['multitariff_power_scoped_candidates' if assigned else
+                               'multitariff_connector_ambiguous'] += 1
+                    if assigned:
+                        counts['connector_identity_tariff_candidates'] += 1
+                    if len(qualification) < 15 and (not assigned or not connector.get('tariffKeys')):
+                        qualification.append({'evseId': evse.get('evseId'),
+                                              'electraLocationId': location.get('id'),
+                                              'dotnlStationId': station.get('stationId'),
+                                              'kind': ckind, 'powerKw': power,
+                                              'sourceKinds': sorted(source_kinds),
+                                              'sourceMaxPowerW': source_max_w,
+                                              'sourceMaxPowerKw': source_max_kw,
+                                              'electraTariffIds': [t.get('chargeTariffId') for t in tariffs],
+                                              'assignedTariffId': assigned.get('chargeTariffId') if assigned else None,
+                                              'directTariffKeys': connector.get('tariffKeys') or []})
                 if len(examples) < 12 and (len(tariffs) == 1 or len(tariffs) > 1):
                     examples.append({
                         'evseId': evse['evseId'], 'electraLocationId': location['id'],
@@ -129,6 +207,7 @@ def main():
         'samplePolicy': 'four fixed pages of 100, non-random and not national coverage',
         'totalCounts': total_counts, 'pages': pages, 'counts': dict(counts),
         'examples': examples,
+        'qualificationExamples': qualification,
         'publicationStatus': 'read_only_pilot_no_tariff_promotion',
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

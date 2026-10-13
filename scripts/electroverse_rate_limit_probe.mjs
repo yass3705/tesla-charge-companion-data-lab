@@ -27,7 +27,8 @@ for(let i=0;i<chosen.length;i++){
 }
 const successes=rows.filter(x=>x.ok).length,firstFailure=rows.find(x=>!x.ok)||null;
 const report={generatedAt:new Date().toISOString(),scope:'distinct known FR locations, metadata-only bounded request-rate probe',
-  maxRequests:MAX_REQUESTS,intervalMs:INTERVAL_MS,attemptsPerRequest:1,requests:rows.length,successes,
+  maxRequests:MAX_REQUESTS,intervalMs:INTERVAL_MS,attemptsPerRequest:1,
+  elapsedSeconds:Number(((performance.now()-started)/1000).toFixed(2)),requests:rows.length,successes,
   firstFailure,observedLimit:firstFailure?.status===429?'HTTP 429 at ordinal '+firstFailure.ordinal:
     firstFailure?'first failure is not an explicit rate limit; no numerical API limit proven':
       'no limit observed through '+rows.length+' requests at this interval; lower bound only',

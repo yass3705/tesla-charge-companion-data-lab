@@ -1,11 +1,12 @@
 // Bounded, read-only Electroverse UK pilot. No prices are promoted by this script.
 import fs from 'node:fs/promises';
 import zlib from 'node:zlib';
+import {pathToFileURL} from 'node:url';
 import {DirectElectroverseClient,SINGLE_LOCATION_QUERY} from './lib/electroverse_direct_client.mjs';
 
 const OUT=process.env.PILOT_REPORT||'reports/emsp-pilots/electroverse-uk-cpo.json';
 const Z=18, MAX_IDS=80, MAX_NEARBY=12, MAX_REQUESTS=100;
-const client=new DirectElectroverseClient({timeoutMs:30000});
+let client;
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const norm=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const readGz=async file=>JSON.parse(zlib.gunzipSync(await fs.readFile(file)));
@@ -24,6 +25,15 @@ const connectorKind=s=>String(s||'').includes('T2_COMBO')?'CCS':String(s||'').in
 const cpoPower=c=>Number(c.max_electric_power)>0?Number(c.max_electric_power)/1000:null;
 const compactPrice=c=>({pk:c.pk,kilowatts:c.kilowatts,standard:c.standard?.name||null,
   priceComponents:c.priceComponents||[],complexPricingDetail:c.complexPricingDetail||null});
+function nonzeroComponents(components){return (components||[]).map(c=>[c.__typename,c.formattedValue,
+  Number(String(c.formattedValue||'').match(/-?\d+(?:\.\d+)?/)?.[0]||0)])
+  .filter(x=>x[2]!==0).map(x=>`${x[0]}:${x[2]}`).sort();}
+function priceLayersAgree(connector){
+  const restrictions=connector.complexPricingDetail?.restrictions||[];
+  if(restrictions.length!==1)return false;
+  const simple=nonzeroComponents(connector.priceComponents),complex=nonzeroComponents(restrictions[0].priceComponents);
+  return JSON.stringify(simple)===JSON.stringify(complex);
+}
 // A homogeneous site is a tariff candidate, never an EVSE-ID equivalence by itself.
 export function homogeneousGpsGroups(cpoEvses,nearbyDetails,maxDistanceM=10){
   const groups=[];
@@ -41,16 +51,24 @@ export function homogeneousGpsGroups(cpoEvses,nearbyDetails,maxDistanceM=10){
       if(!es.length||!cs.length)continue;
       const prices=[...new Set(es.map(x=>x.priceKey))];
       const exactIds=es.filter(x=>cs.some(c=>norm(c.evseId)===norm(x.evseId))).length;
+      const priceAgreement=es.every(x=>priceLayersAgree(x.connector));
+      const directRefs=[...new Set(cs.map(x=>JSON.stringify(x.tariffIds)))];
       groups.push({electroversePk:candidate.pk,distanceM:candidate.distanceM,kind,powerKw,
         electroverseConnectorCount:es.length,cpoConnectorCount:cs.length,exactIds,
-        identicalElectroversePricing:prices.length===1,
+        identicalElectroversePricing:prices.length===1,priceLayersAgree:priceAgreement,
+        uniformCpoDirectReferences:directRefs.length===1,
         candidateUniformPrice:prices.length===1&&es.length===cs.length&&
+          priceAgreement&&directRefs.length===1&&
           es.every(x=>['AVAILABLE','CHARGING'].includes(x.status))&&
           cs.every(x=>['AVAILABLE','CHARGING'].includes(x.status)),
         electroverseEvseIds:es.map(x=>x.evseId),cpoEvseIds:cs.map(x=>x.evseId),
         electroversePricing:prices.length===1?es[0].connector:null,
         proof:'same GPS <=10m, connector and power, equal source eMSP prices and counts; candidate group only; no individual EVSE alias or promotion'});
     }
+  }
+  for(const group of groups){
+    group.uniqueNearbyGroup=groups.filter(x=>x.kind===group.kind&&x.powerKw===group.powerKw).length===1;
+    group.candidateUniformPrice=group.candidateUniformPrice&&group.uniqueNearbyGroup;
   }
   return groups;
 }
@@ -104,9 +122,13 @@ async function target(spec){
     exactEvseMatches:matches.length,duplicateMatches,matchingProof:'normalized exact EVSE ID, distance <=120m; no tariff promotion',
     gpsGroups,matches};
 }
-const report={generatedAt:new Date().toISOString(),scope:'GB three CPO sites',requests:0,targets:[],errors:[]};
-for(const spec of sources){try{report.targets.push(await target(spec));}catch(error){report.errors.push({cpo:spec.name,message:String(error).slice(0,180)});}}
-report.requests=requests;
-await fs.mkdir('reports/emsp-pilots',{recursive:true});await fs.writeFile(OUT,JSON.stringify(report,null,2)+'\n');
-console.log(JSON.stringify({generatedAt:report.generatedAt,requests,targets:report.targets.map(({cpo,candidatePkCount,nearbyCount,exactEvseMatches,duplicateMatches})=>({cpo,candidatePkCount,nearbyCount,exactEvseMatches,duplicateMatches})),errors:report.errors}));
-if(report.errors.length)process.exitCode=2;
+export async function runPilot(){
+  client=new DirectElectroverseClient({timeoutMs:30000});
+  const report={generatedAt:new Date().toISOString(),scope:'GB three CPO sites',requests:0,targets:[],errors:[]};
+  for(const spec of sources){try{report.targets.push(await target(spec));}catch(error){report.errors.push({cpo:spec.name,message:String(error).slice(0,180)});}}
+  report.requests=requests;
+  await fs.mkdir('reports/emsp-pilots',{recursive:true});await fs.writeFile(OUT,JSON.stringify(report,null,2)+'\n');
+  console.log(JSON.stringify({generatedAt:report.generatedAt,requests,targets:report.targets.map(({cpo,candidatePkCount,nearbyCount,exactEvseMatches,duplicateMatches})=>({cpo,candidatePkCount,nearbyCount,exactEvseMatches,duplicateMatches})),errors:report.errors}));
+  if(report.errors.length)process.exitCode=2;
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)await runPilot();
