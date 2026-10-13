@@ -1,0 +1,61 @@
+name: EnergyVision Belgium DATEX static/dynamic inventory audit (read-only)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/energyvision-datex-inventory-probe.yml"
+      - "scripts/energyvision_datex_inventory_probe.py"
+      - "tests/test_energyvision_datex_inventory_probe.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/energyvision-datex-inventory-probe.yml"
+      - "scripts/energyvision_datex_inventory_probe.py"
+      - "tests/test_energyvision_datex_inventory_probe.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: energyvision-datex-inventory-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install safe XML parser
+        run: python -m pip install defusedxml==0.7.1
+      - name: Validate bounded XML parser and secret-safe audit output
+        run: python -m unittest discover -s tests -p 'test_energyvision_datex_inventory_probe.py' -v
+
+  collect:
+    if: github.event_name != 'pull_request'
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      ENERGYVISION_API_KEY: ${{ secrets.ENERGYVISION_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install safe XML parser
+        run: python -m pip install defusedxml==0.7.1
+      - name: Collect bounded authenticated DATEX structural evidence (never publish offers)
+        run: python scripts/energyvision_datex_inventory_probe.py --output reports/belgium/energyvision-datex-probe-latest.json
+      - name: Save sanitized inventory structure for next mapping step
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: energyvision-datex-structural-audit-${{ github.run_id }}
+          path: reports/belgium/energyvision-datex-probe-latest.json
+          if-no-files-found: warn
+          retention-days: 7

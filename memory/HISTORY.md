@@ -1,5 +1,10 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — EnergyVision BE : première collecte XML sûre préparée
+
+- Secret `ENERGYVISION_API_KEY` déjà validé sur deux routes authentifiées `/metadata` et `/health` par le [run #38288652812](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38288652812). [PR #250](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/250) ajoute un diagnostic des flux DATEX statique/dynamique, journalisant seulement formes XML, volumes et SHA-256. La PR valide ses tests sans secret, puis un merge en main déclenche une collecte authentifiée, sans publication. L'identité EVSE et les prix directs consommateurs devront être certifiés dans une phase suivante.
+
+
 ## 2026-10-13 — GeniePoint UK, 857 prises hors prix
 
 - Relecture de la source OCPI officielle épinglée et du compilateur Production : 852 connecteurs ont un frais `PARKING_TIME` avec `min_duration`/`step_size` par paliers (648/166/34/4), cinq n'ont pas de référence tarifaire. 281/1 138 restent tarifés exactement ; aucun prix partiel ajouté. L'ambiguïté OCPI de la base temporelle et de l'arrondi est documentée dans `docs/uk-geniepoint-residual-semantics-2026-10-13.md` avec une demande précise au support GeniePoint. Aucun code, pin ou Pages modifié.
