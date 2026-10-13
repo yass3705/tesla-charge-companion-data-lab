@@ -1,9 +1,9 @@
 # État de reprise — 2026-10-13
 
-## 13 octobre 2026 — staging national eMSP NL/UK lancé, aucun prix promu
+## 13 octobre 2026 — staging national eMSP NL/UK en cours, aucun prix promu
 
 - [Plan et preuves](../docs/v9-emsp-national-staging-2026-10-13.md) : Electra NL GraphQL plafonne à 100 lieux/page et ne propose pas de filtre pays accepté ; balayage global par checkpoints de 60 pages. Premier lot réel **60/3 230 pages** : 4 548 lieux NL vus, 4 476 occurrences EVSE ID/GPS exacts à prise autorisée sur 4 420 lieux ; 4 474 ID distincts, deux répétitions à auditer. Tarif conservé au niveau source de lieu uniquement, aucun prix eMSP par EVSE publié.
-- Electroverse UK : file nationale construite depuis huit sources CPO publiques/actives ; **19 239 lieux** ont au moins une prise normale/Type 2/CCS. C'est une file de découverte, pas une couverture eMSP validée. Workflow de tuiles borné à 60 appels par run préparé ; premier run authentifié encore à exécuter. Prix et TVA non résolus ; aucun changement de pin ni Pages.
+- Electroverse UK : file de **19 239 lieux** CPO publics/actifs avec prise normale/Type 2/CCS. Le balayage authentifié des **415 tuiles** autour de ces lieux est complet : **42 322 identifiants de lieux Electroverse** distincts, aucune tuile tronquée après subdivision, aucun point sans position. **24 448** se situent à 250 m au plus d'un lieu CPO semence ; **17 591** ont plusieurs lieux CPO proches, donc aucune jointure automatique. [Rapport et artefacts](../docs/v9-emsp-national-staging-2026-10-13.md). Le balayage ne couvre pas la totalité indépendante de la carte UK. Les détails GraphQL, prises, grilles et TVA restent à collecter/valider ; aucun prix ni pin ni Pages modifié.
 
 ## 13 octobre 2026 — pilote EnergyVision BE prix simples, 248 stations / 817 PDC, aucune offre publiée
 

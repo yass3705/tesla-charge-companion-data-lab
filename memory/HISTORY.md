@@ -310,6 +310,11 @@ Entrées append-only, datées, avec liens vers les documents et commits sources.
 - Build r8 historique échoué sur un overlay Electroverse épinglé absent ; validation PR Production échouée après les tests runtime sur une fixture navigateur omettant `result.complete:true`. Commit Production `1dda721` corrige cette fixture et a été poussé pour revérification. Le job Pages de la validation PR était `skipped` ; aucun nouveau déploiement confirmé.
 - Validation PR Production relancée sur `1dda721` : [run 38165386824](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38165386824) `success`, parcours navigateur réussi ; configuration Pages, upload et déploiement `skipped`. Le dernier déploiement Pages observé reste celui du SHA `796e7fc`, antérieur aux PR.
 
+## 2026-10-13 — listing UK Electroverse autour des CPO connus terminé
+
+- Après Data Lab #269–#271, onze lots logiques de tuiles (douze artefacts, car un lot londonien a été scindé) ont terminé avec succès : 415/415 tuiles semences, 42 322 PK distincts, aucune tuile résiduellement tronquée. Le plafond observé de 10 000 points sur une tuile a imposé la subdivision ; la zone dense livre 16 872 PK. [Audit](../reports/emsp-national/electroverse-uk-tile-audit.json).
+- Rapprochement géographique **préparatoire** : 24 448 PK à ≤250 m des 19 239 sites CPO admissibles ; 17 591 avec plusieurs CPO proches ; 17 874 sans site semence proche. [Rapport](../reports/emsp-national/electroverse-uk-coarse-candidates.json). Aucun de ces PK n'est une offre tarifaire ni une jointure EVSE validée. Étape suivante : détails GraphQL par lots bornés, puis contrôle prise normale/Type 2/CCS, EVSE et prix. Aucune publication Production/Pages/Cloudflare.
+
 ## Format des prochaines entrées
 
 `YYYY-MM-DD — sujet` ; décision ou constat ; preuves et liens ; fichiers/commits concernés ; vérification ; statut de publication ; action restante. Ne jamais présenter un résultat expérimental comme déployé.
