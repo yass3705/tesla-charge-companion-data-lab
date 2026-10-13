@@ -1,0 +1,40 @@
+name: Italy PUN national V9 extraction candidate (artifact only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: italy-pun-v9-national-candidate
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PUN public client dependencies
+        run: python -m pip install requests boto3
+      - name: Build national Italy PUN technical candidate
+        run: |
+          python scripts/pun_italy_national.py \
+            --out /tmp/pun_italy_national.json.gz \
+            --report /tmp/pun_italy_national_report.json
+      - name: Gate national station and EVSE membership
+        run: |
+          python scripts/audit_italy_pun_evse_integrity.py \
+            --input /tmp/pun_italy_national.json.gz \
+            --report /tmp/pun_italy_evse_integrity_report.json
+      - name: Upload immutable candidate and diagnostics, do not publish
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: italy-pun-national-v9-candidate
+          path: |
+            /tmp/pun_italy_national.json.gz
+            /tmp/pun_italy_national_report.json
+            /tmp/pun_italy_evse_integrity_report.json
+          retention-days: 7
