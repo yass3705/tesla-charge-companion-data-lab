@@ -1,3 +1,9 @@
+## 13 octobre 2026 — exception permanente Tesla via Mac
+
+- Décision utilisateur confirmée : **le processus d'acquisition et de mise à jour Tesla via Mac reste dans `tesla-stations-updater-test`**. La migration des collectes et sources vers Data Lab **ne s'applique pas** à ce workflow Tesla/Mac ; ne pas déplacer ni supprimer ses workflows, scripts, runner ou procédure Mac au titre du nettoyage des CPO.
+- La cible Data Lab → Production concerne les autres sources CPO/eMSP et les dépendances historiques à Stable ; l'intégration des résultats Tesla au runtime Production doit rester possible **sans déplacer l'exécution Mac**. Conserver les règles existantes de priorité Tesla/SuC et l'exception Maroc.
+- Toute proposition de suppression dans Updater Test doit **exclure explicitement Tesla via Mac**, et présenter les autres fichiers concernés à l'utilisateur avant toute suppression.
+
 ## 13 octobre 2026 — migration préalable des dépendances réelles de Production
 
 - Instruction utilisateur : remonter **Production → build/runtime → données finales → Stable/Updater Test** avant de qualifier ou supprimer les anciens workflows. **Présenter ici les fichiers YAML proposés avant toute suppression**, aucune suppression sans cette liste. Cible : Data Lab pour les données validées ; Production pour son code, son build et sa publication ; Stable seulement archive/parité ; Updater Test conserve l'acquisition Tesla/Mac requise.
