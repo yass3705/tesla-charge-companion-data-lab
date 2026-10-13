@@ -1,3 +1,9 @@
+## 14 octobre 2026 — Italie : parité connecteurs PUN → V9 compact lancée
+
+- Validation du format compact [run 38485086241](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38485086241) **success** sur `605d2ce9` ; ce contrôle valide la forme/roundtrip, pas encore l'exactitude des puissances et identifiants.
+- PR Data Lab brouillon [#301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) : nouveau script `scripts/verify_italy_pun_compact_connector_parity.py` contrôle l'égalité du multiensemble des couples (EVSE ID, connector ID, Type2/CCS, puissance kW) entre le fichier national PUN brut et les rangées compactes, en excluant les connecteurs hors périmètre et les puissances absentes dans les deux couches. Commits `2575ec6d`, correctif fallback `49bca7ce`, CI `b7ae16df`. Nouveau [run 38486446342](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38486446342) **queued** au dernier contrôle. Ne pas déclarer parité OK avant validation du run.
+- La parité de l'offre tarifaire CPO et du runtime en bout-en-bout reste à vérifier. Aucun changement Production, pas de fusion ; REVE ES progressif ; Tesla/Mac dans Updater Test.
+
 ## 14 octobre 2026 — Italie PR #301 : tuiles PUN en rangées compactes V9 (validation en cours)
 
 - L'extraction/génération [run 38484243638](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38484243638) **success** au SHA `743e77d1` ; tests de tuiles géographiques/empreintes/intégrité OK. Le payload de cette version était encore la structure objet PUN expérimentale, non directement lisible par l'adaptateur `national-compact.js` de Production.
