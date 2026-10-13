@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Diagnostic source des 62 sites DOT-NL sortants
+
+- Script et rapport de transition exacts entre les pins Data Lab `047e1911` et `2cc230af` ; 62 anciens sites tarifés sans remplacement ont aussi zéro correspondance d'ancien ID dans la source normalisée du 13/10. Cinquante et un étaient auparavant `IN_SERVICE`, onze `UNKNOWN`. Huit autres anciens sites ont un candidat au même lieu avec son propre tarif nouveau, sans transfert historique. Voir `docs/v9-dotnl-pinned-transition-2026-10-13.md`. Aucune donnée tarifaire ni pin modifié ; correspondance d'identité et statut fournisseur requis pour les 62.
+
 ## 2026-10-13 — Production #83 Tesla congestion et preuve runtime Belib
 
 - Production #83 fusionnée `32e20e22` après CI `38393330007` verte, navigateur inclus ; nouveau pin de développement `2026-10-13-fr-belib-tesla-congestion-evidence-candidate`, sans modification Pages. La règle Tesla officielle exige l'occupation du site ; les 1 112 montants source restent non facturables et portent `conditionVerified:false`. Test runtime renforcé : quatre directs Belib calculables, 17 jointures Electra et 12 Electroverse supplémentaires. Le différentiel France exact et les résidus NL/UK sont dans les rapports Production #82/#83.

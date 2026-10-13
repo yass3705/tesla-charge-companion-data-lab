@@ -1,5 +1,9 @@
 # État de reprise — 2026-10-13
 
+## 13 octobre 2026 — Sorties tarifées DOT-NL documentées au niveau source
+
+- [Audit DOT-NL](../docs/v9-dotnl-pinned-transition-2026-10-13.md) des pins Data Lab `047e1911` → `2cc230af` : 73 557 → 78 529 sites, 81 531 → 87 984 configurations tarifées. Parmi 70 anciens sites tarifés sortants (84 configurations), huit ont un candidat géographique déjà doté de son propre prix ; **62 restent sans remplacement canonique**. Aucun des 62 anciens IDs ne figure dans la source DOT-NL normalisée du nouveau pin, générée le 13/10 à 10:42:49 UTC ; 51 étaient `IN_SERVICE` et 11 `UNKNOWN` dans l'ancien flux. La disparition du flux ne prouve pas la fermeture physique : demander la correspondance d'ID et le statut à DOT-NL/CPO avant toute restauration. Aucun tarif n'a été transféré ; le pin candidat Production et le snapshot Pages public sont inchangés.
+
 ## 13 octobre 2026 — Tesla congestion : preuve conservée, frais non appliqués
 
 - [Production #83](https://github.com/yass3705/tesla-charge-companion-production/pull/83) fusionnée `32e20e22` ; nouveau pin de développement `2026-10-13-fr-belib-tesla-congestion-evidence-candidate`, Data Lab `2cc230af`, Stable `0a6d2c34`. Le candidat Belib précédent reste accessible. CI `38393330007` : build, smoke neuf pays, navigateur et empreintes réussis ; preview `38393330075` verte, job Pages ignoré.
