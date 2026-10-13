@@ -48,7 +48,8 @@ def main():
     status = ('complete_listing' if not missing and len(tiles) == total
               and not possible_truncation and not missing_positions else 'partial_or_truncated')
     report = {'schemaVersion': 1, 'generatedAt': datetime.now(timezone.utc).isoformat(),
-              'status': status, 'expectedBatches': expected, 'presentBatches': len(batches),
+              'status': status, 'expectedBatches': expected,
+              'presentBatches': len(indices), 'presentParts': len(batches),
               'missingBatchIndices': missing, 'totalTiles': total, 'coveredTiles': len(tiles),
               'distinctLocationPks': len(pks),
               'hitsWithoutCoarsePosition': missing_positions,

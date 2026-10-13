@@ -7,8 +7,12 @@ import {tileHits,xy} from './electroverse_uk_cpo_pilot.mjs';
 
 const Z=10,MAX_REQUESTS=60,MAX_BATCH_TILES=40,DENSE_HITS=1950,MAX_ZOOM=14;
 const batchIndex=Number(process.argv[2]??0),batchSize=Number(process.argv[3]??40);
+const rootOffset=Number(process.argv[4]??0),rootCount=Number(process.argv[5]??batchSize);
 if(!Number.isInteger(batchIndex)||batchIndex<0||!Number.isInteger(batchSize)||batchSize<1||batchSize>MAX_BATCH_TILES)
   throw Error('batch index >=0 and batch size 1..40 required');
+if(!Number.isInteger(rootOffset)||rootOffset<0||rootOffset>=batchSize||
+   !Number.isInteger(rootCount)||rootCount<1||rootOffset+rootCount>batchSize)
+  throw Error('root offset/count must select 1..40 roots within the batch');
 const source=JSON.parse(zlib.gunzipSync(await fs.readFile('data/platforms/electroverse/uk-national-cpo-seeds.json.gz')));
 if(source.status!=='cpo_seed_queue_only_no_emsp_claim')throw Error('invalid seed queue');
 const tileSet=new Set();
@@ -23,7 +27,8 @@ const tiles=[...tileSet].sort((a,b)=>{
   const [ax,ay]=a.split('/').map(Number),[bx,by]=b.split('/').map(Number);
   return ax-bx||ay-by;
 });
-const selected=tiles.slice(batchIndex*batchSize,(batchIndex+1)*batchSize);
+const selected=tiles.slice(batchIndex*batchSize+rootOffset,
+  Math.min((batchIndex+1)*batchSize,batchIndex*batchSize+rootOffset+rootCount));
 if(!selected.length)throw Error(`empty batch ${batchIndex}, total tiles ${tiles.length}`);
 const client=new DirectElectroverseClient({timeoutMs:30000});
 const rows=[],errors=[];
@@ -57,14 +62,15 @@ for(const tile of selected){
 const report={schemaVersion:2,generatedAt:new Date().toISOString(),country:'GB',
   status:errors.length?'incomplete':'tile_ids_only_no_emsp_tariffs',
   seedLocationCount:source.locationCount,z:Z,totalTiles:tiles.length,
-  batchIndex,batchSize,selectedTiles:selected.length,completedTiles:rows.length,
+  batchIndex,batchSize,rootOffset,rootCount,selectedTiles:selected.length,completedTiles:rows.length,
   requests,
   distinctLocationPks:new Set(rows.flatMap(x=>x.hits.map(h=>h.pk))).size,
   hitsWithoutCoarsePosition:rows.reduce((n,r)=>n+r.hits.filter(h=>h.latitude==null||h.longitude==null).length,0),
   possibleTruncatedTiles:rows.filter(x=>x.possibleTruncation).map(x=>x.tile),
   rows,errors};
 await fs.mkdir('reports/emsp-national/electroverse-uk-tiles',{recursive:true});
-const path=`reports/emsp-national/electroverse-uk-tiles/batch-${String(batchIndex).padStart(3,'0')}.json.gz`;
+const suffix=rootOffset===0&&rootCount===batchSize?'':`-part-${String(rootOffset).padStart(2,'0')}-${String(rootCount).padStart(2,'0')}`;
+const path=`reports/emsp-national/electroverse-uk-tiles/batch-${String(batchIndex).padStart(3,'0')}${suffix}.json.gz`;
 await fs.writeFile(path,zlib.gzipSync(Buffer.from(JSON.stringify(report))));
 console.log(JSON.stringify({path,status:report.status,seedLocationCount:report.seedLocationCount,
   totalTiles:report.totalTiles,selectedTiles:report.selectedTiles,completedTiles:report.completedTiles,
