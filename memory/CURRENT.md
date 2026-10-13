@@ -1,3 +1,9 @@
+## 13 octobre 2026 — migration préalable des dépendances réelles de Production
+
+- Instruction utilisateur : remonter **Production → build/runtime → données finales → Stable/Updater Test** avant de qualifier ou supprimer les anciens workflows. **Présenter ici les fichiers YAML proposés avant toute suppression**, aucune suppression sans cette liste. Cible : Data Lab pour les données validées ; Production pour son code, son build et sa publication ; Stable seulement archive/parité ; Updater Test conserve l'acquisition Tesla/Mac requise.
+- Audit `Production/scripts/build_snapshot.py` : dépendance structurelle au contenu Stable (`v9-production-runtime`, `assets`, `data`, `v9-production-shell`, fichiers PWA et données historiques), au-delà de TESLA/ES/IT encore déclarés `primarySource=stable`. Le snapshot de développement est SHA-pinned ; une publication REVE vers Stable ne l'actualise pas automatiquement.
+- [Plan et preuves de migration](../docs/production-upstream-dependency-migration-2026-10-13.md), commit `e9dead56`. **Aucun transfert complet ni nouveau run validés**, aucune suppression supplémentaire ; priorités : détacher runtime/shell du socle Stable, reprendre Mac/Tesla vers Data Lab sans perdre la règle des 10 jours, migrer ES/IT puis comparer tous les fichiers hérités réellement servis.
+
 ## 13 octobre 2026 — cas EnergyVision 3 entièrement défini ; collecte E55C demandée
 
 - Cas 3 `BE*NRG*E09261*1` : seuil de **45 minutes compté depuis la fin de recharge**, puis supplément 0,33 €/min, aucun autre délai de grâce. Confirmation utilisateur reportée dans [l'audit des grilles complexes](../docs/integrations/energyvision-complex-rate-family-audit-2026-10-13.md) via PR #287. Sans heure de départ, occupation post-charge = 0 par convention TCC. Ne pas utiliser le champ de durée de recharge pour facturer ce supplément ; vérifier l'arrondi et tester des scénarios avec départ explicite avant promotion.
