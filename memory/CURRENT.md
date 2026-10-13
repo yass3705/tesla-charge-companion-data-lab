@@ -1,3 +1,10 @@
+## 13 octobre 2026 — migration runtime V9 Production (PR #97, en validation)
+
+- La branche de la [PR Production #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) comporte désormais trois moteurs de base prélevés à contenu identique sur le commit Stable épinglé puis copiés sous propriété Production : `runtime-owned/assets/v9/access-router-engine.js`, `offer-engine.js`, `data-engine.js`.
+- `scripts/build_snapshot.py` applique ces fichiers Production après le socle historique Stable, avant les overrides locaux ; commit `ab7bf19c`. Test de présence et de source de compilation ajouté, commit `c3f77d73`.
+- La validation de shell de la passe précédente, run `38465051784`, était encore **pending** lors du contrôle de cette passe. La nouvelle validation de snapshot sur PR est `38465348372`, **queued** au dernier contrôle. Rien n'est fusionné ni publié et aucune parité de cette nouvelle tranche n'est annoncée avant confirmation des runs.
+- Important : c'est une **migration partielle**, le builder copie encore le reste des 791 fichiers du runtime Stable ; il faudra ensuite reprendre de façon contrôlée les autres moteurs, assets et données avec preuve de lecteurs. Tesla/Mac demeure exclusivement en Updater Test et aucun YAML historique n'a été supprimé.
+
 ## 13 octobre 2026, 22h44 Paris — migration Production PR #97 : shell autonome (non fusionné)
 
 - Sur la branche `migration/production-owned-pwa-manifest-20261013`, [PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) : `v9-production-shell/index.html` et `shell-config.json` repris depuis le Stable SHA épinglé, `bridge.js` déjà détenu par Production ; `scripts/build_snapshot.py` copie désormais le **shell Production** et charge sa configuration locale. Commit `01a084c7`, test `7663ebc9`.
