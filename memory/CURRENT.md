@@ -1,3 +1,9 @@
+## 13 octobre 2026 — migration Production PR #97, 18 moteurs
+
+- La validation du lot précédent à 14 moteurs est **réussie** : run `38472652540`.
+- Quatre modules supplémentaires `device-test-engine.js`, `device-test-window-engine.js`, `parity-scenario-engine.js`, `rollout-engine.js` ont été copiés depuis le Stable SHA épinglé en `Production/runtime-owned/assets/v9/`. Le builder sélectionne **18 moteurs** Production-owned, commit `46f74743`, test étendu `c63e74e3`, dans la [PR brouillon #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97).
+- Nouvelle validation [run `38473168069`](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38473168069) **pending** au dernier contrôle ; ne pas fusionner avant succès. Le socle historique Stable est encore copié ; migration non achevée. Tesla via Mac reste dans Updater Test, aucun workflow supprimé, aucun déploiement volontaire.
+
 ## 13 octobre 2026 — Production PR #97 : tranche de quatorze moteurs (validation en attente)
 
 - Sur [Production PR #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97), quatre moteurs supplémentaires sont désormais sous `runtime-owned/assets/v9/` : `device-scenario-engine.js`, `vehicle-profile-engine.js`, `readiness-engine.js`, `parity-engine.js`, copies à contenu identique du Stable SHA épinglé. Le builder sélectionne désormais **14 moteurs** appartenant à Production ; commit `568d1848`, tests `84224e85`.
