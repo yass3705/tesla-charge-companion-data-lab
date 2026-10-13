@@ -15,7 +15,7 @@ def tariff_payload() -> dict:
             "_id": "profile-22",
             "name": "Electric 55 Charging x E55C",
             "description": "E55C EMSP",
-            "method": "ROAMING_EMPS",
+            "method": "AD_HOC",
             "isPrivate": False,
             "isMatching": True,
             "currencyCode": "EUR",
@@ -67,6 +67,22 @@ class Electric55DirectTariffTests(unittest.TestCase):
         self.assertEqual(link["connectorId"], 1)
         self.assertIn("t=e55c", link["paymentUrl"])
         self.assertIn("b=FR%2A55C%2AEFR39000%2AP7PPFG%2A1", link["paymentUrl"])
+
+    def test_roaming_emps_excluded_from_direct_import(self) -> None:
+        payload = tariff_payload()
+        payload["definitions"][0]["method"] = "ROAMING_EMPS"
+        self.assertIsNone(parse_tariff_profile(payload))
+
+    def test_mixed_direct_and_roaming_imports_only_direct(self) -> None:
+        payload = tariff_payload()
+        roaming = copy.deepcopy(payload["definitions"][0])
+        roaming["method"] = "ROAMING_EMPS"
+        roaming["_id"] = "roaming-1"
+        payload["definitions"].append(roaming)
+        profile = parse_tariff_profile(payload)
+        self.assertIsNotNone(profile)
+        self.assertEqual(profile["sourceMethods"], ["AD_HOC"])
+        self.assertNotIn("roaming-1", profile["sourceDefinitionIds"])
 
     def test_tariff_parser_keeps_charging_and_parking_separate(self) -> None:
         profile = parse_tariff_profile(tariff_payload())

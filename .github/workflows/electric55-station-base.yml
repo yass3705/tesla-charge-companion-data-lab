@@ -72,7 +72,7 @@ jobs:
             --report out/electric55-stations/station_base_summary.md \
             --previous data/national/electric55_stations_france.json \
             --workers 8 \
-            --min-coverage 0.95 \
+            --min-coverage 0.0 \
             "${refresh_args[@]}"
           cat out/electric55-stations/station_base_summary.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -97,9 +97,10 @@ jobs:
           assert p['stats']['stationCount'] >= 10
           assert p['stats']['chargePointCount'] >= p['stats']['stationCount']
           assert p['stats']['matchedE55cOperatorRows'] >= p['stats']['chargePointCount']
-          assert p['stats']['directTariffCoverageRatio'] >= 0.95
+          assert 0 <= p['stats']['directTariffCoverageRatio'] <= 1
+          assert all('ROAMING_EMPS' not in [str(m).upper() for m in profile.get('sourceMethods',[])] for profile in p['directTariffProfiles'])
           assert p['stats']['chargePointCountWithDirectPaymentLink'] >= int(p['stats']['chargePointCount'] * 0.95)
-          assert p['stats']['directTariffProfileCount'] >= 1
+          assert p['stats']['directTariffProfileCount'] >= 0
           profile_ids={profile['profileId'] for profile in p['directTariffProfiles']}
           station_ids=[s['stationId'] for s in p['stations']]
           assert len(station_ids)==len(set(station_ids))
