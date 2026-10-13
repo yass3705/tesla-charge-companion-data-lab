@@ -1,5 +1,9 @@
 # Journal de la mémoire technique
 
+## 2026-10-13 — Exploration de collecte eMSP internationale et identité CPO
+
+- IT, CH, DE, ES, NL, GB et BE étudiés, MA exclu explicitement. Sondage borné de la liste Electra multicountry : 322 938 lieux annoncés, charge utile de 19,6 Ko en listing léger contre 107,8 Ko pour les mêmes 100 lieux avec tarifs complets ; aucun débit soutenu extrapolé. Les tuiles Electroverse restent un index d'IDs sans tarifs, et son recensement de statuts FR reste bloqué. Proposition versionnée : découverte en deux phases, collecte ciblée, rafraîchissement tarifaire périodique et graphe d'identité EVSE/prise traçable, pilote UK basé sur les flux CPO existants. [Méthode, preuves et critères](../docs/v9-emsp-international-acquisition-crosswalk-2026-10-13.md). Aucun tarif, pin Production, Pages ou Cloudflare modifié.
+
 ## 2026-10-13 — EnergyVision BE direct staging succeeded, not released
 
 - [Data Lab stage run #38419429972](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38419429972) succeeded: 1,236 sites, 3,791 Type2/CCS PDC with 100% exact static/dynamic ID reachability, four status-only extras, 1,226 station-level ad-hoc rates with 4,778 XML price components, ten stations lacking a rate. No invented direct offer in Production. [Evidence and next reconciliation requirements](../docs/integrations/energyvision-datex-live-evidence-2026-10-13.md).
