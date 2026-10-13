@@ -153,7 +153,7 @@ class Electric55DirectTariffTests(unittest.TestCase):
         self.assertEqual(enriched["stations"][0]["offers"][0]["pricingProfileId"], point["pricing"]["profileId"])
         self.assertEqual(enriched["directTariffProfiles"][0]["rules"][1]["chargingTimeEurPerMinute"], 0.084)
 
-    def test_roaming_only_enrichment_retains_price_as_fallback_not_direct(self) -> None:
+    def test_sole_e55c_roaming_method_is_promoted_to_direct_on_full_audit(self) -> None:
         evse = "FR*55C*EFR84160*178MA1*0"
         row = {
             "nom_station": "Parking du Tennis Lourmarin",
@@ -176,13 +176,13 @@ class Electric55DirectTariffTests(unittest.TestCase):
             links=links, tariff_results={evse:{"ok":True,"payload":roaming}},
             map_evidence={"paymentLinkCount":1}, full_refresh=True)
         point = enriched["stations"][0]["chargePoints"][0]
-        self.assertEqual(point["pricing"]["status"], "missing_direct_tariff")
-        self.assertEqual(point["fallbackPricing"]["status"], "own_emsp_fallback")
-        self.assertFalse(point["fallbackPricing"]["isDirectVerified"])
-        self.assertEqual(enriched["stats"]["chargePointCountWithMachineReadablePricing"], 0)
-        self.assertEqual(enriched["stats"]["chargePointCountWithOwnEmspFallback"], 1)
-        self.assertEqual(len(enriched["directTariffProfiles"]), 0)
-        self.assertEqual(len(enriched["ownEmspFallbackTariffProfiles"]), 1)
+        self.assertEqual(point["pricing"]["status"], "resolved_e55c_scan_pay")
+        self.assertEqual(enriched["stats"]["chargePointCountWithMachineReadablePricing"], 1)
+        self.assertEqual(enriched["stats"]["chargePointCountWithOwnEmspFallback"], 0)
+        self.assertEqual(len(enriched["directTariffProfiles"]), 1)
+        self.assertEqual(len(enriched["ownEmspFallbackTariffProfiles"]), 0)
+        self.assertTrue(enriched["source"]["directTariff"]["nationalOwnEmspOnlyVerified"])
+        self.assertEqual(enriched["directTariffProfiles"][0]["classificationBasis"], "national_sole_E55C_ROAMING_EMPS")
 
     def test_endpoint_404_does_not_keep_a_stale_cached_tariff(self) -> None:
         local_evse_id = "FR*55C*EFR39000*P7PPFG*1"
