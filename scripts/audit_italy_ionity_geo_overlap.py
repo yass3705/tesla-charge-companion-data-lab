@@ -123,11 +123,17 @@ def main():
             pun_set = set(float(k) for k in c["punPowerKw"])
             c["powerKwOverlap"] = sorted(source_set & pun_set)
             c["powerComparisonPossible"] = bool(source_set and pun_set)
+            c["sourcePowerSubsetOfPun"] = bool(source_set and source_set <= pun_set)
+            c["missingSourcePowerKwInPun"] = sorted(source_set - pun_set)
+            c["additionalPunPowerKw"] = sorted(pun_set - source_set)
         category = ("unmatched_30m" if not ionity_candidates else
                     "multiple_ionity_stations" if len(ionity_candidates) > 1 else
                     "unique_operator_address" if len(matching_address) == 1 else
                     "unique_operator_address_review")
+        qualified = [c for c in ionity_candidates if c["sourcePowerSubsetOfPun"]]
         results.append({"ionityIndex":i, "matchClassification":category,
+                        "ionityPowerCompatibleCandidates":len(qualified),
+                        "powerMismatchRequiresReview":bool(ionity_candidates and not qualified),
                         "ionityPowerKw":dict(sorted(ionity_powers.items())),
                         "powerEvidenceOnlyNotEvseTariffCertified":True,
                         "matchingIonityAddresses":len(matching_address), "city":location.get("city"),
@@ -152,6 +158,8 @@ def main():
                         "uniqueIonityOperatorWithin30m":sum(x["uniqueIonityOperatorCandidate30m"] for x in results),
                         "noIonityOperatorCandidateWithin30m":sum(x["ionityOperatorCandidates30m"] == 0 for x in results)},
               "classificationCounts":{k:sum(x["matchClassification"] == k for x in results) for k in sorted(set(x["matchClassification"] for x in results))},
+              "powerReviewCount":sum(x["powerMismatchRequiresReview"] for x in results),
+              "stationOnlyNeverAssignTariff":True,
               "stations":results,"evseTariffMatchesCertified":False,
               "readyForProductionSwitch":False}
     args.report.parent.mkdir(parents=True,exist_ok=True)
