@@ -1,3 +1,9 @@
+## 14 octobre 2026 — IT PR #301 : parité connecteur validée, audit de schéma CPO en cours
+
+- [Run national candidat 38486446342](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38486446342) **success**, SHA `b7ae16df`. Contrôle automatisé PUN → compact EVSE + ID connecteur + Type2/CCS + puissance kW passé. Ce n'est pas une preuve d'appariement aux offres CPO.
+- Dans [PR #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301), nouveau diagnostic lecture seule `scripts/audit_italy_cpo_join_discovery.py` (commit `c75d9de7`) : inventaire des champs identifiants EVSE, puissance, offres/tarifs de sept flux CPO italiens ; **pas de jointure ni promotion automatique des tarifs**. Raccordé au workflow de migration (commit `6d483bbc`), run [38487875260](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38487875260) **queued** au dernier contrôle. Rapports en artefact : source-readiness et cpo-join-discovery. Attendre la classification des schémas avant jointure exact EVSE/power.
+- Production reste Stable pour Italie, aucun déploiement, aucune fusion de PR, aucune suppression Updater Test. Tesla/Mac reste dans Updater Test ; REVE ES est incrémental.
+
 ## 14 octobre 2026 — Italie : contrôle EVSE/puissance validé, audit des sources CPO lancé
 
 - Le run candidat PUN [38486446342](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38486446342) a terminé **success**, vérifications de parité connecteur/EVSE/puissance et tuiles comprises ; **ne constitue pas la validation des tarifs directs**.
