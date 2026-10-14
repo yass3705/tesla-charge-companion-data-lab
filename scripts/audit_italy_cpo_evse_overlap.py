@@ -29,7 +29,7 @@ def summarize(value, known):
               for k, v in value.items()} if isinstance(value, dict)
              else {"$root": {"type": type(value).__name__,
                               "count": len(value) if isinstance(value, list) else None}})
-    aliases = {"evseid", "evseuid", "evse_id", "evse_uid", "evse_id_normalized"}
+    aliases = {"evseid", "evseuid", "evse_id", "evse_uid", "evse_id_normalized", "sourceevseid"}
     # Generic 'uid' is deliberately excluded: it may identify a station, connector, or offer.
     exact = set()
     field_counts = {}
