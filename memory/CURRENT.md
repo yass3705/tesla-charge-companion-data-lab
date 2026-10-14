@@ -1,3 +1,9 @@
+## 14 octobre 2026 — REVE Espagne : fallback Stable supprimé de Data Lab main
+
+- [PR Data Lab #306](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/306) **fusionnée** SHA `04a20f6b900816c2e612977075d74d13f7da8c4e`. Le workflow horaire `spain-reve-v9-stream-refresh.yml` refuse désormais les checkpoints absents et ne les restaure plus depuis Stable. Script de preflight ajouté.
+- Avant fusion, checkpoint main `nextTariffPage=404`, `nextStatusPage=270`, `tariffRowsStored=31503`, `statusRowsStored=21877`, `complete=false`, `integrationStatus=PRE_INTEGRATION_ONLY`. Premier [run post-fusion #38502752348](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38502752348) en cours au contrôle. **Deux runs post-fusion vérifiés sans régression requis** avant de considérer le retrait éventuel du scheduler REVE Updater Test.
+- Aucun transfert ES runtime/production, aucune désactivation de workflows Updater/Stable, Tesla via Mac conservé dans Updater Test. France et Pages restent sur les sujets #304/#305, Production PR #102 sans reconstruction des tarifs.
+
 ## 14 octobre 2026 — remise sur les rails de la migration initiale (correctif de périmètre)
 
 - **Instruction confirmée :** migrer les workflows et responsabilités de `tesla-stations-updater-test` et `tesla-charge-companion-stable` vers Data Lab (collecte) et Production (construction/Pages), selon le registre déjà établi [#302](https://github.com/yass3705/tesla-charge-companion-data-lab/issues/302) et ses sous-issues [#303](https://github.com/yass3705/tesla-charge-companion-data-lab/issues/303), [#304](https://github.com/yass3705/tesla-charge-companion-data-lab/issues/304), [#305](https://github.com/yass3705/tesla-charge-companion-data-lab/issues/305). **Ne pas redémarrer d'inventaire général ni de réconciliation tarifaire BUMP/Belib**, déjà travaillée.
