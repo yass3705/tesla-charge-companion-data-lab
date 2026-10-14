@@ -72,9 +72,12 @@ def main():
                 if dist <= 30:
                     candidates.append({"stationId":station.get("stationId") or station.get("stationKey"),
                                        "operator":station.get("operator"),
+                                       "operatorIsIonity": "IONITY" in str(station.get("operator") or "").upper(),
+                                       "punAddress":station.get("address"),
                                        "distanceM":round(dist, 2),
                                        "evseCount":len(station.get("evses", []))})
         candidates.sort(key=lambda c:c["distanceM"])
+        ionity_candidates = [c for c in candidates if c["operatorIsIonity"]]
         results.append({"ionityIndex":i, "city":location.get("city"),
                         "postalCode":location.get("postalCode"),
                         "address":location.get("address"),
@@ -82,6 +85,9 @@ def main():
                         "candidates5m":sum(c["distanceM"] <= 5 for c in candidates),
                         "candidates10m":sum(c["distanceM"] <= 10 for c in candidates),
                         "candidates30m":len(candidates),
+                        "ionityOperatorCandidates30m":len(ionity_candidates),
+                        "uniqueIonityOperatorCandidate30m":len(ionity_candidates) == 1,
+                        "requiresAddressAndPowerReview":True,
                         "candidateStations":candidates[:8]})
     report = {"country":"IT","cpo":"IONITY","mode":"read-only-station-proximity",
               "punStationCount":len(stations),"ionityLocationCount":len(locations),
@@ -90,7 +96,9 @@ def main():
                         "uniqueWithin10m":sum(x["candidates10m"] == 1 for x in results),
                         "uniqueWithin30m":sum(x["candidates30m"] == 1 for x in results),
                         "ambiguousWithin30m":sum(x["candidates30m"] > 1 for x in results),
-                        "unmatchedWithin30m":sum(x["candidates30m"] == 0 for x in results)},
+                        "unmatchedWithin30m":sum(x["candidates30m"] == 0 for x in results),
+                        "uniqueIonityOperatorWithin30m":sum(x["uniqueIonityOperatorCandidate30m"] for x in results),
+                        "noIonityOperatorCandidateWithin30m":sum(x["ionityOperatorCandidates30m"] == 0 for x in results)},
               "stations":results,"evseTariffMatchesCertified":False,
               "readyForProductionSwitch":False}
     args.report.parent.mkdir(parents=True,exist_ok=True)
