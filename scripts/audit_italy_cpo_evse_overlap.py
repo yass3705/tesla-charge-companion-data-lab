@@ -32,6 +32,7 @@ def summarize(value, known):
     aliases = {"evseid", "evseuid", "evse_id", "evse_uid", "evse_id_normalized", "sourceevseid"}
     # Generic 'uid' is deliberately excluded: it may identify a station, connector, or offer.
     exact = set()
+    alternate_identifiers = {"physicalReference": set(), "uuid": set()}
     field_counts = {}
     identity_value_types = {}
     identity_value_examples = {}
@@ -48,6 +49,8 @@ def summarize(value, known):
                 sample_keys.update(str(k) for k in node)
             for key, item in node.items():
                 normalized_key = str(key).replace("-", "_").lower()
+                if key in alternate_identifiers and isinstance(item, (str, int)) and str(item).strip():
+                    alternate_identifiers[key].add(str(item).strip())
                 if normalized_key in aliases:
                     field_type = type(item).__name__
                     identity_value_types.setdefault(str(key), {})
@@ -70,6 +73,10 @@ def summarize(value, known):
             "identityValueTypes": identity_value_types,
             "nonScalarIdentityExamples": identity_value_examples,
             "directEvseIdentifiers": len(exact),
+            "alternateIdentityDiagnostics": {name: {"distinct": len(ids),
+                "exactOverlapWithPUN": len(ids & known),
+                "classification": "diagnostic-only-not-authorized-for-tariff-matching"}
+                for name, ids in alternate_identifiers.items()},
             "exactMatchedPUNEvse": len(matched),
             "notInPUN": len(exact - known),
             "exactMatchRateAmongIdentified": round(len(matched) / len(exact), 6) if exact else None,
