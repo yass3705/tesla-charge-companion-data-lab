@@ -23,27 +23,46 @@ def read(path):
     return json.loads(gzip.decompress(raw) if path.suffix==".gz" else raw)
 
 def summarize(value, known):
-    if isinstance(value, dict):
-        roots={key: {"type":type(v).__name__, "count":len(v) if isinstance(v,(dict,list)) else None} for key,v in value.items()}
-        collections=[(k,v) for k,v in value.items() if isinstance(v,list) and v and isinstance(v[0],dict)]
-        rows=collections[0][1] if collections else []
-        label=collections[0][0] if collections else None
-    elif isinstance(value,list):
-        roots={"$root":{"type":"list","count":len(value)}};rows=value if value and isinstance(value[0],dict) else [];label="$root"
-    else:
-        roots={"$root":{"type":type(value).__name__}};rows=[];label=None
-    keys=sorted({key for row in rows[:100] for key in row.keys()})
-    exact=set()
-    fields=("evseId","evse_id","evseID","evseUid","evse_uid","uid")
-    for row in rows:
-        for field in fields:
-            v=row.get(field)
-            if isinstance(v,str) and v.strip(): exact.add(v.strip())
-    return {"root":roots,"sampleCollection":label,"sampleKeys":keys,
-            "rowsAtSampleCollection":len(rows),"directEvseIdentifiers":len(exact),
-            "exactMatchedPUNEvse":len(exact&known),
-            "notInPUN":len(exact-known),
-            "status":"schema-discovery-only-not-tariff-certified"}
+    """Recursively discover IDs; matching is diagnostic, never tariff attribution."""
+    roots = ({k: {"type": type(v).__name__,
+                  "count": len(v) if isinstance(v, (dict, list)) else None}
+              for k, v in value.items()} if isinstance(value, dict)
+             else {"$root": {"type": type(value).__name__,
+                              "count": len(value) if isinstance(value, list) else None}})
+    aliases = {"evseid", "evseuid", "evse_id", "evse_uid", "evse_id_normalized"}
+    # Generic 'uid' is deliberately excluded: it may identify a station, connector, or offer.
+    exact = set()
+    field_counts = {}
+    object_count = 0
+    sample_keys = set()
+    stack = [value]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, dict):
+            object_count += 1
+            if object_count <= 100:
+                sample_keys.update(str(k) for k in node)
+            for key, item in node.items():
+                normalized_key = str(key).replace("-", "_").lower()
+                if normalized_key in aliases and isinstance(item, (str, int)):
+                    identifier = str(item).strip()
+                    if identifier:
+                        exact.add(identifier)
+                        field_counts[key] = field_counts.get(key, 0) + 1
+                if isinstance(item, (list, dict)):
+                    stack.append(item)
+    matched = exact & known
+    return {"root": roots, "sampleKeys": sorted(sample_keys),
+            "objectsInspected": object_count,
+            "identityFields": field_counts,
+            "directEvseIdentifiers": len(exact),
+            "exactMatchedPUNEvse": len(matched),
+            "notInPUN": len(exact - known),
+            "exactMatchRateAmongIdentified": round(len(matched) / len(exact), 6) if exact else None,
+            "status": "recursive-exact-identity-discovery-not-tariff-certified",
+            "caution": "Exact ID overlap does not establish CPO direct-price or power attribution"}
 
 def main():
     p=argparse.ArgumentParser()
