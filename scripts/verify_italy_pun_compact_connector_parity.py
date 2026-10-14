@@ -16,7 +16,7 @@ def inventory(pun):
             for index,c in enumerate(ev.get("connectors",[])):
                 kind=str(c.get("standard") or "").upper()
                 if "COMBO" in kind or "CCS" in kind: kind="CCS"
-                elif "TYPE_2" in kind or "TYPE2" in kind: kind="TYPE2"
+                elif "TYPE_2" in kind or "TYPE2" in kind or kind == "IEC_62196_T2": kind="TYPE2"
                 else: skipped[kind]+=1;continue
                 power=c.get("maxPowerKw")
                 if not isinstance(power,(int,float)) or power<=0: skipped["missing_power"]+=1;continue
