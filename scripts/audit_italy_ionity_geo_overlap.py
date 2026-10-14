@@ -7,6 +7,8 @@ import argparse
 import gzip
 import json
 import math
+import re
+import unicodedata
 from pathlib import Path
 
 
@@ -36,6 +38,18 @@ def location_coords(obj):
     except (ValueError, TypeError):
         pass
     return None
+
+
+def address_key(value):
+    if isinstance(value, dict):
+        value = " ".join(str(v) for v in value.values() if isinstance(v, (str, int)))
+    value = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode("ascii").lower()
+    return " ".join(re.findall(r"[a-z0-9]+", value))
+
+
+def address_matches(a, b):
+    a, b = address_key(a), address_key(b)
+    return bool(a and b and (a == b or a in b or b in a))
 
 
 def main():
@@ -78,7 +92,13 @@ def main():
                                        "evseCount":len(station.get("evses", []))})
         candidates.sort(key=lambda c:c["distanceM"])
         ionity_candidates = [c for c in candidates if c["operatorIsIonity"]]
-        results.append({"ionityIndex":i, "city":location.get("city"),
+        matching_address = [c for c in ionity_candidates if address_matches(location.get("address"), c["punAddress"])]
+        category = ("unmatched_30m" if not ionity_candidates else
+                    "multiple_ionity_stations" if len(ionity_candidates) > 1 else
+                    "unique_operator_address" if len(matching_address) == 1 else
+                    "unique_operator_address_review")
+        results.append({"ionityIndex":i, "matchClassification":category,
+                        "matchingIonityAddresses":len(matching_address), "city":location.get("city"),
                         "postalCode":location.get("postalCode"),
                         "address":location.get("address"),
                         "hasCoordinates":coord is not None,
@@ -99,6 +119,7 @@ def main():
                         "unmatchedWithin30m":sum(x["candidates30m"] == 0 for x in results),
                         "uniqueIonityOperatorWithin30m":sum(x["uniqueIonityOperatorCandidate30m"] for x in results),
                         "noIonityOperatorCandidateWithin30m":sum(x["ionityOperatorCandidates30m"] == 0 for x in results)},
+              "classificationCounts":{k:sum(x["matchClassification"] == k for x in results) for k in sorted(set(x["matchClassification"] for x in results))},
               "stations":results,"evseTariffMatchesCertified":False,
               "readyForProductionSwitch":False}
     args.report.parent.mkdir(parents=True,exist_ok=True)
