@@ -103,10 +103,10 @@ def main():
         if coord:
             for station, gps in pun_geo:
                 # Cheap bounding-box filter before haversine
-                if abs(coord[0]-gps[0]) > .001 or abs(coord[1]-gps[1]) > .002:
+                if abs(coord[0]-gps[0]) > .003 or abs(coord[1]-gps[1]) > .005:
                     continue
                 dist = distance_m(coord, gps)
-                if dist <= 30:
+                if dist <= 300:
                     candidates.append({"stationId":station.get("stationId") or station.get("stationKey"),
                                        "operator":station.get("operator"),
                                        "operatorIsIonity": "IONITY" in str(station.get("operator") or "").upper(),
@@ -115,7 +115,9 @@ def main():
                                        "evseCount":len(station.get("evses", [])),
                                        "punPowerKw":dict(sorted(power_counts(station.get("evses", [])).items()))})
         candidates.sort(key=lambda c:c["distanceM"])
-        ionity_candidates = [c for c in candidates if c["operatorIsIonity"]]
+        candidates30 = [c for c in candidates if c["distanceM"] <= 30]
+        wider_ionity = [c for c in candidates if c["operatorIsIonity"] and c["distanceM"] > 30]
+        ionity_candidates = [c for c in candidates30 if c["operatorIsIonity"]]
         ionity_powers = power_counts(location)
         matching_address = [c for c in ionity_candidates if address_matches(location.get("address"), c["punAddress"])]
         for c in candidates:
@@ -142,11 +144,13 @@ def main():
                         "hasCoordinates":coord is not None,
                         "candidates5m":sum(c["distanceM"] <= 5 for c in candidates),
                         "candidates10m":sum(c["distanceM"] <= 10 for c in candidates),
-                        "candidates30m":len(candidates),
+                        "candidates30m":len(candidates30),
+                        "ionityCandidates30to300m":len(wider_ionity),
+                        "nearbyIonityOutside30m":wider_ionity[:5],
                         "ionityOperatorCandidates30m":len(ionity_candidates),
                         "uniqueIonityOperatorCandidate30m":len(ionity_candidates) == 1,
                         "requiresAddressAndPowerReview":True,
-                        "candidateStations":candidates[:8]})
+                        "candidateStations":candidates30[:8]})
     report = {"country":"IT","cpo":"IONITY","mode":"read-only-station-proximity",
               "punStationCount":len(stations),"ionityLocationCount":len(locations),
               "counts":{"withCoordinates":sum(x["hasCoordinates"] for x in results),
@@ -155,6 +159,7 @@ def main():
                         "uniqueWithin30m":sum(x["candidates30m"] == 1 for x in results),
                         "ambiguousWithin30m":sum(x["candidates30m"] > 1 for x in results),
                         "unmatchedWithin30m":sum(x["candidates30m"] == 0 for x in results),
+                        "ionityNearby30to300m":sum(x["ionityCandidates30to300m"] > 0 for x in results),
                         "uniqueIonityOperatorWithin30m":sum(x["uniqueIonityOperatorCandidate30m"] for x in results),
                         "noIonityOperatorCandidateWithin30m":sum(x["ionityOperatorCandidates30m"] == 0 for x in results)},
               "classificationCounts":{k:sum(x["matchClassification"] == k for x in results) for k in sorted(set(x["matchClassification"] for x in results))},
