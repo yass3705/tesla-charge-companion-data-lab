@@ -1,3 +1,9 @@
+## 14 octobre 2026 — Italie : audit EVSE des CPO directs lancé
+
+- [Run 38486446342](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38486446342) **success** sur `b7ae16df` : contrôle de parité EVSE/connecteur/Type2-CCS/puissance entre extraction PUN et tuiles V9 compactes réussi. Il ne prouve pas la correspondance des prix.
+- [PR IT #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) : nouveau script `scripts/audit_italy_cpo_evse_overlap.py` (commit `7fc4a9f1`) : audite **sans modifier ni extrapoler les tarifs** le schéma et le chevauchement d'identifiants EVSE exacts de 7 jeux directs CPO (Allego, Atlante, Ewiva, Free To X, Ionity, Neogy/Alperia, Repower) avec l'inventaire PUN. Workflow candidat complété (commit `78656482`), [run 38488079269](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38488079269) **queued** lors du contrôle ; consulter résultats, notamment potentiels schémas sans IDs en premier niveau. Ce n'est encore **ni** une jonction tarifaire validée **ni** une autorisation de promotion en Production.
+- Aucune bascule de Production, aucune suppression de workflows historiques, REVE ES incrémental inchangé et Tesla via Mac toujours dans Updater Test.
+
 ## 14 octobre 2026 — IT PR #301 : parité connecteur validée, audit de schéma CPO en cours
 
 - [Run national candidat 38486446342](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38486446342) **success**, SHA `b7ae16df`. Contrôle automatisé PUN → compact EVSE + ID connecteur + Type2/CCS + puissance kW passé. Ce n'est pas une preuve d'appariement aux offres CPO.
