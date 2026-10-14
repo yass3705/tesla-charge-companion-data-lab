@@ -1,3 +1,9 @@
+## 14 octobre 2026 — Production : deux PR de migration fusionnées
+
+- [PR Production #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) fusionnée sur `main` commit `7b3d03e98e21b8516ce758d21f6fb9164d169d84` : ownership des moteurs V9, PWA et shell dans Production. Dernier [run global preview de branche #38504190308](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38504190308) **success** après correction de parité ciblée. Runs main post-fusion initiés, à confirmer.
+- [PR Production #102](https://github.com/yass3705/tesla-charge-companion-production/pull/102) fusionnée ensuite commit `2bdcdd90eb9efc41ed0d07c53926e7824a13754c` : gates d'audit cutover, transfert France candidat, pin courant pour contrôle fraîcheur et audit Pages/rollback. [Run main freshness #38504691971](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38504691971) **success**. Aucun basculement de source ni déploiement Pages/publication automatique.
+- Data Lab [Italie #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301) reste draft : extraction PUN et audits existants validés, pas de jointure prix CPO suffisamment prouvée pour promouvoir. REVE reste incrémental jusqu'à collecte complète. **Tesla via Mac conserve son exécution dans Updater Test**, Stable reste rollback ; aucun workflow historique arrêté.
+
 ## 14 octobre 2026 — REVE Espagne : fallback Stable supprimé de Data Lab main
 
 - [PR Data Lab #306](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/306) **fusionnée** SHA `04a20f6b900816c2e612977075d74d13f7da8c4e`. Le workflow horaire `spain-reve-v9-stream-refresh.yml` refuse désormais les checkpoints absents et ne les restaure plus depuis Stable. Script de preflight ajouté.
