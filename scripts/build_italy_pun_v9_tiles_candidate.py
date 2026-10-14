@@ -42,7 +42,7 @@ def compact_row(station):
             standard = str(c.get("standard") or "").upper()
             if "COMBO" in standard or "CCS" in standard:
                 kind = "CCS"
-            elif "TYPE_2" in standard or "TYPE2" in standard:
+            elif "TYPE_2" in standard or "TYPE2" in standard or standard == "IEC_62196_T2":
                 kind = "TYPE2"
             else:
                 continue
