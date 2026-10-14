@@ -36,18 +36,14 @@ jobs:
           test -n "${REVE_API_KEY:-}" || { echo "No REVE API key configured" >&2; exit 2; }
           echo "REVE key present; length=${#REVE_API_KEY}"
 
-      - name: Restore durable REVE stream state from validated upstream if needed
+      - name: Validate Data Lab-owned REVE checkpoints (no Stable dependency)
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p data/spain_reve
-          base="https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/spain-reve-preintegration/data/spain_reve"
           for f in tariff_status_stream_state.json reve_connector_tariffs_raw.json.gz reve_operational_status_raw.json.gz; do
-            if [ ! -s "data/spain_reve/$f" ]; then
-              echo "Restoring $f from validated upstream snapshot"
-              curl -fL --retry 3 --retry-delay 2 "$base/$f" -o "data/spain_reve/$f"
-            fi
+            test -s "data/spain_reve/$f" || { echo "::error::Missing Data Lab canonical REVE state: $f"; exit 1; }
           done
+          python scripts/audit_reve_cutover_checkpoint.py --root . --report reports/migration/reve-cutover-live-preflight.json
 
       - name: Collect next REVE tariff/status pages
         shell: bash
