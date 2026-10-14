@@ -1,3 +1,10 @@
+## 14 octobre 2026 — transition globale : inventaire et gates de cutover
+
+- [Issue de migration #302](https://github.com/yass3705/tesla-charge-companion-data-lab/issues/302) créée : dépendances vérifiées Updater/Stable/Data Lab/Production, ordre de migration, garde-fous et suivi de cutover.
+- Points concrets : `Stable/sync-france-irve-static.yml` dépend de Data Lab mais publie toujours les tuiles dans Stable ; `Stable/pages.yml` publie encore V9 et V8 preview ; `Production/v9-source-freshness-audit.yml` compare encore avec le pin r8. Il faut valider les nouveaux consommateurs Production avant extinction de ces relais.
+- `Updater Test/update-stations.yml` fonctionne avec runner macOS self-hosted : **Tesla via Mac y demeure**. `reve-v2-api-scheduler.yml` et les autres collectes non Tesla doivent être comparés avant désactivation, avec checkpoints conservés.
+- Aucune bascule ni désactivation effectuée. Les 7 anomalies Ionity sont consignées dans Production #100 et Data Lab PR #301, classées non bloquantes sous validation des règles de prix absents.
+
 ## 14 octobre 2026 — transition Updater/Stable → Data Lab/Production : reliquats Ionity consignés
 
 - [Run Italie #38494512906](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38494512906) **success** ; 43 localisations Ionity, 38 correspondances station opérateur+adresse, dont 2 avec divergences de puissance. Sept anomalies restent ouvertes : Fidenza (250/150 kW), province de Savone (43/50 kW non retrouvés), Lecce/Valmontone (doubles stations PUN), Brissogne (adresse), Bagnolo San Vito/Rimini (aucun candidat Ionity à 300 m).
