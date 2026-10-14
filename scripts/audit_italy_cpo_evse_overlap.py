@@ -35,6 +35,7 @@ def summarize(value, known):
     alternate_identifiers = {"physicalReference": set(), "uuid": set()}
     field_counts = {}
     identity_value_types = {}
+    identity_blank_counts = {}
     identity_value_examples = {}
     object_count = 0
     sample_keys = set()
@@ -55,6 +56,8 @@ def summarize(value, known):
                     field_type = type(item).__name__
                     identity_value_types.setdefault(str(key), {})
                     identity_value_types[str(key)][field_type] = identity_value_types[str(key)].get(field_type, 0) + 1
+                    if isinstance(item, str) and not item.strip():
+                        identity_blank_counts[str(key)] = identity_blank_counts.get(str(key), 0) + 1
                     if field_type not in ("str", "int"):
                         identity_value_examples.setdefault(str(key), [])
                         if len(identity_value_examples[str(key)]) < 2:
@@ -71,6 +74,7 @@ def summarize(value, known):
             "objectsInspected": object_count,
             "identityFields": field_counts,
             "identityValueTypes": identity_value_types,
+            "blankIdentityValues": identity_blank_counts,
             "nonScalarIdentityExamples": identity_value_examples,
             "directEvseIdentifiers": len(exact),
             "alternateIdentityDiagnostics": {name: {"distinct": len(ids),
