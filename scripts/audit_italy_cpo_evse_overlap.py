@@ -33,6 +33,8 @@ def summarize(value, known):
     # Generic 'uid' is deliberately excluded: it may identify a station, connector, or offer.
     exact = set()
     field_counts = {}
+    identity_value_types = {}
+    identity_value_examples = {}
     object_count = 0
     sample_keys = set()
     stack = [value]
@@ -46,6 +48,14 @@ def summarize(value, known):
                 sample_keys.update(str(k) for k in node)
             for key, item in node.items():
                 normalized_key = str(key).replace("-", "_").lower()
+                if normalized_key in aliases:
+                    field_type = type(item).__name__
+                    identity_value_types.setdefault(str(key), {})
+                    identity_value_types[str(key)][field_type] = identity_value_types[str(key)].get(field_type, 0) + 1
+                    if field_type not in ("str", "int"):
+                        identity_value_examples.setdefault(str(key), [])
+                        if len(identity_value_examples[str(key)]) < 2:
+                            identity_value_examples[str(key)].append(repr(item)[:160])
                 if normalized_key in aliases and isinstance(item, (str, int)):
                     identifier = str(item).strip()
                     if identifier:
@@ -57,6 +67,8 @@ def summarize(value, known):
     return {"root": roots, "sampleKeys": sorted(sample_keys),
             "objectsInspected": object_count,
             "identityFields": field_counts,
+            "identityValueTypes": identity_value_types,
+            "nonScalarIdentityExamples": identity_value_examples,
             "directEvseIdentifiers": len(exact),
             "exactMatchedPUNEvse": len(matched),
             "notInPUN": len(exact - known),
