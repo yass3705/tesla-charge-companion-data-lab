@@ -23,7 +23,7 @@ LIMIT=1500000
 def inspect(path):
     raw=path.read_bytes()
     payload=json.loads(gzip.decompress(raw) if path.suffix==".gz" else raw)
-    seen=collections.Counter(); counts=collections.Counter(); examples=[]
+    seen=collections.Counter(); counts=collections.Counter(); examples=[]; identity_shapes=collections.defaultdict(collections.Counter); identity_examples={}
     stack=[payload]
     while stack and counts["nodes"]<LIMIT:
         value=stack.pop()
@@ -35,6 +35,10 @@ def inspect(path):
             for k,v in value.items():
                 kl=str(k).lower()
                 if kl in ID_KEYS and isinstance(v,(str,int)) and len(examples)<5: examples.append(str(v)[:80])
+                if kl in ("sourceevseid", "physicalreference", "uuid"):
+                    identity_shapes[kl][type(v).__name__]+=1
+                    if kl not in identity_examples:
+                        identity_examples[kl]=repr(v)[:180]
                 seen[kl]+=1
                 if isinstance(v,(dict,list)):stack.append(v)
         elif isinstance(value,list):
@@ -45,7 +49,9 @@ def inspect(path):
       "tariffLikeObjects":counts["tariff_like_objects"],"sampleIdentityValues":examples,
       "presentIdentityFields":sorted(k for k in seen if k in ID_KEYS),
       "presentPowerFields":sorted(k for k in seen if k in POWER_KEYS),
-      "presentTariffFields":sorted(k for k in seen if k in TARIFF_KEYS)}
+      "presentTariffFields":sorted(k for k in seen if k in TARIFF_KEYS),
+      "identityValueShapes":{k:dict(v) for k,v in identity_shapes.items()},
+      "identityValueExamples":identity_examples}
 
 def main():
     records=[]
