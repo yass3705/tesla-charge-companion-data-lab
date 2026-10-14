@@ -23,7 +23,7 @@ LIMIT=1500000
 def inspect(path):
     raw=path.read_bytes()
     payload=json.loads(gzip.decompress(raw) if path.suffix==".gz" else raw)
-    seen=collections.Counter(); counts=collections.Counter(); examples=[]; identity_shapes=collections.defaultdict(collections.Counter); identity_examples={}
+    seen=collections.Counter(); counts=collections.Counter(); examples=[]; identity_shapes=collections.defaultdict(collections.Counter); identity_examples={}; geo_fields=collections.Counter(); address_fields=collections.Counter(); geo_examples={}
     stack=[payload]
     while stack and counts["nodes"]<LIMIT:
         value=stack.pop()
@@ -39,6 +39,11 @@ def inspect(path):
                     identity_shapes[kl][type(v).__name__]+=1
                     if kl not in identity_examples:
                         identity_examples[kl]=repr(v)[:180]
+                if kl in ("latitude","longitude","lat","lon","lng","coordinates","location","geometry","geo","position","gps"):
+                    geo_fields[kl]+=1
+                    if kl not in geo_examples: geo_examples[kl]=repr(v)[:220]
+                if kl in ("address","street","streetname","city","postalcode","postcode","zip","formattedaddress","locality"):
+                    address_fields[kl]+=1
                 seen[kl]+=1
                 if isinstance(v,(dict,list)):stack.append(v)
         elif isinstance(value,list):
@@ -51,7 +56,9 @@ def inspect(path):
       "presentPowerFields":sorted(k for k in seen if k in POWER_KEYS),
       "presentTariffFields":sorted(k for k in seen if k in TARIFF_KEYS),
       "identityValueShapes":{k:dict(v) for k,v in identity_shapes.items()},
-      "identityValueExamples":identity_examples}
+      "identityValueExamples":identity_examples,
+      "geoFields":dict(geo_fields),"addressFields":dict(address_fields),
+      "geoExamples":geo_examples}
 
 def main():
     records=[]
