@@ -113,6 +113,14 @@ def main():
                                        "punAddress":station.get("address"),
                                        "distanceM":round(dist, 2),
                                        "evseCount":len(station.get("evses", [])),
+                                       "evsePowerSignatures": [
+                                           {"evseId":ev.get("evseId"),
+                                            "connectorPowerKw": sorted(set(
+                                                float(con.get("maxPowerKw"))
+                                                for con in ev.get("connectors", [])
+                                                if isinstance(con.get("maxPowerKw"), (int, float))
+                                                and con.get("maxPowerKw") > 0))}
+                                           for ev in station.get("evses", [])],
                                        "punPowerKw":dict(sorted(power_counts(station.get("evses", [])).items()))})
         candidates.sort(key=lambda c:c["distanceM"])
         candidates30 = [c for c in candidates if c["distanceM"] <= 30]
@@ -138,6 +146,8 @@ def main():
                         "powerMismatchRequiresReview":bool(ionity_candidates and not qualified),
                         "ionityPowerKw":dict(sorted(ionity_powers.items())),
                         "powerEvidenceOnlyNotEvseTariffCertified":True,
+                        "stationEvseIdentityResolution":"not_certified",
+                        "stationTariffAssignmentAllowed":False,
                         "matchingIonityAddresses":len(matching_address), "city":location.get("city"),
                         "postalCode":location.get("postalCode"),
                         "address":location.get("address"),
