@@ -10,6 +10,29 @@ import math
 import re
 import unicodedata
 from pathlib import Path
+from collections import Counter
+
+
+def power_counts(value):
+    """Discover explicit powerKw fields only; no inferred charging power."""
+    result = Counter()
+    stack = [value]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, dict):
+            v = node.get("powerKw")
+            if v is None:
+                v = node.get("maxPowerKw")
+            try:
+                n = float(v)
+                if math.isfinite(n) and n > 0:
+                    result[round(n, 3)] += 1
+            except (TypeError, ValueError):
+                pass
+            stack.extend(v for v in node.values() if isinstance(v, (dict, list)))
+    return result
 
 
 def load(path):
@@ -89,15 +112,24 @@ def main():
                                        "operatorIsIonity": "IONITY" in str(station.get("operator") or "").upper(),
                                        "punAddress":station.get("address"),
                                        "distanceM":round(dist, 2),
-                                       "evseCount":len(station.get("evses", []))})
+                                       "evseCount":len(station.get("evses", [])),
+                                       "punPowerKw":dict(sorted(power_counts(station.get("evses", [])).items()))})
         candidates.sort(key=lambda c:c["distanceM"])
         ionity_candidates = [c for c in candidates if c["operatorIsIonity"]]
+        ionity_powers = power_counts(location)
         matching_address = [c for c in ionity_candidates if address_matches(location.get("address"), c["punAddress"])]
+        for c in candidates:
+            source_set = set(ionity_powers)
+            pun_set = set(float(k) for k in c["punPowerKw"])
+            c["powerKwOverlap"] = sorted(source_set & pun_set)
+            c["powerComparisonPossible"] = bool(source_set and pun_set)
         category = ("unmatched_30m" if not ionity_candidates else
                     "multiple_ionity_stations" if len(ionity_candidates) > 1 else
                     "unique_operator_address" if len(matching_address) == 1 else
                     "unique_operator_address_review")
         results.append({"ionityIndex":i, "matchClassification":category,
+                        "ionityPowerKw":dict(sorted(ionity_powers.items())),
+                        "powerEvidenceOnlyNotEvseTariffCertified":True,
                         "matchingIonityAddresses":len(matching_address), "city":location.get("city"),
                         "postalCode":location.get("postalCode"),
                         "address":location.get("address"),
