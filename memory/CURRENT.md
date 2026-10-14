@@ -1,3 +1,10 @@
+## 14 octobre 2026 — transition Updater/Stable → Data Lab/Production : reliquats Ionity consignés
+
+- [Run Italie #38494512906](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38494512906) **success** ; 43 localisations Ionity, 38 correspondances station opérateur+adresse, dont 2 avec divergences de puissance. Sept anomalies restent ouvertes : Fidenza (250/150 kW), province de Savone (43/50 kW non retrouvés), Lecce/Valmontone (doubles stations PUN), Brissogne (adresse), Bagnolo San Vito/Rimini (aucun candidat Ionity à 300 m).
+- Anomalies consignées dans [registre central Production #100](https://github.com/yass3705/tesla-charge-companion-production/issues/100) et [PR Data Lab #301](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/301). Elles sont **P2** et ne bloquent pas seules la transition sous réserve de préserver les EVSE et les prix absents/ambigus sans inférence.
+- **Objectif prioritaire :** terminer le transfert des workflows et responsabilités de collecte Updater/Stable vers Data Lab et la compilation/publication vers Production ; vérifier parité, provenance, runs, rollback et pinning avant extinction des anciennes chaînes. **Exception impérative : Tesla via Mac demeure dans Updater Test.** Stable sert de référence/rollback jusqu'à validation de la migration.
+- **Non validé à ce stade :** attribution complète des tarifs directs CPO Italie à chaque EVSE/puissance, fusion de PR #301, cutover Italie ou extinction des anciens workflows. Ne pas interpréter la réussite d'un audit technique comme la validation de ces opérations.
+
 ## 14 octobre 2026 — Italie : audit EVSE des CPO directs lancé
 
 - [Run 38486446342](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/38486446342) **success** sur `b7ae16df` : contrôle de parité EVSE/connecteur/Type2-CCS/puissance entre extraction PUN et tuiles V9 compactes réussi. Il ne prouve pas la correspondance des prix.
