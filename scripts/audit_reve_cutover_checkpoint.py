@@ -24,16 +24,18 @@ def inspect(path):
 cursors={k:state.get(k) for k in ("nextTariffPage","nextStatusPage","tariffRowsStored","statusRowsStored","complete")}
 attempted=last.get("requestsAttempted")
 succeeded=last.get("requestsSucceeded")
+workflow=(a.root/".github/workflows/spain-reve-v9-stream-refresh.yml").read_text()
+no_legacy_fallback="tesla-charge-companion-stable/spain-reve-preintegration" not in workflow
 report={"schemaVersion":1,"purpose":"shadow-reve-cutover-validation","cursors":cursors,
         "lastRun":{"requestsAttempted":attempted,"requestsSucceeded":succeeded},
         "datasets":{"tariff":inspect(tariff),"status":inspect(status)},
-        "tests":{"statePresent":statefile.exists(),"tariffCursorBaselineMet":isinstance(cursors["nextTariffPage"],int) and cursors["nextTariffPage"]>=245,
+        "tests":{"statePresent":statefile.exists(),"noStableFallback":no_legacy_fallback,"tariffCursorBaselineMet":isinstance(cursors["nextTariffPage"],int) and cursors["nextTariffPage"]>=245,
                  "statusCursorBaselineMet":isinstance(cursors["nextStatusPage"],int) and cursors["nextStatusPage"]>=164,
                  "requestBudget":attempted is None or (isinstance(attempted,int) and attempted<=5),
                  "lastBatchSucceeded":attempted is None or attempted==succeeded,
                  "tariffGzipPresentAndReadable":inspect(tariff)["gzipReadable"],
                  "statusGzipPresentAndReadable":inspect(status)["gzipReadable"]},
-        "cutoverAuthorized":False,"stableFallbackDependencyStillPresent":True}
+        "cutoverAuthorized":False,"stableFallbackDependencyStillPresent":not no_legacy_fallback}
 a.report.parent.mkdir(parents=True,exist_ok=True)
 a.report.write_text(json.dumps(report,indent=2)+"\n")
 print(json.dumps(report,indent=2))
