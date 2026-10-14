@@ -7,6 +7,7 @@ on:
       - audit/italy-v9-source-migration-20261014
     paths:
       - "scripts/audit_italy_v9_migration.py"
+      - "scripts/audit_italy_cpo_join_discovery.py"
       - "scripts/audit_italy_direct_overlay_inputs.py"
       - "scripts/audit_italy_cpo_offer_shapes.py"
       - "scripts/verify_italy_v9_runtime_parity.py"
@@ -35,6 +36,8 @@ jobs:
         run: python scripts/audit_italy_cpo_offer_shapes.py
       - name: Inventory direct-CPO overlay input schemas
         run: python scripts/audit_italy_direct_overlay_inputs.py
+      - name: Inspect CPO direct feed identifier and tariff schema without joining
+        run: python scripts/audit_italy_cpo_join_discovery.py
       - name: Save source-readiness report
         uses: actions/upload-artifact@v4
         if: always()
