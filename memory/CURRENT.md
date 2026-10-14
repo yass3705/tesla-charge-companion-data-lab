@@ -1,3 +1,10 @@
+## 14 octobre 2026 — migration des workflows : France candidat épinglé, pas encore consommé par build
+
+- [Production PR #103](https://github.com/yass3705/tesla-charge-companion-production/pull/103) fusionnée, SHA `61b72136ed24c1c4ab34b1efb0c525c2ab71d5a4`. Run candidat [#38505043520](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38505043520) **success**. Workflow France : input SHA exact Data Lab vérifié ; sans SHA explicite, audit read-only de main.
+- Tests post-fusion Production #97/#102 vérifiés : global Mac preview #38504640967, snapshot #38504640941, Electra #38504640947, Midhope #38504640837, freshness #38504691971 **success**.
+- **Blocage restant avant extinction Stable FR** : `Production/scripts/build_snapshot.py` copie toujours la base `Stable/v9-production-runtime` comme baseline, puis applique les suppléments Belib/BUMP et overlays déjà vérifiés. Le candidat Data Lab FR ne remplace pas ce consommateur dans le build. Ne pas copier la base nationale directement dans le snapshot au risque de casser les tarifs déjà validés ; reprendre l'intégration de l'inventaire en conservant suppléments et pricing. Aucun workflow Stable désactivé, aucune publication Pages.
+- REVE est laissé en collecte jusqu'à complétude ; Tesla/Mac reste dans Updater Test ; Cloudflare hors périmètre.
+
 ## 14 octobre 2026 — Production : deux PR de migration fusionnées
 
 - [PR Production #97](https://github.com/yass3705/tesla-charge-companion-production/pull/97) fusionnée sur `main` commit `7b3d03e98e21b8516ce758d21f6fb9164d169d84` : ownership des moteurs V9, PWA et shell dans Production. Dernier [run global preview de branche #38504190308](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38504190308) **success** après correction de parité ciblée. Runs main post-fusion initiés, à confirmer.
