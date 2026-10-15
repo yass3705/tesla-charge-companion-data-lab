@@ -1,3 +1,8 @@
+## 2026-10-15 — France IRVE #104 : origine des 449 EVSE BUMP établie
+
+- 449/449 identifiants retrouvés dans le CSV national brut de même SHA que la génération Data Lab du 15/10 ; disparition au rebuild du 11/10 à SHA source inchangé, par le filtre EF/Type 2/CCS (`d89b0ebf6`). 373 sans prise déclarée, 76 avec seule prise « autre » ; aucune activité dynamique explicite. Rapport individuel versionné sur #104. Le filtre et le validateur BUMP sont conservés ; la qualification source/CPO des prises et de l'activité bloque toujours le canary. Aucun nouveau run ni changement tarifaire.
+
+
 ## 2026-10-15 — France IRVE #104 : blocage BUMP confirmé par CI unique
 
 - Run Production #38724599850 : test d’idempotence passé, build bloqué sur 449 EVSE BUMP historiquement tarifés absents de la nouvelle source nationale (0 statut dynamique `en_service`). Rapport exact Production `e9c33ed`, mémoire sur Data Lab #307. Aucun second run, aucune modification d’offre, publication ou extinction Stable. Action restante : décision de couverture fondée sur les sources approuvées.
