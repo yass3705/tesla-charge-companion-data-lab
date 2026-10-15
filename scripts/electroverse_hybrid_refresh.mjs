@@ -3,6 +3,8 @@ import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { DirectElectroverseClient, aliasBatchQuery, SINGLE_LOCATION_QUERY, PAGED_LOCATION_QUERY } from './lib/electroverse_direct_client.mjs';
 
+import {filterSupportedElectroverseConnectors} from './lib/electroverse_connector_policy.mjs';
+
 const API_KEY=process.env.ELECTROVERSE_API_KEY;
 const BATCH_SIZE=Number(process.env.ELECTROVERSE_BATCH_SIZE||5);
 const CONCURRENCY=Number(process.env.ELECTROVERSE_CONCURRENCY||2);
@@ -27,11 +29,11 @@ function tariffProjection(loc){
     chargingLocationPk:String(loc?.chargingLocationPk??loc?.pk??''),
     evses:nodes(loc?.evses).map(e=>({
       pk:e?.pk??null, physicalReference:e?.physicalReference??null,
-      connectors:nodes(e?.connectors).map(c=>({
+      connectors:filterSupportedElectroverseConnectors(nodes(e?.connectors)).map(c=>({
         pk:c?.pk??null,kilowatts:c?.kilowatts??null,speed:c?.speed??null,
         isChargingFree:c?.isChargingFree??null,standard:c?.standard??null,
         priceComponents:c?.priceComponents??null,complexPricingDetail:c?.complexPricingDetail??null,
-      })).sort((a,b)=>String(a.pk).localeCompare(String(b.pk)))
+      })).filter(e=>e.connectors.length>0).sort((a,b)=>String(a.pk).localeCompare(String(b.pk)))
     })).sort((a,b)=>String(a.pk).localeCompare(String(b.pk)))
   };
 }
