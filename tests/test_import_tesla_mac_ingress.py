@@ -1,8 +1,12 @@
 import hashlib
 import json
+import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+from scripts import import_tesla_mac_ingress as importer
 from scripts.import_tesla_mac_ingress import validate, INGRESS, INGRESS_PATH
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,6 +58,28 @@ class ImportTest(unittest.TestCase):
         prior["updaterRunId"] = 1
         with self.assertRaisesRegex(ValueError, "date rollback"):
             validate(ready(self.second, 2, "2026-10-08"), self.second, prior, self.first)
+
+    def test_missing_ready_or_failed_download_preserves_last_good(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            catalogue = root / importer.CATALOGUE
+            manifest = root / importer.MANIFEST
+            catalogue.parent.mkdir(parents=True)
+            catalogue.write_bytes(self.first)
+            original_manifest = b'{"catalogueSha256":"previous"}\n'
+            manifest.write_bytes(original_manifest)
+            with patch.object(sys, "argv", ["import", "--root", tmp]), \
+                 patch.object(importer, "fetch_ready", return_value=None):
+                importer.main()
+            self.assertEqual(catalogue.read_bytes(), self.first)
+            self.assertEqual(manifest.read_bytes(), original_manifest)
+            with patch.object(sys, "argv", ["import", "--root", tmp]), \
+                 patch.object(importer, "fetch_ready", return_value=ready(self.second, 2, "2026-10-09")), \
+                 patch.object(importer, "fetch_catalogue", side_effect=OSError("download failed")):
+                with self.assertRaisesRegex(OSError, "download failed"):
+                    importer.main()
+            self.assertEqual(catalogue.read_bytes(), self.first)
+            self.assertEqual(manifest.read_bytes(), original_manifest)
 
 
 if __name__ == "__main__":
