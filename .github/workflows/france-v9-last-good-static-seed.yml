@@ -1,0 +1,63 @@
+name: France V9 last-good static seed
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/france-v9-last-good-static-seed.yml'
+      - 'scripts/seed_france_last_good_static.py'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Preserve the exact validated Stable France static tiles in Data Lab'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: france-v9-last-good-static-seed
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-stable
+          ref: 0a6d2c3415504397310d3dc92fae40be843b2435
+          path: stable-pin
+          sparse-checkout: v9-production-runtime/data/v9/france-static
+          persist-credentials: false
+      - name: Validate and copy the immutable runtime generation
+        run: |
+          python3 scripts/seed_france_last_good_static.py \
+            stable-pin/v9-production-runtime/data/v9/france-static \
+            "$RUNNER_TEMP/france/validated_runtime/france-static" \
+            --stable-sha 0a6d2c3415504397310d3dc92fae40be843b2435
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'france/validated_runtime/provenance.json'
+          d=json.loads(p.read_text())
+          assert (d['stationCount'],d['pdcCount'],d['tileCount'])==(48058,165792,362)
+          PY
+      - name: Publish seed only after explicit dispatch
+        if: github.event_name == 'workflow_dispatch' && inputs.seed == true
+        run: |
+          set -euo pipefail
+          test ! -e data/france/validated_runtime/provenance.json || { echo 'France last-good bundle already exists'; exit 1; }
+          mkdir -p data/france
+          cp -a "$RUNNER_TEMP/france/validated_runtime" data/france/validated_runtime
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/france/validated_runtime
+          git commit -m 'data(france): preserve validated IRVE runtime generation'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
