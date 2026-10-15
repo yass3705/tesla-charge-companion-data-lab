@@ -1,6 +1,7 @@
 name: Switzerland TCC V9 bundle
 on:
   push:
+    branches: ['main']
     paths:
       - 'scripts/build_swiss_tcc_v9_bundle.py'
       - 'scripts/guard_swiss_bundle_refresh.py'
@@ -10,13 +11,26 @@ on:
       - 'data/gofast/**'
       - 'docs/switzerland-cpo-progress-2026-09.json'
       - '.github/workflows/switzerland-tcc-v9-bundle.yml'
+  pull_request:
+    paths:
+      - 'scripts/build_swiss_tcc_v9_bundle.py'
+      - 'scripts/guard_swiss_bundle_refresh.py'
+      - 'tests/test_guard_swiss_bundle_refresh.py'
+      - '.github/workflows/switzerland-tcc-v9-bundle.yml'
   workflow_dispatch:
   schedule:
     - cron: '20 23 * * *'
 permissions:
   contents: write
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tests -p 'test_guard_swiss_bundle_refresh.py'
+      - run: python3 -m py_compile scripts/build_swiss_tcc_v9_bundle.py scripts/guard_swiss_bundle_refresh.py
   build:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
