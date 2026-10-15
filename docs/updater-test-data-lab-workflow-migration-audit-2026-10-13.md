@@ -1,5 +1,15 @@
 # Migration GitHub Actions updater-test → Data Lab — 2026-10-13
 
+## 15 octobre — transfert différentiel des déclencheurs après décision de séparer migration et disponibilité des sources
+
+| Processus | Source historique | Propriétaire actuel | Déclencheur legacy | Preuve |
+| --- | --- | --- | --- | --- |
+| Ze-Watt direct France | Updater `ze-watt-france-extract.yml` | Data Lab `zewatt-france-refresh.yml`, mercredi 03:41 UTC | `push` retiré ; `workflow_dispatch` conservé | Updater #14 run #38738305550 et merge `cb1ff4bf` ; #15 merge `c243b555` ; Data Lab run #38539294984 réussi. |
+| Electroverse FR incrémental | Updater `electroverse-incremental-selector.yml` et `electroverse-incremental-refresh.yml` | Data Lab delta quotidien et full hebdomadaire, cache sharded | Deux `push` retirés ; dispatch conservés | Updater #16 merge `3111b462` ; trois delta et deux full Data Lab réussis ; Production `build_snapshot.py` lit le cache Data Lab. |
+
+Ces changements n'affectent ni les données historiques privées ni Tesla/Mac. Electroverse #219 garde un gate de statuts pour l'overlay EVSE ; le fonctionnement de l'API et la complétude des statuts relèvent de la collecte, sans réactiver les doubles écritures historiques. REVE mensuel, France IRVE Stable, Italie Stable et la publication Stable demeurent des dépendances techniques de transfert, non des incidents d'API seuls.
+
+
 ## Règle approuvée
 Le dépôt historique `yass3705/tesla-stations-updater-test` doit conserver le processus Tesla/Mac distinct. La collecte CPO directe, les données nationales et les offres eMSP sont canoniques dans `yass3705/tesla-charge-companion-data-lab`. Supprimer les doublons **seulement après vérification fonctionnelle et de couverture**, et ne jamais arrêter une collecte sans remplacement établi. Ne pas mélanger les offres CPO et eMSP ; préserver ID EVSE exact, puissance, statuts et données validées.
 

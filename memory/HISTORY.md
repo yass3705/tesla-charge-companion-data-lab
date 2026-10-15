@@ -42,6 +42,12 @@
 
 # Journal de la mémoire technique
 
+## 2026-10-15 — Ze-Watt et déclencheurs Electroverse historiques
+
+- Updater Test [#14](https://github.com/yass3705/tesla-stations-updater-test/pull/14) fusionnée `cb1ff4bf` après le run #38738305550 ; [#15](https://github.com/yass3705/tesla-stations-updater-test/pull/15) fusionnée `c243b555`, supprime le seul déclencheur automatique Ze-Watt historique. Data Lab conserve le collecteur planifié et les offres compilées ; archives et dispatch privé préservés.
+- Updater Test [#16](https://github.com/yass3705/tesla-stations-updater-test/pull/16) fusionnée `3111b462`, retire les déclencheurs `push` des sélecteur et rafraîchisseur Electroverse historiques. Collectes quotidiennes et hebdomadaires Data Lab déjà validées ; overlay EVSE #219 reste soumis à son gate de statuts. Aucun changement Tesla, secret, prix, snapshot Production ou publication.
+- Distinction explicite : ces retraits de déclencheurs ne prouvent pas l'autonomie Espagne/Italie/France ni la publication V9. REVE mensuel vers Stable, France #104 et publication Stable restent opérationnels. Voir `CURRENT.md` pour la prochaine étape.
+
 ## 2026-10-13 — EnergyVision BE : supplément Direct V9 à 778 PDC, Lully 22 kW confirmé
 
 - [Production #94](https://github.com/yass3705/tesla-charge-companion-production/pull/94) fusionnée : 3 795 PDC source EnergyVision, 776 offres directes simples à identité exacte dans le nouveau candidat de développement `2026-10-13-be-energyvision-official-cpo-candidate`. [Production #95](https://github.com/yass3705/tesla-charge-companion-production/pull/95) fusionnée `77d56025`, deux PDC supplémentaires à 0,37 €/kWh + 2,04 €/session, oracle de 20 kWh = 9,44 €. Total 778 Direct calculables ; les grilles conditionnelles/minutes sans validation restent indisponibles ou incalculables, sans faux tarif. CI PR [38445027765](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38445027765) verte ; vérifier la [CI main 38448522469](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/38448522469). Aucune publication du candidat.
