@@ -1,3 +1,8 @@
+## 2026-10-15 — Handoff Tesla/Mac via ingress public Production
+
+- Le jeton Updater Test a reçu HTTP 403 vers Data Lab (#19, #38764852818). Choix utilisateur : relais d'artefact public Production ; l'option GitHub App #21 a été fermée sans fusion. Updater #20 `3bb96f9d`, Production #118 `807686a2` et #119 `55ec1ebb`, Data Lab #326 `a62935d5` établissent le transport versionné, l'import atomique et le dernier catalogue valide. Le run Data Lab #38767112592 a importé l'artefact historique exact au commit `55e17a89c2bba0800c6d4639653ec8762533f641` ; aucune extraction Mac nouvelle n'est revendiquée.
+- Production #117 `4ac2acbd` a passé les validations candidate et consomme le catalogue Tesla Data Lab. #120 prépare le pin du commit réellement importé. Publication Pages et retraite du miroir automatique Stable #151 attendent leurs validations ; l'issue #302 reste ouverte. Acquisitions Mac, secrets et runner inchangés.
+
 ## 2026-10-15 — Handoff Tesla Mac : source Data Lab préparée, droit inter-dépôts refusé
 
 Data Lab #323 `c800e7d5` et #324 `b7952f95` conservent deux catalogues Mac publics exacts (1 178 puis 1 179 stations), empreintes et provenances. Production #117 ajoute le constructeur épinglé et la validation candidate ; Pages PR #38765178210 réussie sans publication. Updater #19 a vérifié le secret existant sur une branche jetable : HTTP 403 au run #38764852818, sans changement de Data Lab main. Updater #20 reste ouverte et non fusionnée ; Mac/Stable actuels intacts. Le transfert automatique, la publication Production actualisée et le retrait Stable attendent une autorisation inter-dépôts vérifiée.
