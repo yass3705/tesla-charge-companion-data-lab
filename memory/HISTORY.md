@@ -1,7 +1,7 @@
 ## 2026-10-15 — Handoff Tesla/Mac publié via ingress public Production
 
 - Après refus HTTP 403 du jeton vers Data Lab (#19), le choix utilisateur a été le relais d'artefact public Production ; la voie GitHub App #21 a été fermée. Updater #20 `3bb96f9d` et contrôle de jeton #38768018372 (tentative 2) établissent l'écriture. Production #118/#119 déposent l'artefact Mac historique exact ; Data Lab #326 l'importe au commit `55e17a89c2bba0800c6d4639653ec8762533f641` (run #38767112592). Les deux catalogues historiques #323/#324 et le test de préservation #328 restent disponibles. Aucun nouveau lot Mac, changement de runner, secret ou tarif.
-- Production #117 `4ac2acbd` et #120 `603e933f` publient le nouveau pin via Pages #38768065297 : snapshot `2026-10-15-v9-tesla-mac-ingress-verified`, 2 465 fichiers, catalogue Tesla 1 179 stations / 4 472 574 octets / SHA-256 `363af2e8…`. Stable #151 `04389226` conserve les commandes manuelles de rollback et retire les déclencheurs de transit. Stable Pages #38768670252 encore en cours au relevé ; issue #302 ouverte jusqu'à son contrôle.
+- Production #117 `4ac2acbd` et #120 `603e933f` publient le nouveau pin via Pages #38768065297 : snapshot `2026-10-15-v9-tesla-mac-ingress-verified`, 2 465 fichiers, catalogue Tesla 1 179 stations / 4 472 574 octets / SHA-256 `363af2e8…`. Stable #151 `04389226` conserve les commandes manuelles de rollback et retire les déclencheurs de transit. Stable Pages #38768670252 a réussi ; site historique HTTP 200 avec catalogue de rollback intact. L’issue #302 peut être clôturée après fusion de cette mémoire.
 
 ## 2026-10-15 — Handoff Tesla Mac : source Data Lab préparée, droit inter-dépôts refusé
 
