@@ -180,3 +180,14 @@ Les autres YAML manuels de l'inventaire du 13 octobre gardent le statut **audit 
 | REVE ES | Data Lab `data/spain_reve/tariff_status_stream_state.json` sur `origin/main=e73dc7b43` : 403/468 pages tarifs, 269/454 statuts ; curseurs suivants 404 et 270, 31 503 lignes tarifaires / 21 877 lignes de statut, `complete=false`, `PRE_INTEGRATION_ONLY`. Dernier run `38689635666` : HTTP 429 `Retry later` sur `/connectors/tariffs?page=404`, une requête tentée et zéro réussie, état non avancé. PR #306 d'audit checkpoint fusionnée. | Collecte Data Lab incomplète ; ne pas réinitialiser les curseurs ni relancer en boucle. Production garde `primarySource=stable` pour ES dans le candidat épinglé. Attendre la levée du 429, la complétude, deux runs comparables et le contrôle ID/station/prise/puissance/offres avant tout cutover. Le scheduler Updater Test et le relais Stable restent intacts. |
 
 Bloquants externes : statut Electroverse complet/frais dans #219 ; limite REVE HTTP 429 ; preuve de deux runs Data Lab OZECAR après fusion explicitement autorisée. Les 449 EVSE BUMP France relèvent de Production #104 et ne sont pas traités ici. Aucun prix, offre, source Tesla/Mac, priorité Tesla, snapshot par défaut ou publication n'est modifié par ce delta.
+## 15 octobre — delta de transfert confirmé après #302
+
+| Chaîne | Preuve de transfert | Déclencheur legacy | État |
+| --- | --- | --- | --- |
+| Ze-Watt | Data Lab hebdomadaire #38539294984 ; Production #106 `711f2ab4`, 795 EVSE directs contre 757 au pin Stable | Updater #15 et Stable #144 : manuels | MIGRATION COMPLETE |
+| Electroverse France | Data Lab delta quotidien et full hebdomadaire ; Production lit Data Lab ; Updater #16 `3111b462` | Deux push historiques supprimés, dispatch conservé | MIGRATION COMPLETE — overlay EVSE #219 et API/stats à suivre séparément |
+| OZECAR | Data Lab #308 et deux runs représentatifs #38729531848/#38730162670 ; Updater #13 | Cron supprimé, dispatch conservé | MIGRATION COMPLETE pour le collecteur ; consommateurs spécifiques à confirmer |
+| REVE Espagne | Data Lab #309, seed `d5bff031`, 170 fichiers identiques au Stable validé ; Production #105/#107/#108, build #38749026980 | Updater #17 : cron et push retirés, dispatch conservé | MIGRATION COMPLETE pour le transfert ; collecte API progressive HTTP 429 |
+| Zephyre | Data Lab #310 `0b358fcf`, run complet #38750594661 ; Production #109 en validation | Stable cron actif jusqu'à validation #109 | MIGRATION INCOMPLETE — raccordement Production en CI |
+
+Les statuts ci-dessus décrivent les processus ciblés, pas l'autonomie globale Production : son constructeur copie encore des fichiers Stable et France/Italie demandent une suite. Les incidents de collecte ne sont pas assimilés aux erreurs de migration.
