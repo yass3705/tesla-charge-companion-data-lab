@@ -1,3 +1,7 @@
+## 2026-10-15 — France IRVE #104 : écarts globaux intergénérations explicités
+
+- Ancien résultat supplémenté contre nouveau national : 8 027 IDs de station anciens absents, 9 129 nouveaux, 31 821 paires station/EVSE anciennes absentes et 31 102 nouvelles. Aucun de ces écarts n’a été masqué par le comparatif ciblé des 25 stations. Commentaire dans Production #104 ; canary encore non qualifié.
+
 ## 2026-10-15 — France IRVE #104 : traitement idempotent préparé
 
 - Production `2401c2b` sur #104 ; comparaison ciblée de 25 stations et 11 EVSE supplémentaires, tests locaux ajout/présent/divergent réussis ; CI de build comparatif lancée une seule fois. Offres/prix inchangés, aucune bascule. Preuves dans les deux rapports France IRVE de la PR #104 ; prochaine action : résultat CI et parité des deux sorties.
