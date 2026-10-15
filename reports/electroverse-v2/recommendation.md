@@ -1,6 +1,6 @@
 # Décision R&D
 
-**Conserver V1 tel quel. Ne pas migrer vers V2 à ce stade.** Le prototype prouve sur 24 stations archivées une reprise plus fine après interruption et un refus sûr des données incomplètes, avec parité brute de 24 stations / 113 EVSE / 150 connecteurs et leurs composants tarifaires. Il ne réduit ni les requêtes ni les octets en fonctionnement normal ; il est ~2,6 fois plus lent dans ce microbench local et effectue 10 écritures contre 1 pour le modèle V1. Une API indisponible ou des statuts incomplets demeurent des incidents distincts.
+**Conserver V1 tel quel. Ne pas migrer vers V2 à ce stade.** Le prototype prouve sur 24 stations archivées une reprise plus fine après interruption et un refus sûr des données incomplètes, avec parité brute de 24 stations / 113 EVSE / 150 connecteurs et leurs composants tarifaires. Il ne réduit ni les requêtes ni les octets en fonctionnement normal ; il est ~2,4 fois plus lent dans ce microbench local et effectue 10 écritures contre 1 pour le modèle V1. Une API indisponible ou des statuts incomplets demeurent des incidents distincts.
 
 | Sujet | Bénéfice démontré | Risque / limite |
 |---|---|---|

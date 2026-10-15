@@ -2,13 +2,15 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {validateFixture,fixtureTransport,runV1Model,runV2,diffInventories,inventory} from './model.mjs';
+const config=JSON.parse(await fs.readFile(new URL('./config.json',import.meta.url),'utf8'));
+if(config.schemaVersion!==1||config.offline!==true||config.maxNetworkRequests!==0||config.batchSize>5)throw Error('unsafe experimental configuration');
 const fixture=validateFixture(JSON.parse(await fs.readFile(new URL('./fixtures/archived-24.json',import.meta.url),'utf8')));
 const temp=()=>fs.mkdtemp(path.join(os.tmpdir(),'electroverse-v2-'));
 const median=values=>[...values].sort((a,b)=>a-b)[Math.floor(values.length/2)];
 const runs=[];
 for(let n=0;n<5;n++){
-  const v1=await runV1Model(fixture,{outDir:await temp(),transport:fixtureTransport(fixture)});
-  const v2=await runV2(fixture,{outDir:await temp(),transport:fixtureTransport(fixture)});
+  const v1=await runV1Model(fixture,{outDir:await temp(),transport:fixtureTransport(fixture),batchSize:config.batchSize});
+  const v2=await runV2(fixture,{outDir:await temp(),transport:fixtureTransport(fixture),batchSize:config.batchSize});
   runs.push({v1:v1.metrics,v2:v2.metrics});
 }
 const summary={};

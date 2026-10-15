@@ -1,6 +1,6 @@
 # Electroverse V2 research — offline only
 
-This directory contains an isolated simulator and 24 public archived station records from Data Lab `2d4a0ebe` shard 000. It has no HTTP client or canonical collector import.
+`config.json` pins offline mode, a zero network request budget and batch size 5. This directory contains an isolated simulator and 24 public archived station records from Data Lab `2d4a0ebe` shard 000. It has no HTTP client or canonical collector import.
 
 Run from the Data Lab root:
 

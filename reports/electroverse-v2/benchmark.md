@@ -9,10 +9,10 @@ Fixture : 24 stations publiques archivées dans `shard-000.json`, 113 EVSE, 150 
 | Couverture finale | 24/24 | 24/24 | Équivalente sur cette fixture. |
 | Requêtes sans incident | 5 | 5 | **Aucun gain** normal. |
 | Octets de réponse simulés | 178 250 | 178 250 | Aucun gain. |
-| Durée locale médiane | 9,354 ms | 23,851 ms | V2 **plus lent**, surtout écritures atomiques. |
-| CPU local médian | 7,764 ms | 20,300 ms | V2 plus coûteux sur petit échantillon. |
+| Durée locale médiane | 13,491 ms | 32,067 ms | V2 **plus lent**, surtout écritures atomiques. |
+| CPU local médian | 10,193 ms | 26,902 ms | V2 plus coûteux sur petit échantillon. |
 | Écritures logiques | 1 | 10 | Coût explicite de la reprise fine. |
-| RSS observé maximal | 46,83 MB | 47,40 MB | Même processus, pas des pics comparables. |
+| RSS observé maximal | 46,49 MB | 47,12 MB | Même processus, pas des pics comparables. |
 
 **Interruption simulée après 2 lots sur 5 :** V1 modèle 2 requêtes avant arrêt + 5 au redémarrage = **7** ; V2 2 avant arrêt + 3 au redémarrage = **5**, soit 2 requêtes évitées (**28,6 % dans ce seul scénario**). Couverture finale 24/24 dans les deux cas. Le gain est dû au checkpoint et ne doit pas être extrapolé aux 22 818 stations, aux minutes Actions ni au réseau réel.
 
