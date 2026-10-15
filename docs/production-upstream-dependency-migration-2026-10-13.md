@@ -1,3 +1,9 @@
+## Delta Tesla/Mac du 15/10/2026 — transfert non encore activé
+
+- Data Lab #323 (`c800e7d5`) a versionné le catalogue Mac actuellement publié : 1 179 stations, 4 472 574 octets, SHA-256 `363af2e80f05a01015889f2be1ece4055c74c3f75d1b804fca66f51d01ef57c5`. #324 (`b7952f95`) garde le lot précédent de 1 178 stations, SHA-256 `cac26eb46010c01b9cf09a82511cb9be436f1b23d3579f1ca0706ba4f6b26c7e`. Leurs octets correspondent aux deux commits de publication Mac historiques de Stable ; aucune reconstruction par les groupes Git.
+- Production #117 prépare le pin séparé `teslaMacDataLab` et le contrôle du manifeste ; la validation Pages PR #38765178210 réussit sans déploiement. Updater Test #20 prépare la publication du catalogue validé dans Data Lab et le dispatch d’un candidat Production ; cette PR reste ouverte.
+- Le contrôle d’accès #19, run #38764852818, a reçu HTTP 403 pour `POST /repos/yass3705/tesla-charge-companion-data-lab/git/refs` avec le secret inter-dépôts existant. Ce droit empêche de déclarer le transfert opérationnel. Le Mac, son runner, Stable et le Pages Production en ligne n’ont pas été basculés.
+
 # TCC V9 — Migration des dépendances amont vers Data Lab et Production (13/10/2026)
 
 ## Delta validé au 15/10/2026 (les constats du 13/10 ci-dessous sont historiques)

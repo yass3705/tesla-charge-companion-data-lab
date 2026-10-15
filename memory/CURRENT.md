@@ -1,3 +1,10 @@
+# 15 octobre 2026 — catalogue Mac épinglable, transport automatique bloqué par droit Data Lab
+
+- Data Lab #323 fusionnée `c800e7d5` : copie **octet pour octet** du catalogue Mac déjà publié, 1 179 stations, SHA-256 `363af2e80f05a01015889f2be1ece4055c74c3f75d1b804fca66f51d01ef57c5`, 4 472 574 octets, avec manifeste de dernier lot valide et dates de publication par pays. Data Lab #324 `b7952f95` archive aussi le lot historique précédent, 1 178 stations, SHA-256 `cac26eb46010c01b9cf09a82511cb9be436f1b23d3579f1ca0706ba4f6b26c7e`; test de deux artefacts et scan public réussis. Il ne s’agit pas de deux nouvelles extractions Mac.
+- Production #117 ouverte : candidat de snapshot qui lit le catalogue Data Lab au commit `c800e7d5`, vérifie SHA, octets, identifiants et provenance ; 14 tests locaux Tesla/SuC réussis, validation Pages PR #38765178210 réussie sans publication au dernier relevé. La CI de développement et les autres jobs sont encore en cours. Le snapshot Production public n’a pas encore changé.
+- Updater Test #19 fusionnée : workflow manuel de vérification de l’autorisation inter-dépôts, **run #38764852818 en échec HTTP 403** lors de la création d’une branche Data Lab. La PR #20 de bascule du transport Mac est préparée mais **ne doit pas être fusionnée avant un contrôle d’écriture réussi**. L’acquisition, le runner et le chemin actuel Stable restent inchangés. Une autorisation GitHub App limitée à Data Lab contents:write, ou un transport d’artefact déjà autorisé, est nécessaire.
+- **Statut : migration non terminée.** Prochaine étape : résoudre le droit d’écriture, relancer une fois le test #19, puis seulement fusionner #20 ; valider deux transmissions, le build Production et Pages, et retirer le relais Stable conditionnellement. Ne pas clôturer #302 entre-temps.
+
 ## 15 octobre 2026 — Production Pages publiée, transfert encore incomplet
 
 - SHA vérifiés : Data Lab `2a5f9ca3` (#321), Production `5ebd408a` (#116), Stable `39f3097d` (#150), Updater Test `425b4fca` (#18). Les branches principales locales historiques n'ont pas été écrasées.
