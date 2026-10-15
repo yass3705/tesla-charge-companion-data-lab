@@ -2,6 +2,7 @@
 import json,gzip,urllib.request
 from pathlib import Path
 from datetime import datetime,timezone
+from guard_swiss_bundle_refresh import validate_refresh
 
 NAT="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
 ROOT=Path(".")
@@ -269,6 +270,8 @@ payload={
  "cpoResearchStatus":progress,
  "evses":rows
 }
+previous=json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else None
+validate_refresh(previous,payload)
 OUT.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
 report={k:v for k,v in payload.items() if k!="evses"}
 report["output"]=str(OUT)
