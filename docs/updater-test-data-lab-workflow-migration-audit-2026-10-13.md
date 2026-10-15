@@ -188,7 +188,7 @@ Bloquants externes : statut Electroverse complet/frais dans #219 ; limite REVE H
 | Electroverse France | Data Lab delta quotidien et full hebdomadaire ; Production lit Data Lab ; Updater #16 `3111b462` | Deux push historiques supprimés, dispatch conservé | MIGRATION COMPLETE — overlay EVSE #219 et API/stats à suivre séparément |
 | OZECAR | Data Lab #308 et deux runs représentatifs #38729531848/#38730162670 ; Updater #13 | Cron supprimé, dispatch conservé | MIGRATION COMPLETE pour le collecteur ; consommateurs spécifiques à confirmer |
 | REVE Espagne | Data Lab #309, seed `d5bff031`, 170 fichiers identiques au Stable validé ; Production #105/#107/#108, build #38749026980 | Updater #17 : cron et push retirés, dispatch conservé | MIGRATION COMPLETE pour le transfert ; collecte API progressive HTTP 429 |
-| Zephyre | Data Lab #310 `0b358fcf`, run complet #38750594661 ; Production #109 en validation | Stable cron actif jusqu'à validation #109 | MIGRATION INCOMPLETE — raccordement Production en CI |
+| Zephyre | Data Lab #310 `0b358fcf`, run complet #38750594661 ; Production #109 fusionnée `e799be46`, build et Pages validation réussis | Stable #145 `3aba11c3` : cron/push supprimés, dispatch conservé | MIGRATION COMPLETE pour le processus et son consommateur épinglé |
 
 Les statuts ci-dessus décrivent les processus ciblés, pas l'autonomie globale Production : son constructeur copie encore des fichiers Stable et France/Italie demandent une suite. Les incidents de collecte ne sont pas assimilés aux erreurs de migration.
 

@@ -2,7 +2,7 @@
 
 - Updater Test #14/#15/#16/#17 fusionnées : preuve Ze-Watt, retrait des déclencheurs Ze-Watt/Electroverse/REVE, dispatch historiques et Tesla/Mac conservés. Stable #143/#144 fusionnées : cinq miroirs V8 et Ze-Watt manuels seulement ; Pages Stable maintenu.
 - Data Lab #309 fusionnée (`8f7754c7`) avec seed REVE validé `d5bff031`; Production #105/#107/#108 fusionnées jusqu'à `3216c317`, build Espagne épinglé, parité et Pages en validation sans déploiement. REVE API 429 reste incident externe.
-- Data Lab #310 fusionnée (`0b358fcf`) : Zephyre ePowerDirect et offre exacte épinglée ; refresh #38750594661 réussi. Production #109 ouverte (`5936f3d`) pour la consommation Data Lab ; le cron Stable attend sa CI. Aucune formule de prix modifiée.
+- Data Lab #310 fusionnée (`0b358fcf`) : Zephyre ePowerDirect et offre exacte épinglée ; refresh #38750594661 réussi. Production #109 fusionnée `e799be46` après CI de développement et Pages réussie (sans déploiement) ; Stable #145 fusionnée `3aba11c3`, cron/push retirés et dispatch de rollback conservé. Aucune formule de prix modifiée.
 
 ## 2026-10-15 — reprise différentielle du développement Codex
 
