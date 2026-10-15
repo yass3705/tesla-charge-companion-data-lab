@@ -41,12 +41,25 @@ jobs:
           fetch-depth: 0
       - run: python3 -m unittest discover -s tests -p 'test_guard_swiss_bundle_refresh.py'
       - run: python3 scripts/build_swiss_tcc_v9_bundle.py
+      - name: Verify retained national input
+        run: |
+          python3 - <<'PY'
+          import gzip,hashlib,json
+          from pathlib import Path
+          report=json.loads(Path('docs/switzerland-v9-integration-2026-09-28.json').read_text())
+          source=report['nationalSourceSnapshot']
+          raw=gzip.decompress(Path(source['path']).read_bytes())
+          assert len(raw)==source['rawBytes']
+          assert hashlib.sha256(raw).hexdigest()==source['rawSha256']
+          assert isinstance(json.loads(raw), (dict,list))
+          print('SWISS_NATIONAL_INPUT_PRESERVED', source['rawBytes'], source['rawSha256'])
+          PY
       - name: Persist
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/tcc_v9/switzerland.json docs/switzerland-v9-integration-2026-09-28.json
+          git add data/tcc_v9/switzerland.json data/national/switzerland_oicp_source.json.gz docs/switzerland-v9-integration-2026-09-28.json
           git commit -m 'data(switzerland): build TCC V9 bundle' || exit 0
           for attempt in 1 2 3 4 5 6; do
             git pull --rebase origin main
