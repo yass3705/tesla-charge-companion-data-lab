@@ -1,5 +1,18 @@
 # TCC V9 — Migration des dépendances amont vers Data Lab et Production (13/10/2026)
 
+## Delta validé au 15/10/2026 (les constats du 13/10 ci-dessous sont historiques)
+
+| Chaîne | Transfert technique | Legacy conservé | Preuve / suite |
+| --- | --- | --- | --- |
+| Runtime V9 et Pages | Production #112 `29b0ae54`, Data Lab #315 `20ad7b21` et archive seed `0181a0fb` ; publication Pages Production #38756331049 réussie. | Stable Pages pour V7/V8 et rollback ; aucun changement Cloudflare. | Shell public et manifeste Production : snapshot `2026-10-15-v9-datalab-baseline-candidate`, 2 463 fichiers. Contrôler les données Tesla courantes avant d'archiver Stable Pages. |
+| France IRVE | Production #104 `99093d82`, Data Lab lot validé #314. | Sync Stable pour son propre site. | Parité France 48 083 stations/165 848 couples/169 165 connecteurs ; génération nationale récente et 449 BUMP non promus. |
+| Italie et FX | Data Lab #312/#313, Production #110/#111. | FX Stable pour V8. | Build complet #38755773180 ; PUN #301 reste brouillon séparé. |
+| Pays-Bas DOT-NL | Data Lab canonical quotidien, Production consommateur Data Lab. | Stable #146 `be4cfbd9` manuel/archives. | Runs Data Lab #38384698477, #38537318827, #38704887974 réussis. |
+| Suisse national | Data Lab #316 `fc3cfd2e` : cron 23:20 UTC et garde last-good ; bundle + intégration existent. | Stable constructeur CH quotidien encore nécessaire au runtime miroir. | CI PR #38757135676 réussie ; valider le run `main` et le consommateur Production avant retrait. |
+| Tesla/Mac | Acquisition inchangée dans Updater Test. | Export courant et sync transitent encore par Stable. | Dernier catalogue archivé dans le baseline Data Lab ; raccordement courant Production à créer sans déplacer Mac. |
+
+**Statut global : migration technique incomplète.** L'indisponibilité Electroverse et les 429 REVE sont des incidents de collecte distincts ; les processus déjà transférés ne sont pas remis en cause.
+
 ## Décision utilisateur et portée
 Ne supprimer **aucun** workflow d'Updater Test avant présentation ici de sa liste et accord. Avant toute classification comme doublon ou inutile, suivre toute la chaîne jusqu'aux données effectivement chargées par le build et le runtime du dépôt `tesla-charge-companion-production`. La cible : **Data Lab = source unique des données CPO/eMSP et données d'entrée validées ; Production = code, compilation, validation et publication V9 ; Updater Test = acquisition Mac/Tesla distincte si nécessaire ; Stable = archive/parité optionnelle**, pas étape obligatoire de publication.
 
