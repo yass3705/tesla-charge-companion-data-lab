@@ -6,6 +6,12 @@ export async function runJournal(fixture,{outDir,transport=fixtureTransport(fixt
  const sourceHash=sha(fixture.stations.map(x=>[pkOf(x),x.tariffHash]));
  const restored=await recoverBatches(outDir,{sourceHash});
  const all=fixture.stations.map(pkOf),committed=restored.completed.length;
+ // Check journal sequence against this generation's exact worklist before reusing records.
+ for(let i=0;i<restored.completed.length;i++){
+  const expected=all.slice(i*batchSize,(i+1)*batchSize);
+  const actual=restored.records.slice(i*batchSize,(i+1)*batchSize).map(pkOf);
+  if(JSON.stringify(expected)!==JSON.stringify(actual))throw Error('journal worklist mismatch');
+ }
  const existing=new Map(restored.records.map(r=>[pkOf(r),validateRecord(r)]));
  const batches=Math.ceil(all.length/batchSize);
  const stats={writes:0,skippedBatches:committed,processedBatches:0,unresolved:0};
