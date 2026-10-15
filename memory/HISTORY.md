@@ -1,3 +1,7 @@
+## 2026-10-15 — France IRVE #104 : traitement idempotent préparé
+
+- Production `2401c2b` sur #104 ; comparaison ciblée de 25 stations et 11 EVSE supplémentaires, tests locaux ajout/présent/divergent réussis ; CI de build comparatif lancée une seule fois. Offres/prix inchangés, aucune bascule. Preuves dans les deux rapports France IRVE de la PR #104 ; prochaine action : résultat CI et parité des deux sorties.
+
 ## 2026-10-15 — Delta EVSE France du candidat IRVE
 
 - Comparaison ciblée des pins : 17 EVSE Belib et 39 BUMP approuvés déjà présents dans la nouvelle source ; 1 EVSE Belib et 10 BUMP supplémentaires sur ces mêmes stations, 1 127 stations France de plus avant supplément. Preuve Production #104 `3d928a1`. Aucun prix attribué, cutover bloqué.
