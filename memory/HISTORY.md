@@ -1,3 +1,7 @@
+## 2026-10-15 — reprise différentielle du développement Codex
+
+- Session Codex locale retrouvée : dernier chantier OZECAR/Electroverse/REVE. OZECAR #308 déjà fusionnée avec deux runs Data Lab réussis ; cron Updater Test retiré via #13, fallback manuel gardé. Les anciens worktrees Production n'ont aucun commit unique en avance sur main. Reprise indépendante de Data Lab #301 au SHA `11617312b` : comparaison exacte EVSE/station/puissance Stable épinglé contre candidat PUN, rapport en artefact, sans tarif ni cutover. Tests locaux 2/2, CI #38734681101 en cours au dernier relevé. Blocages : 2 314 anciens IDs absents de PUN, 18 divergences de puissance à qualifier ; France #104 et REVE/Electroverse laissés à leurs chantiers spécifiques.
+
 ## 2026-10-15 — migration non-Tesla : OZECAR en PR, Electroverse et REVE qualifiés
 
 - Electroverse France déjà collecté dans Data Lab avec runs quotidiens et hebdomadaires réussis ; overlay filtré bloqué par le recensement de statuts #219. PR Data Lab #308 au SHA `f38fedbe7` migre OZECAR national avec projection publique et tests, sans supprimer Updater Test ni publier. REVE progresse à 403/468 pages tarifs, 269/454 statuts puis rencontre HTTP 429 au curseur 404 ; checkpoints préservés. Rapport différentiel, mémoire et issues mis à jour ; aucun prix ou snapshot Production modifié.
