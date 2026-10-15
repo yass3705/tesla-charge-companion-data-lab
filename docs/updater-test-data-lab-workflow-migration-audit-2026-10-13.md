@@ -191,3 +191,16 @@ Bloquants externes : statut Electroverse complet/frais dans #219 ; limite REVE H
 | Zephyre | Data Lab #310 `0b358fcf`, run complet #38750594661 ; Production #109 en validation | Stable cron actif jusqu'à validation #109 | MIGRATION INCOMPLETE — raccordement Production en CI |
 
 Les statuts ci-dessus décrivent les processus ciblés, pas l'autonomie globale Production : son constructeur copie encore des fichiers Stable et France/Italie demandent une suite. Les incidents de collecte ne sont pas assimilés aux erreurs de migration.
+
+## 15 octobre 2026 — règle GLOBALE de validation des migrations, décision utilisateur
+
+**Objectif : déplacer l'exécution des mises à jour non-Tesla vers Data Lab, pas analyser les changements opérationnels ordinaires des CPO.** S'applique à tous les collecteurs et workflows du chantier Updater Test/Stable → Data Lab (OZECAR, Ze-Watt, Electroverse, REVE, autres CPO/eMSP et sources nationales), et aux contrôles de cutover qui en dépendent.
+
+- Mesurer la **couverture EVSE** en nombres comparables sur les mêmes règles de périmètre/filtrage, et la présence globale des données tarifaires correspondantes. Si le nombre d'EVSE est égal ou supérieur, la croissance du parc est normale et **ne déclenche pas d'audit EVSE par EVSE**.
+- Une **baisse du nombre d'EVSE** déclenche une investigation de perte de couverture avant migration/retrait du legacy ; ne pas conclure automatiquement à une régression ou supprimer des EVSE légitimement disparus sans preuve.
+- Les changements de prix, profils, règles horaires, nombre de grilles ou tarif d'une borne sont **normaux et non bloquants** : ne plus imposer la parité de montant, signature ou liste de prix entre deux dates différentes.
+- Si les tarifs directs ou les tarifs de la catégorie collectée **disparaissent globalement**, investiguer et bloquer le cutover. Les prix manquants isolés restent gouvernés par les règles métier fail-closed, sans invention ni conversion de tarifs eMSP en CPO.
+- Vérifier que les runs Data Lab exécutent et persistent réellement le bon snapshot, puis que les consommateurs utiles basculent vers cette source. Les garde-fous techniques indispensables (fichiers lisibles, clés, connecteurs autorisés, statut pertinent, indépendance de Tesla/Mac) restent valables ; ne pas confondre validation de migration et audit tarifaire métier.
+- Ne désactiver les anciens déclencheurs qu'après preuve de remplacement et vérification des consommateurs ; conserver Tesla via Mac dans Updater Test, Stable comme référence/rollback si encore nécessaire.
+
+**Cette décision remplace toute exigence antérieure de parité tarifaire exacte appliquée comme gate générique de migration.** Les rapports d'écarts prix peuvent rester informatifs mais ne doivent plus bloquer ni provoquer d'analyses systématiques.
