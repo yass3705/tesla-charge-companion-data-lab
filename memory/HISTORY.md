@@ -1,3 +1,7 @@
+## 2026-10-15 — Delta EVSE France du candidat IRVE
+
+- Comparaison ciblée des pins : 17 EVSE Belib et 39 BUMP approuvés déjà présents dans la nouvelle source ; 1 EVSE Belib et 10 BUMP supplémentaires sur ces mêmes stations, 1 127 stations France de plus avant supplément. Preuve Production #104 `3d928a1`. Aucun prix attribué, cutover bloqué.
+
 ## 2026-10-15 — France IRVE #104 : diagnostic de générations et candidat comparable
 
 - Le run Production #38506877130 compare deux générations incompatibles (48 058/165 792 contre 49 185/165 129). PR #104 mise à jour au SHA `834101c` avec pin Stable de même génération, builds comparatifs stricts et diagnostic préalable ; CI #38722672261 en échec sur collision Belib déjà présent dans la nouvelle génération ; preuve Production `19d53c0`. Source détaillée : `docs/FRANCE_IRVE_HANDOFF_2026-10-15.md` sur la branche Production #104. Aucun cutover, déploiement ou extinction Stable. Prochaine action : conclusion CI et preuve de parité métier.
