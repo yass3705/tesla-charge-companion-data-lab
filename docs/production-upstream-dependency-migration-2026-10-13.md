@@ -6,10 +6,11 @@
 | --- | --- | --- | --- |
 | Runtime V9 et Pages | Production #112 `29b0ae54`, Data Lab #315 `20ad7b21` et archive seed `0181a0fb` ; publication Pages Production #38756331049 réussie. | Stable Pages pour V7/V8 et rollback ; aucun changement Cloudflare. | Shell public et manifeste Production : snapshot `2026-10-15-v9-datalab-baseline-candidate`, 2 463 fichiers. Contrôler les données Tesla courantes avant d'archiver Stable Pages. |
 | France IRVE | Production #104 `99093d82`, Data Lab lot validé #314 et refresh courant #38704938295. | Stable #148 `8bdc42e6` : relais manuel/archives seulement. | Parité France 48 083 stations/165 848 couples/169 165 connecteurs ; génération nationale récente et 449 BUMP non promus. |
-| Italie et FX | Data Lab #312/#313, Production #110/#111. | FX Stable pour V8. | Build complet #38755773180 ; PUN #301 reste brouillon séparé. |
+| Italie et FX | Data Lab #312/#313, Production #110/#111. | Stable #149 `13ea0d0e` miroir FX Data Lab pour V8, sans appel direct fournisseur ; run #38759917864 et Pages #38760000686 réussis. | Build complet #38755773180 ; PUN #301 reste brouillon séparé. |
 | Pays-Bas DOT-NL | Data Lab canonical quotidien, Production consommateur Data Lab. | Stable #146 `be4cfbd9` manuel/archives. | Runs Data Lab #38384698477, #38537318827, #38704887974 réussis. |
 | Suisse national | Data Lab #316/#318/#319 : cron 23:20 UTC, garde last-good, source brute épinglée `5058290c`, intégration #38758672942 ; Production compilateur hors ligne #114 `09b384a1`, run #38758717393 réussi. | Stable #147 `cb5fb8c1` : compilateur manuel/archives seulement. | 19 829 EVSE candidats contre 19 793 Stable ; 15 anciens absents de la source nationale brute, aucune perte d'offre sur EVSE communs. Candidat non promu, snapshot par défaut préservé. |
 | Tesla/Mac | Acquisition inchangée dans Updater Test. | Export courant et sync transitent encore par Stable. | Dernier catalogue archivé dans le baseline Data Lab ; raccordement courant Production à créer sans déplacer Mac. |
+| Watchdog Pages | Production #116 `5ebd408a` : contrôle read-only du snapshot publié, dix pays et huit assets critiques ; run #38760506831 réussi. | Stable #150 `39f3097d` manuel seulement pour son site historique. | Le monitoring Production n'exécute aucune collecte ni publication. |
 
 **Statut global : migration technique incomplète.** L'indisponibilité Electroverse et les 429 REVE sont des incidents de collecte distincts ; les processus déjà transférés ne sont pas remis en cause.
 

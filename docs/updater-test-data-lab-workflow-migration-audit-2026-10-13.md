@@ -1,5 +1,11 @@
 # Migration GitHub Actions updater-test → Data Lab — 2026-10-13
 
+## 15 octobre — retrait final des déclencheurs automatiques non-Tesla
+
+[Updater Test #18](https://github.com/yass3705/tesla-stations-updater-test/pull/18) fusionnée `425b4fca` a retiré les déclencheurs `push` de 70 anciens workflows non-Tesla : sondes Electroverse/Energie360/Suisse/UK, diagnostics IRVE et CPO France, et OZECAR historique. Les `workflow_dispatch`, scripts, références de secrets, checkpoints et archives restent disponibles. La CI de parité #38760123825 a réussi. Lecture YAML de tous les workflows sur `main` : seul `actions-storage-maintenance.yml` conserve un déclencheur automatique ; trois validations sur PR restent actives. Aucun workflow Tesla/Mac, SuC ou export Tesla n'a été modifié. Les collectes utiles ont les propriétaires Data Lab documentés ci-dessous ; les anciens diagnostics restent historiques et manuels.
+
+La migration des déclencheurs Updater Test non-Tesla est close. Elle n'implique pas que les APIs Electroverse ou REVE répondent actuellement, ni que l'export Tesla/Mac courant ne transite plus par Stable pour son propre site.
+
 ## 15 octobre — transfert différentiel des déclencheurs après décision de séparer migration et disponibilité des sources
 
 | Processus | Source historique | Propriétaire actuel | Déclencheur legacy | Preuve |
