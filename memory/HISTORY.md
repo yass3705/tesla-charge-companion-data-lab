@@ -1,3 +1,42 @@
+## 2026-10-15 — transfert Ze-Watt, REVE et Zephyre ; extinctions ciblées
+
+- Updater Test #14/#15/#16/#17 fusionnées : preuve Ze-Watt, retrait des déclencheurs Ze-Watt/Electroverse/REVE, dispatch historiques et Tesla/Mac conservés. Stable #143/#144 fusionnées : cinq miroirs V8 et Ze-Watt manuels seulement ; Pages Stable maintenu.
+- Data Lab #309 fusionnée (`8f7754c7`) avec seed REVE validé `d5bff031`; Production #105/#107/#108 fusionnées jusqu'à `3216c317`, build Espagne épinglé, parité et Pages en validation sans déploiement. REVE API 429 reste incident externe.
+- Data Lab #310 fusionnée (`0b358fcf`) : Zephyre ePowerDirect et offre exacte épinglée ; refresh #38750594661 réussi. Production #109 ouverte (`5936f3d`) pour la consommation Data Lab ; le cron Stable attend sa CI. Aucune formule de prix modifiée.
+
+## 2026-10-15 — reprise différentielle du développement Codex
+
+- Session Codex locale retrouvée : dernier chantier OZECAR/Electroverse/REVE. OZECAR #308 déjà fusionnée avec deux runs Data Lab réussis ; cron Updater Test retiré via #13, fallback manuel gardé. Les anciens worktrees Production n'ont aucun commit unique en avance sur main. Reprise indépendante de Data Lab #301 au SHA `11617312b` : comparaison exacte EVSE/station/puissance Stable épinglé contre candidat PUN, rapport en artefact, sans tarif ni cutover. Tests locaux 2/2, CI #38734681101 en cours au dernier relevé. Blocages : 2 314 anciens IDs absents de PUN, 18 divergences de puissance à qualifier ; France #104 et REVE/Electroverse laissés à leurs chantiers spécifiques.
+
+## 2026-10-15 — migration non-Tesla : OZECAR en PR, Electroverse et REVE qualifiés
+
+- Electroverse France déjà collecté dans Data Lab avec runs quotidiens et hebdomadaires réussis ; overlay filtré bloqué par le recensement de statuts #219. PR Data Lab #308 au SHA `f38fedbe7` migre OZECAR national avec projection publique et tests, sans supprimer Updater Test ni publier. REVE progresse à 403/468 pages tarifs, 269/454 statuts puis rencontre HTTP 429 au curseur 404 ; checkpoints préservés. Rapport différentiel, mémoire et issues mis à jour ; aucun prix ou snapshot Production modifié.
+
+## 2026-10-15 — France IRVE #104 : origine des 449 EVSE BUMP établie
+
+- 449/449 identifiants retrouvés dans le CSV national brut de même SHA que la génération Data Lab du 15/10 ; disparition au rebuild du 11/10 à SHA source inchangé, par le filtre EF/Type 2/CCS (`d89b0ebf6`). 373 sans prise déclarée, 76 avec seule prise « autre » ; aucune activité dynamique explicite. Rapport individuel versionné sur #104. Le filtre et le validateur BUMP sont conservés ; la qualification source/CPO des prises et de l'activité bloque toujours le canary. Aucun nouveau run ni changement tarifaire.
+
+
+## 2026-10-15 — France IRVE #104 : blocage BUMP confirmé par CI unique
+
+- Run Production #38724599850 : test d’idempotence passé, build bloqué sur 449 EVSE BUMP historiquement tarifés absents de la nouvelle source nationale (0 statut dynamique `en_service`). Rapport exact Production `e9c33ed`, mémoire sur Data Lab #307. Aucun second run, aucune modification d’offre, publication ou extinction Stable. Action restante : décision de couverture fondée sur les sources approuvées.
+
+## 2026-10-15 — France IRVE #104 : écarts globaux intergénérations explicités
+
+- Ancien résultat supplémenté contre nouveau national : 8 027 IDs de station anciens absents, 9 129 nouveaux, 31 821 paires station/EVSE anciennes absentes et 31 102 nouvelles. Aucun de ces écarts n’a été masqué par le comparatif ciblé des 25 stations. Commentaire dans Production #104 ; canary encore non qualifié.
+
+## 2026-10-15 — France IRVE #104 : traitement idempotent préparé
+
+- Production `2401c2b` sur #104 ; comparaison ciblée de 25 stations et 11 EVSE supplémentaires, tests locaux ajout/présent/divergent réussis ; CI de build comparatif lancée une seule fois. Offres/prix inchangés, aucune bascule. Preuves dans les deux rapports France IRVE de la PR #104 ; prochaine action : résultat CI et parité des deux sorties.
+
+## 2026-10-15 — Delta EVSE France du candidat IRVE
+
+- Comparaison ciblée des pins : 17 EVSE Belib et 39 BUMP approuvés déjà présents dans la nouvelle source ; 1 EVSE Belib et 10 BUMP supplémentaires sur ces mêmes stations, 1 127 stations France de plus avant supplément. Preuve Production #104 `3d928a1`. Aucun prix attribué, cutover bloqué.
+
+## 2026-10-15 — France IRVE #104 : diagnostic de générations et candidat comparable
+
+- Le run Production #38506877130 compare deux générations incompatibles (48 058/165 792 contre 49 185/165 129). PR #104 mise à jour au SHA `834101c` avec pin Stable de même génération, builds comparatifs stricts et diagnostic préalable ; CI #38722672261 en échec sur collision Belib déjà présent dans la nouvelle génération ; preuve Production `19d53c0`. Source détaillée : `docs/FRANCE_IRVE_HANDOFF_2026-10-15.md` sur la branche Production #104. Aucun cutover, déploiement ou extinction Stable. Prochaine action : conclusion CI et preuve de parité métier.
+
 ## 2026-10-13 — B01 Electric 55 identifiée ; frontière de clôture EnergyVision
 
 - Preuve E55C Place Lully enrichie avec borne B01, EVSE exact `FR*55C*EFR78210*P21PL*0` et 22 kW ; les conditions de déclenchement du parking restent non établies, donc aucune promotion tarifaire V9 pour ce point. EnergyVision Production #94/#95 et CI main #38448522469 vérifiées : 778 tarifs Direct calculables dans le candidat, grilles complexes non résolues, déploiement public non déclenché. Voir [état courant](CURRENT.md).
@@ -8,6 +47,12 @@
 - 92 workflows historiques recensés ; 8 YAML non-Tesla supprimés dans updater-test (Electroverse bootstrap, Greenspot, GOFAST, Swisscharge, CPO counts Suisse, PowerUp, target CPO full/second pass). 84 restants et prochaines vérifications documentés dans [l'audit](../docs/updater-test-data-lab-workflow-migration-audit-2026-10-13.md). Aucune modification des workflows Tesla.
 
 # Journal de la mémoire technique
+
+## 2026-10-15 — Ze-Watt et déclencheurs Electroverse historiques
+
+- Updater Test [#14](https://github.com/yass3705/tesla-stations-updater-test/pull/14) fusionnée `cb1ff4bf` après le run #38738305550 ; [#15](https://github.com/yass3705/tesla-stations-updater-test/pull/15) fusionnée `c243b555`, supprime le seul déclencheur automatique Ze-Watt historique. Data Lab conserve le collecteur planifié et les offres compilées ; archives et dispatch privé préservés.
+- Updater Test [#16](https://github.com/yass3705/tesla-stations-updater-test/pull/16) fusionnée `3111b462`, retire les déclencheurs `push` des sélecteur et rafraîchisseur Electroverse historiques. Collectes quotidiennes et hebdomadaires Data Lab déjà validées ; overlay EVSE #219 reste soumis à son gate de statuts. Aucun changement Tesla, secret, prix, snapshot Production ou publication.
+- Distinction explicite : ces retraits de déclencheurs ne prouvent pas l'autonomie Espagne/Italie/France ni la publication V9. REVE mensuel vers Stable, France #104 et publication Stable restent opérationnels. Voir `CURRENT.md` pour la prochaine étape.
 
 ## 2026-10-13 — EnergyVision BE : supplément Direct V9 à 778 PDC, Lully 22 kW confirmé
 
