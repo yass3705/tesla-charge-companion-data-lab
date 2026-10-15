@@ -1,3 +1,7 @@
+## 2026-10-15 — migration non-Tesla : OZECAR en PR, Electroverse et REVE qualifiés
+
+- Electroverse France déjà collecté dans Data Lab avec runs quotidiens et hebdomadaires réussis ; overlay filtré bloqué par le recensement de statuts #219. PR Data Lab #308 au SHA `f38fedbe7` migre OZECAR national avec projection publique et tests, sans supprimer Updater Test ni publier. REVE progresse à 403/468 pages tarifs, 269/454 statuts puis rencontre HTTP 429 au curseur 404 ; checkpoints préservés. Rapport différentiel, mémoire et issues mis à jour ; aucun prix ou snapshot Production modifié.
+
 ## 2026-10-15 — France IRVE #104 : origine des 449 EVSE BUMP établie
 
 - 449/449 identifiants retrouvés dans le CSV national brut de même SHA que la génération Data Lab du 15/10 ; disparition au rebuild du 11/10 à SHA source inchangé, par le filtre EF/Type 2/CCS (`d89b0ebf6`). 373 sans prise déclarée, 76 avec seule prise « autre » ; aucune activité dynamique explicite. Rapport individuel versionné sur #104. Le filtre et le validateur BUMP sont conservés ; la qualification source/CPO des prises et de l'activité bloque toujours le canary. Aucun nouveau run ni changement tarifaire.
