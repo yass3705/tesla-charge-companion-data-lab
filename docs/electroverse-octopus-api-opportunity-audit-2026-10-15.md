@@ -1,3 +1,5 @@
+> **STATUT : BROUILLON D'IDÉE / EXPLORATION DOCUMENTAIRE UNIQUEMENT — 15/10/2026.** Ce document n'est ni un plan de migration, ni une recommandation de modification, ni une autorisation de pilote. Le processus Electroverse existant est considéré comme acquis et intouchable dans ce chantier : aucune modification de collecteur, configuration, cadence, secrets, caches, sélection, rapprochements, workflows ou Production ; aucune expérimentation active ni comparaison opérationnelle sans nouvelle demande explicite. Toute piste demeure hypothétique et indépendante des chantiers en cours. **Ne pas fusionner cette PR comme étape d'implémentation.**
+
 # TCC V9 — Audit ciblé des API Octopus pour Electroverse (15/10/2026)
 
 ## Verdict provisoire (documentaire, sans requête authentifiée)
