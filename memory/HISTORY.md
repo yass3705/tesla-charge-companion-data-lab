@@ -1,3 +1,8 @@
+## 2026-10-15 — #133 phase 2, extraction et oracle en Draft
+
+- Production [#137](https://github.com/yass3705/tesla-charge-companion-production/pull/137), `76bec85`, empilée sur #136 : 213 581 RawOffer embarquées ajoutées sans retrait des 365 066 antérieures ; 27 sources décomposées, deux impossibilités documentées, Tesla déjà couvert. Les preuves source, portées station/EVSE/prise, audits avant/après et diagnostics sont versionnés dans cette PR, sans changement runtime ni collecte.
+- Oracle indépendant et 16 golden cases sur le pin ; 20 scénarios et 67 lignes de dual-run, 56 concordances et 11 écarts non classables faute de preuve complète. Midhope garde la dernière rectification métier sur DST ; sa convention de durée reste à unifier. Tests ciblés et contrôle du catalogue réussis ; aucune fusion, bascule ou publication.
+
 ## 2026-10-15 — #133 : phase catalogue et dual-run en PR Draft Production
 - Production [#136](https://github.com/yass3705/tesla-charge-companion-production/pull/136), `44a5b55`, créée Draft depuis `main` : catalogue relationnel de preuves, évaluateur pur isolé, oracle arithmétique borné et dual-run local ; aucune bascule runtime, collecte ou publication. #135 reste la conception contractuelle Draft, #134 seulement le site physique de présentation Draft.
 - Pin reconstruit et validé : 365 066 offres explicites conservées, 184 674 stations source, 389 310 PDC/prises. Trois stations / 28 PDC Bois-d'Arcy ; 44 évaluations sur 13 scénarios, cinq écarts de statut classés données insuffisantes. Trente sources à tarif embarqué demeurent partiellement opaques ; prochaine action : les énumérer et étendre les oracles avant toute promotion. Rapport détaillé et tests dans Production #136.
