@@ -1,3 +1,7 @@
+## 2026-10-15 — Handoff Tesla Mac : source Data Lab préparée, droit inter-dépôts refusé
+
+Data Lab #323 `c800e7d5` et #324 `b7952f95` conservent deux catalogues Mac publics exacts (1 178 puis 1 179 stations), empreintes et provenances. Production #117 ajoute le constructeur épinglé et la validation candidate ; Pages PR #38765178210 réussie sans publication. Updater #19 a vérifié le secret existant sur une branche jetable : HTTP 403 au run #38764852818, sans changement de Data Lab main. Updater #20 reste ouverte et non fusionnée ; Mac/Stable actuels intacts. Le transfert automatique, la publication Production actualisée et le retrait Stable attendent une autorisation inter-dépôts vérifiée.
+
 ## 2026-10-15 — Limite vérifiée du handoff Tesla/Mac
 - Dans un worktree isolé d'Updater Test `425b4fca`, `src.exporter_global_v6` a été exécuté avec le catalogue Stable public courant (1 179 stations, 11 pays) comme baseline ; arrêt immédiat `RuntimeError: Groupe incomplet: BE-001`. Aucun fichier distant, secret, runner ou workflow Mac modifié, aucun candidat publié. `lot_publish.py` garde Stable comme source/cible et `dispatch_v9_preview.py` épingle son SHA ; dernier lot Mac #37962729987 du 9 octobre réussi. Le transfert du catalogue courant exige un handoff de l'artefact validé après lot, non une reconstruction depuis les seuls groupes versionnés. Verdict global inchangé : migration technique incomplète.
 
