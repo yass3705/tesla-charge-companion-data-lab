@@ -1,3 +1,7 @@
+## 2026-10-15 — #133 : phase catalogue et dual-run en PR Draft Production
+- Production [#136](https://github.com/yass3705/tesla-charge-companion-production/pull/136), `44a5b55`, créée Draft depuis `main` : catalogue relationnel de preuves, évaluateur pur isolé, oracle arithmétique borné et dual-run local ; aucune bascule runtime, collecte ou publication. #135 reste la conception contractuelle Draft, #134 seulement le site physique de présentation Draft.
+- Pin reconstruit et validé : 365 066 offres explicites conservées, 184 674 stations source, 389 310 PDC/prises. Trois stations / 28 PDC Bois-d'Arcy ; 44 évaluations sur 13 scénarios, cinq écarts de statut classés données insuffisantes. Trente sources à tarif embarqué demeurent partiellement opaques ; prochaine action : les énumérer et étendre les oracles avant toute promotion. Rapport détaillé et tests dans Production #136.
+
 ## 2026-10-15 — Handoff Tesla/Mac publié via ingress public Production
 
 - Après refus HTTP 403 du jeton vers Data Lab (#19), le choix utilisateur a été le relais d'artefact public Production ; la voie GitHub App #21 a été fermée. Updater #20 `3bb96f9d` et contrôle de jeton #38768018372 (tentative 2) établissent l'écriture. Production #118/#119 déposent l'artefact Mac historique exact ; Data Lab #326 l'importe au commit `55e17a89c2bba0800c6d4639653ec8762533f641` (run #38767112592). Les deux catalogues historiques #323/#324 et le test de préservation #328 restent disponibles. Aucun nouveau lot Mac, changement de runner, secret ou tarif.
