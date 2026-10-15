@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {planGeneration,reconcileGeneration} from './generation_planner.mjs';
+const a={electroverseLocationPk:'1',tariffHash:'h1'},b={electroverseLocationPk:'2',tariffHash:'h2'};
+test('retains unchanged unselected as stale, never fresh',()=>{const p=planGeneration({previous:[a,b],inventory:['1','2'],selected:['2'],generationId:'g2'});assert.deepEqual(p.fetch,['2']);assert.equal(p.retained[0].provenance,'previous_verified_not_refreshed')});
+test('new stations fetched and absent reported',()=>{const p=planGeneration({previous:[a,b],inventory:['1','3'],selected:[],generationId:'g2'});assert.deepEqual(p.fetch,['3']);assert.deepEqual(p.absent,['2'])});
+test('missing update stays pending',()=>{const p=planGeneration({previous:[a],inventory:['1','2'],selected:['1'],generationId:'g2'});const r=reconcileGeneration(p,{updates:[{electroverseLocationPk:'1',tariffHash:'x',tariff:{}}]});assert.deepEqual(r.pending,['2'])});
+test('reject duplicate inventory',()=>assert.throws(()=>planGeneration({previous:[],inventory:['1','1'],selected:[],generationId:'g'})));
+test('reject stale identity masquerading as fresh',()=>{const p=planGeneration({previous:[a],inventory:['1'],selected:[],generationId:'g'});assert.throws(()=>reconcileGeneration(p,{updates:[{electroverseLocationPk:'1',tariffHash:'x',tariff:{}}]}))});
+test('reject duplicate selected',()=>assert.throws(()=>planGeneration({previous:[a],inventory:['1'],selected:['1','1'],generationId:'g'})));
+test('reject duplicate update',()=>{const p=planGeneration({previous:[a],inventory:['1'],selected:['1'],generationId:'g'});const row={electroverseLocationPk:'1',tariffHash:'x',tariff:{}};assert.throws(()=>reconcileGeneration(p,{updates:[row,row]}))});
+test('source generation identity differs from tariff hash',()=>{const p=planGeneration({previous:[a],inventory:['1'],selected:[],generationId:'g'});assert.equal(p.generationId,'g');assert.equal(p.retained[0].tariffHash,'h1')});
