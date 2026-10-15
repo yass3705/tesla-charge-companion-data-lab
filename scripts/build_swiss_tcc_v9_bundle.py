@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json,gzip,urllib.request
+import json,gzip,hashlib,urllib.request
 from pathlib import Path
 from datetime import datetime,timezone
 from guard_swiss_bundle_refresh import validate_refresh
@@ -8,6 +8,7 @@ NAT="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch
 ROOT=Path(".")
 OUT=Path("data/tcc_v9/switzerland.json")
 REPORT=Path("docs/switzerland-v9-integration-2026-09-28.json")
+NATIONAL_OUT=Path("data/national/switzerland_oicp_source.json.gz")
 OUT.parent.mkdir(parents=True,exist_ok=True)
 
 req=urllib.request.Request(NAT,headers={"User-Agent":"TCC-V9-Switzerland/1.0","Accept":"application/json"})
@@ -272,10 +273,13 @@ payload={
 }
 previous=json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else None
 validate_refresh(previous,payload)
+NATIONAL_OUT.parent.mkdir(parents=True,exist_ok=True)
+NATIONAL_OUT.write_bytes(gzip.compress(raw,compresslevel=9,mtime=0))
 OUT.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
 report={k:v for k,v in payload.items() if k!="evses"}
 report["output"]=str(OUT)
 report["outputBytes"]=OUT.stat().st_size
+report["nationalSourceSnapshot"]={"path":str(NATIONAL_OUT),"rawSha256":hashlib.sha256(raw).hexdigest(),"rawBytes":len(raw)}
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps(report,ensure_ascii=False,indent=2))
 
