@@ -1,0 +1,143 @@
+name: Zephyre France refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/zephyre/extract_zephyre_france.mjs'
+      - 'scripts/zephyre/compile_zephyre_v9_offers.mjs'
+      - '.github/workflows/zephyre-france-refresh.yml'
+  pull_request:
+    paths:
+      - 'scripts/zephyre/**'
+      - '.github/workflows/zephyre-france-refresh.yml'
+      - 'data/zephyre/france/current/**'
+      - 'v9-production-runtime/data/v9/france-zephyre-offers.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zephyre-france-refresh
+  cancel-in-progress: false
+
+jobs:
+  validate-seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate preserved Zephyre snapshot and compiler
+        run: |
+          node --check scripts/zephyre/extract_zephyre_france.mjs
+          node --check scripts/zephyre/compile_zephyre_v9_offers.mjs
+          node scripts/zephyre/compile_zephyre_v9_offers.mjs \
+            --snapshot data/zephyre/france/current/zephyre.json.gz \
+            --out /tmp/zephyre-seed-offers.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('/tmp/zephyre-seed-offers.json','utf8'));
+          const saved=JSON.parse(fs.readFileSync('v9-production-runtime/data/v9/france-zephyre-offers.json','utf8'));
+          const count=x=>new Set(x.directOffers.flatMap(o=>o.evseIds||[])).size;
+          if(d.country!=='FR'||d.mode!=='verified_zephyre_direct')throw Error('invalid Zephyre output');
+          if(count(d)<count(saved)||!d.directOffers.length)throw Error('preserved Zephyre EVSE coverage lost');
+          if(d.directOffers.some(o=>o.verifiedScope!=='exact_evse'||o.directOperatorOnly!==true||!o.pricing))throw Error('invalid direct offer scope');
+          console.log(`validated ${d.directOffers.length} profiles / ${count(d)} EVSE`);
+          NODE
+
+  refresh:
+    if: github.event_name != 'pull_request'
+    needs: validate-seed
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Extract Zephyre France from ePowerDirect
+        run: |
+          mkdir -p /tmp/zephyre-refresh
+          node scripts/zephyre/extract_zephyre_france.mjs \
+            --concurrency 8 \
+            --out /tmp/zephyre-refresh/zephyre.json.gz \
+            --summary /tmp/zephyre-refresh/summary.json
+
+      - name: Validate refresh and protect last known good
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const next=JSON.parse(fs.readFileSync('/tmp/zephyre-refresh/summary.json','utf8'));
+          const currentPath='data/zephyre/france/current/summary.json';
+          const current=fs.existsSync(currentPath)?JSON.parse(fs.readFileSync(currentPath,'utf8')):null;
+          function assert(ok,msg){if(!ok)throw new Error(msg);}
+          assert(next.irveUniqueEvse>=300,`IRVE FR*ZP1 inventory too small: ${next.irveUniqueEvse}`);
+          assert(next.seedCoordinates>=100,`Zephyre seed coordinate coverage too small: ${next.seedCoordinates}`);
+          assert(next.nearbyErrors===0,`ePowerDirect nearby errors: ${next.nearbyErrors}`);
+          assert(next.detailErrors===0,`ePowerDirect detail errors: ${next.detailErrors}`);
+          assert(next.liveDirectEvse>=100,`too few live direct Zephyre EVSEs: ${next.liveDirectEvse}`);
+          assert(next.liveTariffPresent===next.liveDetailStations,'some current Zephyre details have no tariff');
+          assert(next.directPaymentEnabled===next.liveDetailStations,'some current Zephyre details have direct payment disabled');
+          assert(Array.isArray(next.providers)&&next.providers.every(x=>String(x).toLowerCase().includes('zephyre')),`unexpected providers: ${next.providers}`);
+          if(current){
+            assert(next.liveDirectEvse>=current.liveDirectEvse,
+              `live direct coverage decreased: ${next.liveDirectEvse} < ${current.liveDirectEvse}`);
+            assert(next.irveUniqueEvse>=current.irveUniqueEvse,
+              `IRVE coverage decreased: ${next.irveUniqueEvse} < ${current.irveUniqueEvse}`);
+          }
+          console.log(JSON.stringify({validated:true,next,current},null,2));
+          NODE
+
+      - name: Publish validated snapshot
+        run: |
+          mkdir -p data/zephyre/france/current
+          mv /tmp/zephyre-refresh/zephyre.json.gz data/zephyre/france/current/zephyre.json.gz
+          mv /tmp/zephyre-refresh/summary.json data/zephyre/france/current/summary.json
+
+      - name: Compile V9 Zephyre exact EVSE offers
+        run: |
+          node scripts/zephyre/compile_zephyre_v9_offers.mjs \
+            --snapshot data/zephyre/france/current/zephyre.json.gz \
+            --out v9-production-runtime/data/v9/france-zephyre-offers.json
+
+      - name: Validate exact public direct-offer output
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='v9-production-runtime/data/v9/france-zephyre-offers.json';
+          const d=JSON.parse(fs.readFileSync(p,'utf8'));
+          if(d.country!=='FR'||d.mode!=='verified_zephyre_direct')throw new Error('unexpected Zephyre payload');
+          if(!Array.isArray(d.directOffers)||d.directOffers.length<5)throw new Error(`Zephyre profiles incomplete: ${d.directOffers?.length||0}`);
+          const evses=new Set(d.directOffers.flatMap(x=>x.evseIds||[]));
+          if(evses.size<100)throw new Error(`Zephyre exact EVSE coverage incomplete: ${evses.size}`);
+          if(d.directOffers.some(x=>x.verifiedScope!=='exact_evse'||x.directOperatorOnly!==true))throw new Error('non exact-EVSE Zephyre offer leaked');
+          if(d.directOffers.some(x=>!x.pricing||!x.evseIds?.length))throw new Error('Zephyre price rules or identities missing');
+          console.log(`validated ${d.directOffers.length} Zephyre profiles / ${evses.size} exact EVSEs`);
+          NODE
+
+      - name: Commit refreshed Zephyre snapshot and V9 offers
+        shell: bash
+        run: |
+          if [ -z "$(git status --porcelain -- data/zephyre/france/current v9-production-runtime/data/v9/france-zephyre-offers.json)" ]; then
+            echo "No Zephyre data change"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/zephyre/france/current v9-production-runtime/data/v9/france-zephyre-offers.json
+          git commit -m "data(france): refresh Zephyre direct snapshot and V9 offers"
+          git fetch origin main
+          changed_since_start="$(git diff --name-only "$GITHUB_SHA"..origin/main || true)"
+          if printf '%s\n' "$changed_since_start" | grep -Eq '^(scripts/zephyre/|\.github/workflows/zephyre-france-refresh\.yml$|v9-production-runtime/data/v9/source-registry\.json$)'; then
+            echo "Zephyre refresh logic changed on main while this run was executing; refusing stale output."
+            printf '%s\n' "$changed_since_start"
+            exit 1
+          fi
+          git rebase origin/main
+          git push origin HEAD:main
