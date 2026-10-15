@@ -13,6 +13,8 @@ on:
       - scripts/verify_italy_pun_compact_connector_parity.py
       - scripts/audit_italy_cpo_evse_overlap.py
       - scripts/audit_italy_ionity_geo_overlap.py
+      - scripts/compare_italy_stable_pun_evse.py
+      - tests/test_italy_stable_pun_evse_delta.py
 
 permissions:
   contents: read
@@ -27,6 +29,15 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout pinned Stable Italy reference (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-stable
+          ref: 0a6d2c3415504397310d3dc92fae40be843b2435
+          path: stable-baseline
+          persist-credentials: false
+      - name: Test Italy generation delta classifier
+        run: python -m unittest discover -s tests -p test_italy_stable_pun_evse_delta.py -v
       - name: Install PUN public client dependencies
         run: python -m pip install requests boto3 requests-aws4auth
       - name: Build national Italy PUN technical candidate
@@ -45,6 +56,13 @@ jobs:
           python scripts/verify_italy_v9_runtime_parity.py --candidate /tmp/italy-static/manifest.json --report /tmp/italy_manifest_parity_report.json
           python scripts/verify_italy_v9_tile_contents.py --dir /tmp/italy-static --report /tmp/italy_tile_content_report.json
           python scripts/verify_italy_pun_compact_connector_parity.py --pun /tmp/pun_italy_national.json.gz --compact /tmp/italy-static/all.json.gz --report /tmp/italy_connector_parity_report.json
+      - name: Report exact EVSE and power delta against pinned Stable (no price assignment)
+        run: |
+          python scripts/compare_italy_stable_pun_evse.py \
+            --stable stable-baseline/v9-production-runtime/data/v9/italy-static/all.json.gz \
+            --candidate /tmp/italy-static/all.json.gz \
+            --pun /tmp/pun_italy_national.json.gz \
+            --report /tmp/italy_stable_pun_evse_delta.json
       - name: Audit Italian direct CPO source identifiers against PUN (no tariff promotion)
         run: |
           python scripts/audit_italy_cpo_evse_overlap.py --pun /tmp/pun_italy_national.json.gz --source-dir data/national --report /tmp/italy_cpo_evse_overlap.json
@@ -63,6 +81,7 @@ jobs:
             /tmp/italy_manifest_parity_report.json
             /tmp/italy_tile_content_report.json
             /tmp/italy_connector_parity_report.json
+            /tmp/italy_stable_pun_evse_delta.json
             /tmp/italy_cpo_evse_overlap.json
             /tmp/italy_ionity_geo_overlap.json
             /tmp/italy-static/
