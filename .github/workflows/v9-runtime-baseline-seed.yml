@@ -1,0 +1,60 @@
+name: V9 historical runtime baseline seed
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/v9-runtime-baseline-seed.yml'
+      - 'scripts/seed_v9_runtime_baseline.py'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Commit the exact public Stable V9 runtime input archive to Data Lab'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v9-runtime-baseline-seed
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-stable
+          ref: 0a6d2c3415504397310d3dc92fae40be843b2435
+          path: stable-pin
+          persist-credentials: false
+      - name: Archive and inspect every pinned runtime input
+        run: |
+          python3 scripts/seed_v9_runtime_baseline.py stable-pin "$RUNNER_TEMP/v9-baseline" --source-sha 0a6d2c3415504397310d3dc92fae40be843b2435
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'v9-baseline/manifest.json'
+          d=json.loads(p.read_text())
+          assert d['fileCount']>=1200 and d['archiveBytes']<100_000_000
+          PY
+      - name: Publish seed only after explicit dispatch
+        if: github.event_name == 'workflow_dispatch' && inputs.seed == true
+        run: |
+          set -euo pipefail
+          test ! -e data/v9_baseline/stable_0a6/manifest.json || { echo 'V9 baseline already exists'; exit 1; }
+          mkdir -p data/v9_baseline
+          cp -a "$RUNNER_TEMP/v9-baseline" data/v9_baseline/stable_0a6
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/v9_baseline/stable_0a6
+          git commit -m 'data(v9): preserve public validated runtime baseline'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
