@@ -1,3 +1,7 @@
+## 2026-10-15 — France IRVE #104 : diagnostic de générations et candidat comparable
+
+- Le run Production #38506877130 compare deux générations incompatibles (48 058/165 792 contre 49 185/165 129). PR #104 mise à jour au SHA `834101c` avec pin Stable de même génération, builds comparatifs stricts et diagnostic préalable ; CI en cours. Source détaillée : `docs/FRANCE_IRVE_HANDOFF_2026-10-15.md` sur la branche Production #104. Aucun cutover, déploiement ou extinction Stable. Prochaine action : conclusion CI et preuve de parité métier.
+
 ## 2026-10-13 — B01 Electric 55 identifiée ; frontière de clôture EnergyVision
 
 - Preuve E55C Place Lully enrichie avec borne B01, EVSE exact `FR*55C*EFR78210*P21PL*0` et 22 kW ; les conditions de déclenchement du parking restent non établies, donc aucune promotion tarifaire V9 pour ce point. EnergyVision Production #94/#95 et CI main #38448522469 vérifiées : 778 tarifs Direct calculables dans le candidat, grilles complexes non résolues, déploiement public non déclenché. Voir [état courant](CURRENT.md).
