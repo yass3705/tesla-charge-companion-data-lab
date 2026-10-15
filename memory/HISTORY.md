@@ -1,3 +1,7 @@
+## 2026-10-15 — France IRVE #104 : blocage BUMP confirmé par CI unique
+
+- Run Production #38724599850 : test d’idempotence passé, build bloqué sur 449 EVSE BUMP historiquement tarifés absents de la nouvelle source nationale (0 statut dynamique `en_service`). Rapport exact Production `e9c33ed`, mémoire sur Data Lab #307. Aucun second run, aucune modification d’offre, publication ou extinction Stable. Action restante : décision de couverture fondée sur les sources approuvées.
+
 ## 2026-10-15 — France IRVE #104 : écarts globaux intergénérations explicités
 
 - Ancien résultat supplémenté contre nouveau national : 8 027 IDs de station anciens absents, 9 129 nouveaux, 31 821 paires station/EVSE anciennes absentes et 31 102 nouvelles. Aucun de ces écarts n’a été masqué par le comparatif ciblé des 25 stations. Commentaire dans Production #104 ; canary encore non qualifié.
