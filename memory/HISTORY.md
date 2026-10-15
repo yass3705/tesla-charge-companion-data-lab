@@ -1,3 +1,8 @@
+## 2026-10-15 — Publication V9 Production et delta de migration
+- Data Lab #312–#315 ont conservé des lots validés Italie, FX, France et le socle historique 0a6 ; Production #104/#110–#112 les consomme. Build #38755773180 réussi ; publication Pages Production #38756331049 réussie sur `29b0ae54`, shell et manifeste publics vérifiés (`2026-10-15-v9-datalab-baseline-candidate`, 2 463 fichiers). Stable Pages et Cloudflare inchangés.
+- Data Lab #316 fusionnée `fc3cfd2e` : cron suisse et garde last-good, CI PR #38757135676 réussie. Stable #146 fusionnée `be4cfbd9` : seul le cron/push DOT-NL est retiré, dispatch et données historiques conservés. Le cron suisse Stable reste actif en attendant une validation de consommateur CH.
+- Restent le relais Tesla/Mac vers Stable, le constructeur CH, les workflows nécessaires au site Stable et les incidents de collecte Electroverse/REVE. La migration technique demeure incomplète ; prochaine étape Tesla/Mac consommateur, sans toucher à son acquisition.
+
 ## 2026-10-15 — transfert Ze-Watt, REVE et Zephyre ; extinctions ciblées
 
 - Updater Test #14/#15/#16/#17 fusionnées : preuve Ze-Watt, retrait des déclencheurs Ze-Watt/Electroverse/REVE, dispatch historiques et Tesla/Mac conservés. Stable #143/#144 fusionnées : cinq miroirs V8 et Ze-Watt manuels seulement ; Pages Stable maintenu.
