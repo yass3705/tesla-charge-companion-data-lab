@@ -4,10 +4,10 @@ Source: Bump's own daily IRVE dataset on data.gouv.fr. Roaming/partner locations
 
 ## Coverage
 
-- Official source rows: **2541**
-- Bump-operated rows retained: **2541**
-- Public stations: **1615**
-- Public charge points: **2541**
+- Official source rows: **2544**
+- Bump-operated rows retained: **2544**
+- Public stations: **1616**
+- Public charge points: **2544**
 - Official IRVE `tarification` field present: **false**
 - Stations with at least one explicit price candidate: **0**
 
