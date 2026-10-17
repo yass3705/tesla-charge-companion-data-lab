@@ -1,24 +1,24 @@
 # Powerdot France — direct CPO national extraction
 
-Generated: 2026-10-16T05:51:32.766780+00:00
+Generated: 2026-10-17T05:37:05.481361+00:00
 
 ## Coverage
-- irveRows: **7733**
-- uniqueIrvePdc: **7729**
-- uniqueIrveStations: **1181**
-- derivedChargerNames: **2541**
+- irveRows: **7748**
+- uniqueIrvePdc: **7744**
+- uniqueIrveStations: **1183**
+- derivedChargerNames: **2545**
 - unmappedPdc: **1**
-- apiSuccessChargers: **2352**
+- apiSuccessChargers: **2356**
 - apiFailedChargers: **189**
-- coveredIrvePdc: **7156**
-- coveredIrveStations: **1107**
-- decodedConnectors: **7150**
-- pricedConnectors: **7150**
-- locations: **1099**
+- coveredIrvePdc: **7171**
+- coveredIrveStations: **1109**
+- decodedConnectors: **7165**
+- pricedConnectors: **7165**
+- locations: **1101**
 - connectorsWithNonEnergyComponent: **5**
 
 ## Tariff components
-- ENERGY: 7150
+- ENERGY: 7165
 - TIME: 5
 
 ## Energy prices observed
@@ -27,13 +27,13 @@ Generated: 2026-10-16T05:51:32.766780+00:00
 - 0.42 €/kWh: 15 connectors
 - 0.46 €/kWh: 9 connectors
 - 0.47 €/kWh: 3 connectors
-- 0.49 €/kWh: 1486 connectors
+- 0.49 €/kWh: 1487 connectors
 - 0.53 €/kWh: 31 connectors
 - 0.54 €/kWh: 2 connectors
 - 0.55 €/kWh: 6 connectors
 - 0.58 €/kWh: 4 connectors
 - 0.59 €/kWh: 63 connectors
-- 0.62 €/kWh: 5514 connectors
+- 0.62 €/kWh: 5528 connectors
 - 0.79 €/kWh: 4 connectors
 
 ## Method
