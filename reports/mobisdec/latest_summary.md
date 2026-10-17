@@ -4,5 +4,5 @@
 - Badge opening fee: 10 EUR; QR ad-hoc and app supported; contactless bank card is limited to rapid stations.
 - Immobilization begins 15 min after charge completion and is waived 00:00-07:00; current public rate: 0.21 EUR/min.
 - Former formal SDEC PDF URL is retired/moved and is no longer a hard refresh dependency.
-- Official technical dataset rows: 1107; sample stations resolved in Caen, Bayeux and Vire Normandie.
-- Fingerprint: `b52e9b3110a1bda317862ba66fd95518168772eb62ba71334c83353166cd8ef9`
+- Official technical dataset rows: 1111; sample stations resolved in Caen, Bayeux and Vire Normandie.
+- Fingerprint: `d6c839b1d816027b50fb4cfa45e9d22efbfdd50f73a90fabe9a41f84edd84f6e`
