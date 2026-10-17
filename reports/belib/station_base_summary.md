@@ -1,10 +1,10 @@
 # Base Belib directe pour TCC V8
 
-- Stations strictement Belib / TotalEnergies : **383**
-- Points Tesla-compatibles : **1737**
+- Stations strictement Belib / TotalEnergies : **376**
+- Points Tesla-compatibles : **1702**
 - Profils tarifaires directs : **9**
 - Lignes fictives sans identifiant exclues : **3**
-- Points moto exclus : **80**
+- Points moto exclus : **78**
 - Points sans Type 2/CCS exclus : **82**
 - Frais de parking intégrés : **non**
 - Statut dynamique : **joint à l’exécution depuis https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/belib-points-de-recharge-pour-vehicules-electriques-disponibilite-temps-reel/exports/json**
