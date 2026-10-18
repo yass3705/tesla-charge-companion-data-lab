@@ -53,7 +53,7 @@ def build(capture):
     if summary.get("network") != "IZIVIA FAST" or summary.get("source") != "https://fronts-map.izivia.com/api/":
         raise ValueError("Wrong capture source or network")
     stations = capture["stations"]
-    if len(stations) != summary["inventoryStations"] or len(stations) < 600:
+    if len(stations) != summary["inventoryStations"] or not stations:
         raise ValueError("Incomplete national station capture")
     station_ids = [row["stationId"] for row in stations]
     if len(set(station_ids)) != len(station_ids):
@@ -171,8 +171,6 @@ def main():
                       "excludedStations": offers["policy"]["excludedStations"],
                       "mapOnlyStations": offers["policy"]["mapOnlyStationsWithoutNationalInventory"],
                       "offerGroups": [(o["connectorKinds"][0], o["metadata"]["powerKw"], len(o["stationIds"])) for o in offers["directOffers"]]}, ensure_ascii=False))
-    if offers["policy"]["pricedStations"] < 600:
-        raise SystemExit("National IZIVIA FAST offer coverage unexpectedly low")
 
 
 if __name__ == "__main__":

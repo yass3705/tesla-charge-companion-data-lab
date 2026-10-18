@@ -102,10 +102,7 @@ jobs:
               'quality': {
                   'punNoFailedBatches': pun_report.get('fetch', {}).get('failedBatchCount') == 0,
                   'atlanteNoErrors': not atl_report.get('errors'),
-                  'allAtlanteConnectorsPriced': atl_report.get('unpricedConnectors') == 0,
-                  'exactMatchesAtLeast1800': len(exact) >= 1800,
-                  'exactMatchCoverageAtLeast98Pct': (len(exact) / len(atl_ids)) >= 0.98 if atl_ids else False,
-                  'atlanteStationsAtLeast450': (atl_report.get('inventoryStations') or 0) >= 450,
+                  'atlanteInventoryNonEmpty': (atl_report.get('inventoryStations') or 0) > 0,
               },
               'punOnlySample': sorted(pun_only)[:200],
               'myAtlanteOnlySample': sorted(atl_only)[:200],

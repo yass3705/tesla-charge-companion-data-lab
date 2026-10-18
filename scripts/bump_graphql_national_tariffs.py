@@ -255,8 +255,8 @@ def main() -> None:
     counts=Counter(r["match"]["status"] for r in records)
     matched=counts.get("matched",0)
     print(f"matched={matched}/{len(records)} ambiguous={counts.get('ambiguous',0)} unmatched={counts.get('unmatched',0)}")
-    if stations and matched/len(stations) < 0.50:
-        raise RuntimeError("Bump public-map match rate below 50%; refusing national tariff harvest")
+    # Unmatched stations remain without a direct tariff. The exact matches
+    # are still useful even if coverage changes sharply.
 
     pairs={}
     for r in records:

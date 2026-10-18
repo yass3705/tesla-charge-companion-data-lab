@@ -2,6 +2,10 @@
 
 Les dix entrées #133 de la branche historique sont réintroduites sur `main` actuel, en préservant les ajouts #333 et collectes récentes. Rectification Midhope annuelle, shadow #145 éteint, correction IONITY #146 et politique CPO Draft #340 sont signalés comme états successifs ; les seuils de volume historiques ne sont plus une gate. [CI Production #39168510233](https://github.com/yass3705/tesla-charge-companion-production/actions/runs/39168510233) réussie, déploiement ignoré. Aucun merge ou publication.
 
+# 2026-10-18 — Politique universelle de couverture CPO
+
+Décision utilisateur versionnée dans [le document de référence](../docs/CPO_DYNAMIC_COVERAGE_POLICY.md). Les comparaisons de volume et seuils historiques ne constituent plus des critères de rejet. Branches correctives Data Lab et Production empilées sur #332 et #145 ; collecte et publication inchangées tant que les PR ne sont pas revues.
+
 # 18 octobre 2026 — raccordement shadow V9 à l'application
 
 - [Production Draft #145](https://github.com/yass3705/tesla-charge-companion-production/pull/145) empilée sur #144 : adaptateur navigateur borné aux quatre OfferScope Midhope exacts, second calcul après l'ancien moteur derrière flag absent par défaut, diagnostics minimisés et rollback immédiat. Dist du même pin reconstruit/validé (2 466 fichiers), données source inchangées ; 64 branches/oracle, 721 résultats historiques inchangés, browser desktop/mobile émulé et parcours shell global réussis. CI ciblée et trois candidats verts, mais global Mac preview rouge sur comptage IONITY indépendant ; fusion bloquée. Zéro activation, collecte ou publication.

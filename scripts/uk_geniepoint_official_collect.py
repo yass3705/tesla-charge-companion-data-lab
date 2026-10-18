@@ -50,8 +50,8 @@ def main():
     references = {str(tid) for loc in locations for evse in loc["evses"]
                   for connector in evse["connectors"] for tid in connector.get("tariff_ids") or []}
     connector_count = sum(len(evse["connectors"]) for loc in locations for evse in loc["evses"])
-    if len(locations) < 300 or connector_count < 1100 or len(tariffs) < 500 or references - ids:
-        raise ValueError("GeniePoint feed coverage or exact tariff join regressed")
+    if not locations or references - ids:
+        raise ValueError("GeniePoint feed empty or exact tariff reference orphaned")
     if any(t["currency"] != "GBP" for t in tariffs):
         raise ValueError("GeniePoint tariff currency drift")
     output = ROOT / "data/national/uk_geniepoint_official_ocpi.json.gz"

@@ -121,8 +121,8 @@ def discover_station_urls() -> tuple[str, list[str]]:
                     pages.add(canonical)
         if len(seen) > 150:
             raise RuntimeError("Allego sitemap recursion unexpectedly large")
-    if len(pages) < 100:
-        raise RuntimeError(f"Allego station sitemap unexpectedly small: {len(pages)}")
+    if not pages:
+        raise RuntimeError("Allego station sitemap unexpectedly empty")
     return root_url, sorted(pages)
 
 
@@ -377,8 +377,8 @@ def main() -> None:
                 stations.append(station)
         except Exception as exc:
             failures.append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
-    if len(stations) < 50 and not args.max_stations:
-        raise RuntimeError(f"Allego France inventory unexpectedly small: {len(stations)}")
+    if not stations and not args.max_stations:
+        raise RuntimeError("Allego France inventory unexpectedly empty")
 
     driver = build_browser() if args.browser else None
     try:

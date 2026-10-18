@@ -224,8 +224,8 @@ def main():
         lon_ix = math.floor(row[4] / TILE_DEGREES)
         tile_id = f"t_{tile_part(lat_ix)}_{tile_part(lon_ix)}"
         tiled[tile_id].append(row)
-    if source_rows < 120000 or len(valid_stations) < 35000 or len(all_evse) < 120000:
-        raise SystemExit(f"Refusing suspiciously small static build: rows={source_rows}, stations={len(valid_stations)}, pdc={len(all_evse)}")
+    if not source_rows or not valid_stations or not all_evse:
+        raise SystemExit(f"Unexpectedly empty France IRVE build: rows={source_rows}, stations={len(valid_stations)}, pdc={len(all_evse)}")
     _, all_bytes, all_sha = stable_gzip(out / "all.json.gz", valid_stations)
     tile_meta = []
     for tile_id, rows in sorted(tiled.items()):

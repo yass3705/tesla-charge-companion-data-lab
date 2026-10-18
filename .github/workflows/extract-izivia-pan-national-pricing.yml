@@ -98,7 +98,6 @@ jobs:
           with gzip.open('reports/france/izivia/pan-national-pricing.json.gz','wb',compresslevel=9) as f:f.write(json.dumps(payload,ensure_ascii=False,separators=(',',':')).encode())
           pathlib.Path('reports/france/izivia/pan-national-pricing-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(summary,ensure_ascii=False,indent=2)[:40000])
-          if summary['pricedStations']<100:raise SystemExit('fail closed: unexpectedly low priced coverage')
           PY
       - name: Publish with retry
         shell: bash

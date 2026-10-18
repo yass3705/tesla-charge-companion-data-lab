@@ -1,5 +1,7 @@
 # Instructions communes — Tesla Charge Companion V9
 
+**Couverture CPO :** lire [la politique universelle](docs/CPO_DYNAMIC_COVERAGE_POLICY.md) avant toute modification de collecte, compilation, snapshot ou CI. Toute variation de volume, même forte, est admissible si le lot est complet et cohérent ; seuls les défauts de qualité réels bloquent. Cette décision du 18/10/2026 remplace les seuils et compteurs historiques incompatibles.
+
 Ce fichier est la référence versionnée du projet. Depuis `/Users/yassine/Projects/TCC`, le fichier parent `AGENTS.md` est un lien symbolique vers celui-ci. Les instructions explicites de la mission en cours priment.
 
 ## Au début d'une mission TCC
