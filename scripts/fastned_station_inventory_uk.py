@@ -63,7 +63,7 @@ def discover():
    for v in locs:
     z=canonical(v)
     if z: pages.add(z)
- if len(pages)<300: raise RuntimeError(f"location page inventory too small {len(pages)}")
+ if not pages: raise RuntimeError("Fastned UK location page inventory unexpectedly empty")
  return root,sorted(pages),n
 def tariff():
  t=norm(text_html(fetch(TARIFF_URL)))

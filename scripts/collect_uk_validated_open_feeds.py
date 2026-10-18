@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Data Lab migration verification: canonical UK collector now runs from tesla-charge-companion-data-lab.
-import argparse,json,time,urllib.parse,urllib.request,urllib.error
+import argparse,gzip,hashlib,json,time,urllib.parse,urllib.request,urllib.error
 from datetime import datetime,timezone
 from pathlib import Path
 UA='TeslaChargeCompanion/9 UK-open-data collector'
@@ -68,7 +68,24 @@ def fetch_offset(url,page_size=50,pause_seconds=0):
         offset+=len(batch)
         if guard>1000: raise RuntimeError(f'pagination guard hit for {url}')
         if pause_seconds: time.sleep(pause_seconds)
+    if total is not None and len(rows) != total:
+        raise RuntimeError(f'incomplete pagination for {url}: {len(rows)}/{total}')
     return rows
+
+
+def preserve_last_good(name, error, previous, previous_sha):
+    """Fallback only to the same CPO, with explicit old collection date and SHA."""
+    row = next((item for item in previous.get('sources', []) if item.get('name') == name), None)
+    collected_at = previous.get('retrievedAt')
+    if not row or not collected_at or not previous_sha:
+        return None
+    retained = json.loads(json.dumps(row))
+    retained['summary']['status'] = 'last_good_stale'
+    retained['sourceAudit'] = dict(retained.get('sourceAudit') or {})
+    retained['sourceAudit'].update({'lastGoodCollectedAt': collected_at,
+                                    'lastGoodSnapshotSha256': previous_sha,
+                                    'currentCollectionError': str(error)})
+    return retained
 
 
 POGO_OFFICIAL_PRICING={'AC':0.56,'DC':0.65,'currency':'GBP','unit':'kWh','source':'https://pogocharge.com/pricing/'}
@@ -251,6 +268,10 @@ def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--output',default='artifacts/uk-validated-open-feeds.json'); ap.add_argument('--only',action='append'); args=ap.parse_args()
     wanted=set(args.only or []); selected=[s for s in SOURCES if not wanted or s['name'] in wanted]
     if wanted and len(selected)!=len(wanted): raise SystemExit('Unknown source(s): '+', '.join(sorted(wanted-{s['name'] for s in SOURCES})))
+    previous_path=Path('data/national/uk_validated_open_feeds.json.gz')
+    previous_blob=previous_path.read_bytes() if previous_path.exists() else None
+    previous=json.loads(gzip.decompress(previous_blob)) if previous_blob else {}
+    previous_sha=hashlib.sha256(previous_blob).hexdigest() if previous_blob else None
     result={'schemaVersion':1,'country':'GB','retrievedAt':datetime.now(timezone.utc).isoformat(),'policy':'Only operator-published or operator-linked open feeds already validated during the UK first/second pass are collected. No tariff extrapolation between stations or CPOs.','sources':[]}; failures=[]
     for src in selected:
         print(f"Collecting {src['name']}...",flush=True)
@@ -263,6 +284,15 @@ def main():
                 existing={str(t.get('id')) for t in tariffs if isinstance(t,dict)}
                 tariffs.extend(v for k,v in CPS_TARIFF_OVERRIDES.items() if k not in existing)
             summary=summarize(locations,tariffs)
+            if not locations:
+                raise RuntimeError('unexpectedly empty source')
+            if source_audit is not None and source_audit.get('coverageComplete') is False:
+                raise RuntimeError('incomplete current source pagination')
+            source_audit=dict(source_audit or {})
+            source_audit['collectedAt']=result['retrievedAt']
+            source_audit['normalizedPayloadSha256']=hashlib.sha256(
+                json.dumps({'locations':locations,'tariffs':tariffs},ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8')
+            ).hexdigest()
             if source_audit is not None:
                 summary['sourceAudit']=source_audit
                 if src['name']=='PoGo Charge':
@@ -275,7 +305,10 @@ def main():
             print(json.dumps({'name':src['name'],**summary}),flush=True)
         except Exception as e:
             failures.append({'name':src['name'],'error':str(e)}); print(f"{src['name']} failed: {e}",flush=True)
-    result['summary']={'requestedSources':len(selected),'successfulSources':len(result['sources']),'failedSources':len(failures),'totalLocations':sum(x['summary']['locations'] for x in result['sources']),'totalEvses':sum(x['summary']['evses'] for x in result['sources']),'totalConnectors':sum(x['summary']['connectors'] for x in result['sources']),'completeSources':sum(x['summary']['status']=='complete' for x in result['sources']),'partialSources':sum(x['summary']['status']=='partial' for x in result['sources'])}; result['failures']=failures
+            last_good=preserve_last_good(src['name'],e,previous,previous_sha)
+            if last_good is not None:
+                result['sources'].append(last_good)
+    result['summary']={'requestedSources':len(selected),'successfulSources':len(result['sources'])-sum(x['summary']['status']=='last_good_stale' for x in result['sources']),'failedSources':len(failures),'lastGoodSources':sum(x['summary']['status']=='last_good_stale' for x in result['sources']),'totalLocations':sum(x['summary']['locations'] for x in result['sources']),'totalEvses':sum(x['summary']['evses'] for x in result['sources']),'totalConnectors':sum(x['summary']['connectors'] for x in result['sources']),'completeSources':sum(x['summary']['status']=='complete' for x in result['sources']),'partialSources':sum(x['summary']['status']=='partial' for x in result['sources'])}; result['failures']=failures
     out=Path(args.output); out.parent.mkdir(parents=True,exist_ok=True); out.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'); print(json.dumps(result['summary']),flush=True)
     if failures: raise SystemExit(2)
 if __name__=='__main__': main()

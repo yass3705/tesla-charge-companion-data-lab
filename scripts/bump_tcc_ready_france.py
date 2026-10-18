@@ -194,8 +194,8 @@ def main() -> None:
     source_points=sum(len(s.get('points') or []) for s in raw.get('stations') or [])
     if len(out_stations)+len(foreign) != source_stations or total_points+foreign_points != source_points:
         raise RuntimeError(f'France/foreign accounting mismatch: source={source_stations}/{source_points}, france={len(out_stations)}/{total_points}, foreign={len(foreign)}/{foreign_points}')
-    if len(out_stations) < 1500 or total_points < 2200:
-        raise RuntimeError(f'Unexpected current France snapshot shrink: {len(out_stations)} stations / {total_points} points')
+    if not out_stations or not total_points:
+        raise RuntimeError('Unexpectedly empty BUMP France source; retain last validated snapshot')
 
     OUT.parent.mkdir(parents=True,exist_ok=True)
     REPORT_JSON.parent.mkdir(parents=True,exist_ok=True)

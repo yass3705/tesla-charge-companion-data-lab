@@ -225,11 +225,11 @@ def make_payload(static_locations: list[dict[str, Any]], operated: list[dict[str
 def live_build(workers: int) -> dict[str, Any]:
     static_payload = request_json(STATIC_URL)
     static_locations = static_payload.get("locations") or []
-    if len(static_locations) < 500:
-        raise RuntimeError(f"IONITY static inventory unexpectedly small: {len(static_locations)}")
+    if not static_locations:
+        raise RuntimeError("IONITY static inventory unexpectedly empty")
     operated = [item for item in static_locations if item.get("cpoIdentifier") == CANONICAL_CPO]
-    if len(operated) < 500:
-        raise RuntimeError(f"IONITY operated inventory unexpectedly small: {len(operated)}")
+    if not operated:
+        raise RuntimeError("IONITY operated inventory unexpectedly empty")
 
     south, west, north, east = COUNTRY_BOUNDS[TARGET_COUNTRY]
     candidates = []
@@ -238,8 +238,8 @@ def live_build(workers: int) -> dict[str, Any]:
         longitude = finite_number(item.get("longitude"))
         if latitude is not None and longitude is not None and south <= latitude <= north and west <= longitude <= east:
             candidates.append(item)
-    if len(candidates) < 20:
-        raise RuntimeError(f"IONITY {TARGET_COUNTRY} geographic candidate inventory unexpectedly small: {len(candidates)}")
+    if not candidates:
+        raise RuntimeError(f"IONITY {TARGET_COUNTRY} geographic candidate inventory unexpectedly empty")
 
     locations: list[dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=max(1, min(workers, 24))) as pool:

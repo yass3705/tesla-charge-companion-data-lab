@@ -76,7 +76,7 @@ def main():
             'directTariff':tariff,'rankableDirectTariff':bool(tariff),'blockingReason':reason,
         })
 
-    if len(rows)<500: raise RuntimeError(f'Unexpectedly small PUN F2X inventory: {len(rows)}')
+    if not rows: raise RuntimeError('Unexpectedly empty PUN F2X inventory')
     rankable=sum(1 for x in rows if x['rankableDirectTariff'])
     payload={
         'schemaVersion':1,'dataset':'freetox-direct-italy-candidate','generatedAt':now_iso(),

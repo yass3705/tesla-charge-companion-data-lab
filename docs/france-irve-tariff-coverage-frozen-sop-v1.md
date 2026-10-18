@@ -1,3 +1,5 @@
+> **Rectification du 18/10/2026 :** toute phrase historique qui fige une couverture ou exige une conservation de volume est obsolète pour les collectes futures. Voir l'unique [politique de couverture dynamique CPO](CPO_DYNAMIC_COVERAGE_POLICY.md). Les archives et leurs SHA restent inchangés.
+
 # TCC Data Lab — procédure figée FR IRVE ↔ tarifs P1/P2/P3 (v1.0)
 
 **Statut : FIGÉ — 2026-10-09.** Toute évolution de politique de rapprochement, de filtre de service ou d'attribution tarifaire doit passer par une révision explicite de cette SOP, des contrôles CI et du schéma d'archive. Le mécanisme ne publie PAS de tarifs en production V9.

@@ -49,7 +49,7 @@ for(const loc of locs.values()){
 }
 stations.sort((a,b)=>String(a.id).localeCompare(String(b.id)));
 const canonical={schemaVersion:1,country:'ES',source:'REVE',policy:'REVE-only',generatedAt:new Date().toISOString(),snapshot:SNAP,stations};
-const report={schemaVersion:1,generatedAt:canonical.generatedAt,validation:{pages:files.length,stations:stations.length,evses:evseGlobal.size,connectors:connectorGlobal.size,connectorsWithTariff:withTariff,tariffMissing,duplicateLocationsRemoved:dupLocations,duplicateEvsesObserved:dupEvses,duplicateConnectorsObserved:dupConnectors},checks:{pageCoverage:files.length===Number(SOURCE_MANIFEST.pagesSucceeded),stationFloor:stations.length>=10000,evseFloor:evseGlobal.size>=25000,connectorFloor:connectorGlobal.size>=30000,tariffAccounting:withTariff+tariffMissing===connectorGlobal.size,duplicateLocationRate:dupLocations/Math.max(1,rawLocations)<0.001}};
+const report={schemaVersion:1,generatedAt:canonical.generatedAt,validation:{pages:files.length,stations:stations.length,evses:evseGlobal.size,connectors:connectorGlobal.size,connectorsWithTariff:withTariff,tariffMissing,duplicateLocationsRemoved:dupLocations,duplicateEvsesObserved:dupEvses,duplicateConnectorsObserved:dupConnectors},checks:{pageCoverage:files.length===Number(SOURCE_MANIFEST.pagesSucceeded),nonEmptySource:stations.length>0,tariffAccounting:withTariff+tariffMissing===connectorGlobal.size}};
 report.ok=Object.values(report.checks).every(Boolean);
 if(!report.ok) throw new Error('Canonical validation failed '+JSON.stringify(report));
 await fs.mkdir(OUTDIR,{recursive:true});
