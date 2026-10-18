@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "auditedAt": "2026-09-08",
+  "guardrail": "Only exact tariffs explicitly bound by an official operator source to direct/ad-hoc charging are promoted. Contract/subscriber prices and station samples are not generalized.",
+  "cpos": [
+    {
+      "operator": "Städtische Werke Magdeburg GmbH & Co. KG",
+      "aliases": ["SWM Magdeburg", "Städtische Werke Magdeburg", "SWM Mobil"],
+      "status": "complete",
+      "directTariff": {
+        "method": "SMS direct payment",
+        "energyEurPerKwh": 0.61,
+        "validFrom": "2026-09-01",
+        "currency": "EUR",
+        "notes": "Official SWM page states the SMS charging price is 61.00 ct/kWh gross from 2026-09-01. The page describes the complete SMS start/stop and mobile-bill payment flow and does not publish an additional session or blocking component for this method."
+      },
+      "officialEvidence": [
+        "https://www.sw-magdeburg.de/privatkunden/produkte/e-mobilitaet/elektromobilitaet/zahlen-und-laden-per-sms"
+      ],
+      "scopeNote": "Do not substitute the separate SWM Mobil RFID subscription tariff (49.90 ct/kWh plus annual fee) for direct SMS charging."
+    },
+    {
+      "operator": "eins energie in sachsen GmbH & Co. KG",
+      "aliases": ["eins energie", "eins E-Mobil", "eins energie in sachsen"],
+      "status": "complete",
+      "directTariff": {
+        "AC": {
+          "energyEurPerKwh": 0.5831,
+          "fairUseEurPerMin": 0.0595,
+          "fairUseStartsMinute": 241,
+          "fairUseSuspended": "22:00-06:00"
+        },
+        "DC": {
+          "energyEurPerKwh": 0.6664,
+          "fairUseEurPerMin": 0.0952,
+          "fairUseStartsMinute": 61,
+          "fairUseSuspended": null
+        },
+        "currency": "EUR",
+        "notes": "Official current operator page has a dedicated 'Ad-Hoc Preise' table for eins charging stations and publishes exact Fair-Use rules."
+      },
+      "officialEvidence": [
+        "https://www.eins.de/privatkunden/elektromobilitaet/unterwegs-laden"
+      ],
+      "scopeNote": "Subscriber E-Mobil S/M/L prices are separate products and are not used as the ad-hoc tariff."
+    },
+    {
+      "operator": "EVH GmbH",
+      "aliases": ["EVH", "Energieversorgung Halle", "Halplus Strom / MOBIL+"],
+      "status": "partial",
+      "directTariff": null,
+      "verifiedFacts": [
+        "Official EVH page confirms spontaneous ad-hoc access to EVH public charging stations through the charge it easy app with a payment method such as credit card.",
+        "The numeric table on the same page belongs to Halplus Strom / MOBIL+ and includes a monthly service price, so it is not promoted as a contract-free direct tariff without a stronger binding statement.",
+        "The subscriber/local table valid from 2025-08-22 publishes 52/57 ct/kWh depending on EVH customer status and 5 ct/min from 30 minutes after charge end between 08:00 and 20:00, but those values remain product-scoped."
+      ],
+      "officialEvidence": [
+        "https://evh.de/produkte-und-kundenservice/energieloesungen/e-mobilitaet/halplus-strom-mobil"
+      ],
+      "neededToComplete": "Resolve the current charge it easy public ad-hoc checkout/app tariff after EVSE selection, or an official EVH/LichtBlick station-level feed that explicitly binds the numeric direct price and blocking rule to each EVSE."
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+name: Germany Mobilithek AFIR metadata probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["feature/germany-national-base"]
+    paths:
+      - "scripts/germany_mobilithek_probe.py"
+      - ".github/workflows/germany-mobilithek-afir-probe.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: germany-mobilithek-afir-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe public Mobilithek AFIR offer metadata
+        run: python scripts/germany_mobilithek_probe.py
+
+      - name: Summarize discovered metadata
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('data/germany/mobilithek_metadata_probe.json').read_text(encoding='utf-8'))
+          print('TCC_MOBILITHEK_COUNTS=' + json.dumps({
+              'seedCount':p['seedCount'],
+              'successCount':p['successCount'],
+              'errorCount':p['errorCount'],
+          },sort_keys=True))
+          for label, offer in sorted(p['offers'].items()):
+              print('TCC_MOBILITHEK_OFFER=' + json.dumps({
+                  'label':label,
+                  'offerId':offer['offerId'],
+                  'topLevelKeys':offer['topLevelKeys'],
+                  'urlCount':len(offer['urls']),
+                  'relatedIdCount':len(offer['relatedNumericIds']),
+                  'licenseHints':offer['licenseHints'][:8],
+                  'urls':offer['urls'][:12],
+              },ensure_ascii=False,sort_keys=True))
+          if p['errors']:
+              print('TCC_MOBILITHEK_ERRORS=' + json.dumps(p['errors'],ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Upload metadata probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: germany-mobilithek-metadata-${{ github.run_id }}
+          path: data/germany/mobilithek_metadata_probe.json
+          if-no-files-found: error
+          retention-days: 7

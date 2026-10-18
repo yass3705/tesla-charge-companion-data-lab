@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "generatedAt": "2026-09-06",
+  "principle": "Fail closed: only exact official station/network rules are recorded; subscriber, roaming and sampled third-party prices are not generalized to ad-hoc EVSE pricing.",
+  "cpos": {
+    "DE961": {
+      "operator": "Stadtwerke Leipzig GmbH",
+      "canonicalCoverage": {"evses": 415, "sites": 119},
+      "classification": "partial",
+      "findings": [
+        "Official Leipziger Stadtwerke documentation confirms an ad-hoc QR flow at every charging point via emobility.l.de/e-mobility-frontend/adhoc.",
+        "Official L-Strom.drive pricing effective 2026-01-01 publishes own-network registered prices, but this is not sufficient proof that the same amounts are the current ad-hoc QR tariff.",
+        "Therefore no DE961-wide ad-hoc amount is inferred."
+      ],
+      "officialSources": [
+        "https://kundenservice-stadtwerke.l.de/hc/de/articles/360022131059-Wie-erhalte-ich-einen-Zugang-zu-den-Ladestationen-der-Leipziger-Stadtwerke",
+        "https://www.l.de/stadtwerke/privatkunden/e-mobilitaet/unterwegs-laden/"
+      ],
+      "neededToComplete": "Resolve the public ad-hoc checkout price contract by DE961 EVSE and capture energy plus any time/blocking rule; keep L-Strom.drive subscriber pricing separate."
+    },
+    "DEEVY": {
+      "operator": "Bilkraft GmbH / Eviny",
+      "canonicalCoverage": {"evses": 399, "sites": 63},
+      "classification": "partial",
+      "findings": [
+        "Eviny's official German help page currently states Germany fast charging at Eviny stations costs 0.67 EUR/kWh.",
+        "The same official page says the current price for each station is always visible in the Bilkraft app.",
+        "The canonical audit maps all 63 represented DEEVY sites to Bilkraft GmbH, but the staging catalog has not yet attached and validated the official tariff at every EVSE or ruled out station-specific ancillary conditions."
+      ],
+      "officialSources": [
+        "https://www.eviny.de/de/hilfe",
+        "https://www.eviny.de/"
+      ],
+      "neededToComplete": "Attach the official 0.67 EUR/kWh Germany fast-charge rule to validated DEEVY EVSEs and verify any station-specific parking/blocking/payment-terminal conditions before declaring exhaustive exact coverage."
+    },
+    "DEESW": {
+      "operator": "ESWE Versorgungs AG",
+      "canonicalCoverage": {"evses": 382, "sites": 153},
+      "classification": "partial",
+      "findings": [
+        "ESWE's official tariff page publishes prices effective 2026-05-01 for the registered ESWE Lade KARTE product: 0.45 EUR/kWh AC and 0.55 EUR/kWh DC at ESWE stations.",
+        "Those values are a contracted card tariff with a monthly fee and are not proof of the direct/ad-hoc tariff.",
+        "No exact current public ad-hoc DEESW tariff matrix was found in the official retrievable pages, so the registered tariff is not promoted to direct pricing."
+      ],
+      "officialSources": [
+        "https://www.eswe-versorgung.de/e-mobilitaet/eswe-lade-karte.html"
+      ],
+      "neededToComplete": "Resolve the ESWE public QR/card-terminal ad-hoc checkout or AFIR/Mobilithek tariff feed for each DEESW EVSE, including blocking/time conditions."
+    },
+    "DESTR": {
+      "operator": "Stadtwerke Stuttgart GmbH",
+      "canonicalCoverage": {"evses": 370, "sites": 23},
+      "classification": "partial",
+      "findings": [
+        "Stadtwerke Stuttgart officially publishes current ad-hoc pricing on its own stations: AC 0.49 EUR/kWh plus 0.08 EUR/min after 240 minutes, with no blocking fee 20:00-08:00.",
+        "Official DC ad-hoc pricing is 0.59 EUR/kWh plus 0.10 EUR/min after 60 minutes, with no blocking fee 22:00-06:00.",
+        "The official site states current prices are shown in the ad-hoc web app and confirms card-terminal payment on DC stations.",
+        "The exact rule is suitable for an overlay, but the staging catalog has not yet validated attachment to every DESTR EVSE/site."
+      ],
+      "officialSources": [
+        "https://www.stadtwerke-stuttgart.de/privatkunden/e-mobilitaet/oeffentliches-laden/oeffentliche-ladestationen/"
+      ],
+      "neededToComplete": "Attach the official AC/DC ad-hoc energy and time-window blocking rules to all validated DESTR EVSEs and verify no represented partner/non-SWS site falls outside the own-network tariff."
+    },
+    "DEODR": {
+      "operator": "EnBW Ostwürttemberg DonauRies AG",
+      "canonicalCoverage": {"evses": 373, "sites": 97},
+      "classification": "partial",
+      "findings": [
+        "ODR officially confirms direct-payment/QR and payment-terminal support for public charging.",
+        "ODR's current B2B terminal documentation explicitly supports tariff configuration per location and separately for AC/DC, proving that one historical ODR amount must not be assumed network-wide.",
+        "Older ODR pages contain historical MobilityMe prices, but these are not used as current 2026 ad-hoc evidence."
+      ],
+      "officialSources": [
+        "https://emobility.odr.de/ladeloesungen/unternehmen/bezahlterminal-fuer-ladestationen",
+        "https://www.odr.de/presse-publikation/pressemitteilungen/detailseite/e-ladesaeule-in-nattheim-in-betrieb-genommen"
+      ],
+      "neededToComplete": "Resolve the current direct-payment price per DEODR site/EVSE from ODR payment-terminal/QR payloads or AFIR/Mobilithek; preserve site-specific AC/DC configuration."
+    }
+  }
+}

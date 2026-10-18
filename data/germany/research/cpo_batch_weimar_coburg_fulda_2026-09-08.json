@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "researchedAt": "2026-09-08",
+  "entries": {
+    "stadtwerke_weimar": {
+      "status": "complete",
+      "operator": "Stadtwerke Weimar",
+      "aliases": ["SW Weimar", "Stadtwerke Weimar"],
+      "evidence": [
+        {
+          "source": "Stadtwerke Weimar official electromobility page",
+          "url": "https://sw-weimar.de/geschaeftskunden/elektromobilitaet/ladepunkte-und-ladekarte/",
+          "observation": "Official current page states charging via ladenetz.de ladeapp without a charging card at all Stadtwerke Weimar stations: AC 0.52 EUR/kWh plus 0.10 EUR/min from 240 minutes, capped at 12 EUR/session; DC 0.60 EUR/kWh plus 0.10 EUR/min from 90 minutes, capped at 12 EUR/session."
+        }
+      ],
+      "reason": "Current official direct/no-card tariff and blocking rules are explicit and scoped to Stadtwerke Weimar stations.",
+      "neededToComplete": null
+    },
+    "suec_coburg": {
+      "status": "partial",
+      "operator": "SÜC Coburg",
+      "aliases": ["SÜC", "SÜC Coburg", "SÜC GmbH"],
+      "evidence": [
+        {
+          "source": "SÜC official electromobility page",
+          "url": "https://www.suec.de/emobilitaet",
+          "observation": "Official current page confirms SÜC operates a mixed AC/DC/HPC public network and promotes the SÜC charging card, but does not publish a current direct/ad-hoc tariff matrix."
+        },
+        {
+          "source": "SÜC official charging-fee PDF",
+          "url": "https://www.suec.de/de/Strom/E-Mobilitaet-Ladekarte/E-MOBILITAeT-EINFACH.-ELEKTRISCH.-MOBIL/2024.11.21-Ladegebuehren-Uebersicht-ab-01.01.2025-SUeC-E-Ladekarteninhaber-01.pdf",
+          "observation": "Official tariff PDF is explicitly for SÜC E-Ladekarteninhaber and therefore cannot be promoted as ad-hoc/direct pricing."
+        },
+        {
+          "source": "Public station-level discovery source",
+          "url": "https://www.ladeguru.de/ladestation/s%C3%BCc-gmbh/96479-weitramsdorf/40716",
+          "observation": "A current SÜC site exposes direct card payment and differing station-level DC prices (including 0.60 and 0.65 EUR/kWh), demonstrating that a single cardholder tariff cannot safely substitute for direct pricing. Discovery evidence only; not promoted."
+        }
+      ],
+      "reason": "Official material only proves the card product, while current station-level direct prices vary. No official exhaustive EVSE-to-direct-price mapping was found.",
+      "neededToComplete": "Resolve SÜC public card-terminal/QR checkout or an official AFIR/Mobilithek tariff feed per EVSE and preserve power-tier/site-specific prices and blocking rules."
+    },
+    "rhoenenergie_fulda": {
+      "status": "partial",
+      "operator": "RhönEnergie Fulda GmbH",
+      "aliases": ["RhönEnergie", "RhönEnergie Fulda"],
+      "evidence": [
+        {
+          "source": "Current tariff discovery source",
+          "url": "https://chargesurfer.de/tarife/gelegenheits-lader",
+          "observation": "Current discovery source identifies a RhönEnergie Fulda Gelegenheits-Lader card tariff of 0.51 EUR/kWh AC and 0.61 EUR/kWh DC/HPC. This is a card tariff and is not promoted as ad-hoc."
+        },
+        {
+          "source": "Current station-level registry/discovery source",
+          "url": "https://www.preisstation.de/ladestation/116842-rhoenenergie-fulda-gmbh-burghaun/",
+          "observation": "A 2026 RhönEnergie Fulda HPC site exposes NFC credit/debit card and online payment methods, confirming direct-payment-capable infrastructure, but the page does not publish the exact direct tariff."
+        },
+        {
+          "source": "Current station-level discovery source",
+          "url": "https://evlade.de/hessen/fulda/e-bike-station-supermarkt-rewe-88684/",
+          "observation": "A third-party current page reports one RhönEnergie location at 0.49 EUR/kWh AC and 0.64 EUR/kWh DC with blocking fees, conflicting with the provider card tariff and demonstrating that values cannot be generalized. Discovery evidence only; not promoted."
+        }
+      ],
+      "reason": "Direct-payment capability is evidenced at current RhönEnergie sites, but no current official station/EVSE direct price matrix was found and third-party prices conflict with card-product pricing.",
+      "neededToComplete": "Obtain RhönEnergie's official direct-payment checkout or official AFIR/Mobilithek/DATEX tariff payload keyed by EVSE/site, including blocking rules."
+    }
+  },
+  "guardrails": {
+    "thirdPartyTariffsPromoted": false,
+    "subscriberTariffsPromotedAsAdHoc": false,
+    "prefixWideExtrapolation": false,
+    "historicalTariffsPromoted": false
+  }
+}

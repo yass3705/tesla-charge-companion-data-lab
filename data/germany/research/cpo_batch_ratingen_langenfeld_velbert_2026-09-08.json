@@ -1,0 +1,75 @@
+{
+  "date": "2026-09-08",
+  "scope": "Germany V9 first-pass CPO tariff audit",
+  "guardrails": [
+    "No tariff generalized beyond the explicit official source scope.",
+    "Third-party station data is discovery/supporting evidence only unless the official CPO source confirms the tariff.",
+    "Previously deferred CPOs are not re-audited without new evidence."
+  ],
+  "cpos": [
+    {
+      "canonical_name": "Stadtwerke Ratingen GmbH",
+      "aliases": ["Stadtwerke Ratingen", "SW Ratingen"],
+      "status": "complete",
+      "direct_payment": "Official page confirms QR-code ad-hoc charging without a special tariff contract, paid by credit card.",
+      "tariff": {
+        "valid_from": "2026-04-01",
+        "ac_energy_eur_per_kwh": 0.53,
+        "ac_blocking_fee_eur_per_min_after_240min": 0.05,
+        "ac_blocking_fee_suspended_from": "22:00",
+        "ac_blocking_fee_suspended_until": "06:00",
+        "dc_energy_eur_per_kwh": 0.59,
+        "dc_blocking_fee_eur_per_min_after_60min": 0.05,
+        "dc_blocking_fee_max_eur_per_session": 12.0
+      },
+      "scope_note": "The official ad-hoc table explicitly applies to Stadtwerke Ratingen charging stations. Overnight AC standing fee is published as free from 22:00 to 06:00.",
+      "sources": [
+        "https://www.stadtwerke-ratingen.de/mobilitaet/oeffentliche-ladestationen"
+      ]
+    },
+    {
+      "canonical_name": "Stadtwerke Langenfeld GmbH",
+      "aliases": ["Stadtwerke Langenfeld", "swL"],
+      "status": "partial_deferred",
+      "direct_payment": "Official FAQ confirms QR-code ad-hoc charging without registration or card, paid by Mastercard or Visa.",
+      "tariff": {
+        "valid_from": "2025-10-01",
+        "session_start_fee_eur": 0.75,
+        "own_ac_energy_eur_per_kwh": 0.72,
+        "ac_blocking_fee_eur_per_min_after_180min": 0.10,
+        "dc_blocking_fee_eur_per_min_after_90min": 0.10,
+        "blocking_fee_active_from": "06:00",
+        "blocking_fee_active_until": "21:00"
+      },
+      "reason": "The current official ad-hoc table publishes an own-station AC energy price but no own-station DC energy price. Stadtwerke Langenfeld put its first DC fast charger into service on 2026-09-01 with two connectors up to 75 kW, so the newly live DC EVSE cannot be priced exactly from the published table.",
+      "unlock_needed": "Resolve the public QR/payment checkout for the Rathausparkplatz DC EVSEs or obtain an updated official own-DC ad-hoc tariff row mapping the exact DC energy price.",
+      "sources": [
+        "https://www.stw-langenfeld.de/info/",
+        "https://www.stw-langenfeld.de/mobilitaet/",
+        "https://www.stw-langenfeld.de/beitrag/erste-schnellladesaeule-der-stadtwerke-in-betrieb/"
+      ]
+    },
+    {
+      "canonical_name": "Stadtwerke Velbert GmbH",
+      "aliases": ["Stadtwerke Velbert", "ladeBERT"],
+      "status": "partial_deferred",
+      "direct_payment": "Official pages confirm spontaneous app/QR charging without a contract, paid by credit card or PayPal.",
+      "tariff": null,
+      "reason": "The official numeric tariff shown on the current page is explicitly the ladeBERT card tariff. The ad-hoc QR/app flow is documented separately without a numeric direct-payment tariff, so card prices are not reused as ad-hoc prices. Third-party station pricing remains discovery evidence only.",
+      "unlock_needed": "Capture a public Velbert QR/ladenetz checkout per EVSE or an official Stadtwerke Velbert ad-hoc tariff page/feed with exact direct-payment energy and blocking components.",
+      "sources": [
+        "https://www.stadtwerke-velbert.de/privatkunden/e-mobilitaet/unterwegs-laden",
+        "https://www.stadtwerke-velbert.de/privatkunden/e-mobilitaet/faq"
+      ]
+    }
+  ],
+  "consistency": {
+    "new_identities": 3,
+    "complete_delta": 1,
+    "partial_delta": 2,
+    "blocked_delta": 0,
+    "duplicate_first_pass_detected": false,
+    "re_audit_of_deferred_without_new_evidence": false,
+    "identical_investigation_over_2_runs": false
+  }
+}

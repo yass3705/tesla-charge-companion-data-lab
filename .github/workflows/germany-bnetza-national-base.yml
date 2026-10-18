@@ -1,0 +1,87 @@
+name: Germany BNetzA national baseline
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 2 * *"
+  push:
+    branches: ["feature/germany-national-base"]
+    paths:
+      - "scripts/germany_bnetza_catalog.py"
+      - "tests/test_germany_bnetza_catalog.py"
+      - ".github/workflows/germany-bnetza-national-base.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: germany-bnetza-national-base
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test BNetzA discovery and normalization
+        run: python -m unittest tests/test_germany_bnetza_catalog.py -v
+
+      - name: Build current national baseline
+        run: python scripts/germany_bnetza_catalog.py
+
+      - name: Validate generated baseline
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+
+          path=Path('data/germany/bnetza_baseline.json.gz')
+          assert path.is_file(), 'German BNetzA artifact missing'
+          with gzip.open(path,'rt',encoding='utf-8') as handle:
+              p=json.load(handle)
+          s=p['stats']
+          assert p['dataset']=='germany-bnetza-static-baseline'
+          assert p['countryCode']=='DE'
+          assert p['source']['authority']=='Bundesnetzagentur'
+          assert p['source']['license']=='CC BY 4.0'
+          assert p['source']['attribution']=='bundesnetzagentur.de'
+          assert p['scope']['dynamicStatusIncluded'] is False
+          assert p['scope']['tariffsIncluded'] is False
+          assert p['scope']['teslaExcluded'] is False
+          assert s['stationRows'] >= 50000, s
+          assert s['declaredChargePoints'] >= 150000, s
+          assert s['operators'] >= 100, s
+          assert s['skippedWithoutCoordinates'] < max(1000, s['stationRows'] * .02), s
+          assert all(x['address']['countryCode']=='DE' for x in p['stations'][:1000])
+          assert all(x['operationalStatus']=='unknown' for x in p['stations'][:1000])
+          print(json.dumps(s,ensure_ascii=False,indent=2))
+          print(p['source']['url'])
+          PY
+
+      - name: Publish baseline on default branch only
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/germany/bnetza_baseline.json.gz
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(germany): refresh BNetzA national baseline [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Upload validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: germany-bnetza-baseline-${{ github.run_id }}
+          path: data/germany/bnetza_baseline.json.gz
+          if-no-files-found: error
+          retention-days: 7

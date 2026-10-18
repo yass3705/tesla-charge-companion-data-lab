@@ -1,0 +1,70 @@
+name: Germany CPO coverage audit
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_cpo_coverage_audit.py'
+      - 'config/germany_cpo_research_registry.json'
+      - '.github/workflows/germany-cpo-coverage-audit.yml'
+  workflow_run:
+    workflows: ['Germany direct CPO tariff overlay']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/germany-national-base
+      - name: Restore latest direct-CPO staging catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/germany
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-national-direct-cpo-staging&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/germany-direct-cpo.zip
+          unzip -q /tmp/germany-direct-cpo.zip -d data/germany
+          test -s data/germany/germany_non_tesla_catalog_staging_direct_cpo.json.gz
+      - name: Build strict CPO-prefix coverage audit
+        run: python scripts/germany_cpo_coverage_audit.py
+      - name: Validate audit invariants
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/germany/germany_cpo_coverage_audit.json')
+          d=json.loads(p.read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-cpo-prefix-tariff-coverage-audit'
+          c=d['counts']
+          assert c['total'] >= 500, c
+          assert c['treated']==c['complete']+c['partial']+c['blocked'], c
+          assert c['treated']+c['remaining']==c['total'], c
+          assert len(d['rows'])==c['total']
+          assert len(d['complete'])==c['complete']
+          assert len(d['partial'])==c['partial']
+          assert len(d['blocked'])==c['blocked']
+          by={r['prefix']:r for r in d['rows']}
+          assert by['DE753']['status']=='complete', by['DE753']
+          assert by['DECNT']['status']=='partial', by['DECNT']
+          assert by['DETMO']['status']=='partial', by['DETMO']
+          assert by['DEQRM']['status']=='partial', by['DEQRM']
+          assert by['DEQWC']['status']=='partial', by['DEQWC']
+          assert by['DEI2G']['status']=='partial', by['DEI2G']
+          print('TCC_GERMANY_CPO_COVERAGE_AUDIT_VALIDATED='+json.dumps(c,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-cpo-coverage-audit
+          path: data/germany/germany_cpo_coverage_audit.json
+          if-no-files-found: error
+          retention-days: 30

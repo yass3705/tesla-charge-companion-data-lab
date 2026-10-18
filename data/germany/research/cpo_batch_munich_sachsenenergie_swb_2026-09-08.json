@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "date": "2026-09-08",
+  "policy": "Exact public/ad-hoc tariff evidence only. Subscription, roaming, historical and sampled station values are not generalized beyond their proven scope.",
+  "cpos": [
+    {
+      "operator": "Stadtwerke München GmbH",
+      "aliases": ["Stadtwerke München", "SWM München", "SWM", "SWM Ladestationen"],
+      "status": "partial",
+      "authoritativePrefix": null,
+      "findings": {
+        "publicNetwork": "SWM states it operates about 1,400 publicly accessible charging points in the Munich area.",
+        "directPayment": "Official SWM pages confirm spontaneous direct payment by QR code / credit card at supported SWM stations and describe ad-hoc charging separately from the SWM charging-card tariffs.",
+        "currentTariffContext": "From 2026-07-01 SWM says charging cost depends on the selected tariff. The published Flex charging-card tariff has 0 EUR/month base fee and own-network prices of 0.49 EUR/kWh AC and 0.69 EUR/kWh DC/HPC, but it still requires the SWM charging-card product and a one-time card fee. The official ad-hoc/direct-payment flow does not expose a numeric current price in the public documentation audited here.",
+        "blocking": "SWM states no blocking fee applies at SWM stations when using the SWM charging card; this does not prove the same condition for ad-hoc credit-card sessions."
+      },
+      "reason": "Current direct-payment access is official, but the numeric post-2026-07-01 ad-hoc price is not publicly tied to that contract-free payment flow. The zero-monthly-fee Flex card tariff must not be substituted for ad-hoc without checkout evidence.",
+      "neededToComplete": "Resolve an SWM QR/direct-payment checkout for representative AC and DC/HPC EVSEs or an official station tariff feed, then prove whether direct payment matches a published SWM tariff and whether any ad-hoc blocking/payment fee applies.",
+      "sources": [
+        "https://www.swm.de/elektromobilitaet/oeffentliche-ladestationen",
+        "https://www.swm.de/elektromobilitaet/oeffentliche-ladestationen/faqs",
+        "https://www.swm.de/elektromobilitaet/oeffentliche-ladestationen/ladekarte-e-auto"
+      ]
+    },
+    {
+      "operator": "SachsenEnergie AG",
+      "aliases": ["SachsenEnergie", "SachsenEnergie Dresden", "StromTanken App"],
+      "status": "partial",
+      "authoritativePrefix": null,
+      "findings": {
+        "publicNetwork": "SachsenEnergie states that its own network comprises more than 1,700 charging points in Dresden and eastern Saxony.",
+        "directPayment": "The official StromTanken App page explicitly documents charging without a contract and without a monthly base fee, including QR/station selection and payment-method selection.",
+        "energyPrice": "For charging without a contract at SachsenEnergie-owned charging stations, the official current table publishes 0.50 EUR/kWh for both AC and DC.",
+        "blocking": "The same table gives the contract product a 0 EUR blocking fee, while the without-contract column says blocking fee equals the price of the respective charge-point operator. It does not separately state a numeric SachsenEnergie-owned ad-hoc blocking fee."
+      },
+      "reason": "The exact ad-hoc energy component is official and current at 0.50 EUR/kWh AC/DC on SachsenEnergie stations, but the direct-payment blocking/time component is not numerically resolved. Exact total session pricing therefore remains incomplete.",
+      "neededToComplete": "Resolve a SachsenEnergie-owned station checkout/QR payload or another official tariff document that explicitly states the blocking/time fee for without-contract sessions (including confirmation if it is zero), then attach the 0.50 EUR/kWh rule only to validated SachsenEnergie EVSEs.",
+      "sources": [
+        "https://www.sachsenenergie.de/wps/portal/energie/cms/menu_main/privatkunden/elektromobilitaet/service/stromtanken-app",
+        "https://www.sachsenenergie.de/wps/portal/energie/cms/menu_main/privatkunden/elektromobilitaet/service/ladekarte"
+      ]
+    },
+    {
+      "operator": "swb AG / swb Vertrieb Bremen GmbH",
+      "aliases": ["swb", "swb Bremen", "swb Mobilstromkarte"],
+      "status": "partial",
+      "authoritativePrefix": null,
+      "findings": {
+        "publicNetwork": "swb states it operates around 80 publicly accessible charging locations with more than 150 charging points in Bremen, Bremerhaven and the region.",
+        "publishedOwnNetworkTariff": "The current official Mobilstromkarte product publishes 0.47 EUR/kWh AC and 0.57 EUR/kWh DC at swb and ladenetz partner points, with monthly contract/card base fees. A 0.10 EUR/min usage fee can apply from minute 241 AC or 121 DC during 08:00-20:00 under the card product.",
+        "directPaymentEvidence": "The public swb pages audited here focus on RFID/ladenetz access and do not expose a current numeric contract-free QR/card checkout tariff for the swb public network."
+      },
+      "reason": "The available numeric pricing is explicitly tied to the swb Mobilstromkarte contract. It cannot be generalized as the CPO's ad-hoc tariff without a direct-payment source.",
+      "neededToComplete": "Resolve an official/public ad-hoc payment surface for swb-operated EVSEs (QR/card checkout, ladenetz direct-payment payload, AFIR/Mobilithek tariff feed or equivalent) and map exact energy/time pricing to the affected stations.",
+      "sources": [
+        "https://www.swb.de/e-mobilitaet",
+        "https://www.swb.de/e-mobilitaet/mobilstromkarte",
+        "https://www.swb.de/ueber-swb/geschaeftsfelder/e-mobilitaet/ladeinfrastruktur"
+      ]
+    }
+  ],
+  "consistency": {
+    "newFirstPassIdentities": 3,
+    "complete": 0,
+    "partial": 3,
+    "blocked": 0,
+    "prefixesInvented": 0,
+    "subscriptionTariffsGeneralizedToAdHoc": 0,
+    "stationSamplesGeneralizedNetworkWide": 0
+  }
+}

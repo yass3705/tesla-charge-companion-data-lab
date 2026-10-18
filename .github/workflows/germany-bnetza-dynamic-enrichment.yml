@@ -1,0 +1,103 @@
+name: Germany BNetzA dynamic enrichment
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_bnetza_dynamic_enrichment.py'
+      - '.github/workflows/germany-bnetza-dynamic-enrichment.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  enrich:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore latest validated persistent AFIR state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/germany
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-afir-dynamic-state&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "No validated germany-afir-dynamic-state artifact found" >&2
+            exit 1
+          fi
+          echo "Restoring persistent AFIR state artifact $ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/afir-state.zip
+          unzip -q /tmp/afir-state.zip -d data/germany
+          test -s data/germany/afir_dynamic_state.json.gz
+
+      - name: Build national BNetzA + AFIR dynamic staging artifact
+        run: python scripts/germany_bnetza_dynamic_enrichment.py
+
+      - name: Validate enrichment invariants
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+
+          p=Path('data/germany/bnetza_dynamic_enrichment.json.gz')
+          with gzip.open(p,'rt',encoding='utf-8') as f:
+              d=json.load(f)
+
+          assert d['dataset']=='germany-bnetza-afir-dynamic-enrichment'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          assert d['scope']['tariffsRankable'] is False
+          assert d['scope']['unknownIsNeverOutOfService'] is True
+          assert d['scope']['ambiguousAfirMatchesAreQuarantined'] is True
+
+          s=d['stats']
+          assert len(d['sites']) == s['bnetzaPhysicalSites']
+          assert s['safeCanonicalAfirMatches'] + s['ambiguousAfirSitesQuarantined'] == s['canonicalAfirMatches']
+          assert (
+              s['dynamicPointsMappedToSafeBnetza']
+              + s['dynamicPointsSkippedAmbiguous']
+              + s['dynamicPointsWithoutSafeBnetzaMatch']
+              == s['persistentDynamicPoints']
+          )
+          assert sum(s['nationalServiceStateDistribution'].values()) == s['bnetzaPhysicalSites']
+          assert sum(s['enrichedSiteServiceStateDistribution'].values()) == s['bnetzaSitesWithActionableDynamicState']
+
+          for site in d['sites']:
+              dyn=site['dynamicService']
+              state=dyn['serviceState']
+              dist=dyn['pointStateDistribution']
+              if site['afirMatchStatus']=='quarantined_ambiguous':
+                  assert state=='unknown' and dyn['knownPointCount']==0, site['bnetzaSiteId']
+              if state=='operational':
+                  assert dist.get('operational',0) > 0, site['bnetzaSiteId']
+              elif state=='out_of_service':
+                  assert dist.get('out_of_service',0) > 0, site['bnetzaSiteId']
+                  assert dist.get('operational',0) == 0, site['bnetzaSiteId']
+                  assert dist.get('unknown',0) == 0, site['bnetzaSiteId']
+              else:
+                  assert state=='unknown'
+
+          print('TCC_GERMANY_BNETZA_DYNAMIC_ENRICHMENT_VALIDATED='+json.dumps({
+              'bnetzaPhysicalSites': s['bnetzaPhysicalSites'],
+              'safeCanonicalAfirMatches': s['safeCanonicalAfirMatches'],
+              'ambiguousAfirSitesQuarantined': s['ambiguousAfirSitesQuarantined'],
+              'persistentDynamicPoints': s['persistentDynamicPoints'],
+              'dynamicPointsMappedToSafeBnetza': s['dynamicPointsMappedToSafeBnetza'],
+              'bnetzaSitesWithActionableDynamicState': s['bnetzaSitesWithActionableDynamicState'],
+              'nationalServiceStateDistribution': s['nationalServiceStateDistribution'],
+              'enrichedSiteServiceStateDistribution': s['enrichedSiteServiceStateDistribution'],
+              'providerCoverage': s['providerCoverage'],
+          },sort_keys=True))
+          PY
+
+      - name: Upload Germany BNetzA dynamic enrichment
+        uses: actions/upload-artifact@v4
+        with:
+          name: germany-bnetza-dynamic-enrichment
+          path: data/germany/bnetza_dynamic_enrichment.json.gz
+          if-no-files-found: error
+          retention-days: 30
