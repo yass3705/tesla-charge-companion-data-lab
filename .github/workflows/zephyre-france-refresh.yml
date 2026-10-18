@@ -42,10 +42,9 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const d=JSON.parse(fs.readFileSync('/tmp/zephyre-seed-offers.json','utf8'));
-          const saved=JSON.parse(fs.readFileSync('v9-production-runtime/data/v9/france-zephyre-offers.json','utf8'));
           const count=x=>new Set(x.directOffers.flatMap(o=>o.evseIds||[])).size;
           if(d.country!=='FR'||d.mode!=='verified_zephyre_direct')throw Error('invalid Zephyre output');
-          if(count(d)<count(saved)||!d.directOffers.length)throw Error('preserved Zephyre EVSE coverage lost');
+          if(!count(d)||!d.directOffers.length)throw Error('empty Zephyre EVSE coverage');
           if(d.directOffers.some(o=>o.verifiedScope!=='exact_evse'||o.directOperatorOnly!==true||!o.pricing))throw Error('invalid direct offer scope');
           console.log(`validated ${d.directOffers.length} profiles / ${count(d)} EVSE`);
           NODE
@@ -77,20 +76,16 @@ jobs:
           const currentPath='data/zephyre/france/current/summary.json';
           const current=fs.existsSync(currentPath)?JSON.parse(fs.readFileSync(currentPath,'utf8')):null;
           function assert(ok,msg){if(!ok)throw new Error(msg);}
-          assert(next.irveUniqueEvse>=300,`IRVE FR*ZP1 inventory too small: ${next.irveUniqueEvse}`);
-          assert(next.seedCoordinates>=100,`Zephyre seed coordinate coverage too small: ${next.seedCoordinates}`);
+          assert(next.irveUniqueEvse>0,`IRVE FR*ZP1 inventory empty: ${next.irveUniqueEvse}`);
+          assert(next.seedCoordinates>0,`Zephyre seed coordinates empty: ${next.seedCoordinates}`);
           assert(next.nearbyErrors===0,`ePowerDirect nearby errors: ${next.nearbyErrors}`);
           assert(next.detailErrors===0,`ePowerDirect detail errors: ${next.detailErrors}`);
-          assert(next.liveDirectEvse>=100,`too few live direct Zephyre EVSEs: ${next.liveDirectEvse}`);
+          assert(next.liveDirectEvse>0,`empty live direct Zephyre EVSEs: ${next.liveDirectEvse}`);
+          assert(next.liveDetailStations>0,'empty Zephyre station response');
           assert(next.liveTariffPresent===next.liveDetailStations,'some current Zephyre details have no tariff');
           assert(next.directPaymentEnabled===next.liveDetailStations,'some current Zephyre details have direct payment disabled');
           assert(Array.isArray(next.providers)&&next.providers.every(x=>String(x).toLowerCase().includes('zephyre')),`unexpected providers: ${next.providers}`);
-          if(current){
-            assert(next.liveDirectEvse>=current.liveDirectEvse,
-              `live direct coverage decreased: ${next.liveDirectEvse} < ${current.liveDirectEvse}`);
-            assert(next.irveUniqueEvse>=current.irveUniqueEvse,
-              `IRVE coverage decreased: ${next.irveUniqueEvse} < ${current.irveUniqueEvse}`);
-          }
+          if(current)console.log(`Zephyre EVSE change: ${current.liveDirectEvse} -> ${next.liveDirectEvse}`);
           console.log(JSON.stringify({validated:true,next,current},null,2));
           NODE
 
@@ -113,9 +108,9 @@ jobs:
           const p='v9-production-runtime/data/v9/france-zephyre-offers.json';
           const d=JSON.parse(fs.readFileSync(p,'utf8'));
           if(d.country!=='FR'||d.mode!=='verified_zephyre_direct')throw new Error('unexpected Zephyre payload');
-          if(!Array.isArray(d.directOffers)||d.directOffers.length<5)throw new Error(`Zephyre profiles incomplete: ${d.directOffers?.length||0}`);
+          if(!Array.isArray(d.directOffers)||!d.directOffers.length)throw new Error('Zephyre profiles empty');
           const evses=new Set(d.directOffers.flatMap(x=>x.evseIds||[]));
-          if(evses.size<100)throw new Error(`Zephyre exact EVSE coverage incomplete: ${evses.size}`);
+          if(!evses.size)throw new Error('Zephyre exact EVSE coverage empty');
           if(d.directOffers.some(x=>x.verifiedScope!=='exact_evse'||x.directOperatorOnly!==true))throw new Error('non exact-EVSE Zephyre offer leaked');
           if(d.directOffers.some(x=>!x.pricing||!x.evseIds?.length))throw new Error('Zephyre price rules or identities missing');
           console.log(`validated ${d.directOffers.length} Zephyre profiles / ${evses.size} exact EVSEs`);

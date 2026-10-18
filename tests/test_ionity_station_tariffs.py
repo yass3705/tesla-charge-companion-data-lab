@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from ionity_station_tariffs import CANONICAL_CPO, build, parse_direct_connector
+from ionity_station_tariffs import APP_FEATURE_VERSION, CANONICAL_CPO, build, parse_direct_connector
 
 
 def connector(uuid="connector-1", amount="0.62", power=350000, name="IONITY DIRECT"):
@@ -19,6 +19,9 @@ def connector(uuid="connector-1", amount="0.62", power=350000, name="IONITY DIRE
 
 
 class IonityStationTariffTests(unittest.TestCase):
+    def test_official_current_android_feature_version(self):
+        self.assertEqual(APP_FEATURE_VERSION, "v2.500.1")
+
     def test_parses_only_direct_eur_kwh_price(self):
         parsed = parse_direct_connector(connector())
         self.assertEqual(parsed["kind"], "DC")

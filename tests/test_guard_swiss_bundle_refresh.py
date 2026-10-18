@@ -8,31 +8,53 @@ from guard_swiss_bundle_refresh import validate_refresh
 
 def bundle(ids, priced=1):
     return {
+        "country": "CH", "nationalSource": "official-swiss", "generatedAt": "2026-10-18T00:00:00Z",
         "counts": {
             "nationalEvseCount": len(ids),
             "directTariffResolvedEvseCount": priced,
             "noPublicDirectTariffEvseCount": 0,
             "directTariffUnresolvedEvseCount": len(ids) - priced,
         },
-        "evses": [{"evseId": value} for value in ids],
+        "evses": [{"evseId": value, "stationId": value} for value in ids],
     }
 
 
 class SwissRefreshGuardTest(unittest.TestCase):
-    def test_growth_preserves_inventory(self):
-        validate_refresh(bundle(["A"]), bundle(["A", "B"]))
+    def setUp(self):
+        self.old = bundle([str(i) for i in range(100)])
 
-    def test_inventory_loss_is_blocked(self):
-        with self.assertRaisesRegex(ValueError, "count fell"):
-            validate_refresh(bundle(["A", "B"]), bundle(["A"]))
+    def candidate(self, count):
+        return bundle([str(i) for i in range(count)])
 
-    def test_global_tariff_loss_is_blocked(self):
-        with self.assertRaisesRegex(ValueError, "tariffs disappeared"):
-            validate_refresh(bundle(["A"]), bundle(["A"], priced=0))
+    def test_growth_and_exact_five_percent(self):
+        self.assertIsNone(validate_refresh(self.old, self.candidate(101)))
+        self.assertIsNone(validate_refresh(self.old, self.candidate(95)))
 
-    def test_duplicate_identity_is_blocked(self):
+    def test_above_five_and_exact_thirty_warn(self):
+        for count in (94, 70):
+            warning = validate_refresh(self.old, self.candidate(count))
+            self.assertEqual(warning["evses"]["previous"], 100)
+            self.assertEqual(warning["evses"]["current"], count)
+            self.assertEqual(len(warning["stations"]["disappearedIds"]), 100-count)
+            self.assertEqual(warning["source"], "official-swiss")
+
+    def test_over_thirty_blocks(self):
+        with self.assertRaisesRegex(ValueError, "coverage fell"):
+            validate_refresh(self.old, self.candidate(69))
+
+    def test_empty_and_duplicate_block(self):
+        with self.assertRaises(ValueError):
+            validate_refresh(self.old, self.candidate(0))
         with self.assertRaisesRegex(ValueError, "duplicate"):
             validate_refresh(None, bundle(["A", "A"]))
+
+    def test_tariff_loss_and_scope_change_block(self):
+        with self.assertRaisesRegex(ValueError, "tariffs disappeared"):
+            validate_refresh(self.old, bundle(["A"], priced=0))
+        changed = self.candidate(100)
+        changed["nationalSource"] = "other"
+        with self.assertRaisesRegex(ValueError, "scope"):
+            validate_refresh(self.old, changed)
 
 
 if __name__ == "__main__":

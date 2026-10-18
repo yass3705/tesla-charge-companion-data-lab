@@ -272,7 +272,9 @@ payload={
  "evses":rows
 }
 previous=json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else None
-validate_refresh(previous,payload)
+warning=validate_refresh(previous,payload)
+if warning:
+    payload["coverageWarning"]=warning
 NATIONAL_OUT.parent.mkdir(parents=True,exist_ok=True)
 NATIONAL_OUT.write_bytes(gzip.compress(raw,compresslevel=9,mtime=0))
 OUT.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
