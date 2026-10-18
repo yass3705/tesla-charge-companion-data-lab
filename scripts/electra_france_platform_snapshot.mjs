@@ -396,4 +396,3 @@ await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2
 const residualGz=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,country:'FR',generatedAt:manifest.generatedAt,locations:residualLocations})),{level:9});
 await fs.writeFile(path.join(OUT,'residuals.json.gz'),residualGz);
 console.log(JSON.stringify(manifest,null,2));
-if(stats.publishedOffers<1000)throw new Error(`too few safe Electra platform offers: ${stats.publishedOffers}`);

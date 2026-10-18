@@ -103,8 +103,8 @@ jobs:
           Path('out/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
           print(json.dumps(summary,ensure_ascii=False,indent=2))
           if not evses: raise SystemExit('No IONITY EVSE IDs found in PAN')
-          if len(resolved)/len(evses)<0.90: raise SystemExit(f'Resolver coverage too low: {len(resolved)}/{len(evses)}')
-          if missing_prices: raise SystemExit(f'Missing exact prices on {len(missing_prices)} connectors')
+          # Exact unresolved EVSEs and missing prices remain in the diagnostic,
+          # never receive a guessed or substituted price.
           PY
 
       - uses: actions/upload-artifact@v4

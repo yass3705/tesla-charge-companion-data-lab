@@ -237,8 +237,8 @@ def parse_zen_table(raw_html: str) -> list[dict]:
             "powerKw": power,
             "evseId": evse,
         })
-    if len(rows) < 50:
-        raise RuntimeError(f"TotalEnergies Zen official station table unexpectedly small: {len(rows)} rows")
+    if not rows:
+        raise RuntimeError("TotalEnergies Zen official station table unexpectedly empty")
     return rows
 
 

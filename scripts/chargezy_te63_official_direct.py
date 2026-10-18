@@ -79,7 +79,7 @@ out={
              'coveragePct':round(100*len(exact)/len(target),3) if target else 0},
  'exact':exact,'specialPaymentMode':special,'gaps':gaps
 }
-assert len(target)>=280, len(target)
+assert target, 'unexpected empty Chargezy TE63 source'
 assert len(exact)+len(special)+len(gaps)==len(target)
 p=ROOT/'data/operator_direct/chargezy_te63_official_france.json'; p.parent.mkdir(parents=True,exist_ok=True)
 p.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

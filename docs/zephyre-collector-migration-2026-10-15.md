@@ -1,3 +1,5 @@
+> **Rectification du 18/10/2026 :** les seuils ou non-baisses de couverture décrits pour ce run historique ne bloquent plus les lots futurs à eux seuls. Voir la [politique universelle](CPO_DYNAMIC_COVERAGE_POLICY.md). Les preuves du run original sont conservées.
+
 # Zephyre France : collecteur ePowerDirect
 
 Les scripts publics d'extraction et de compilation Zephyre, ainsi que le

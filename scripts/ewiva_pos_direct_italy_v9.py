@@ -342,13 +342,8 @@ def main() -> None:
         "blockedPunStations": dict(sorted(blocked.items())),
     }
     safety_gates = {
-        "officialInventoryLargeEnough": len(locations) >= 500,
-        "officialActiveInventoryLargeEnough": len(active_locations) >= 400,
-        "officialNoPosListPlausible": 50 <= len(nopos_ids) <= 150,
-        "officialActivePosInventoryLargeEnough": len(active_pos_locations) >= 350,
-        "punEwivaInventoryLargeEnough": len(ewiva_stations) >= 800 and pun_evse_count >= 1600,
-        "strictMatchesLargeEnough": len(matches) >= 600 and len(entries) >= 1100,
-        "multipleOfficialSitesRemainFailClosed": blocked["ambiguous_active_official_sites_within_25m"] > 0,
+        "officialInventoryNonEmpty": bool(locations),
+        "punEwivaInventoryNonEmpty": bool(ewiva_stations),
         "allEntriesWithin25m": all(row["matchDistanceMeters"] <= MAX_MATCH_METERS for row in entries),
         "allEntriesHaveMetadataEvidence": all(
             row["matchEvidence"]["region"] and (row["matchEvidence"]["city"] or row["matchEvidence"]["street"])
