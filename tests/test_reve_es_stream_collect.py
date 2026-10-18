@@ -21,3 +21,15 @@ class FreshReveCheckpointTest(unittest.TestCase):
     def test_retry_after_is_respected(self):
         self.assertEqual(retry_after_seconds('7200'), 7200)
         self.assertEqual(retry_after_seconds('invalid'), 3600)
+
+    def test_complete_cycle_requires_supplier_totals(self):
+        state = default_state()
+        state.update(complete=True, nextTariffPage=2, nextStatusPage=2,
+                     tariffPagesCollected=[1], statusPagesCollected=[1],
+                     tariffTotalPages=1, statusTotalPages=1,
+                     tariffTotalCount=2, statusTotalCount=1,
+                     tariffRowsStored=1, statusRowsStored=1)
+        with self.assertRaisesRegex(ValueError, 'complete count'):
+            validate_checkpoint(state, {'a': {}}, {'b': {}})
+        state['tariffTotalCount'] = 1
+        validate_checkpoint(state, {'a': {}}, {'b': {}})
