@@ -180,8 +180,8 @@ def main() -> None:
 
     static_count = int(static_data.get("total_count") or 0)
     live_count = int(live_data.get("total_count") or 0)
-    if not static_count or not live_count:
-        raise RuntimeError(f"Belib official inventory unexpectedly empty: static={static_count}, live={live_count}")
+    if static_count < 1000 or live_count < 1000:
+        raise RuntimeError(f"Belib official inventory unexpectedly small: static={static_count}, live={live_count}")
 
     samples = []
     seen = set()

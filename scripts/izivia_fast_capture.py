@@ -49,8 +49,8 @@ def normalized_name(value):
 def main():
     stations = json.load(gzip.open(SOURCE, "rt"))["stations"]
     fast = {official_code(s["stationId"]): s for s in stations if s.get("network") == "IZIVIA FAST"}
-    if not fast or None in fast:
-        raise RuntimeError(f"Unexpected empty FAST inventory or invalid identifier: {len(fast)}")
+    if len(fast) < 600 or None in fast:
+        raise RuntimeError(f"Unexpected FAST national inventory size or identifier: {len(fast)}")
     status, markers = request("map/markers", "POST", {
         "square": {"centerLng": 2.2, "centerLat": 46.2, "zoom": 5}, "filters": FILTERS,
     })

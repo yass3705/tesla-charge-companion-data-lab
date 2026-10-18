@@ -104,14 +104,14 @@ def hydrate(static):
 def main():
  static_payload=request_json(STATIC_URL)
  all_locs=static_payload.get("locations") or []
- if not all_locs: raise RuntimeError("IONITY static inventory unexpectedly empty")
+ if len(all_locs)<500: raise RuntimeError(f"static inventory unexpectedly small: {len(all_locs)}")
  operated=[x for x in all_locs if x.get("cpoIdentifier")==CANONICAL_CPO]
  south,west,north,east=COUNTRY_BOUNDS
  candidates=[]
  for x in operated:
   lat=finite(x.get("latitude")); lon=finite(x.get("longitude"))
   if lat is not None and lon is not None and south<=lat<=north and west<=lon<=east: candidates.append(x)
- if not candidates: raise RuntimeError("IONITY UK geographic candidate inventory unexpectedly empty")
+ if len(candidates)<10: raise RuntimeError(f"UK geographic candidate inventory unexpectedly small: {len(candidates)}")
  locs=[]
  with ThreadPoolExecutor(max_workers=16) as pool:
   fs={pool.submit(hydrate,x):x for x in candidates}

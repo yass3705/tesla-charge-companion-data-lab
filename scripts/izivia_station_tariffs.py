@@ -168,6 +168,10 @@ def main(argv=None):
         parser.error("workers must be between 1 and 16")
     networks = {name: capture_network(name, spec, args.workers) for name, spec in NETWORKS.items()}
     result = build_capture(networks)
+    if result["summary"]["IZIVIA FAST"]["withDirectPrice"] < 620:
+        raise RuntimeError("FAST direct-price coverage fell below the last verified capture")
+    if result["summary"]["IZIVIA Express"]["withDirectPrice"] < 146:
+        raise RuntimeError("Express direct-price coverage fell below the last verified capture")
     previous_path = Path(args.previous)
     previous = json.loads(previous_path.read_text(encoding="utf-8")) if previous_path.exists() else None
     changes = compare(previous, result)

@@ -288,8 +288,9 @@ jobs:
           assert data['source']['sourceType']=='direct_cpo_public_adhoc_api'
           assert data['source']['roaming'] is False
           assert data['irveSource']=='transport.data.gouv.fr PAN IRVE static consolidation'
-          assert counts['locations']>0,counts
-          assert counts['pricedConnectors']<=counts['decodedConnectors'],counts
+          assert counts['locations']>=950,counts
+          assert counts['pricedConnectors']>=6000,counts
+          assert counts['pricedConnectors']==counts['decodedConnectors'],counts
           print(counts)
           PY
       - name: Publish national Powerdot dataset

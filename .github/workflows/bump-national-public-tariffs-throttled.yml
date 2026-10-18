@@ -97,7 +97,9 @@ jobs:
           p=json.loads(gzip.decompress(Path('data/national/bump_direct_tariffs_graphql_france.json.gz').read_bytes()))
           c=p['counts']
           assert p['scope']['directCpoOnly'] and not p['scope']['roamingIncluded']
-          assert c['officialStations'] > 0
+          assert c['officialStations'] >= 1500
+          assert c['matchedStations'] >= c['officialStations'] * 0.80
+          assert c['uniqueTariffGroupsWithTariff'] == c['uniqueTariffGroupsRequested']
           print(c)
           PY
           git config user.name "github-actions[bot]"

@@ -80,8 +80,8 @@ def discover_station_urls_fast(workers: int) -> tuple[str, list[str], list[dict[
                             canonical = base.station_url(loc)
                             if canonical:
                                 pages.add(canonical)
-    if not pages:
-        raise RuntimeError("Allego station sitemap unexpectedly empty")
+    if len(pages) < 100:
+        raise RuntimeError(f"Allego station sitemap unexpectedly small: {len(pages)}")
     print(f"discovered {len(pages)} Allego station pages; sitemap_errors={len(errors)}")
     return root_url, sorted(pages), errors
 
@@ -112,8 +112,8 @@ def main() -> None:
             if idx % 250 == 0:
                 print(f"scanned {idx}/{len(urls)} station pages; France={len(stations)} failures={len(failures)}")
 
-    if not stations and not args.max_stations:
-        raise RuntimeError("Allego France inventory unexpectedly empty")
+    if len(stations) < 50 and not args.max_stations:
+        raise RuntimeError(f"Allego France inventory unexpectedly small: {len(stations)}")
 
     driver = base.build_browser() if args.browser else None
     try:

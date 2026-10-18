@@ -293,8 +293,8 @@ def main() -> None:
     key = capture_public_client_key()
     inventory, official_rows = fetch_inventory()
     print(f"Official Allego France inventory: rows={official_rows}, uniqueEVSE={len(inventory)}")
-    if not inventory:
-        raise RuntimeError("Allego France EVSE inventory unexpectedly empty")
+    if len(inventory) < 500:
+        raise RuntimeError(f"Allego France EVSE inventory unexpectedly small: {len(inventory)}")
 
     results = []
     with ThreadPoolExecutor(max_workers=16) as pool:

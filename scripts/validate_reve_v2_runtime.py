@@ -63,8 +63,10 @@ def main():
     candidate = validate(args.candidate)
     if args.baseline:
         baseline = validate(args.baseline)
-        candidate["observedDelta"] = {field: candidate[field] - baseline[field]
-                                      for field in ("stations", "uniqueEvseIds", "physicalEvseOccurrences", "directOffers")}
+        for field in ("stations", "uniqueEvseIds", "physicalEvseOccurrences", "directOffers"):
+            if candidate[field] < baseline[field]:
+                raise ValueError(f"Coverage decrease requires review: {field} "
+                                 f"{baseline[field]} -> {candidate[field]}")
     print(json.dumps(candidate, sort_keys=True))
 
 

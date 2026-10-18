@@ -54,9 +54,9 @@ jobs:
           assert scope['fastnedDiscountsApplyAtPartnerOperators'] is False
           assert scope['roamingTariffsIncluded'] is False
           locations=p['locations']
-          assert locations, 'unexpected empty Fastned France source'
+          assert 50 <= len(locations) <= 120, len(locations)
           assert p['counts']['franceLocationCount']==len(locations)
-          assert p['counts']['candidateLocationPageCount'] > 0
+          assert p['counts']['candidateLocationPageCount'] >= 300
           assert len({x['stationId'] for x in locations})==len(locations)
           assert all(x['country']=='FR' for x in locations)
           assert all(41 <= x['latitude'] <= 52 and -6 <= x['longitude'] <= 10.5 for x in locations)

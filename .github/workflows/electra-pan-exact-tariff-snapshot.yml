@@ -43,8 +43,8 @@ jobs:
             ws={'id':str(sid),'name':p.get('name'),'lat':lat,'lon':lon,'country':p.get('country'),'city':p.get('city'),'postalCode':p.get('postalCode')}
             all_public.append(ws)
             if str(p.get('country','')).upper()=='FR': france_public.append(ws)
-          if not france_public:
-            raise RuntimeError('Electra official map unexpectedly empty; preserve last validated source')
+          if len(france_public)<350:
+            raise RuntimeError(f'Electra official map unexpectedly small: {len(france_public)} FR stations')
           # V9 compact station schema: [stationId,name,address,lat,lon,operator,pdcCount,hoursOr0,powerGroups,date,sourceName]
           rows=json.loads(gzip.open('/tmp/electra/all.json.gz','rt',encoding='utf-8').read())
           pan=[]
@@ -104,8 +104,9 @@ jobs:
           ok=[x for x in stations if x.get('location')]
           priced=[x for x in ok if (x.get('location') or {}).get('chargeTariffs')]
           out={'schemaVersion':'1.1.0','dataset':'electra-exact-france-public','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'country':'FR','operator':'Electra','sources':{'officialPublicMap':'https://stations.go-electra.com/fr','publicGraphql':endpoint,'panV9':'tesla-charge-companion-data-lab/main/data/national/france-irve-static-v9/all.json.gz'},'coverage':{'panElectraStations':len(pan),'publicMapStationsEurope':len(all_public),'officialPublicMapStationsFR':len(france_public),'panRowsMatchedToOfficialMap':len(pan_matches),'uniqueOfficialStationsMatchedFromPAN':len(matched),'unmatchedPanRows':len(unmatched_pan),'graphqlOk':len(ok),'stationsWithChargeTariffs':len(priced),'rateLimitRecoveredThisRun':recovered,'remainingWithoutTariffs':len(stations)-len(priced)},'panMatches':pan_matches,'unmatchedPanRows':unmatched_pan,'stations':stations}
-          # Keep official station identities even when an individual tariff query fails.
-          # Missing tariffs remain unavailable; a volume percentage is not a promotion gate.
+          # Official map is authoritative for Electra-direct station scope. Publish fail-closed only when almost every official FR station answers GraphQL.
+          if len(ok)<int(.98*len(france_public)) or len(priced)<int(.95*len(france_public)):
+            raise RuntimeError(f'Electra price coverage too low: {len(priced)}/{len(france_public)}; previous published snapshot retained')
           pathlib.Path('reports/france/electra/pan-exact-tariff-snapshot.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           pathlib.Path('data/operator_direct/electra_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps({'coverage':out['coverage'],'samplePriced':[{'station':x['station'],'tariffs':x['location'].get('chargeTariffs')} for x in priced[:8]],'unmatchedPanSample':unmatched_pan[:8]},ensure_ascii=False,indent=2)[:50000])

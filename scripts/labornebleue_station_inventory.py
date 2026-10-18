@@ -278,8 +278,10 @@ def build(rows: list[dict[str, str]]) -> dict[str, Any]:
         })
 
     source_pdc = sum(len(v) for v in grouped.values())
-    if not source_pdc:
-        raise RuntimeError("unexpected empty La Borne Bleue source")
+    if source_pdc < 800 or source_pdc > 2500:
+        raise RuntimeError(f"strict La Borne Bleue source point count outside guardrail: {source_pdc}")
+    if len(stations) < 200 or len(stations) > 1500:
+        raise RuntimeError(f"strict La Borne Bleue priced station count outside guardrail: {len(stations)}")
 
     return {
         "schemaVersion": "1.0.0",

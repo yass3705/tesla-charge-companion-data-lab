@@ -107,8 +107,8 @@ def main():
                 store_urls.add(urllib.parse.urlunparse(("https","www.lidl.co.uk",p.path if p.path.endswith("/") else p.path+"/","","","")))
 
     crawl_sitemap(sitemap_root)
-    if not store_urls:
-        raise SystemExit("Unexpectedly empty Lidl official sitemap")
+    if len(store_urls)<500:
+        raise SystemExit(f"Fail closed: only {len(store_urls)} store pages discovered from official sitemap")
 
     stores=[]; failures=[]
     def store_one(u):
@@ -121,11 +121,13 @@ def main():
 
     stores.sort(key=lambda x:x["url"])
     ev=[x for x in stores if x["evCharging"]]
-    if not stores:
-        raise SystemExit("No usable Lidl stores parsed from official sitemap")
-    if not ev:
-        raise SystemExit("Unexpectedly empty Lidl EV charging network")
+    if len(stores)<500:
+        raise SystemExit(f"Fail closed: only {len(stores)} stores parsed")
+    if len(ev)<50:
+        raise SystemExit(f"Fail closed: only {len(ev)} EV charging stores found")
     failure_ratio=(len(failures)/len(store_urls)) if store_urls else 1
+    if failure_ratio>0.05:
+        raise SystemExit(f"Fail closed: store fetch failure ratio {failure_ratio:.2%}")
 
     now=datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00","Z")
     report={

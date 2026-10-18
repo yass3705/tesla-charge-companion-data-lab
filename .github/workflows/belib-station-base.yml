@@ -66,9 +66,12 @@ jobs:
           assert 'opendata.paris.fr' in scope['liveStatusRuntimeSource']
 
           stats=payload['stats']
-          assert stats['stationCount'] > 0
+          assert stats['stationCount'] >= 350
+          assert stats['chargePointCount'] >= 1600
+          assert stats['excludedMissingIdentifierRows'] >= 1
+          assert stats['tariffProfileCount'] == 9
           assert len(payload['stations']) == stats['stationCount']
-          assert len(payload['directTariffProfiles']) == stats['tariffProfileCount']
+          assert len(payload['directTariffProfiles']) == 9
 
           station_ids=set();evse_ids=set()
           for station in payload['stations']:

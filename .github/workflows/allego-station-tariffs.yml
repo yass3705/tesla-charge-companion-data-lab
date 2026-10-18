@@ -5,6 +5,7 @@ on:
   schedule:
     - cron: "17 5 * * 3"
   push:
+    branches: [main]
     paths:
       - "scripts/allego_dxp_national.py"
       - "scripts/allego_normalize_v8.py"
@@ -61,18 +62,27 @@ jobs:
           assert data['scope']['exactDirectPricesFromDxp'] is True
           assert data['scope']['structuredTimeFeesAreRankable'] is True
           assert data['scope']['conditionalOffersRequireSelection'] is True
-          assert counts['franceEvseCount'] > 0, counts
+          assert counts['franceEvseCount'] >= 1000, counts
+          assert counts['franceStationCount'] >= 140, counts
+          assert counts['stationsWithCoordinates'] >= 154, counts
+          assert counts['irveLinkedEvseCount'] >= 1000, counts
+          assert counts['rankableEvseCount'] >= 1100, counts
+          assert counts['rankableStationCount'] >= 150, counts
           assert counts['rankableEvseCount'] + counts['blockedEvseCount'] == counts['franceEvseCount']
+          assert counts['coveragePct'] >= 99.0, counts
+          assert counts['kingdomEligibleEvseCount'] >= 200, counts
+          assert counts['structuredFeeEvseCount'] >= 800, counts
           assert len(data['stations']) == counts['franceStationCount']
           assert all(s.get('coordinates') for s in data['stations'] if s.get('rankableDirect'))
           assert all(e.get('directEurPerKwh') is None for e in data['evses'] if not e.get('rankableDirect'))
           assert all(e.get('blockingReason') == 'not_allego_own_network' for e in data['evses'] if not e.get('rankableDirect'))
 
           bron = [e for e in data['evses'] if 'BRON' in str(e.get('stationName') or '').upper() and 'BURGER KING' in str(e.get('stationName') or '').upper()]
+          assert len(bron) == 4, bron
           for evse in bron:
               assert evse['kind'] == 'DC', evse
               assert abs(float(evse['powerKw']) - 150.0) < 0.01, evse
-              assert evse.get('directEurPerKwh') is not None, evse
+              assert abs(float(evse['directEurPerKwh']) - 0.45) < 1e-9, evse
               offers = evse.get('conditionalOffers') or []
               assert len(offers) == 1, evse
               offer = offers[0]

@@ -115,8 +115,8 @@ def parse_inventory(raw: bytes) -> dict:
     except csv.Error:
         reader = csv.DictReader(io.StringIO(text), delimiter=";")
     rows = list(reader)
-    if not rows:
-        raise RuntimeError("DRIVECO inventory unexpectedly empty")
+    if len(rows) < 1000:
+        raise RuntimeError(f"DRIVECO inventory unexpectedly small: {len(rows)} rows")
 
     def station(row: dict[str, str]) -> dict:
         address = first_matching(row, ("adresse_station", "adresse", "address"))

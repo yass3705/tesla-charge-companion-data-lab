@@ -55,9 +55,23 @@ owner_scoped={"CH*IWB","CH*ECU","CH*PAR"}
 for op,exp in expected_blocked.items():
     src=by_owner if op in owner_scoped else by_scope
     got={k:src[op].get(k,0) for k in ("resolved","no_public_direct_tariff","unresolved")}
+    # Production gate protects validated evidence while allowing tiny live-scope
+    # churn when the canonical scope has grown. A small decrease in resolved EVSEs
+    # can happen when stations are replaced/re-keyed between national snapshots;
+    # it must never mask a material regression.
+    resolved_tolerance=max(3, (exp["resolved"] + 999)//1000)  # max(3 EVSE, 0.1%)
+    resolved_floor=max(0, exp["resolved"]-resolved_tolerance)
+    baseline_total=sum(exp.values())
+    current_total=sum(got.values())
+    evidence_ok=(
+        got["resolved"]>=resolved_floor and
+        got["no_public_direct_tariff"]>=exp["no_public_direct_tariff"] and
+        (got["resolved"]>=exp["resolved"] or current_total>=baseline_total)
+    )
     blocked.append({"operatorId":op,"baseline":exp,"current":got,
                     "scopeMode":"owner" if op in owner_scoped else "evse-prefix",
-                    "historicalCountsOnly":True})
+                    "resolvedToleranceEvse":resolved_tolerance,
+                    "validatedEvidencePreserved":evidence_ok,"ok":evidence_ok})
 
 progress=bundle.get("cpoResearchStatus") or {}
 # Complete-CPO coverage is audited separately against canonical scope and evidence.
@@ -79,7 +93,7 @@ checks={
  "uniqueEvseIds":not dupes,
  "partition":counts["resolved"]+counts["noPublicDirectTariff"]+counts["unresolved"]==counts["productionEvseCount"],
  "teslaExcluded":all(x.get("operatorId")!="CH*TSL" and not str(x.get("evseId","")).startswith("CH*TSL*") for x in prod),
- "blockedGranularity":True,  # Historical counts above are observational, never a gate.
+ "blockedGranularity":all(x["ok"] for x in blocked),
  "canonicalScopeKeyed":True,
 }
 out=dict(bundle)

@@ -28,6 +28,7 @@ jobs:
           python3 - <<'PY'
           import json
           p=json.load(open('out/izivia-fast-direct-france.json'))['policy']
+          assert p['pricedStations']>=616, f"FAST direct coverage dropped: {p['pricedStations']}"
           assert set(x['stationId'] for x in p['excludedStations']) <= {'FRIZFPFAST339','FRIZFPFAST408','FRIZFPFAST560','FRIZFPFAST730'}, p['excludedStations']
           PY
       - name: Publish immutable capture and coverage report on review branch

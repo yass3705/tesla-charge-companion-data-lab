@@ -162,8 +162,16 @@ jobs:
           assert data['partitioning']['allShardsPresent'] is True
           assert data['partitioning']['shardCount'] == 8
           assert data['policy']['publishToTccStableAllowed'] is False
+          assert (data.get('regionalNetworkAudit') or {}).get('configuredNetworkCount', 0) >= 18
           assert stats['stationsSelected'] == stats['stationsInInventory']
-          # Per-EVSE failures remain unpriced in the strict output; no coverage ratio gate.
+          assert stats['requests'] >= 2500
+          assert stats['http200'] / max(1, stats['requests']) >= 0.99
+          # Unmatched EVSE never enter the strict TCC layer; the downstream builder
+          # remains fail-closed per EVSE/formula. Keep a high national health gate
+          # without blocking a healthy scan observed at 97.478% exact EVSE match.
+          assert stats.get('evseMatchedFinal', 0) / max(1, stats['chargePointsInInventory']) >= 0.97
+          assert source_validated > 0
+          assert rankable > 0
           assert rankable <= source_validated
           assert not invalid_rankable
           PY
@@ -188,8 +196,11 @@ jobs:
           assert s['roamingIncluded'] is False and s['configuredRegionalNetworksIncluded'] is False
           assert s['preferentialTariffsIncluded'] is False and s['onlyStrictTccExact'] is True
           assert s['regionalNetworkCandidatesMayRemain'] is True
-          assert c['strictPublishedStations'] > 0
+          assert c['strictPublishedStations'] >= 900
+          assert c['strictPublishedEvse'] >= 3000
+          assert c['strictPublishedConfigurations'] >= 1500
           assert isinstance(c.get('conflictingEvseExcluded'), int) and c['conflictingEvseExcluded'] >= 0
+          assert safety['regionalNetworkConfiguredExclusions'] >= 18
           for station in data['stations']:
               for cfg in station['configurations']:
                   assert cfg['kind'] in {'AC','DC'}

@@ -541,7 +541,9 @@ def build_quality_report(
         "topOperators": operators.most_common(50),
         "qualityGates": {
             "noFailedDetailBatches": fetch_meta.get("failedBatchCount") == 0,
-            "sourceNonEmpty": bool(evses),
+            "uniqueEvseAbove50000": len(evses) >= 50000,
+            "coordinateCoverageAbove99Pct": (coords / len(evses) >= 0.99) if evses else False,
+            "stationGroupingMostlyLocationId": station_meta.get("stationsUsingFallbackGrouping", 0) <= max(10, int(len(stations) * 0.001)),
             "publicationStatesPreserved": True,
             "tariffsFailClosedUntilSemanticsValidated": True,
         },

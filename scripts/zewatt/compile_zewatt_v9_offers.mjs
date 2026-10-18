@@ -23,6 +23,7 @@ const snapshot=readSnapshot(snapshotPath);
 if(snapshot?.country!=='FR'||snapshot?.network!=='Ze-Watt') throw new Error('Unexpected Ze-Watt snapshot');
 const stations=Array.isArray(snapshot.stations)?snapshot.stations:[];
 const directStations=stations.filter(s=>s?.ok===true&&s?.visitorStripe===true&&s?.hasPositivePrice===true);
+if(!directStations.length) throw new Error('No rankable Ze-Watt visitor/card stations in snapshot');
 
 function normalizeProfile(p={}){
   return {
@@ -131,6 +132,8 @@ const output={
   }
 };
 
+if(directOffers.length<30) throw new Error(`Unexpectedly few Ze-Watt direct profiles: ${directOffers.length}`);
+if(output.sourceEvidence.exactEvseIds<500) throw new Error(`Unexpectedly low Ze-Watt EVSE coverage: ${output.sourceEvidence.exactEvseIds}`);
 if(directOffers.some(o=>!o.evseIds.length)) throw new Error('Ze-Watt offer without exact EVSE IDs');
 
 fs.mkdirSync(path.dirname(outPath),{recursive:true});

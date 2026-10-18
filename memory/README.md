@@ -15,8 +15,6 @@ Le flux cible est : preuve et collecte dans Data Lab → validation et épinglag
 
 ## Décisions et règles métier : sources de vérité
 
-- [Politique universelle de couverture dynamique des CPO](../docs/CPO_DYNAMIC_COVERAGE_POLICY.md) (18/10/2026) : aucune hausse/baisse de stations, EVSE, prises ou offres ne bloque seule un lot. Vérifier la complétude technique, les identités et les tarifs exacts ; isoler les anomalies et conserver un dernier état valide daté en cas d'incident. Cette règle remplace les seuils historiques contradictoires dans les anciens rapports.
-
 - [Libellés et critères calculé / ambigu / incalculable / indisponible](../docs/v9-pricing-result-labels-policy-2026-10-10.md). Décision par EVSE/prise et par offre ; une offre conflictuelle ne fournit aucun montant au classement.
 - **Instruction utilisateur du 11/10/2026 pour V9 :** présenter « Tarif incalculable » lorsqu'une offre identifiée ne permet pas un calcul fiable ; garder « ambigu » comme diagnostic interne si utile. [CURRENT.md](CURRENT.md) consigne l'écart constaté dans le code UI. Le document de libellés antérieur doit être harmonisé avant toute modification métier.
 - [Périmètre des overlays Electroverse et Electra](../docs/tcc-v9-multicountry-emsp-overlays-scope-2026-10-11.md). Les offres eMSP restent distinctes du direct CPO ; aucune substitution sans preuve.

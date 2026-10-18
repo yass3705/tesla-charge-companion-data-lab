@@ -178,7 +178,10 @@ def build(locdoc, tardoc):
             retained.append(loc)
         else:
             rejected["no_nonremoved_evse"] += 1
-    assert retained, "Unexpectedly empty Gridserve public source; retain last validated snapshot"
+    assert len(retained) >= 100, f"Gridserve coverage dropped: {len(retained)} locations"
+    assert evse_count >= 1000 and connector_count >= 1000, "Gridserve EVSE/connector coverage regression"
+    assert priced_count >= 1000, f"Insufficient exact connector prices: {priced_count}"
+    assert retained_tariffs, "No exact Gridserve direct tariffs"
     # Re-check absence of non-public locations and connectors with invented prices.
     assert all(private_reason(loc) is None for loc in retained)
     output = {

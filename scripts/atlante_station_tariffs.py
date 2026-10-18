@@ -265,8 +265,8 @@ def live_build(api_key: str, workers: int) -> dict[str, Any]:
         if str(x.get("countryCode") or "").upper() == COUNTRY_CODE
         and str(x.get("partyId") or "").upper() == PARTY_ID
     ]
-    if not summaries:
-        raise RuntimeError("Atlante France inventory unexpectedly empty")
+    if len(summaries) < 100:
+        raise RuntimeError(f"Atlante France inventory unexpectedly small: {len(summaries)}")
 
     def hydrate(summary: dict[str, Any]) -> dict[str, Any] | None:
         location_id = str(summary.get("id") or "")

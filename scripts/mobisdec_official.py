@@ -171,12 +171,12 @@ def main() -> int:
 
     # The former formal SDEC PDF URL is no longer a stable PDF endpoint.
     # Current tariff evidence is therefore taken from the live MobiSDEC site.
-    require(mob, "SDEC ÉNERGIE", "service public")
+    require(mob, "530 bornes", "SDEC ÉNERGIE", "service public")
     require(ds, "MOBISDEC", "Load Stations", "schema-irve-statique")
 
     rows = parse_csv(csv_raw)
-    if not rows:
-        raise RuntimeError("MobiSDEC technical dataset unexpectedly empty")
+    if len(rows) < 100:
+        raise RuntimeError(f"MobiSDEC technical dataset unexpectedly small: {len(rows)} rows")
     samples = {
         "caen": compact_station(first_matching(rows, "Caen")),
         "bayeux": compact_station(first_matching(rows, "Bayeux")),
