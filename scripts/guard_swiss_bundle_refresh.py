@@ -16,8 +16,8 @@ def validate_refresh(previous, candidate):
     )) != len(evses):
         raise ValueError("Swiss tariff classifications do not cover every EVSE")
     stations = {row.get("stationId") for row in evses if row.get("stationId")}
-    if not stations:
-        raise ValueError("Swiss national station inventory is empty")
+    if len(stations) == 0 or any(not row.get("stationId") for row in evses):
+        raise ValueError("Swiss national station inventory is empty or incomplete")
     if not previous:
         return None
     if candidate.get("country") != previous.get("country") or candidate.get("nationalSource") != previous.get("nationalSource"):
@@ -32,16 +32,16 @@ def validate_refresh(previous, candidate):
         "stations": (old_stations, stations),
         "evses": ({row["evseId"] for row in old_evses}, set(ids)),
     }
-    warning = None
+    details = {}
+    warning_needed = False
     for kind, (old, new) in changes.items():
         decrease = max(0, len(old) - len(new)) / len(old) * 100
         if decrease > 30:
             raise ValueError(f"Swiss {kind} coverage fell {decrease:.2f}%; preserve last-good bundle")
         if decrease > 5:
-            if warning is None:
-                warning = {"snapshotDate": candidate.get("generatedAt"), "source": candidate.get("nationalSource")}
-            warning[kind] = {
-                "previous": len(old), "current": len(new), "decreasePercent": decrease,
-                "disappearedIds": sorted(old - new),
-            }
-    return warning
+            warning_needed = True
+        details[kind] = {
+            "previous": len(old), "current": len(new), "decreasePercent": decrease,
+            "disappearedIds": sorted(old - new),
+        }
+    return {"snapshotDate": candidate.get("generatedAt"), "source": candidate.get("nationalSource"), **details} if warning_needed else None

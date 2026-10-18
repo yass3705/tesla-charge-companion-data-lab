@@ -56,6 +56,25 @@ class SwissRefreshGuardTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "scope"):
             validate_refresh(self.old, changed)
 
+    def test_warning_records_both_metrics_when_only_evse_count_falls(self):
+        old = bundle([str(i) for i in range(100)])
+        for row in old['evses']:
+            row['stationId'] = str(int(row['evseId']) % 50)
+        current = bundle([str(i) for i in range(90)])
+        for row in current['evses']:
+            row['stationId'] = str(int(row['evseId']) % 50)
+        warning = validate_refresh(old, current)
+        self.assertEqual(warning['evses']['previous'], 100)
+        self.assertEqual(warning['stations']['previous'], 50)
+        self.assertEqual(warning['stations']['current'], 50)
+        self.assertEqual(warning['stations']['disappearedIds'], [])
+
+    def test_missing_station_identity_blocks(self):
+        current = self.candidate(100)
+        current['evses'][0]['stationId'] = None
+        with self.assertRaisesRegex(ValueError, 'incomplete'):
+            validate_refresh(self.old, current)
+
 
 if __name__ == "__main__":
     unittest.main()
