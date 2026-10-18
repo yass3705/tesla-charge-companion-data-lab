@@ -67,6 +67,8 @@ def default_state() -> dict[str, Any]:
         "nextStatusPage": 1,
         "tariffTotalPages": None,
         "statusTotalPages": None,
+        "tariffTotalCount": None,
+        "statusTotalCount": None,
         "tariffRowsStored": 0,
         "statusRowsStored": 0,
         "tariffPagesCollected": [],
@@ -265,6 +267,13 @@ def validate_checkpoint(state: dict[str, Any], tariffs: dict[str, Any], statuses
             raise ValueError(f"REVE {stream} checkpoint row count differs from store")
         if pages and not store:
             raise ValueError(f"REVE {stream} checkpoint has no rows")
+        total_pages = state.get(f"{stream}TotalPages")
+        if total_pages is not None and (not isinstance(total_pages, int) or total_pages < 1):
+            raise ValueError(f"REVE {stream} total pages invalid")
+        if state.get("complete"):
+            total_count = state.get(f"{stream}TotalCount")
+            if not isinstance(total_count, int) or total_count < 1 or len(store) != total_count:
+                raise ValueError(f"REVE {stream} complete count differs from supplier total")
     if state.get("complete") and not (tariffs and statuses):
         raise ValueError("REVE complete checkpoint has an empty stream")
 
@@ -317,6 +326,7 @@ def collect() -> int:
         if stream == "tariffs":
             n, u = merge_rows(tariffs, result["payload"], tariff_key)
             state["tariffTotalPages"] = header_int(result["headers"], "total-pages") or state.get("tariffTotalPages")
+            state["tariffTotalCount"] = header_int(result["headers"], "total-count") or state.get("tariffTotalCount")
             pages = set(state.get("tariffPagesCollected") or [])
             pages.add(page)
             state["tariffPagesCollected"] = sorted(pages)
@@ -324,6 +334,7 @@ def collect() -> int:
         else:
             n, u = merge_rows(statuses, result["payload"], status_key)
             state["statusTotalPages"] = header_int(result["headers"], "total-pages") or state.get("statusTotalPages")
+            state["statusTotalCount"] = header_int(result["headers"], "total-count") or state.get("statusTotalCount")
             pages = set(state.get("statusPagesCollected") or [])
             pages.add(page)
             state["statusPagesCollected"] = sorted(pages)
