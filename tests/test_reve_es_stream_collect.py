@@ -1,4 +1,11 @@
 import unittest
+import json
+import os
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import patch
+from scripts import reve_es_stream_collect as collector
 from scripts.reve_es_stream_collect import default_state, validate_checkpoint, tariff_key, status_key, retry_after_seconds
 
 
@@ -33,3 +40,21 @@ class FreshReveCheckpointTest(unittest.TestCase):
             validate_checkpoint(state, {'a': {}}, {'b': {}})
         state['tariffTotalCount'] = 1
         validate_checkpoint(state, {'a': {}}, {'b': {}})
+
+    def test_full_recent_budget_skips_supplier_requests(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = default_state()
+            (root/'state.json').write_text(json.dumps(state))
+            (root/'last.json').write_text(json.dumps({
+                'requestsAttempted': 5,
+                'generatedAt': datetime.now(timezone.utc).isoformat(),
+            }))
+            with patch.multiple(collector, DATA=root, STATE=root/'state.json',
+                                TARIFF_STORE=root/'tariffs.gz', STATUS_STORE=root/'statuses.gz',
+                                LAST_RUN=root/'last.json'), patch.dict(os.environ, {'REVE_API_KEY': 'test'}), \
+                    patch.object(collector, 'api_get', side_effect=AssertionError('quota exceeded')):
+                self.assertEqual(collector.collect(), 0)
+                saved = json.loads((root/'state.json').read_text())
+                self.assertEqual((saved['nextTariffPage'], saved['nextStatusPage']), (1, 1))
+                self.assertIsNotNone(saved['quotaUntil'])
