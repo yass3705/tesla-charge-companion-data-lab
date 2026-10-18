@@ -75,6 +75,7 @@ def default_state() -> dict[str, Any]:
         "statusPagesCollected": [],
         "complete": False,
         "cooldownUntil": None,
+        "quotaUntil": None,
         "updatedAt": None,
     }
 
@@ -286,8 +287,15 @@ def collect() -> int:
     tariffs = load_gzip(TARIFF_STORE)
     statuses = load_gzip(STATUS_STORE)
     validate_checkpoint(state, tariffs, statuses)
-    cooldown = state.get("cooldownUntil")
-    waiting = bool(cooldown and datetime.fromisoformat(cooldown.replace("Z", "+00:00")) > datetime.now(timezone.utc))
+    previous_run = load_json(LAST_RUN, {})
+    if not state.get("quotaUntil") and previous_run.get("requestsAttempted", 0) >= HARD_LIMIT:
+        stamp = previous_run.get("generatedAt")
+        if stamp:
+            state["quotaUntil"] = (datetime.fromisoformat(stamp.replace("Z", "+00:00")) + timedelta(hours=1)).isoformat()
+    waiting = any(
+        value and datetime.fromisoformat(value.replace("Z", "+00:00")) > datetime.now(timezone.utc)
+        for value in (state.get("cooldownUntil"), state.get("quotaUntil"))
+    )
     plan = [] if waiting else build_plan(state)
     report: dict[str, Any] = {
         "mode": "collect", "generatedAt": now(), "hardRequestLimit": HARD_LIMIT,
@@ -297,7 +305,7 @@ def collect() -> int:
 
     if not plan:
         normalize_state(state, tariffs, statuses)
-        report["note"] = "Waiting for REVE Retry-After" if waiting else "Both streams already complete"
+        report["note"] = "Waiting for REVE Retry-After or hourly quota" if waiting else "Both streams already complete"
     for stream, page in plan:
         if report["requestsAttempted"] >= HARD_LIMIT:
             break
@@ -343,6 +351,8 @@ def collect() -> int:
         entry["newRows"] = n
         entry["updatedRows"] = u
 
+    if report["requestsAttempted"] >= HARD_LIMIT:
+        state["quotaUntil"] = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     normalize_state(state, tariffs, statuses)
     validate_checkpoint(state, tariffs, statuses)
     report["stateAfter"] = state
