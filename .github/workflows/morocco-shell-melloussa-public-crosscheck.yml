@@ -1,0 +1,66 @@
+name: Morocco Shell Melloussa public cross-check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-shell-melloussa-public-crosscheck.yml'
+      - 'scripts/morocco_shell_melloussa_public_crosscheck.py'
+      - 'scripts/morocco_shell_vivo_watt_public_page_probe.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-shell-melloussa-public-crosscheck.yml'
+      - 'scripts/morocco_shell_melloussa_public_crosscheck.py'
+      - 'scripts/morocco_shell_vivo_watt_public_page_probe.py'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Cross-check exact public Shell Melloussa sources
+        run: python3 scripts/morocco_shell_melloussa_public_crosscheck.py
+      - name: Validate fail-closed V9 provenance
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('artifacts/morocco-shell-melloussa-crosscheck/summary.json')
+          d=json.loads(p.read_text())
+          policy=d['policy']
+          site=d['site']
+          conflict=d['conflict']
+          assert policy['read_only'] is True
+          assert policy['credentials_used'] is False
+          assert policy['raw_html_persisted'] is False
+          assert policy['secondary_public_evidence_only'] is True
+          assert site['site_brand']=='Shell'
+          assert site['cpo_operator']=='unresolved'
+          assert site['tariff_channel'] is None
+          assert site['status_source'] is None
+          assert site['production_role']=='diagnostic_conflict_only'
+          assert conflict['power_kw']=={'watt_committed':22,'atlas_reported':50}
+          assert conflict['connector_count']=={'watt_committed':1,'atlas_reported':2}
+          assert conflict['operator_attribution_resolved'] is False
+          atlas=d['sources']['atlas_recharge']['observed']
+          assert atlas['name_found'] is True
+          assert atlas['power_50_kw_found'] is True
+          assert atlas['two_points_found'] is True
+          assert atlas['ccs_found'] is True
+          assert atlas['type_2_found'] is True
+          print(json.dumps({'ok':True,'site':'Shell Melloussa','decision':'diagnostic_conflict_only'}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: morocco-shell-melloussa-public-crosscheck
+          path: artifacts/morocco-shell-melloussa-crosscheck/summary.json
+          if-no-files-found: error
+          retention-days: 3
