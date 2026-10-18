@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-01T02:02:00+01:00",
+  "country": "MA",
+  "network": "FastVolt",
+  "modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": "station-specific",
+    "app_source_access_network": "FastVolt",
+    "tariff_channel": "FastVolt direct",
+    "status_source": "FastVolt native app when manually verified"
+  },
+  "validated_findings": {
+    "public_web_api_pages": {
+      "url": "https://www.fastvolt.net/api/pages",
+      "classification": "public CMS/page-content endpoint",
+      "station_inventory_source": false,
+      "reason": "Observed schema contains website sections such as FAQ, HowIts, aboutUs, carte, cgu, index, privacy and service; no validated charging-station inventory/status contract is present."
+    },
+    "mobile_backend": {
+      "evidenced_routes": [
+        "/app/charging_stations/",
+        "/user/get_charging_station_details/"
+      ],
+      "anonymous_automation_ready": false,
+      "reason": "The current public anonymous probes do not yield station data: app.api.fastvolt.bornerecharge.ma returns generic 404 JSON and mobile.ev.fastvolt.ma returns the same 401 signature as a deliberately nonexistent path, consistent with host-wide middleware."
+    },
+    "manual_native_app_station": {
+      "name": "Afriquia Al Boustane",
+      "area": "Bouznika / autoroute Casablanca-Rabat",
+      "site_brand": "Afriquia",
+      "connector_count": 6,
+      "dc": {
+        "connector_type": "CCS2",
+        "count": 4,
+        "max_power_kw": 360,
+        "direct_tariff_mad_per_hour": 150.0,
+        "direct_tariff_mad_per_minute": 2.5
+      },
+      "ac": {
+        "count": 2,
+        "max_power_kw": 22
+      },
+      "native_live_status_observed": true,
+      "observed_native_status_labels": [
+        "Disponible",
+        "En cours d'utilisation"
+      ]
+    }
+  },
+  "v9_readiness": {
+    "static_station_metadata": "partial_ready",
+    "direct_tariff": "partial_ready_station_specific_only",
+    "automated_native_status": "blocked",
+    "national_inventory": "not_validated",
+    "production_candidate": "not_ready_as_national_source",
+    "safe_interim_use": "Afriquia Al Boustane may be modeled as a station-specific verified record with observation date and without pretending that live status is automatically refreshed."
+  },
+  "source_priority": [
+    "station-specific native FastVolt app verification",
+    "official station-specific FastVolt material",
+    "official generic FastVolt website content",
+    "third-party station directories"
+  ],
+  "next_action": "Do not spend further effort on /api/pages as a station source. Preserve the evidenced mobile route contract for future public/native access validation, while moving the national Morocco pipeline to the next operator. Revisit FastVolt when a public native station-list/detail response or sanitized first-party export becomes available.",
+  "policy": {
+    "public_sources_only": true,
+    "read_only": true,
+    "no_credentials": true,
+    "no_login": true,
+    "no_mutations_against_operator_systems": true,
+    "sanitized_report_only": true
+  }
+}
