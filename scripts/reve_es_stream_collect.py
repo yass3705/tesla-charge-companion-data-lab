@@ -18,11 +18,12 @@ import os
 import subprocess
 import tempfile
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 
-DATA = Path("data/spain_reve")
+DATA = Path(os.environ.get("REVE_DATA_DIR", "data/spain_reve"))
 PROBE = DATA / "live_tariff_status_probe.json"
 STATE = DATA / "tariff_status_stream_state.json"
 TARIFF_STORE = DATA / "reve_connector_tariffs_raw.json.gz"
@@ -71,6 +72,7 @@ def default_state() -> dict[str, Any]:
         "tariffPagesCollected": [],
         "statusPagesCollected": [],
         "complete": False,
+        "cooldownUntil": None,
         "updatedAt": None,
     }
 
@@ -115,6 +117,18 @@ def header_int(headers: dict[str, Any], key: str) -> int | None:
         return int(value) if value is not None else None
     except (TypeError, ValueError):
         return None
+
+
+def retry_after_seconds(value: str | None) -> int:
+    if not value:
+        return 3600
+    try:
+        return max(60, int(value))
+    except ValueError:
+        try:
+            return max(60, int((parsedate_to_datetime(value) - datetime.now(timezone.utc)).total_seconds()))
+        except (TypeError, ValueError, OverflowError):
+            return 3600
 
 
 def api_get(api_key: str, endpoint: str, page: int) -> dict[str, Any]:
@@ -241,6 +255,20 @@ def build_plan(state: dict[str, Any]) -> list[tuple[str, int]]:
     return plan[:HARD_LIMIT]
 
 
+def validate_checkpoint(state: dict[str, Any], tariffs: dict[str, Any], statuses: dict[str, Any]) -> None:
+    for stream, store in (("tariff", tariffs), ("status", statuses)):
+        pages = state.get(f"{stream}PagesCollected") or []
+        next_page = state.get(f"next{stream.title()}Page")
+        if pages != list(range(1, next_page)):
+            raise ValueError(f"REVE {stream} checkpoint has missing pages")
+        if len(store) != state.get(f"{stream}RowsStored"):
+            raise ValueError(f"REVE {stream} checkpoint row count differs from store")
+        if pages and not store:
+            raise ValueError(f"REVE {stream} checkpoint has no rows")
+    if state.get("complete") and not (tariffs and statuses):
+        raise ValueError("REVE complete checkpoint has an empty stream")
+
+
 def collect() -> int:
     api_key = os.getenv("REVE_API_KEY", "").strip()
     if not api_key:
@@ -248,7 +276,10 @@ def collect() -> int:
     state = load_json(STATE, default_state())
     tariffs = load_gzip(TARIFF_STORE)
     statuses = load_gzip(STATUS_STORE)
-    plan = build_plan(state)
+    validate_checkpoint(state, tariffs, statuses)
+    cooldown = state.get("cooldownUntil")
+    waiting = bool(cooldown and datetime.fromisoformat(cooldown.replace("Z", "+00:00")) > datetime.now(timezone.utc))
+    plan = [] if waiting else build_plan(state)
     report: dict[str, Any] = {
         "mode": "collect", "generatedAt": now(), "hardRequestLimit": HARD_LIMIT,
         "requestsAttempted": 0, "requestsSucceeded": 0, "requests": [], "plan": plan,
@@ -257,7 +288,7 @@ def collect() -> int:
 
     if not plan:
         normalize_state(state, tariffs, statuses)
-        report["note"] = "Both streams already complete"
+        report["note"] = "Waiting for REVE Retry-After" if waiting else "Both streams already complete"
     for stream, page in plan:
         if report["requestsAttempted"] >= HARD_LIMIT:
             break
@@ -267,7 +298,19 @@ def collect() -> int:
         entry = {"stream": stream, "page": page, "endpoint": endpoint, "status": result["status"], "headers": result["headers"]}
         report["requests"].append(entry)
         if result["status"] != 200 or not isinstance(result["payload"], list):
+            if result["status"] == 429:
+                delay = retry_after_seconds(result["headers"].get("retry-after"))
+                state["cooldownUntil"] = (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
             entry["error"] = {"transportExitCode": result["transportExitCode"], "stderrPreview": result["stderrPreview"], "bodyPreview": result["bodyPreview"]}
+            report["stoppedAfterError"] = True
+            break
+        if not result["payload"] and (not isinstance(state.get("tariffTotalPages" if stream == "tariffs" else "statusTotalPages"), int) or page <= state.get("tariffTotalPages" if stream == "tariffs" else "statusTotalPages")):
+            entry["error"] = "empty page before known end"
+            report["stoppedAfterError"] = True
+            break
+        keys = [tariff_key(row) if stream == "tariffs" else status_key(row) for row in result["payload"] if isinstance(row, dict)]
+        if len(keys) != len(result["payload"]) or any(not key for key in keys):
+            entry["error"] = "missing exact connector or EVSE identity"
             report["stoppedAfterError"] = True
             break
         report["requestsSucceeded"] += 1
@@ -290,7 +333,9 @@ def collect() -> int:
         entry["updatedRows"] = u
 
     normalize_state(state, tariffs, statuses)
+    validate_checkpoint(state, tariffs, statuses)
     report["stateAfter"] = state
+    DATA.mkdir(parents=True, exist_ok=True)
     save_gzip(TARIFF_STORE, tariffs)
     save_gzip(STATUS_STORE, statuses)
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")

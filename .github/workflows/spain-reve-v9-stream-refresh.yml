@@ -1,109 +1,57 @@
-name: Spain REVE V9 tariff/status refresh
-
+name: Spain REVE V9 fresh national tariff/status collection
 on:
   workflow_dispatch:
   schedule:
-    - cron: "27 * * * *"
+    - cron: '27 * * * *'
   push:
     branches: [main]
     paths:
-      - "scripts/reve_es_stream_collect.py"
-      - ".github/workflows/spain-reve-v9-stream-refresh.yml"
-
+      - scripts/reve_es_stream_collect.py
+      - .github/workflows/spain-reve-v9-stream-refresh.yml
 permissions:
   contents: write
-
 concurrency:
   group: spain-reve-v9-stream-refresh
   cancel-in-progress: false
-
 jobs:
   collect:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       REVE_API_KEY: ${{ secrets.MAPA_REVE_API_KEY || secrets.REVE_API_KEY }}
-
+      REVE_DATA_DIR: data/spain_reve/full_20261018
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
-
-      - name: Validate REVE secret
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${REVE_API_KEY:-}" || { echo "No REVE API key configured" >&2; exit 2; }
-          echo "REVE key present; length=${#REVE_API_KEY}"
-
-      - name: Validate Data Lab-owned REVE checkpoints (no Stable dependency)
-        shell: bash
-        run: |
-          set -euo pipefail
-          for f in tariff_status_stream_state.json reve_connector_tariffs_raw.json.gz reve_operational_status_raw.json.gz; do
-            test -s "data/spain_reve/$f" || { echo "::error::Missing Data Lab canonical REVE state: $f"; exit 1; }
-          done
-          python scripts/audit_reve_cutover_checkpoint.py --root . --report reports/migration/reve-cutover-live-preflight.json
-
-      - name: Collect next REVE tariff/status pages
-        shell: bash
+      - name: Test fresh checkpoint integrity
+        run: python -m unittest tests/test_reve_es_stream_collect.py -v
+      - name: Collect next pages without using historical checkpoint
+        id: collect
+        continue-on-error: true
         run: python scripts/reve_es_stream_collect.py --collect
-
-      - name: Show REVE batch diagnostic
-        if: always()
-        shell: bash
-        run: |
-          if [ -f data/spain_reve/tariff_status_stream_last_run.json ]; then
-            cat data/spain_reve/tariff_status_stream_last_run.json
-          fi
-
-      - name: Verify request budget and persistence
-        if: success()
-        shell: bash
+      - name: Validate persisted checkpoint independently of supplier availability
         run: |
           python - <<'PY'
-          import json
+          import json,os
           from pathlib import Path
-          r=json.loads(Path('data/spain_reve/tariff_status_stream_last_run.json').read_text())
-          attempted=r.get('requestsAttempted',0)
-          succeeded=r.get('requestsSucceeded',0)
-          if attempted > 5:
-              raise SystemExit(f'Hard REVE request budget violated: {attempted}')
-          if attempted != succeeded:
-              raise SystemExit(f'REVE stream batch incomplete: {succeeded}/{attempted}')
-          s=r.get('stateAfter') or {}
-          if int(s.get('nextTariffPage') or 0) < 245:
-              raise SystemExit('Tariff cursor regressed')
-          if int(s.get('nextStatusPage') or 0) < 164:
-              raise SystemExit('Status cursor regressed')
-          print(json.dumps({
-              'attempted':attempted,
-              'succeeded':succeeded,
-              'nextTariffPage':s.get('nextTariffPage'),
-              'nextStatusPage':s.get('nextStatusPage'),
-              'tariffRowsStored':s.get('tariffRowsStored'),
-              'statusRowsStored':s.get('statusRowsStored'),
-              'complete':s.get('complete')
-          }, indent=2))
+          from scripts.reve_es_stream_collect import STATE,TARIFF_STORE,STATUS_STORE,LAST_RUN,load_json,load_gzip,validate_checkpoint
+          state=load_json(STATE,{})
+          validate_checkpoint(state,load_gzip(TARIFF_STORE),load_gzip(STATUS_STORE))
+          report=load_json(LAST_RUN,{})
+          assert report.get('requestsAttempted',0)<=5
+          print(json.dumps({'checkpointValid':True,'supplierBatchSucceeded':report.get('requestsAttempted')==report.get('requestsSucceeded'),'nextTariffPage':state['nextTariffPage'],'nextStatusPage':state['nextStatusPage'],'complete':state['complete']}))
           PY
-
-      - name: Persist REVE stream progress
+      - name: Persist isolated collection progress
         if: always()
-        shell: bash
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            data/spain_reve/tariff_status_stream_state.json \
-            data/spain_reve/tariff_status_stream_last_run.json \
-            data/spain_reve/reve_connector_tariffs_raw.json.gz \
-            data/spain_reve/reve_operational_status_raw.json.gz
-          if git diff --cached --quiet; then
-            echo "No REVE stream change to publish"
-            exit 0
-          fi
-          git commit -m "data(spain): advance REVE tariff/status stream [run ${GITHUB_RUN_ID}]"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/spain_reve/full_20261018
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(spain): advance fresh REVE national collection [run ${GITHUB_RUN_ID}]"
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin main
             if git push origin HEAD:main; then exit 0; fi
