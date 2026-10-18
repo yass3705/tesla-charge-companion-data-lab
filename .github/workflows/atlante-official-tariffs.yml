@@ -30,6 +30,9 @@ jobs:
       - name: Public-safety scan
         run: python scripts/public_safety_check.py .
 
+      - name: Test independent promotion evidence
+        run: python -m unittest tests/test_atlante_official_promotion.py -v
+
       - name: Extract Atlante official France rules
         id: extract
         shell: bash
@@ -84,8 +87,9 @@ jobs:
           assert go['france']['powerdotEurPerKwh'] == 0.42
           assert go['france']['chargeLeagueEurPerKwh'] == 0.49
           assert go['france']['chargeLeagueOperators'] == ['Electra','Fastned','IONITY']
-          assert p['loyalty']['atlanteEarnRatePercentOfSpend'] == 50
-          assert p['loyalty']['powerdotAndChargeLeagueEarnRatePercentOfSpend'] == 10
+          loyalty=p['loyalty']
+          assert loyalty['atlanteEarnRatePercentOfSpend'] == (50 if loyalty['evidenceConfirmed'] else None)
+          assert loyalty['powerdotAndChargeLeagueEarnRatePercentOfSpend'] == (10 if loyalty['evidenceConfirmed'] else None)
           assert p['roaming']['classification'] == 'third_party_eMSP'
           assert p['roaming']['operatorDirect'] is False
           assert p['sourceEvidence']['officialOnly'] is True

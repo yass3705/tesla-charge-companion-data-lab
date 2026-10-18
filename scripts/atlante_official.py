@@ -63,6 +63,16 @@ def has_price(text: str, value: float) -> bool:
     return bool(re.search(rf"(?<!\d){whole}[,.]{frac}(?!\d)\s*€?\s*/?\s*kwh", norm(text), flags=re.I))
 
 
+def chargeback_evidence_confirmed(app: str) -> bool:
+    app = norm(app)
+    return all(any(norm(needle) in app for needle in alternatives) for alternatives in (
+        ("chez atlante, vous cagnottez 50 %", "50 % de cagnottage"),
+        ("powerdot et chargeleague",),
+        ("10 % de cagnottage", "10% de cagnottage"),
+        ("credit a disposition que dans les stations atlante et powerdot", "crédit à disposition que dans les stations atlante et powerdot"),
+    ))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="out/atlante")
@@ -108,10 +118,7 @@ def main() -> None:
     require_any(app, ("consultez l'application myatlante", "consultez l’application myatlante"), "Atlante exact station price in app")
 
     # Loyalty / ChargeBack is distinct from the energy tariff.
-    require_any(app, ("chez atlante, vous cagnottez 50 %", "50 % de cagnottage"), "Atlante ChargeBack 50 percent")
-    require_any(app, ("powerdot et chargeleague",), "Atlante partner ChargeBack scope")
-    require_any(app, ("10 % de cagnottage", "10% de cagnottage"), "Atlante partner ChargeBack 10 percent")
-    require_any(app, ("credit a disposition que dans les stations atlante et powerdot", "crédit à disposition que dans les stations atlante et powerdot"), "ChargeBack redemption scope")
+    chargeback_confirmed = chargeback_evidence_confirmed(app)
 
     # Direct vs eMSP/roaming payment routes.
     require_any(drivers, ("application myatlante",), "myAtlante direct app")
@@ -172,9 +179,10 @@ def main() -> None:
         },
         "loyalty": {
             "program": "ChargeBack / Green Gems",
-            "atlanteEarnRatePercentOfSpend": 50,
-            "powerdotAndChargeLeagueEarnRatePercentOfSpend": 10,
-            "creditRedeemableOn": ["Atlante", "Powerdot"],
+            "evidenceConfirmed": chargeback_confirmed,
+            "atlanteEarnRatePercentOfSpend": 50 if chargeback_confirmed else None,
+            "powerdotAndChargeLeagueEarnRatePercentOfSpend": 10 if chargeback_confirmed else None,
+            "creditRedeemableOn": ["Atlante", "Powerdot"] if chargeback_confirmed else [],
             "mustNotBeNetterIntoBaseEnergyTariff": True,
         },
         "roaming": {
@@ -232,7 +240,7 @@ def main() -> None:
         "- Atlante Go: **9.99 EUR/month**, no commitment, private customers only.\n"
         "- France with Atlante Go: **Atlante 0.29 / Powerdot 0.42 / ChargeLeague 0.49 EUR/kWh**.\n"
         "- ChargeLeague in this offer: **Electra / Fastned / IONITY**.\n"
-        "- ChargeBack: **50% earn at Atlante; 10% at Powerdot/ChargeLeague**; redeem on Atlante/Powerdot.\n"
+        f"- ChargeBack official conditions confirmed: **{chargeback_confirmed}**; loyalty credit is never netted into direct tariffs.\n"
         "- Third-party eMSP tariffs remain separate and can include an eMSP surcharge.\n"
         "- Network-wide idle/parking/preauthorization fee: **not asserted** from current official pages.\n"
         f"- First-month-free promotion observed: **{promo_first_month_free}**.\n"

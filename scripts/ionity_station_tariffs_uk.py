@@ -19,10 +19,10 @@ DETAIL_URL=f"{BASE_URL}/v3/location/{{uuid}}"
 CANONICAL_CPO="IONITY_CPO"
 TARGET_COUNTRY="GB"
 COUNTRY_BOUNDS=(49.5,-8.8,61.2,2.2)
-APP_FEATURE_VERSION="v2.428.0"
+APP_FEATURE_VERSION="v2.500.1"
 OUT=Path("data/national/ionity_direct_stations_uk.json.gz")
 HEADERS={
- "User-Agent":"IONITY/2.428.0 (Android; TeslaChargeCompanion data validation)",
+ "User-Agent":"IONITY/2.500.1 (Android; TeslaChargeCompanion data validation)",
  "Accept":"application/json",
  "x-adhoc-platform":"ANDROID_V2",
  "x-adhoc-app-feature-version":APP_FEATURE_VERSION,
@@ -43,6 +43,8 @@ def request_json(url, attempts=4):
     return json.loads(r.read().decode("utf-8"))
   except (OSError,ValueError,urllib.error.HTTPError) as exc:
    last=exc
+   if isinstance(exc,urllib.error.HTTPError) and exc.code in (401,403,412):
+    raise RuntimeError(f"IONITY API rejected app contract (HTTP {exc.code}); verify official app version and access terms") from exc
    if attempt+1<attempts: time.sleep(0.75*(2**attempt))
  raise RuntimeError(f"IONITY request failed after {attempts} attempts: {url}: {last}")
 

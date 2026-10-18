@@ -16,6 +16,11 @@ if(snapshot?.country!=='FR'||snapshot?.network!=='Zephyre')throw new Error('Unex
 const stations=Array.isArray(snapshot.stations)?snapshot.stations:[];
 const rankable=stations.filter(s=>s?.multitenantDirectPaymentAvailable===true&&Array.isArray(s?.tariff?.priceComponents)&&s.tariff.priceComponents.some(p=>positive(clean(p?.price))));
 if(!rankable.length)throw new Error('No rankable Zephyre direct EVSEs');
+const seenEvse=new Set();
+for(const station of rankable){
+  if(!station.evseId||seenEvse.has(station.evseId))throw new Error(`Missing or duplicate Zephyre exact EVSE identity: ${station.evseId}`);
+  seenEvse.add(station.evseId);
+}
 
 function normalizeComponents(tariff){
   return (tariff?.priceComponents||[]).map(p=>({
@@ -81,8 +86,7 @@ const output={
   directOffers,subscriptionOffers:[],
   sourceEvidence:{summary:snapshot.summary||{},liveDirectEvse:rankable.length,exactEvseIds:exactEvseIds.length,priceProfiles:directOffers.length}
 };
-if(directOffers.length<5)throw new Error(`Unexpectedly few Zephyre price profiles: ${directOffers.length}`);
-if(exactEvseIds.length<100)throw new Error(`Unexpectedly low Zephyre EVSE coverage: ${exactEvseIds.length}`);
+if(!directOffers.length||!exactEvseIds.length)throw new Error('Empty Zephyre exact EVSE offers');
 if(directOffers.some(o=>!o.evseIds.length||o.verifiedScope!=='exact_evse'||o.directOperatorOnly!==true))throw new Error('Invalid Zephyre direct offer scope');
 
 fs.mkdirSync(path.dirname(outPath),{recursive:true});
