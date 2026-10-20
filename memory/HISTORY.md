@@ -620,3 +620,7 @@ Le finaliseur historique est isolé et testé sur 22 et 50 kW ; le second EVSE r
 # 20 octobre 2026 — V9, EWO/eCarUp Suisse
 
 Le finaliseur historique est isolé avec catalogue eCarUp archivé et correspondance exacte opérateur, distance et connecteur public. G2 reste FAIL : 69 méthodes utiles, 64 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, DRIVECO EVSE exact
+
+Le collecteur CSV historique est isolé et testé sur une valeur et une matrice OSF archivées. Le coût de session reste explicitement incalculable tant que la sémantique OSF manque ; aucun seuil de volume. G2 reste FAIL : 68 méthodes utiles, 65 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

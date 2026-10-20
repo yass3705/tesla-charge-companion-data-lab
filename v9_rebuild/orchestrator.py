@@ -270,6 +270,11 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("WAAT/Monta historical public method changed")
             spec["output_file"] = "data/national/waat_monta_public_tariffs_france.json.gz"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/waat_monta_public.py")
+        elif spec.get("module") == "driveco_evse" and source_id == "FR:driveco_evse":
+            if spec["secret_names"] or not (root / "scripts/driveco_evse_tariffs.py").is_file():
+                raise ValueError("DRIVECO historical exact EVSE method changed")
+            spec["output_file"] = "data/operator_direct/driveco_evse_tariffs.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/driveco_evse.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -489,6 +494,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     freshmile_inventory_module = spec["module"] == "freshmile_inventory"
     waat_monta_module = spec["module"] == "waat_monta_sharded"
     waat_monta_public_module = spec["module"] == "waat_monta_public"
+    driveco_evse_module = spec["module"] == "driveco_evse"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -566,7 +572,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if electric55_chain_module else [sys.executable, str(root / "v9_rebuild/freshmile_inventory.py"), "--out", str(staged)]
                        if freshmile_inventory_module else [sys.executable, str(root / "v9_rebuild/waat_monta_sharded.py"), "--out", str(staged)]
                        if waat_monta_module else [sys.executable, str(root / "v9_rebuild/waat_monta_public.py"), "--out", str(staged)]
-                       if waat_monta_public_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if waat_monta_public_module else [sys.executable, str(root / "v9_rebuild/driveco_evse.py"), "--out", str(staged)]
+                       if driveco_evse_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -820,6 +827,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif driveco_evse_module:
+                from v9_rebuild.driveco_evse import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

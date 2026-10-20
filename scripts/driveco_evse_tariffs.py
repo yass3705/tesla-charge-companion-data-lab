@@ -48,7 +48,6 @@ def main():
     text=raw.decode('utf-8-sig',errors='replace')
     try: dialect=csv.Sniffer().sniff(text[:20000],delimiters=',;\t'); rows=list(csv.DictReader(io.StringIO(text),dialect=dialect))
     except csv.Error: rows=list(csv.DictReader(io.StringIO(text),delimiter=';'))
-    assert len(rows)>1000
     resolved=[];unresolved=[];counts=Counter();prices=Counter()
     for row in rows:
         cls=network_class(row);counts[cls]+=1
