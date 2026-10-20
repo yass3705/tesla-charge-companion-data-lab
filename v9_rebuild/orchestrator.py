@@ -85,6 +85,8 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
             from v9_rebuild.electroverse import CACHE, MAPPING
             if spec["secret_names"] != ["ELECTROVERSE_API_KEY"] or spec.get("mode") != source_id.rsplit("_", 1)[-1]:
                 raise ValueError("Electroverse source/mode/authentication mismatch")
+            if spec["mode"] == "full" and spec.get("max_chunks") != 1:
+                raise ValueError("Electroverse full must be bounded to one legacy chunk per run")
             for method in ("electroverse_daily_delta_selector.mjs", "electroverse_force_chunk_selection.mjs", "electroverse_hybrid_refresh.mjs"):
                 if not (root / "scripts" / method).is_file():
                     raise ValueError(f"Missing preserved Electroverse method: {method}")
@@ -202,6 +204,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if electroverse_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if electroverse_module and previous_state is not None:
                 command.extend(["--resume", str(previous_state)])
+            if electroverse_module and spec["mode"] == "full":
+                command.extend(["--max-chunks", "1"])
             completed = runner(command, cwd=staged if spec["module"] == "belgium_nap" else root,
                                capture_output=True, text=True, timeout=timeout_s, check=False)
             output = staged / spec["output_file"]

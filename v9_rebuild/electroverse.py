@@ -120,8 +120,8 @@ def write_json(path: Path, value: dict) -> None:
 
 
 def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None,
-        runner=subprocess.run, chunk_size: int = CHUNK_SIZE) -> None:
-    if mode not in {"daily", "full"} or chunk_size < 1:
+        runner=subprocess.run, chunk_size: int = CHUNK_SIZE, max_chunks: int | None = None) -> None:
+    if mode not in {"daily", "full"} or chunk_size < 1 or (max_chunks is not None and max_chunks < 1):
         raise ValueError("Unsupported Electroverse mode or chunk size")
     out = out.resolve()
     if out == ROOT or ROOT in out.parents:
@@ -152,9 +152,13 @@ def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None
         tasks = [(offset, min(chunk_size, len(rows) - offset)) for offset in range(0, len(rows), chunk_size)]
         if not tasks:
             tasks = [(0, 0)]
+    processed = 0
     for offset, task in tasks:
         if offset in checkpoint["completed"]:
             continue
+        if max_chunks is not None and processed >= max_chunks:
+            validate_state(out, require_complete=False)
+            raise IncompleteCollection("More Electroverse chunks remain; resume from this checkpoint")
         pending = checkpoint.get("pending")
         if pending and pending["offset"] != offset:
             raise ValueError("Checkpoint pending offset is inconsistent")
@@ -194,6 +198,7 @@ def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None
         checkpoint["completed"].append(offset)
         write_json(checkpoint_path, checkpoint)
         validate_state(out, require_complete=False)
+        processed += 1
     validate_state(out)
     checkpoint_path.unlink(missing_ok=True)
 
@@ -203,8 +208,9 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--mode", choices=("daily", "full"), required=True)
     parser.add_argument("--resume", type=Path)
+    parser.add_argument("--max-chunks", type=int)
     args = parser.parse_args()
-    run(args.out, args.mode, resume=args.resume)
+    run(args.out, args.mode, resume=args.resume, max_chunks=args.max_chunks)
 
 
 if __name__ == "__main__":

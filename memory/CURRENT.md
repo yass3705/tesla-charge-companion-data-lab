@@ -1,7 +1,7 @@
 # 20 octobre 2026 — V9 reconstruction, lot G2 Electroverse
 
 - Le module Electroverse daily/full réutilise les trois scripts existants dans un espace isolé. Les fixtures réduites prouvent qu'un chunk en échec conserve les shards déjà écrits et reprend uniquement les PK en échec. L'orchestrateur garde le checkpoint hors des objets validés, contrôle les SHA avant de reprendre un ancien jeu et échoue si le jeu fourni est corrompu. Aucun appel API live effectué.
-- 18 tests G2 ciblés PASS ; `scripts/validate_v9_g2.py` reste FAIL : 14 sources, 13 anciens workflows migrés, 140 méthodes actives restantes. Le mode full a encore besoin d'une exécution bornée à un chunk par job ; aucun déploiement ou activation Actions. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md) pour la prochaine opération exacte.
+- 19 tests G2 ciblés PASS ; `scripts/validate_v9_g2.py` reste FAIL : 14 sources, 13 anciens workflows migrés, 140 méthodes actives restantes. Le mode full est borné à un chunk par passage ; il manque encore le transfert automatique du checkpoint entre runs. Aucun déploiement ou activation Actions. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md) pour la prochaine opération exacte.
 
 # 20 octobre 2026 — V9 reconstruction, lot G2 DOT-NL
 

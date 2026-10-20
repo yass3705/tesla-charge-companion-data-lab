@@ -67,6 +67,20 @@ class SimulatedCollector:
 
 
 class ElectroverseTests(unittest.TestCase):
+    def test_full_chunk_budget_keeps_checkpoint_until_final_chunk(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
+            source, out = Path(temp) / "source", Path(temp) / "out"
+            fixture(source, ["a", "b", "c"])
+            collector = SimulatedCollector()
+            with self.assertRaises(IncompleteCollection):
+                run(out, "full", source=source, runner=collector, chunk_size=2, max_chunks=1)
+            self.assertEqual(read_json(out / "v9-electroverse-checkpoint.json")["completed"], [0])
+            self.assertEqual(validate_state(out, require_complete=False)["totalStations"], 2)
+            run(out, "full", source=source, runner=collector, chunk_size=2, max_chunks=1)
+            self.assertEqual(collector.selections, [["a", "b"], ["c"]])
+            self.assertEqual(validate_state(out)["totalStations"], 3)
+            self.assertFalse((out / "v9-electroverse-checkpoint.json").exists())
+
     def test_full_failure_keeps_success_and_retries_only_failed_pk(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
             source, out = Path(temp) / "source", Path(temp) / "out"
