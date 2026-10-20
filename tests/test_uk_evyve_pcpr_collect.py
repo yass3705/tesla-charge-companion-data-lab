@@ -32,7 +32,7 @@ class EvyvePcprTests(unittest.TestCase):
         loc = {'id': '2', 'country': 'GBR', 'country_code': 'GB', 'party_id': 'CPI',
                'operator': {'name': 'ChargePoint'}, 'publish': True,
                'coordinates': {'latitude': '51.5', 'longitude': '-0.1'}, 'evses': []}
-        with self.assertRaisesRegex(RuntimeError, 'No public Evyve'):
+        with self.assertRaisesRegex(RuntimeError, 'different CPO'):
             evyve.stage([loc], [], 'now')
 
     def test_private_and_unknown_component(self):

@@ -64,8 +64,11 @@ def main() -> None:
                   else "scripts/etotem_direct_station_inventory.py" if spec["module"] == "cwd_script"
                   else "scripts/france/build_france_irve_static_v9.py" if spec["module"] == "france_irve"
                   else "scripts/build_france_canonical_dataset.py" if spec["module"] == "france_canonical"
+                  else "scripts/uk_blink_pcpr_collect.py" if spec["module"] == "uk_blink"
+                  else "scripts/uk_pcpr_cpo_collect.py" if spec["module"] == "uk_pcpr"
+                  else "scripts/uk_evyve_pcpr_collect.py" if spec["module"] == "uk_evyve"
                   else spec["script"])
-        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else "v9_rebuild/ionity.py" if spec["module"] == "ionity_family" else "v9_rebuild/fastned.py" if spec["module"] == "fastned_family" else "v9_rebuild/bump_inventory.py" if spec["module"] == "bump_inventory_family" else "v9_rebuild/bump_tariffs.py" if spec["module"] == "bump_tariffs" else "v9_rebuild/bump_official.py" if spec["module"] == "bump_official" else "v9_rebuild/allego_stations.py" if spec["module"] == "allego_stations" else "v9_rebuild/allego_official.py" if spec["module"] == "allego_official" else "v9_rebuild/official_rules.py" if spec["module"] == "official_rules" else "v9_rebuild/fx.py" if spec["module"] == "fx" else "v9_rebuild/suc_tracker.py" if spec["module"] == "suc_tracker" else "v9_rebuild/cwd_script.py" if spec["module"] == "cwd_script" else "v9_rebuild/france_irve.py" if spec["module"] == "france_irve" else "v9_rebuild/france_canonical.py" if spec["module"] == "france_canonical" else method)
+        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else "v9_rebuild/ionity.py" if spec["module"] == "ionity_family" else "v9_rebuild/fastned.py" if spec["module"] == "fastned_family" else "v9_rebuild/bump_inventory.py" if spec["module"] == "bump_inventory_family" else "v9_rebuild/bump_tariffs.py" if spec["module"] == "bump_tariffs" else "v9_rebuild/bump_official.py" if spec["module"] == "bump_official" else "v9_rebuild/allego_stations.py" if spec["module"] == "allego_stations" else "v9_rebuild/allego_official.py" if spec["module"] == "allego_official" else "v9_rebuild/official_rules.py" if spec["module"] == "official_rules" else "v9_rebuild/fx.py" if spec["module"] == "fx" else "v9_rebuild/suc_tracker.py" if spec["module"] == "suc_tracker" else "v9_rebuild/cwd_script.py" if spec["module"] == "cwd_script" else "v9_rebuild/france_irve.py" if spec["module"] == "france_irve" else "v9_rebuild/france_canonical.py" if spec["module"] == "france_canonical" else "v9_rebuild/uk_blink.py" if spec["module"] == "uk_blink" else "v9_rebuild/uk_pcpr.py" if spec["module"] == "uk_pcpr" else "v9_rebuild/uk_evyve.py" if spec["module"] == "uk_evyve" else method)
         if not source_code.is_file():
             errors.append(f"source method/config missing: {spec['id']}")
         for workflow in spec.get("legacy_workflows", []):
@@ -75,6 +78,7 @@ def main() -> None:
                                else "scripts/fastned_station_inventory_uk.py" if workflow.endswith("fastned-direct-station-inventory-uk.yml")
                                else "scripts/bump_direct_station_tariffs.py" if workflow.endswith("bump-direct-station-tariffs.yml")
                                else "scripts/bump_tcc_ready_france.py" if workflow.endswith("bump-tcc-ready-france.yml")
+                               else "scripts/uk_blink_pcpr_validate.py" if workflow.endswith("uk-blink-pcpr-audit.yml")
                                else method)
             if workflow not in original or workflow in migrated:
                 errors.append(f"invalid or duplicate legacy workflow mapping: {workflow}")

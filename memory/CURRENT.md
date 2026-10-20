@@ -1,3 +1,7 @@
+# 20 octobre 2026 — V9 reconstruction, PCPR UK
+
+- Blink, Allego UK et Source EV disposent d'une chaîne de collecte et audit isolée, avec correspondance tarifaire exacte au connecteur et tests hors ligne. G2 FAIL : 111 méthodes restantes ; Actions désactivé et transferts GitHub non vérifiés. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 20 octobre 2026 — V9 reconstruction, constructeur canonique France
 
 - Le constructeur canonique France tourne sur les entrées archivées isolées et conserve la provenance de chaque source. Le snapshot généré reflète des sources plus récentes que l'archive existante. G2 FAIL : 115 méthodes restantes ; transfert GitHub non vérifié, Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
@@ -895,3 +899,5 @@ La cinquième méthode Bump, `bump_official.py`, tourne hors checkout avec les r
 
 La chaîne historique Allego DXP, normalisation et coordonnées de repli tourne dans l'orchestrateur isolé et a passé ses fixtures hors réseau. G2 reste FAIL avec 125 méthodes utiles et neuf transferts GitHub non vérifiés. Selenium n'a été ajouté qu'à la source Allego dans le workflow commun ; Actions désactivées, Production et site public inchangés. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
 
+
+V9 G2 UK PCPR : Blink, Allego UK, Source EV et Evyve migrés localement par fixtures ; 110 méthodes utiles restent. Actions Data Lab désactivées ; transfert GitHub non vérifié.

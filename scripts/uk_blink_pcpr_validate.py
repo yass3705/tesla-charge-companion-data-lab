@@ -45,7 +45,6 @@ def main():
                 require(new == expected and old >= 0 and 0 <= vat <= 100, 'VAT amount or tax metadata mismatch')
         byid[tid] = t
     locations=src.get('locations') or []
-    require(locations and tariffs, 'Empty Blink source')
     seenloc=set()
     seenconn=set()
     operator_counts=collections.Counter()
@@ -90,7 +89,6 @@ def main():
             priced==report['pricedExactConnectors'] and
             public_connectors-priced==report['unpricedPublicConnectors'], 'Collection report count mismatch')
     require(len(referenced)==len(byid), 'Unreferenced/unsafely preserved tariff')
-    require(priced>0, 'No connector has a verified Blink CPO tariff')
     output={'provider':'Blink Charging', 'country':'GB','collectedAt':doc['collectedAt'],
             'publicLocations':len(locations), 'publicConnectors':public_connectors,
             'exactPricedConnectors':priced, 'unpricedPublicConnectors':public_connectors-priced,
@@ -99,7 +97,8 @@ def main():
             'sourceId':'blink-uk-pcpr-direct','scope':'strict_declared_Blink_CPO_public_only',
             'tariffScope':'first_party_CPO_OCPI_exact_connector_adhoc_candidate',
             'vatPolicy':'GBP inclusive; original OCPI excluding VAT and explicit tax provenance checked per component',
-            'validatedForV9':True, 'status':'validated_public_exact_connector'}
+            'validatedForV9':bool(priced),
+            'status':'validated_public_exact_connector' if priced else 'no_exact_tariff_available'}
     OUT.write_text(json.dumps(output,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     print(json.dumps(output,ensure_ascii=False,indent=2))
 

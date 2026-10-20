@@ -202,6 +202,24 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("France canonical historical method or authentication contract changed")
             spec["output_file"] = "data/national/france_public_charging_canonical.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/france_canonical.py")
+        elif spec.get("module") == "uk_blink" and source_id == "GB:blink_pcpr":
+            if spec["secret_names"] != ["BLINK_PCPR_TOKEN"] or any(not (root / name).is_file() for name in ("scripts/uk_blink_pcpr_collect.py", "scripts/uk_blink_pcpr_validate.py")):
+                raise ValueError("UK Blink historical method or authentication contract changed")
+            spec["output_file"] = "data/national/uk_blink_pcpr_v9.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/uk_blink.py")
+        elif spec.get("module") == "uk_pcpr" and source_id in {"GB:allego_uk_pcpr", "GB:source_ev_pcpr"}:
+            provider = spec.get("provider")
+            names = {"allego_uk": "ALLEGO_UK_PCPR_TOKEN", "source_ev": "SOURCE_EV_PCPR_TOKEN"}
+            if (source_id != f"GB:{provider}_pcpr" or spec["secret_names"] != [names.get(provider)]
+                    or any(not (root / "scripts" / name).is_file() for name in ("uk_pcpr_cpo_collect.py", f"uk_{provider.replace('_uk', '')}_pcpr_validate.py"))):
+                raise ValueError("UK PCPR historical method or authentication contract changed")
+            spec["output_file"] = f"data/national/uk_{provider}_pcpr_v9.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/uk_pcpr.py")
+        elif spec.get("module") == "uk_evyve" and source_id == "GB:evyve_pcpr":
+            if spec["secret_names"] != ["EVYVE_PCPR_TOKEN"] or not (root / "scripts/uk_evyve_pcpr_collect.py").is_file():
+                raise ValueError("UK Evyve historical method or authentication contract changed")
+            spec["output_file"] = "data/national/uk_evyve_pcpr_v9.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/uk_evyve.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -374,6 +392,9 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     cwd_script_module = spec["module"] == "cwd_script"
     france_irve_module = spec["module"] == "france_irve"
     france_canonical_module = spec["module"] == "france_canonical"
+    uk_blink_module = spec["module"] == "uk_blink"
+    uk_pcpr_module = spec["module"] == "uk_pcpr"
+    uk_evyve_module = spec["module"] == "uk_evyve"
     checkpoint_module = electroverse_module or status_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
@@ -430,7 +451,10 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if suc_module else [sys.executable, str(root / "v9_rebuild/cwd_script.py"), "--method", spec["method"], "--out", str(staged)]
                        if cwd_script_module else [sys.executable, str(root / "v9_rebuild/france_irve.py"), "--out", str(staged)]
                        if france_irve_module else [sys.executable, str(root / "v9_rebuild/france_canonical.py"), "--out", str(staged)]
-                       if france_canonical_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if france_canonical_module else [sys.executable, str(root / "v9_rebuild/uk_blink.py"), "--out", str(staged)]
+                       if uk_blink_module else [sys.executable, str(root / "v9_rebuild/uk_pcpr.py"), "--provider", spec["provider"], "--out", str(staged)]
+                       if uk_pcpr_module else [sys.executable, str(root / "v9_rebuild/uk_evyve.py"), "--out", str(staged)]
+                       if uk_evyve_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -460,7 +484,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -604,6 +628,27 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif uk_blink_module:
+                from v9_rebuild.uk_blink import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif uk_pcpr_module:
+                from v9_rebuild.uk_pcpr import validate_output
+                try:
+                    validate_output(staged, spec["provider"])
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif uk_evyve_module:
+                from v9_rebuild.uk_evyve import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

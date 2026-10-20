@@ -223,9 +223,9 @@ def stage(locations, tariffs, stamp):
             valid_locations.append(loc)
         else:
             excluded['no_valid_evse'] += 1
-    # A different CPO's token must never silently overwrite Evyve's previous dataset.
-    if not valid_locations:
-        raise RuntimeError(f'No public Evyve UK locations confirmed; observed operator names: {dict(op_names)}')
+    # A token scoped to a different CPO is a technical authentication error.
+    if locations and not any('evyve' in label(loc.get('operator')).casefold() for loc in locations):
+        raise RuntimeError(f'Evyve credential returned a different CPO; observed operator names: {dict(op_names)}')
     used_keys = {(loc['country_code'], loc['party_id'], tid)
                  for loc in valid_locations for e in loc['evses'] for c in e['connectors'] for tid in c.get('tariff_ids', [])}
     doc = {'country': 'GB', 'collectedAt': stamp, 'source': 'Evyve UK operator-supplied Eco-Movement PCPR',
@@ -254,8 +254,6 @@ def main():
     authorization = token if token.lower().startswith(('token ', 'bearer ')) else 'Token ' + token
     locations, location_calls = collect('locations', authorization)
     tariffs, tariff_calls = collect('tariffs', authorization)
-    if not locations:
-        raise RuntimeError('Evyve returned an empty location feed; previous snapshot retained')
     stamp = datetime.now(timezone.utc).isoformat()
     staged, audit = stage(locations, tariffs, stamp)
     audit['apiRequests'] = {'locations': location_calls, 'tariffs': tariff_calls}

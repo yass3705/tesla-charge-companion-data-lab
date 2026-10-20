@@ -283,8 +283,9 @@ def stage(locations, tariffs, stamp, cfg):
             safe_locs.append(loc)
         else:
             excluded["no_valid_evses"] += 1
-    if not safe_locs:
-        raise RuntimeError(f"No public {cfg['name']} CPO stations confirmed; operators: {dict(operator_names)}")
+    if locations and not any(any(normalized(label(loc.get("operator"))).startswith(alias)
+                                 for alias in cfg["aliases"]) for loc in locations):
+        raise RuntimeError(f"{cfg['name']} credential returned a different CPO; operators: {dict(operator_names)}")
     used_keys = {(loc["country_code"], loc["party_id"], tid)
                  for loc in safe_locs for evse in loc["evses"]
                  for c in evse["connectors"] for tid in c["tariff_ids"]}
@@ -324,8 +325,6 @@ def main():
     budget = [0]  # budget shared across locations and tariffs
     locations = collect("locations", authorization, budget)
     tariffs = collect("tariffs", authorization, budget)
-    if not locations:
-        raise RuntimeError(f"{cfg['name']} feed contained no locations; prior snapshot retained")
     stamp = datetime.now(timezone.utc).isoformat()
     staged, audit = stage(locations, tariffs, stamp, cfg)
     audit["apiRequests"] = {"total": budget[0], "maxPerHour": 30}

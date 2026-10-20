@@ -1,3 +1,4 @@
+- 2026-10-20 : migration G2 de trois sources UK PCPR (Blink, Allego UK, Source EV) et de leurs audits ; flux vides visibles sans prix inventé, mauvaise identité CPO rejetée.
 - 2026-10-20 : migration G2 du constructeur canonique France dans un espace isolé ; entrées archivées et règles de priorité conservées, divergence du snapshot ancien identifiée sans réinterprétation de prix.
 - 2026-10-20 : migration G2 de la chaîne France IRVE statique/dynamique/audit ; retrait des minima historiques de lignes, stations et EVSE ; validations SHA, schémas et relations conservées.
 - 2026-10-20 : migration G2 e-Totem inventaire et règles officielles ; retrait du seuil d'identifiants de réseaux, préservation des contrôles techniques et des canaux distincts.
@@ -503,3 +504,7 @@ Le script historique de règles officielles Bump est migré dans l'orchestrateur
 
 La chaîne historique Allego DXP → normalisation → coordonnées de repli est migrée dans un seul module isolé. Le minimum EVSE et la présence obligatoire d'une station précise ont été retirés ; relations et identité restent validées. Dix-sept tests ciblés PASS hors réseau ; G2 FAIL avec 125 méthodes. Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+
+# 20 octobre 2026 — V9, PCPR UK exacts
+
+Quatre méthodes PCPR UK historiques migrées en espace isolé avec tests hors ligne ; 39 tests ciblés PASS. G2 reste FAIL avec 110 méthodes utiles et 23 transferts GitHub non vérifiés. Actions désactivées, aucune publication.

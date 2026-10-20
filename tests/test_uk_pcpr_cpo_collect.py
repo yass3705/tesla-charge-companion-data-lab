@@ -43,7 +43,7 @@ class TestUkPcpr(unittest.TestCase):
     def test_different_operator_never_published(self):
         for key in module.PROVIDERS:
             with self.subTest(key=key):
-                with self.assertRaisesRegex(RuntimeError, "No public"):
+                with self.assertRaisesRegex(RuntimeError, "different CPO"):
                     module.stage([location("ChargePoint")], [tariff()], "now", module.provider(key))
 
     def test_unknown_reference_remains_unpriced(self):
