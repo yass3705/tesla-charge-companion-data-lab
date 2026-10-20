@@ -255,6 +255,11 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("E55C historical chain or authentication contract changed")
             spec["output_file"] = "data/national/electric55_stations_france.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/electric55_chain.py")
+        elif spec.get("module") == "freshmile_inventory" and source_id == "FR:freshmile_inventory":
+            if spec["secret_names"] or any(not (root / name).is_file() for name in ("scripts/freshmile_direct_inventory.py", "scripts/freshmile_prune_regional_networks.py", "config/freshmile_regional_network_exclusions.json")):
+                raise ValueError("Freshmile direct inventory historical chain changed")
+            spec["output_file"] = "data/national/freshmile_direct_stations_france.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/freshmile_inventory.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -468,6 +473,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     uk_ubitricity_module = spec["module"] == "uk_ubitricity"
     avia_picoty_extract_module = spec["module"] == "avia_picoty_extract"
     electric55_chain_module = spec["module"] == "electric55_chain"
+    freshmile_inventory_module = spec["module"] == "freshmile_inventory"
     checkpoint_module = electroverse_module or status_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
@@ -532,7 +538,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if uk_gridserve_module else [sys.executable, str(root / "v9_rebuild/uk_ubitricity.py"), "--out", str(staged)]
                        if uk_ubitricity_module else [sys.executable, str(root / "v9_rebuild/avia_picoty_extract.py"), "--out", str(staged)]
                        if avia_picoty_extract_module else [sys.executable, str(root / "v9_rebuild/electric55_chain.py"), "--out", str(staged)]
-                       if electric55_chain_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if electric55_chain_module else [sys.executable, str(root / "v9_rebuild/freshmile_inventory.py"), "--out", str(staged)]
+                       if freshmile_inventory_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -562,7 +569,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or freshmile_inventory_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -762,6 +769,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif freshmile_inventory_module:
+                from v9_rebuild.freshmile_inventory import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

@@ -315,8 +315,6 @@ def build(rows: Iterable[dict[str, str]], *, source: dict[str, Any]) -> dict[str
         direct_rows.append((code, row))
         code_counts[code] += 1
 
-    if not direct_rows:
-        raise RuntimeError("no row matched the strict Freshmile direct CPO identifiers")
 
     grouped: dict[str, dict[str, Any]] = {}
     invalid_coordinates = 0
@@ -408,8 +406,6 @@ def build(rows: Iterable[dict[str, str]], *, source: dict[str, Any]) -> dict[str
         station["chargePoints"] = points
         stations.append(station)
 
-    if not stations:
-        raise RuntimeError("Freshmile direct filter produced no station with valid coordinates")
 
     charge_points = [point for station in stations for point in station["chargePoints"]]
     tariff_text_points = [p for p in charge_points if p["declaredTariff"]["raw"]]

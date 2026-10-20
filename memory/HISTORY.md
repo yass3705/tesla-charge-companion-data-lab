@@ -560,3 +560,7 @@ La base E55C et son enrichissement Scan Pay exact sont enchaînés hors checkout
 # 20 octobre 2026 — V9, inventaire WAAT
 
 Le collecteur national FR*WA2 historique est isolé et testé hors réseau ; aucune tarification Monta n’est attribuée par la seule proximité. G2 FAIL : 88 méthodes utiles, 45 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, Freshmile Direct CPO
+
+Les deux scripts historiques d’inventaire et d’exclusion régionale sont isolés et testés. Les textes tarifaires restent des candidats non classables ; les seuils de volume nul sont retirés. G2 FAIL : 87 méthodes utiles, 46 transferts GitHub non vérifiés. Aucune publication.

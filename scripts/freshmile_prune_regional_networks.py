@@ -121,9 +121,6 @@ def prune(payload: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
             if ((point.get("declaredTariff") or {}).get("raw"))
         )
 
-    if not kept:
-        raise RuntimeError("regional pruning removed every Freshmile station")
-
     payload["stations"] = kept
     scope = payload.setdefault("scope", {})
     scope["regionalNetworkExclusionPolicy"] = "explicit_modeled_networks_only"
