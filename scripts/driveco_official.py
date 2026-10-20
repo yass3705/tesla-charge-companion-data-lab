@@ -115,8 +115,8 @@ def parse_inventory(raw: bytes) -> dict:
     except csv.Error:
         reader = csv.DictReader(io.StringIO(text), delimiter=";")
     rows = list(reader)
-    if len(rows) < 1000:
-        raise RuntimeError(f"DRIVECO inventory unexpectedly small: {len(rows)} rows")
+    if reader.fieldnames is None or not any(name in reader.fieldnames for name in ("id_pdc_itinerance", "id_station_itinerance", "id_pdc_local", "id_station_local")):
+        raise RuntimeError("DRIVECO inventory CSV has no usable station or EVSE identifier column")
 
     def station(row: dict[str, str]) -> dict:
         address = first_matching(row, ("adresse_station", "adresse", "address"))

@@ -508,3 +508,7 @@ La chaîne historique Allego DXP → normalisation → coordonnées de repli est
 # 20 octobre 2026 — V9, PCPR UK exacts
 
 Quatre méthodes PCPR UK historiques migrées en espace isolé avec tests hors ligne ; 39 tests ciblés PASS. G2 reste FAIL avec 110 méthodes utiles et 23 transferts GitHub non vérifiés. Actions désactivées, aucune publication.
+
+# 20 octobre 2026 — V9, règles officielles FR
+
+DRIVECO, eborn, E55C et Freshmile migrés par le module commun et testés hors ligne. Seuil de volume DRIVECO retiré ; schéma CSV et identité préservés. G2 FAIL : 106 méthodes restantes, 27 transferts GitHub non vérifiés. Aucune publication.

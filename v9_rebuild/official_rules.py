@@ -14,8 +14,12 @@ from v9_rebuild.electroverse import ROOT
 
 RULES = {
     "atlante": ("Atlante", "atlante-official-france", 4),
+    "driveco": ("DRIVECO", "driveco-official-france", 6),
+    "eborn": ("eborn", "eborn-official-france-regional", 3),
+    "electric55": ("Electric 55 Charging (E55C)", "electric55-official-france", 3),
     "etotem": ("e-Totem", "etotem-official-france", 5),
     "fastned": ("Fastned", "fastned-official-france", 7),
+    "freshmile": ("Freshmile", "freshmile-official-france", 7),
     "ionity": ("IONITY", "ionity-official-france", 6),
 }
 
@@ -33,7 +37,7 @@ def validate_output(out: Path, source: str) -> dict:
     operator, dataset, expected_evidence = RULES[source]
     evidence = payload.get("sourceEvidence") or {}
     sources = evidence.get("sources") or []
-    if (payload.get("schemaVersion") != "1.0.0" or payload.get("dataset") != dataset
+    if (payload.get("schemaVersion") != ("1.0.1" if source == "freshmile" else "1.0.0") or payload.get("dataset") != dataset
             or payload.get("operator") != operator or payload.get("country") != "FR"
             or payload.get("publicationStatus") != "candidate_validated_source"
             or (source != "etotem" and evidence.get("officialOnly") is not True)
@@ -60,6 +64,36 @@ def validate_output(out: Path, source: str) -> dict:
                 or payload.get("roaming", {}).get("operatorDirect") is not False
                 or payload.get("loyalty", {}).get("mustNotBeNetterIntoBaseEnergyTariff") is not True):
             raise ValueError("Atlante official channel or scope contract invalid")
+    elif source == "driveco":
+        if (payload.get("classification", {}).get("stationLevelPriceLookupRequiredForExactSimulation") is not True
+                or payload["operatorDirect"].get("application", {}).get("exactStationPriceShownBeforeCharge") is not True
+                or payload.get("roaming", {}).get("operatorDirect") is not False
+                or payload.get("publishedReferencePricing", {}).get("mustNotReplaceExactStationPrice") is not True
+                or not isinstance(payload.get("inventory", {}).get("samples"), list)):
+            raise ValueError("DRIVECO official station-specific scope invalid")
+    elif source == "eborn":
+        direct = payload["operatorDirect"]
+        if (payload.get("classification", {}).get("tariffDependsOnPowerAndCustomerProfile") is not True
+                or direct.get("subscriptionPlans", {}).get("forfait", {}).get("includedKwhPerMonth") is None
+                or payload.get("fees", {}).get("postCharge", {}).get("graceMinutesAfterChargeEnd") is None
+                or payload.get("roaming", {}).get("incomingThirdPartyBadge", {}).get("operatorDirect") is not False):
+            raise ValueError("eborn official power, subscription or roaming scope invalid")
+    elif source == "electric55":
+        direct = payload["operatorDirect"].get("adHocBankCard", {})
+        if (payload.get("classification", {}).get("exactAdHocConsumerPriceLookupRequired") is not True
+                or direct.get("priceDisplayedBeforePayment") is not True
+                or direct.get("nationalConsumerEurPerKwh") is not None
+                or payload.get("indicativeWholesaleTariffsToMobilityOperators", {}).get("consumerTariff") is not False
+                or payload.get("inventory", {}).get("nationalStationDatabaseBuiltByThisValidator") is not False):
+            raise ValueError("E55C wholesale or exact consumer price scope invalid")
+    elif source == "freshmile":
+        direct = payload["operatorDirect"].get("freshmileManagedStations", {})
+        if (payload.get("classification", {}).get("freshmileActsAsCpoAndEmsp") is not True
+                or direct.get("nationalEurPerKwh") is not None
+                or direct.get("exactPriceLookupRequired") is not True
+                or payload.get("mobilityProvider", {}).get("incomingRoamingOnFreshmileCpo", {}).get("operatorDirect") is not False
+                or payload.get("fees", {}).get("connectionTime", {}).get("exactStationLookupRequired") is not True):
+            raise ValueError("Freshmile official CPO/eMSP or station price scope invalid")
     elif source == "fastned":
         direct = payload["operatorDirect"]
         if (payload.get("classification", {}).get("singleNationalOperatorTariff") is not True

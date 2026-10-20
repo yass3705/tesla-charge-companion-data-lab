@@ -171,7 +171,7 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Allego official historical method or authentication contract changed")
             spec["output_file"] = "data/operator_direct/allego_official_france.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/allego_official.py")
-        elif spec.get("module") == "official_rules" and source_id in {"FR:atlante_official", "FR:etotem_official", "FR:fastned_official", "FR:ionity_official"}:
+        elif spec.get("module") == "official_rules" and source_id in {"FR:atlante_official", "FR:driveco_official", "FR:eborn_official", "FR:electric55_official", "FR:etotem_official", "FR:fastned_official", "FR:freshmile_official", "FR:ionity_official"}:
             source = spec.get("source")
             if source_id != f"FR:{source}_official" or spec["secret_names"] or not (root / f"scripts/{source}_official.py").is_file():
                 raise ValueError("Official rule source or authentication contract changed")
