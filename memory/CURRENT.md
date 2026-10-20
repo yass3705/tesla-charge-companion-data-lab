@@ -919,3 +919,5 @@ V9 G2 : GRIDSERVE UK PCPR migré et testé hors ligne avec pagination et corresp
 V9 G2 : Ubitricity UK PCPR migré sur données et échantillons archivés, hors réseau ; 93 méthodes utiles restent. Ubitricity NL demeure une exception séparée, Actions désactivé.
 
 V9 G2 : La Borne Bleue migrée avec son script historique, testée sur CSV réduit et isolation des sorties ; 92 méthodes utiles restent, Actions désactivé.
+
+V9 G2 : inventaire AVIA Picoty isolé et testé hors réseau ; 91 méthodes utiles restent, sans tarif Direct attribué par proximité ou marque. Actions désactivé.

@@ -544,3 +544,7 @@ La collecte et la validation historiques UK tournent en espace isolé sur archiv
 # 20 octobre 2026 — V9, La Borne Bleue
 
 Le collecteur historique est isolé et testé sur CSV réduit. Les anciens seuils de volumes sont retirés ; réseau Direct et abonnement restent distincts. G2 FAIL : 92 méthodes utiles, 41 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, AVIA Picoty stations
+
+Le collecteur national historique est isolé et testé sur fixture IRVE réduite. Les prix observés restent des preuves, sans attribution tarifaire Direct. G2 FAIL : 91 méthodes utiles, 42 transferts GitHub non vérifiés. Aucune publication.

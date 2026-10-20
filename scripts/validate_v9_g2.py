@@ -64,6 +64,7 @@ def main() -> None:
                   else "scripts/import_tesla_mac_ingress.py" if spec["module"] == "tesla_mac"
                   else "scripts/qwello_saone_et_loire_official.py" if spec["module"] == "cwd_script" and spec["method"] == "qwello_saone_et_loire"
                   else "scripts/reveo_official.py" if spec["module"] == "cwd_script" and spec["method"] == "reveo_official"
+                  else "scripts/avia_picoty_national.py" if spec["module"] == "cwd_script" and spec["method"] == "avia_picoty_inventory"
                   else "scripts/etotem_direct_station_inventory.py" if spec["module"] == "cwd_script"
                   else "scripts/france/build_france_irve_static_v9.py" if spec["module"] == "france_irve"
                   else "scripts/build_france_canonical_dataset.py" if spec["module"] == "france_canonical"

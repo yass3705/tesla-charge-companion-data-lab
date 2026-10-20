@@ -17,6 +17,7 @@ METHODS = {
     "etotem_inventory": ("scripts/etotem_direct_station_inventory.py", "data/national/etotem_direct_stations_france.json.gz"),
     "qwello_saone_et_loire": ("scripts/qwello_saone_et_loire_official.py", "data/operator_direct/qwello_saone_et_loire_official.json"),
     "reveo_official": ("scripts/reveo_official.py", "data/operator_direct/reveo_official_france.json"),
+    "avia_picoty_inventory": ("scripts/avia_picoty_national.py", "data/national/avia_picoty_direct_stations_france.json.gz"),
 }
 
 
@@ -60,6 +61,35 @@ def validate_output(out: Path, method: str) -> dict:
                 or not isinstance(fingerprint, str) or len(fingerprint) != 64
                 or not report.is_file() or not report.read_text(encoding="utf-8").strip()):
             raise ValueError("Révéo official relative-output contract invalid")
+        return payload
+    if method == "avia_picoty_inventory":
+        with gzip.open(out / METHODS[method][1], "rt", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        report = json.loads((out / "data/reports/avia_picoty_station_inventory_report.json").read_text(encoding="utf-8"))
+        stations = payload.get("stations")
+        counts = payload.get("counts") or {}
+        if (payload.get("schemaVersion") != "1.0.0"
+                or payload.get("dataset") != "avia-volt-picoty-direct-stations-france"
+                or payload.get("country") != "FR" or payload.get("operator") != "Picoty"
+                or payload.get("scope", {}).get("operatorPrefix") != "FR*PY2"
+                or payload.get("scope", {}).get("operatorDirectOnly") is not True
+                or payload.get("scope", {}).get("roamingIncluded") is not False
+                or not isinstance(stations, list) or counts.get("franceStationCount") != len(stations)
+                or counts.get("franceEvseCount") != sum(len(row.get("evseIds") or []) for row in stations)
+                or report.get("generatedAt") != payload.get("generatedAt")
+                or report.get("counts") != counts
+                or report.get("stationIds") != [row.get("stationIdNormalized") for row in stations]):
+            raise ValueError("AVIA Picoty inventory technical contract invalid")
+        ids = set()
+        for station in stations:
+            sid = station.get("stationIdNormalized")
+            if (not sid or not sid.startswith("FRPY2") or sid in ids
+                    or not isinstance(station.get("evseIds"), list)
+                    or len(station["evseIds"]) != len(set(station["evseIds"]))
+                    or station.get("directEurPerKwh") is not None
+                    or station.get("rankableDirect") is not False):
+                raise ValueError("AVIA Picoty exact scope or unpriced policy invalid")
+            ids.add(sid)
         return payload
     with gzip.open(out / METHODS[method][1], "rt", encoding="utf-8") as handle:
         payload = json.load(handle)
