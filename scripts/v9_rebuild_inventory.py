@@ -30,6 +30,7 @@ REBUILD_TOOL_NAMES = {
     "v9_script_destinations.py",
     "validate_v9_g1.py",
     "v9_inline_methods.py",
+    "v9_inline_data_review.py",
 }
 
 

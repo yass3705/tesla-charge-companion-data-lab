@@ -33,6 +33,8 @@ Une matrice supplémentaire [script-destinations.json](script-destinations.json)
 
 Les 23 méthodes critiques ont maintenant une [classification explicite](inline-critical-review.json) basée sur les étapes et sorties des YAML : collecteur, compilateur/réconciliation, audit de référence ou maintenance historique. Les 23/23 entrées sont contrôlées contre la liste critique générée, et leur code inline reste archivé à l'identique. Cela n'exécute pas ces méthodes et ne valide pas leurs sorties. Les 106 candidates à données et 407 références historiques restent à classer.
 
+Les 106 candidates à données disposent d'un [tri provisoire](inline-data-review.json) : 47 collecteurs/compilateurs possibles, 22 validations historiques et 37 expériences techniques. Cette affectation repose sur le nom du workflow et les chemins YAML, avec `classification_status=provisional_pending_yaml_method_review` pour chaque ligne. Elle sert à organiser la revue du code inline ; **elle ne ferme aucun des 106 contrôles G1**.
+
 `python3 scripts/validate_v9_g1.py` est le contrôle automatique actuel. Il vérifie l'égalité de l'inventaire avec tous les YAML présents, la destination unique des 756 scripts, la représentation des neuf pays plus Tesla et les empreintes des 536 méthodes inline. Le 20 octobre, ces contrôles ont réussi mais **G1 a échoué** sur les deux extracteurs Ubitricity NL absents et les 513 méthodes inline encore à classer. Aucun passage en G2 n'est autorisé par ce résultat.
 
 ## Contrat Ubitricity NL incomplet dans `main`
