@@ -21,12 +21,39 @@ METHODS = {
     "waat_inventory": ("scripts/waat_national.py", "data/national/waat_direct_stations_france.json.gz"),
     "swiss_fastned": ("scripts/finalize_swiss_fastned_official.py", "data/switzerland/fastned-official-direct-tariffs.json"),
     "swiss_lidl": ("scripts/finalize_swiss_lidl_official.py", "data/switzerland/lidl-official-direct-tariffs.json"),
+    "swiss_ionity": ("scripts/finalize_swiss_ionity_national.py", "data/switzerland/ionity-official-national-direct-tariffs.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method == "swiss_ionity":
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / "docs/switzerland-ionity-national-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        official = json.loads((out / "data/switzerland/ionity-official-direct-tariffs.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        unresolved = payload.get("unresolved")
+        if not isinstance(rows, list) or not isinstance(unresolved, list):
+            raise ValueError("Swiss IONITY output lists missing")
+        ids = [row.get("evseId") for row in rows + unresolved]
+        counts = payload.get("counts") or {}
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("cpo") != "IONITY" or payload.get("operatorId") != "CH*IOY"
+                or official.get("country") != "CH" or official.get("operatorId") != "CH*IOY"
+                or not isinstance(official.get("locations"), list)
+                or any(not value or not value.startswith("CH*IOY*E") for value in ids)
+                or len(ids) != len(set(ids))
+                or any(row.get("currency") != "CHF" or not isinstance(row.get("pricePerKwh"), (int, float)) for row in rows)
+                or any(not any(loc.get("uuid") == row.get("officialLocationUuid") for loc in official["locations"]) for row in rows)
+                or counts.get("nationalEvseCount") != len(ids)
+                or counts.get("pricedEvseCount") != len(rows)
+                or counts.get("unresolvedEvseCount") != len(unresolved)
+                or report.get("productionSource") != str(METHODS[method][1])
+                or report.get("status") != ("complete" if ids and not unresolved else "partial")
+                or any(report.get(key) != counts.get(key) for key in ("nationalEvseCount", "pricedEvseCount", "unresolvedEvseCount"))):
+            raise ValueError("Swiss IONITY exact connector and output contract invalid")
+        return payload
     if method == "swiss_lidl":
         payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
         report = json.loads((out / "docs/switzerland-lidl-finalization-2026-09-28.json").read_text(encoding="utf-8"))
@@ -191,6 +218,11 @@ def run(out: Path, method: str, *, runner=subprocess.run) -> None:
     if out == ROOT or ROOT in out.parents:
         raise ValueError("Relative-output method must run outside checkout")
     out.mkdir(parents=True, exist_ok=True)
+    if method == "swiss_ionity":
+        archive = ROOT / "data/switzerland/ionity-official-direct-tariffs.json"
+        destination = out / "data/switzerland/ionity-official-direct-tariffs.json"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(archive, destination)
     result = runner([sys.executable, str(ROOT / METHODS[method][0])],
                     cwd=out, capture_output=True, text=True, timeout=1200, check=False)
     if result.returncode:

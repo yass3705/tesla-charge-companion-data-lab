@@ -576,3 +576,7 @@ La finalisation suisse historique est isolée et testée sur flux national rédu
 # 20 octobre 2026 — V9, Lidl Suisse
 
 Le finaliseur historique est isolé et testé pour AC, DC et puissance absente ; le prix manquant reste explicite. G2 reste FAIL : 84 méthodes utiles, 49 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, IONITY Suisse national
+
+Le rapprochement historique national/officiel est isolé avec entrée archivée et testé par coordonnées et puissance exactes ; un EVSE non résolu reste sans prix. G2 reste FAIL : 83 méthodes utiles, 50 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
