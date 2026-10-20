@@ -9,6 +9,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from v9_rebuild.orchestrator import ROOT, read_sources, run_batch, run_source
+from v9_rebuild.electroverse import IncompleteCollection, run as run_electroverse, validate_state as validate_electroverse
+from tests.test_v9_electroverse import SimulatedCollector, fixture
 
 
 class OrchestratorTests(unittest.TestCase):
@@ -17,6 +19,7 @@ class OrchestratorTests(unittest.TestCase):
         registry = read_sources()
         cls.sources = [source for source in registry if source["module"] == "operator_manifest"]
         cls.belgium = next(source for source in registry if source["id"] == "BE:nap")
+        cls.electroverse_daily = next(source for source in registry if source["id"] == "FR:electroverse_daily")
         cls.output_names = {source["operator"]: source["output_file"] for source in cls.sources}
         cls.by_operator = {source["operator"]: source for source in cls.sources}
 
@@ -156,6 +159,61 @@ class OrchestratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"BELGIUM_NAP_TOKEN": "fixture-token"}):
             result = run_source(self.belgium, Path(tmp), attempts=1, runner=incomplete)
             self.assertEqual(result["reason"], "collector_output_contract_mismatch")
+
+    def test_electroverse_failed_checkpoint_is_not_versioned_and_can_resume(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
+            source, out = Path(temp) / "source", Path(temp) / "artifacts"
+            fixture(source, ["a", "b"])
+            collector = SimulatedCollector(fail_once="b")
+
+            def adapter(command, **kwargs):
+                staged = Path(command[command.index("--out") + 1])
+                try:
+                    run_electroverse(staged, "daily", source=source, runner=collector)
+                except IncompleteCollection:
+                    return SimpleNamespace(returncode=1)
+                return SimpleNamespace(returncode=0)
+
+            failed = run_source(self.electroverse_daily, out, attempts=1, runner=adapter)
+            self.assertEqual(failed["status"], "failed")
+            checkpoint = out / "checkpoints/FR_electroverse_daily"
+            self.assertTrue(checkpoint.is_dir())
+            self.assertFalse(list((out / "objects/FR_electroverse_daily").glob("[0-9a-f]" * 64)))
+            self.assertEqual(validate_electroverse(checkpoint, require_complete=False)["totalStations"], 1)
+
+            resumed = run_source(self.electroverse_daily, out, attempts=1, runner=adapter)
+            self.assertEqual(resumed["status"], "ok")
+            self.assertFalse(checkpoint.exists())
+            self.assertEqual(collector.selections, [["a", "b"], ["b"]])
+            self.assertEqual(validate_electroverse((out / resumed["artifact"]).parents[3])["totalStations"], 2)
+
+    def test_electroverse_next_run_seeds_from_validated_object(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
+            source, out = Path(temp) / "source", Path(temp) / "artifacts"
+            fixture(source, ["a"])
+            collector = SimulatedCollector()
+            commands = []
+
+            def adapter(command, **kwargs):
+                commands.append(command)
+                staged = Path(command[command.index("--out") + 1])
+                resume = Path(command[command.index("--resume") + 1]) if "--resume" in command else None
+                run_electroverse(staged, "daily", source=source, resume=resume, runner=collector)
+                return SimpleNamespace(returncode=0)
+
+            first = run_source(self.electroverse_daily, out, attempts=1, runner=adapter)
+            self.assertEqual(first["status"], "ok")
+            (out / "manifest.json").write_text(json.dumps({"sources": [first]}))
+            second = run_source(self.electroverse_daily, out, attempts=1, runner=adapter)
+            self.assertEqual(second["status"], "ok")
+            self.assertNotIn("--resume", commands[0])
+            self.assertIn("--resume", commands[1])
+            self.assertEqual(validate_electroverse(source)["totalStations"], 0)
+            state_root = (out / first["artifact"]).parents[3]
+            shard = state_root / "data/electroverse/tariff_cache/shard-000.json"
+            shard.write_text(shard.read_text() + " ")
+            with self.assertRaises(ValueError):
+                run_source(self.electroverse_daily, out, attempts=1, runner=adapter)
 
 
 if __name__ == "__main__":

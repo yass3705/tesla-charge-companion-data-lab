@@ -451,3 +451,7 @@ Entrées append-only, datées, avec liens vers les documents et commits sources.
 
 La chaîne nationale néerlandaise historique a été adaptée en module isolé réutilisant les scripts existants. La fixture technique et 21 tests ciblés passent ; le validateur G2 reste FAIL avec 142 méthodes actives en attente. Aucun seuil de volume ni écriture `main` dans le nouveau module ; Actions Data Lab toujours désactivées. Détails et prochaine action dans `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, Electroverse en G2
+
+Adaptateur isolé daily/full et checkpoint technique ajoutés à l'orchestrateur sans changer les scripts historiques. Tests de reprise, shards et intégrité des artefacts réussis sur fixtures ; G2 reste FAIL sur 140 méthodes et sur la durée non bornée du mode full. Actions Data Lab désactivées, site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
+

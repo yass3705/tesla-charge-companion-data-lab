@@ -1,8 +1,22 @@
 name: V9 isolated collection
 on:
   workflow_dispatch:
+    inputs:
+      source:
+        description: Exact source ID from v9_rebuild/sources.json
+        required: true
+        type: string
+      checkpoint_run_id:
+        description: Optional prior failed run ID to resume a validated checkpoint
+        required: false
+        type: string
+      state_run_id:
+        description: Optional prior successful collection run ID as cache seed
+        required: false
+        type: string
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: v9-collection
   cancel-in-progress: false
@@ -15,13 +29,46 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore a technical checkpoint when requested
+        if: ${{ inputs.checkpoint_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-checkpoints
+          run-id: ${{ inputs.checkpoint_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/checkpoints
+      - name: Restore the last validated Electroverse state when requested
+        if: ${{ inputs.state_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-collection
+          run-id: ${{ inputs.state_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/input_state
       - name: Collect migrated sources into isolated artifacts
-        run: python -m v9_rebuild.orchestrator --out "$RUNNER_TEMP/tcc-v9-artifacts" --workers 2 --attempts 2
+        env:
+          SOURCE_ID: ${{ inputs.source }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          BELGIUM_NAP_TOKEN: ${{ secrets.BELGIUM_NAP_TOKEN }}
+        run: python -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/tcc-v9-artifacts" --workers 1 --attempts 2
       - name: Preserve immutable outputs and failure manifest
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tcc-v9-collection
-          path: ${{ runner.temp }}/tcc-v9-artifacts
+          path: |
+            ${{ runner.temp }}/tcc-v9-artifacts/manifest.json
+            ${{ runner.temp }}/tcc-v9-artifacts/objects
           if-no-files-found: warn
           retention-days: 30
+      - name: Retain failed technical checkpoint for an explicit retry
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcc-v9-checkpoints
+          path: ${{ runner.temp }}/tcc-v9-artifacts/checkpoints
+          if-no-files-found: ignore
+          retention-days: 7

@@ -81,6 +81,17 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("DOT-NL module or authentication contract invalid")
             spec["output_file"] = "data/national/netherlands_dotnl/runtime/manifest.json"
             spec["manifest_sha256"] = sha256(script)
+        elif spec.get("module") == "electroverse" and source_id in {"FR:electroverse_daily", "FR:electroverse_full"}:
+            from v9_rebuild.electroverse import CACHE, MAPPING
+            if spec["secret_names"] != ["ELECTROVERSE_API_KEY"] or spec.get("mode") != source_id.rsplit("_", 1)[-1]:
+                raise ValueError("Electroverse source/mode/authentication mismatch")
+            for method in ("electroverse_daily_delta_selector.mjs", "electroverse_force_chunk_selection.mjs", "electroverse_hybrid_refresh.mjs"):
+                if not (root / "scripts" / method).is_file():
+                    raise ValueError(f"Missing preserved Electroverse method: {method}")
+            if not (root / MAPPING).is_file() or not (root / CACHE / "manifest.json").is_file():
+                raise ValueError("Missing Electroverse mapping or cached state")
+            spec["output_file"] = (CACHE / "manifest.json").as_posix()
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/electroverse.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -126,6 +137,43 @@ def artifact_digest(staged: Path) -> tuple[str, list[dict]]:
     return digest.hexdigest(), files
 
 
+def previous_electroverse_state(out_root: Path, source_id: str) -> Path | None:
+    """Use a previously validated immutable artifact as the next collection seed."""
+    from v9_rebuild.electroverse import validate_state
+    for base in (out_root / "input_state", out_root):
+        manifest_path = base / "manifest.json"
+        if not manifest_path.is_file():
+            if base.name == "input_state" and base.exists():
+                raise ValueError("Provided Electroverse state has no collection manifest")
+            continue
+        try:
+            payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            if base.name == "input_state":
+                raise ValueError("Provided Electroverse state manifest is unreadable")
+            continue
+        rows = [row for row in payload.get("sources", []) if row.get("status") == "ok" and row.get("module") == "electroverse"]
+        if base.name == "input_state" and not rows:
+            raise ValueError("Provided artifact contains no validated Electroverse source")
+        rows.sort(key=lambda row: row.get("source") != source_id)
+        for row in rows:
+            try:
+                artifact = base / safe_relative(row["artifact"])
+                if not artifact.resolve().is_relative_to(base.resolve()) or sha256(artifact) != row["sha256"]:
+                    continue
+                state = artifact.parents[3]
+                validate_state(state)
+                digest, files = artifact_digest(state)
+                if digest != row.get("artifact_set_sha256") or files != row.get("files"):
+                    continue
+                return state
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+        if rows:
+            raise ValueError("Previous Electroverse artifact failed immutable integrity checks")
+    return None
+
+
 def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int = 2, timeout_s: int = 2400, runner=subprocess.run) -> dict:
     source_id = spec["id"]
     missing = [name for name in spec["secret_names"] if not os.environ.get(name)]
@@ -133,20 +181,44 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
         return {"source": source_id, "status": "failed", "reason": "missing_required_secret", "missing_secret_names": missing}
     source_dir = out_root / "objects" / source_id.replace(":", "_")
     source_dir.mkdir(parents=True, exist_ok=True)
+    electroverse_module = spec["module"] == "electroverse"
+    checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
+    previous_state = previous_electroverse_state(out_root, source_id) if electroverse_module else None
     operator_module = spec["module"] == "operator_manifest"
     nl_module = spec["module"] == "nl_dotnl"
     reason = "collector_failed"
     for attempt in range(1, attempts + 1):
-        staged = Path(tempfile.mkdtemp(prefix="attempt-", dir=source_dir))
+        if electroverse_module and checkpoint.is_dir():
+            from v9_rebuild.electroverse import validate_state
+            try:
+                validate_state(checkpoint, require_complete=False)
+            except (OSError, ValueError, KeyError, TypeError):
+                return {"source": source_id, "status": "failed", "reason": "collector_checkpoint_invalid", "attempts": attempt - 1}
+        staged = checkpoint if electroverse_module and checkpoint.is_dir() else Path(tempfile.mkdtemp(prefix="attempt-", dir=source_dir))
         try:
             command = ([sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
                        if operator_module else [sys.executable, str(root / "v9_rebuild/nl_dotnl.py"), "--out", str(staged)]
-                       if nl_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if nl_module else [sys.executable, str(root / "v9_rebuild/electroverse.py"), "--out", str(staged), "--mode", spec["mode"]]
+                       if electroverse_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+            if electroverse_module and previous_state is not None:
+                command.extend(["--resume", str(previous_state)])
             completed = runner(command, cwd=staged if spec["module"] == "belgium_nap" else root,
                                capture_output=True, text=True, timeout=timeout_s, check=False)
             output = staged / spec["output_file"]
             if completed.returncode != 0:
                 reason = "collector_exit_nonzero"
+                if electroverse_module and output.is_file():
+                    from v9_rebuild.electroverse import validate_state
+                    try:
+                        validate_state(staged, require_complete=False)
+                        if staged != checkpoint:
+                            checkpoint.parent.mkdir(parents=True, exist_ok=True)
+                            if checkpoint.exists():
+                                shutil.rmtree(checkpoint)
+                            staged.rename(checkpoint)
+                            staged = checkpoint
+                    except (OSError, ValueError, KeyError, TypeError):
+                        reason = "collector_checkpoint_invalid"
                 continue
             if not output.is_file():
                 reason = "collector_output_missing"
@@ -169,6 +241,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
+            elif electroverse_module:
+                from v9_rebuild.electroverse import validate_state
+                try:
+                    validate_state(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, RuntimeError):
+                    valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)
             if not valid:
@@ -183,6 +262,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 except OSError:
                     if not target.exists():
                         raise
+            elif electroverse_module and staged == checkpoint:
+                shutil.rmtree(checkpoint)
             return {
                 "source": source_id,
                 "status": "ok",
