@@ -1,6 +1,6 @@
 # Reconstruction V9 — état reprenable
 
-Date : 20 octobre 2026. Branche Data Lab : `rebuild/v9-20261020`, base `origin/main=def205b0de51dd55bd36a2e7fa672031364e6f75`. Commit de porte G1 : `15657f4a89c98e5e7c1d119c91c6cb55a891a913`. Premier lot G2 : `2003a7073919cb927f356cd022e56ea91fe634ff` (porte encore FAIL). Lot DOT-NL : `befd10bf0` (poussé sur la branche). L'archive G0 précédente reste `0b1b9d75463121b6ff86f94764b32d3349ee3e3c`.
+Date : 20 octobre 2026. Branche Data Lab : `rebuild/v9-20261020`, base `origin/main=def205b0de51dd55bd36a2e7fa672031364e6f75`. Commit de porte G1 : `15657f4a89c98e5e7c1d119c91c6cb55a891a913`. Premier lot G2 : `2003a7073919cb927f356cd022e56ea91fe634ff` (porte encore FAIL). Lot DOT-NL : `befd10bf0`. Lots Electroverse : `84c733cb3`, `05cd249f1`, `ddf3abe19` (tous poussés sur la branche). L'archive G0 précédente reste `0b1b9d75463121b6ff86f94764b32d3349ee3e3c`.
 
 | Phase | Statut | Preuve / tests | Blocage |
 | --- | --- | --- | --- |
