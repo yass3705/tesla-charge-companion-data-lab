@@ -16,6 +16,13 @@ ALLOWED_UNAVAILABLE = {
         "scripts/reconcile_nl_ubitricity_payg_overlay.py",
     },
 }
+FINAL_DISPOSITIONS = {
+    "archive_experimental_method", "archive_historical_reference", "archive_validation_reference",
+    "legacy_method_unavailable", "retain_as_validation_reference", "retain_dormant_data_method",
+    "retain_dormant_partial_method", "retain_method_for_module", "retain_production_dependency",
+    "retain_scheduled_data_method", "retain_scheduled_partial_method", "retain_validation_reference",
+    "retire_legacy_wrapper",
+}
 
 
 def validate_missing_code(root: Path, inventory: dict, exceptions: dict) -> list[str]:
@@ -67,7 +74,9 @@ def main() -> None:
     inline = json.loads((ROOT / "migration/v9/inline-methods.json").read_text())["rows"]
     data_reviews = json.loads((ROOT / "migration/v9/inline-data-review.json").read_text())["rows"]
     historical_reviews = json.loads((ROOT / "migration/v9/inline-historical-review.json").read_text())["rows"]
+    script_evidence = json.loads((ROOT / "migration/v9/script-workflow-evidence.json").read_text())["rows"]
     exceptions = json.loads((ROOT / "migration/v9/legacy-method-exceptions.json").read_text())
+    final = json.loads((ROOT / "migration/v9/method-dispositions.json").read_text())
     errors = []
     expected_workflows = {str(p.relative_to(ROOT)) for p in (ROOT / ".github/workflows").glob("*.y*ml")}
     registered_workflows = {w["workflow"] for w in inv["workflows"]}
@@ -81,6 +90,17 @@ def main() -> None:
     if bad_modules:
         errors.append(f"scripts without one candidate module: {bad_modules}")
     errors.extend(validate_missing_code(ROOT, inv, exceptions))
+    expected_script_workflows = {w["workflow"] for w in inv["workflows"] if w["scripts"]}
+    evidenced_script_workflows = {row["workflow"] for row in script_evidence}
+    if len(script_evidence) != len(evidenced_script_workflows) or evidenced_script_workflows != expected_script_workflows:
+        errors.append("script-workflow evidence coverage mismatch")
+    for row in script_evidence:
+        if hashlib.sha256((ROOT / row["workflow"]).read_bytes()).hexdigest() != row["workflow_sha256"]:
+            errors.append(f"script-workflow evidence YAML changed: {row['workflow']}")
+        for script in row["scripts"]:
+            path = ROOT / script["path"]
+            if path.is_file() != script["present"] or (path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() != script["sha256"]):
+                errors.append(f"script-workflow evidence code changed: {script['path']}")
     expected_inline = {w["workflow"] for w in inv["workflows"] if not w["scripts"]}
     registered_inline = {r["workflow"] for r in inline}
     if expected_inline != registered_inline:
@@ -108,26 +128,62 @@ def main() -> None:
     scope = {country for module in registry for country in module["country_scope_hints"]}
     if REQUIRED_SCOPE - scope:
         errors.append(f"country/source scope absent: {sorted(REQUIRED_SCOPE - scope)}")
-    # Inline YAMLs have their own complete, hash-checked disposition registry.
-    # Only script-backed workflows still need a final destination here.
+    final_workflows = {row["workflow"]: row for row in final["workflow_rows"]}
+    final_scripts = {row["script"]: row for row in final["script_rows"]}
+    evidence_by_workflow = {row["workflow"]: row for row in script_evidence}
+    inline_by_workflow = {row["workflow"]: row for row in inline}
+    if len(final_workflows) != len(final["workflow_rows"]) or set(final_workflows) != registered_workflows:
+        errors.append("final workflow disposition coverage mismatch")
+    if len(final_scripts) != len(final["script_rows"]) or set(final_scripts) != historic_scripts:
+        errors.append("final script disposition coverage mismatch")
+    priority_workflows = {method["workflow"] for module in registry for method in module["methods"] if "workflow" in method}
+    priority_scripts = {method["script"] for module in registry for method in module["methods"] if "script" in method}
+    if priority_workflows - set(final_workflows) or priority_scripts - set(final_scripts):
+        errors.append("priority methods absent from final disposition registry")
     unavailable_workflows = {entry["workflow"] for entry in exceptions["exceptions"]}
-    pending_workflows = [w["workflow"] for w in inv["workflows"] if w["scripts"] and w["workflow"] not in unavailable_workflows and (w["migration_status"] == "unreviewed" or not w["destination_module"])]
-    if pending_workflows:
-        errors.append(f"script-backed workflows without final disposition/destination: {len(pending_workflows)}")
-    pending_scripts = [r["script"] for r in destinations if r["review_status"] in {"candidate_destination_pending_review", "ambiguous_shared_method"}]
-    if pending_scripts:
-        errors.append(f"historical scripts without final review: {len(pending_scripts)}")
-    pending_priority = [m for module in registry for m in module["methods"] if m["migration_status"] == "method_review_pending" and m.get("workflow") not in unavailable_workflows]
-    if pending_priority:
-        errors.append(f"priority methods without final review: {len(pending_priority)}")
-    if any(module["status"] == "provisional_method_destination" for module in registry):
-        errors.append("source registry still provisional")
+    for item in inv["workflows"]:
+        row = final_workflows.get(item["workflow"])
+        if not row:
+            continue
+        path = ROOT / item["workflow"]
+        if hashlib.sha256(path.read_bytes()).hexdigest() != row["workflow_sha256"]:
+            errors.append(f"final workflow hash mismatch: {item['workflow']}")
+        if row["source_scripts"] != item["scripts"] or row["secret_names"] != item["secrets"] or row["literal_paths_untyped"] != item["data_paths"]:
+            errors.append(f"final workflow method inputs mismatch: {item['workflow']}")
+        if not row["module_destination"] or not row["disposition"] or not row["decision_basis"]:
+            errors.append(f"final workflow disposition incomplete: {item['workflow']}")
+        if row["disposition"] not in FINAL_DISPOSITIONS or row["active_in_rebuild"] is not False:
+            errors.append(f"invalid or prematurely activated method: {item['workflow']}")
+        if item["workflow"] in inline_by_workflow and row["disposition"] != inline_by_workflow[item["workflow"]]["disposition"]:
+            errors.append(f"inline final disposition differs from reviewed source: {item['workflow']}")
+        evidence = evidence_by_workflow.get(item["workflow"])
+        if evidence and (row["published_paths_in_git_add"] != evidence["git_add_literal_paths"] or row["upload_artifact_literal_paths"] != evidence["upload_artifact_literal_paths"] or row["literal_production_references"] != evidence["literal_production_references"]):
+            errors.append(f"final workflow output/dependency evidence mismatch: {item['workflow']}")
+        if row["disposition"].startswith(("archive_", "retire_")) and row["module_destination"] != "archive/legacy_workflows":
+            errors.append(f"archived workflow has active module destination: {item['workflow']}")
+        if row["disposition"] == "legacy_method_unavailable" and item["workflow"] not in unavailable_workflows:
+            errors.append(f"unapproved unavailable final method: {item['workflow']}")
+        if row["literal_production_references"] and row["disposition"].startswith(("archive_", "retire_")):
+            errors.append(f"production-linked method archived: {item['workflow']}")
+    for item in inv["scripts"]:
+        row = final_scripts.get(item["path"])
+        if not row:
+            continue
+        if hashlib.sha256((ROOT / item["path"]).read_bytes()).hexdigest() != row["sha256"]:
+            errors.append(f"final script hash mismatch: {item['path']}")
+        if not row["module_destination"] or row["disposition"] not in {"retain_module_code", "archive_historical_code"}:
+            errors.append(f"final script disposition incomplete: {item['path']}")
+        retained_uses = [use for use in row["workflow_references"] if final_workflows.get(use, {}).get("disposition", "").startswith("retain_")]
+        if retained_uses and row["disposition"] != "retain_module_code":
+            errors.append(f"script used by retained method was archived: {item['path']}")
     result = {
         "gate": "G1",
         "status": "pass" if not errors else "fail",
         "historical_workflows_registered": len(registered_workflows),
         "historical_scripts_with_candidate_destination": len(mapped_scripts),
         "inline_methods_registered": len(registered_inline),
+        "final_workflow_dispositions": len(final_workflows),
+        "final_script_dispositions": len(final_scripts),
         "scope": sorted(scope),
         "errors": errors,
     }

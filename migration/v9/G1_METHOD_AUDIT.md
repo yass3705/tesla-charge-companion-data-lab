@@ -1,6 +1,6 @@
 # G1 — audit technique des méthodes existantes
 
-État au 20 octobre 2026. Cet audit lit uniquement le dépôt et ses données historiques. Il ne vérifie aucun nouveau prix ni endpoint fournisseur.
+Audit commencé le 20 octobre 2026. Cet audit lit uniquement le dépôt et ses données historiques. Il ne vérifie aucun nouveau prix ni endpoint fournisseur. Les constats intermédiaires ci-dessous sont datés ; la décision de porte courante est à la fin.
 
 ## Inventaire reproductible
 
@@ -55,4 +55,14 @@ La recherche ciblée supplémentaire dans les références Git accessibles (`git
 
 ## Étape suivante
 
-Compléter les lignes des 117 workflows planifiés en reliant commande exacte, dépendances, secret nommé, sortie et source métier. Puis examiner les workflows manuels par familles pour préserver les méthodes utiles, affecter un module ou classer explicitement la référence comme expérimentale, redondante ou obsolète. Le validateur G1 exige désormais des dispositions finales pour 670 workflows avec scripts, 756 scripts et 220 méthodes prioritaires ; il échoue tant que ces champs restent provisoires. Les 536 méthodes inline ont déjà une classification contrôlée, et l'exception Ubitricity documentée ne constitue plus une erreur de présence.
+Cette étape de revue a été reprise avec un index des chemins de sortie réellement ajoutés par Git, des artefacts Actions, des chemins présents dans le code des scripts, des noms de secrets, des empreintes et des références littérales Production. Les 536 méthodes inline restent dans leur registre revu séparément. La décision actuelle figure ci-dessous.
+
+## Décision G1 — PASS de l'inventaire et des destinations
+
+Le registre définitif est [method-dispositions.json](method-dispositions.json), généré par `scripts/v9_g1_method_dispositions.py` à partir de [script-workflow-evidence.json](script-workflow-evidence.json) et des registres précédents. Il couvre **1 207/1 207 workflows et 756/756 scripts** avec destination, disposition, empreinte de code/YAML, scripts invoqués, noms de secrets et chemins disponibles. Les 221 méthodes prioritaires sont couvertes ; les 43 scripts sans workflow sont maintenus. Les 536 méthodes inline conservent leur revue et leur archive SHA propres. Le registre initial `source-registry.json` demeure un index de candidats et ne constitue plus la décision finale.
+
+La classification s'appuie sur les déclencheurs, les commandes et chemins `git add`, les artefacts Actions, le contenu des scripts, les chemins de données et les références Production. Un chemin cité dans un YAML ou dans le code n'est pas présumé être une sortie : les méthodes ambiguës restent `retain_*_partial_method` et inactives jusqu'aux tests G2. Les wrappers n'ayant que des sorties de rapport ou de documentation et aucun lien Production sont archivés ; leur code reste dans l'historique. Les méthodes dormant avec données sont conservées sans planification automatique. **Aucun de ces statuts ne signifie qu'une collecte fonctionne déjà.**
+
+Le constructeur Production `scripts/build_snapshot.py` emploie aussi des répertoires et glob dynamiques (`data/national/uk_*`, `*italy*`, plateformes eMSP). Une comparaison ciblée a trouvé 65 chemins littéraux dans ce constructeur, dont 35 absents de l'inventaire YAML : 12 existent déjà dans Data Lab et restent préservés, un appartient à Production, les 22 autres sont notamment des sorties du constructeur ou des chemins conditionnels. Les méthodes produisant ou lisant des données nationales et de plateforme ont été conservées par prudence, même sans référence littérale exacte. Ce contrôle ne démontre pas la consommation runtime de chaque source ; G4 la testera.
+
+Tests de porte : génération répétée des deux registres avec comparaison octet par octet ; `python3 scripts/validate_v9_g1.py` **PASS** (1 207 workflows, 756 scripts, 536 inline, dix périmètres) ; dix tests ciblés des exceptions et décisions de classement **PASS** ; compilation des scripts de validation **PASS**. L'exception Ubitricity reste indisponible et désactivée, son dernier candidat conservé. Il n'y a ni recherche ni promotion de prix nouveaux. Les sorties partielles et les dépendances runtime sont explicitement reportées aux tests G2/G4 ; G1 valide la préservation et l'orientation des méthodes.
