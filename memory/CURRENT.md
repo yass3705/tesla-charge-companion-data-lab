@@ -915,3 +915,5 @@ V9 G2 : Qwello Saône-et-Loire et Révéo migrés hors checkout avec tests hors 
 V9 G2 : import Tesla/Mac historique migré hors checkout et testé sur deux catalogues figés ; 95 méthodes utiles restent. Updater Test et site public inchangés.
 
 V9 G2 : GRIDSERVE UK PCPR migré et testé hors ligne avec pagination et correspondance exacte des connecteurs ; 94 méthodes utiles restent. Transfert GitHub non vérifié, Actions désactivé.
+
+V9 G2 : Ubitricity UK PCPR migré sur données et échantillons archivés, hors réseau ; 93 méthodes utiles restent. Ubitricity NL demeure une exception séparée, Actions désactivé.

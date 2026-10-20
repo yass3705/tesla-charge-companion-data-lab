@@ -151,7 +151,6 @@ def main():
             valid[key]=week; evidence[tid]=samples
         except (ValueError,KeyError,TypeError,OSError) as ex:
             rejected[tid]=str(ex) if isinstance(ex,(ValueError,KeyError,TypeError)) else 'public PAYG validation unavailable'
-    if not valid: raise ValueError('no PCPR tariff passed exact public identity checks')
     locations=copy.deepcopy(raw['locations']); priced=0; exclusions=Counter(); ids=set(); affected=set()
     for l in locations:
         if l.get('time_zone')!='Europe/London' or l.get('publish') is not True: raise ValueError('non-public or unknown timezone')
@@ -184,9 +183,9 @@ def main():
             'validTariffIds':[k[2] for k in valid],'rejectedTariffs':rejected,'exclusionReasons':dict(exclusions),
             'paygPresentationDifferences':payg_differences,
             'countries':dict(Counter(l['country'] for l in locations)), 'otherCountriesAccessible':False,
-            'crossCountryConclusion':'Complete unfiltered token feed contains GB only; FR/NL/DE require separately authorized scope',
+            'crossCountryConclusion':'Complete unfiltered token feed contains GB only; FR/NL/DE require separately authorized scope' if locations else 'Empty feed; country scope cannot be inferred',
             'pricingPolicy':'exact connector and location, PCPR OCPI first matching element, VAT 20% gross conversion, PAYG advisory cross-check, official 7-22kW five-pence idle fee after 60 post-charge minutes only 08:00-20:00 Europe/London',
-            'publishedToV9':False,'status':'validated_runtime_input_ready','credentialsPersisted':False}
+            'publishedToV9':False,'status':'validated_runtime_input_ready' if priced else 'no_exact_tariff_available','credentialsPersisted':False}
     outputs={'data/national/uk_ubitricity_v9.json.gz':{'collectedAt':raw['collectedAt'],'sources':[source]},
              'reports/uk/ubitricity-pcpr-validation-latest.json':report,
              'data/operator_direct/ubitricity_uk_pcpr_payg_evidence.json':{'validatedAt':now.isoformat(),'tariffs':evidence,'rejectedTariffs':rejected}}

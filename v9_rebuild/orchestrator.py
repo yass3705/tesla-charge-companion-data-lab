@@ -234,6 +234,11 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("UK GRIDSERVE historical method or authentication contract changed")
             spec["output_file"] = "data/national/uk_gridserve_v9.json.gz"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/uk_gridserve.py")
+        elif spec.get("module") == "uk_ubitricity" and source_id == "GB:ubitricity_pcpr":
+            if spec["secret_names"] != ["UBITRICITY_PCPR_TOKEN"] or any(not (root / name).is_file() for name in ("scripts/uk_ubitricity_pcpr_collect.py", "scripts/uk_ubitricity_pcpr_validate.py")):
+                raise ValueError("UK Ubitricity historical method or authentication contract changed")
+            spec["output_file"] = "data/national/uk_ubitricity_v9.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/uk_ubitricity.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -414,6 +419,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     uk_pcpr_module = spec["module"] == "uk_pcpr"
     uk_evyve_module = spec["module"] == "uk_evyve"
     uk_gridserve_module = spec["module"] == "uk_gridserve"
+    uk_ubitricity_module = spec["module"] == "uk_ubitricity"
     checkpoint_module = electroverse_module or status_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
@@ -475,7 +481,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if uk_blink_module else [sys.executable, str(root / "v9_rebuild/uk_pcpr.py"), "--provider", spec["provider"], "--out", str(staged)]
                        if uk_pcpr_module else [sys.executable, str(root / "v9_rebuild/uk_evyve.py"), "--out", str(staged)]
                        if uk_evyve_module else [sys.executable, str(root / "v9_rebuild/uk_gridserve.py"), "--out", str(staged)]
-                       if uk_gridserve_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if uk_gridserve_module else [sys.executable, str(root / "v9_rebuild/uk_ubitricity.py"), "--out", str(staged)]
+                       if uk_ubitricity_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -505,7 +512,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -680,6 +687,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif uk_gridserve_module:
                 from v9_rebuild.uk_gridserve import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif uk_ubitricity_module:
+                from v9_rebuild.uk_ubitricity import validate_output
                 try:
                     validate_output(staged)
                     valid = True

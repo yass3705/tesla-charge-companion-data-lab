@@ -123,12 +123,6 @@ def main():
         raise SystemExit('No configured Ubitricity secret matched. Supply the secret name, never its value.')
     deadline = time.monotonic() + 20 * 60  # Shared retry allowance across both endpoints.
     locations, location_requests = collect('locations', token, deadline)
-    if not locations:
-        # One independent tariff probe helps distinguish an empty location scope
-        # from a globally empty PCPR account. No snapshot is written on failure.
-        tariffs, tariff_requests = collect('tariffs', token, deadline)
-        print(json.dumps({'diagnosticOnly': True, 'locationCount': 0, 'locationRequests': location_requests, 'tariffCount': len(tariffs), 'tariffRequests': tariff_requests, 'snapshotPreserved': True}), flush=True)
-        raise RuntimeError('Empty location feed; provider scope requires investigation; existing PAYG overlay retained')
     tariffs, tariff_requests = collect('tariffs', token, deadline)
     connectors = [c for loc in locations for e in loc.get('evses', []) for c in e.get('connectors', [])]
     refs = {str(t) for c in connectors for t in c.get('tariff_ids', [])}

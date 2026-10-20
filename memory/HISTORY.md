@@ -536,3 +536,7 @@ L’import historique du lot Mac validé est raccordé à l’orchestrateur isol
 # 20 octobre 2026 — V9, GRIDSERVE UK PCPR
 
 Collecte et préparation historiques isolées et testées sur fixtures hors réseau. Les tarifs restent liés aux connecteurs exacts ; les références absentes restent non tarifées. G2 FAIL : 94 méthodes utiles, 39 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, Ubitricity UK PCPR
+
+La collecte et la validation historiques UK tournent en espace isolé sur archives figées. Les offres restent liées aux connecteurs exacts et les absences de prix sont explicites. G2 FAIL : 93 méthodes utiles, 40 transferts GitHub non vérifiés. Aucune publication.
