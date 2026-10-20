@@ -592,3 +592,7 @@ Les deux finaliseurs historiques utilisent leurs entrées archivées hors checko
 # 20 octobre 2026 — V9, EWD et Migrol Suisse
 
 Les deux finaliseurs historiques sont isolés et testés sur flux national réduit ; un EVSE Migrol sans puissance reste non tarifé. G2 reste FAIL : 78 méthodes utiles, 55 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, WAAT/Monta public
+
+La méthode publique historique est isolée avec inventaire WAAT signé et fixture hors réseau ; sorties brutes et détails restent non classables jusqu'à normalisation. G2 reste FAIL : 77 méthodes utiles, 56 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

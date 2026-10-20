@@ -71,8 +71,8 @@ jobs:
           run-id: ${{ steps.prior.outputs.status_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/FR_electroverse_status
-      - name: Restore validated WAAT inventory for Monta shards
-        if: ${{ inputs.source == 'FR:waat_monta_sharded' && steps.prior.outputs.inventory_run_id != '' }}
+      - name: Restore validated WAAT inventory for Monta methods
+        if: ${{ (inputs.source == 'FR:waat_monta_sharded' || inputs.source == 'FR:waat_monta_public') && steps.prior.outputs.inventory_run_id != '' }}
         uses: actions/download-artifact@v4
         with:
           name: tcc-v9-collection-FR_waat_inventory

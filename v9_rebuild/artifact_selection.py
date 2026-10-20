@@ -90,7 +90,7 @@ def main() -> None:
             handle.write(f"tariff_slug={tariff_slug or ''}\ntariff_run_id={tariff_run or ''}\nstatus_run_id={status_run or ''}\n")
         print(json.dumps({"source": args.source, "tariff_run_id": tariff_run, "status_run_id": status_run}))
         return
-    if args.source == "FR:waat_monta_sharded":
+    if args.source in {"FR:waat_monta_sharded", "FR:waat_monta_public"}:
         rows = fetch(args.repo, "tcc-v9-collection-FR_waat_inventory", token)
         dependency = latest(rows, "tcc-v9-collection-FR_waat_inventory", args.branch)
         checkpoints = fetch(args.repo, f"tcc-v9-checkpoints-{slug}", token)

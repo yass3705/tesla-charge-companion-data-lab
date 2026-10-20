@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import zlib from 'node:zlib';
-import { chromium } from 'playwright-core';
 
 const INV='data/national/waat_direct_stations_france.json.gz';
 const OUT='data/national/waat_monta_public_tariffs_france.json.gz';
@@ -9,30 +8,39 @@ const REPORT='data/reports/waat_monta_public_tariffs_report.json';
 const inv=JSON.parse(zlib.gunzipSync(fs.readFileSync(INV)).toString('utf8'));
 const stations=(inv.stations||[]).filter(s=>Array.isArray(s.coordinates)&&s.coordinates.length>=2);
 
-const candidates=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'];
-const executablePath=candidates.find(fs.existsSync);
-if(!executablePath) throw new Error('No Chromium/Chrome executable found');
-const browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
-const context=await browser.newContext({locale:'fr-FR',userAgent:'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',viewport:{width:1280,height:900}});
-const page=await context.newPage();
-
-let apiHeaders=null;
-page.on('request',async req=>{
-  if(apiHeaders||!req.url().includes('api.monta.app/api/v1/charge_points/map')) return;
-  const h=await req.allHeaders();
-  const keep=['authorization','operator','application','application-version','meta','uuid','timezone','accept','accept-language'];
-  const picked=Object.fromEntries(keep.filter(k=>h[k]).map(k=>[k,h[k]]));
-  if(picked.authorization) apiHeaders=picked;
-});
-
-// Exact bootstrap already validated by the browser-capture workflow.
-await page.goto('https://maps.monta.app/?lat=45.7045&lng=4.9445&zoom=16&locale=fr',{waitUntil:'domcontentloaded',timeout:60000});
-for(let i=0;i<60&&!apiHeaders;i++) await page.waitForTimeout(500);
-if(!apiHeaders?.authorization || !apiHeaders.meta || !apiHeaders.uuid || !apiHeaders.timezone) throw new Error('Required public Monta guest headers were not observed');
+const offlinePath=process.env.WAAT_PUBLIC_OFFLINE_FIXTURE;
+const offline=offlinePath?JSON.parse(fs.readFileSync(offlinePath,'utf8')):null;
+let browser=null,page=null,apiHeaders=null;
+if(!offline){
+  const {chromium}=await import('playwright-core');
+  const candidates=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'];
+  const executablePath=candidates.find(fs.existsSync);
+  if(!executablePath) throw new Error('No Chromium/Chrome executable found');
+  browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+  const context=await browser.newContext({locale:'fr-FR',userAgent:'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',viewport:{width:1280,height:900}});
+  page=await context.newPage();
+  page.on('request',async req=>{
+    if(apiHeaders||!req.url().includes('api.monta.app/api/v1/charge_points/map')) return;
+    const h=await req.allHeaders();
+    const keep=['authorization','operator','application','application-version','meta','uuid','timezone','accept','accept-language'];
+    const picked=Object.fromEntries(keep.filter(k=>h[k]).map(k=>[k,h[k]]));
+    if(picked.authorization) apiHeaders=picked;
+  });
+  // Exact bootstrap already validated by the browser-capture workflow.
+  await page.goto('https://maps.monta.app/?lat=45.7045&lng=4.9445&zoom=16&locale=fr',{waitUntil:'domcontentloaded',timeout:60000});
+  for(let i=0;i<60&&!apiHeaders;i++) await page.waitForTimeout(500);
+  if(!apiHeaders?.authorization || !apiHeaders.meta || !apiHeaders.uuid || !apiHeaders.timezone) throw new Error('Required public Monta guest headers were not observed');
+}
 
 // All subsequent API calls are executed inside the public map browser origin. The anonymous
 // guest credential remains memory-only and is never written to disk or logs.
 async function fetchJson(url){
+  if(offline){
+    const u=new URL(url);
+    const key=u.pathname.endsWith('/map')?`map:${u.searchParams.get('center_lat')},${u.searchParams.get('center_lng')}`:
+      `${u.pathname}${u.search}`;
+    return offline[key]??{status:404,data:null,text:'fixture_missing'};
+  }
   return await page.evaluate(async ({url,headers})=>{
     try{
       const r=await fetch(url,{headers});
@@ -111,4 +119,4 @@ const priceLabels={};for(const x of direct){const p=String(x.group?.price_label?
 const report={generatedAt:payload.generatedAt,counts:payload.counts,priceLabels,directGroupSummaries:direct.map(x=>({key:x.key,name:x.group?.name,operator_name:x.group?.operator_name,location:x.group?.location,price_label:x.group?.price_label,evseIds:x.evseIds,pricingFields:x.pricingFields}))};
 fs.writeFileSync(REPORT,JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify(report,null,2).slice(0,120000));
-await browser.close();
+if(browser)await browser.close();
