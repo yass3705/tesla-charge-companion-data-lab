@@ -5,7 +5,7 @@ Date : 20 octobre 2026. Branche locale Data Lab : `rebuild/v9-20261020`, base `0
 | Phase | Statut | Preuve / tests | Blocage |
 | --- | --- | --- | --- |
 | G0 Sécurité | Validée localement | Actions Data Lab `enabled=false` vérifié par API ; trois runs actifs annulés ; aucun run actif au dernier contrôle ; références locales de restauration vérifiées | Réactivation seulement après retrait des anciens YAML actifs et contrôle du nouveau dispositif |
-| G1 Méthodes | En cours | Registre central provisoire `source-registry.json` : 178 méthodes prioritaires (117 planifiées, 61 manuelles liées littéralement à Production) vers 103 modules candidats ; inventaire total 1 207 YAML/757 scripts ; 26/26 portées planifiées ambiguës relues ; 80 chemins Data Lab cités littéralement par Production présents ; intégrateur Ubitricity NL `--no-write` réussi ; scan public ciblé réussi | Destinations non qualifiées par la chaîne de build ; 1 029 workflows historiques encore à classer ; deux extracteurs Ubitricity NL absents |
+| G1 Méthodes | En cours | Registre central provisoire `source-registry.json` : 221 méthodes prioritaires (117 planifiées, 61 manuelles liées littéralement à Production, 43 scripts sans référence YAML) vers 108 modules candidats ; inventaire total 1 207 YAML/756 scripts historiques ; 26/26 portées planifiées ambiguës relues ; 80 chemins Data Lab cités littéralement par Production présents ; intégrateur Ubitricity NL `--no-write` réussi ; scan public ciblé réussi | Destinations non qualifiées par la chaîne de build ; 1 029 workflows historiques encore à classer ; deux extracteurs Ubitricity NL absents |
 | G2 Workflows | À faire | — | G1 |
 | G3 Données | À faire | — | G2 |
 | G4 Production | À faire | — | G3 |
@@ -39,4 +39,4 @@ Lire `memory/README.md` et les documents qu'il indexe avant chaque module. Les P
 
 ## Prochaine action exacte
 
-Qualifier les sorties et dépendances des 178 méthodes prioritaires de `migration/v9/source-registry.json`, puis confirmer une destination de module à chaque méthode utile. Traiter le contrat Ubitricity NL détaillé dans `G1_METHOD_AUDIT.md`. Classer les 1 029 autres workflows manuels par familles, sans déduire leur inutilité de l'absence de référence littérale ; le registre reste **provisoire**. Ne retirer aucun YAML avant G1 validée. Garder Actions désactivé.
+Qualifier les sorties et dépendances des 221 méthodes prioritaires de `migration/v9/source-registry.json`, puis confirmer une destination de module à chaque méthode utile. Traiter le contrat Ubitricity NL détaillé dans `G1_METHOD_AUDIT.md`. Classer les 1 029 autres workflows manuels par familles, sans déduire leur inutilité de l'absence de référence littérale ; le registre reste **provisoire**. Ne retirer aucun YAML avant G1 validée. Garder Actions désactivé.

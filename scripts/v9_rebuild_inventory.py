@@ -21,6 +21,13 @@ SECRET_RE = re.compile(r"secrets\.([A-Z][A-Z0-9_]+)")
 PATH_RE = re.compile(r"(?<![\w./-])(?:data|reports|config)/[\w./-]+\.(?:json|jsonl|csv|gz|parquet|yaml|yml)")
 WRITE_RE = re.compile(r"\bgit push\b|\bgh api\b|\bcontents:\s*write\b", re.I)
 TRIGGER_RE = re.compile(r"^\s{2}(push|pull_request|workflow_run|repository_dispatch|schedule|workflow_dispatch|workflow_call):", re.M)
+REBUILD_TOOL_NAMES = {
+    "v9_rebuild_inventory.py",
+    "v9_scheduled_methods.py",
+    "v9_production_consumers.py",
+    "v9_manual_consumer_priority.py",
+    "v9_source_registry.py",
+}
 
 
 def country_for(name: str, scripts: list[str], paths: list[str]) -> str | None:
@@ -50,7 +57,7 @@ def inventory(root: Path) -> dict:
             "migration_status": "unreviewed",
             "destination_module": None,
         })
-    all_scripts = sorted(str(p.relative_to(root)) for p in (root / "scripts").rglob("*") if p.is_file())
+    all_scripts = sorted(str(p.relative_to(root)) for p in (root / "scripts").rglob("*") if p.is_file() and p.name not in REBUILD_TOOL_NAMES)
     referenced = {s for workflow in workflows for s in workflow["scripts"]}
     return {
         "schema_version": 1,
