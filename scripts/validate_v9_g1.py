@@ -108,13 +108,16 @@ def main() -> None:
     scope = {country for module in registry for country in module["country_scope_hints"]}
     if REQUIRED_SCOPE - scope:
         errors.append(f"country/source scope absent: {sorted(REQUIRED_SCOPE - scope)}")
-    pending_workflows = [w["workflow"] for w in inv["workflows"] if w["migration_status"] == "unreviewed" or not w["destination_module"]]
+    # Inline YAMLs have their own complete, hash-checked disposition registry.
+    # Only script-backed workflows still need a final destination here.
+    unavailable_workflows = {entry["workflow"] for entry in exceptions["exceptions"]}
+    pending_workflows = [w["workflow"] for w in inv["workflows"] if w["scripts"] and w["workflow"] not in unavailable_workflows and (w["migration_status"] == "unreviewed" or not w["destination_module"])]
     if pending_workflows:
-        errors.append(f"historical workflows without final disposition/destination: {len(pending_workflows)}")
+        errors.append(f"script-backed workflows without final disposition/destination: {len(pending_workflows)}")
     pending_scripts = [r["script"] for r in destinations if r["review_status"] in {"candidate_destination_pending_review", "ambiguous_shared_method"}]
     if pending_scripts:
         errors.append(f"historical scripts without final review: {len(pending_scripts)}")
-    pending_priority = [m for module in registry for m in module["methods"] if m["migration_status"] == "method_review_pending"]
+    pending_priority = [m for module in registry for m in module["methods"] if m["migration_status"] == "method_review_pending" and m.get("workflow") not in unavailable_workflows]
     if pending_priority:
         errors.append(f"priority methods without final review: {len(pending_priority)}")
     if any(module["status"] == "provisional_method_destination" for module in registry):

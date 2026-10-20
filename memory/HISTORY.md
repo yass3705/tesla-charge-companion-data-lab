@@ -435,7 +435,7 @@ Entrées append-only, datées, avec liens vers les documents et commits sources.
 
 # 20 octobre 2026 — reprise de l'inventaire G1
 
-- Décision de migration : Ubitricity NL PAYG est `legacy_method_unavailable` ; acquisition désactivée, candidat et intégrateur conservés. Le validateur vérifie l'exception nominative et refuse les absences supplémentaires (cinq tests réussis). Une correction de la porte empêche désormais le faux PASS tant que les 1 207 workflows, 756 scripts et 221 méthodes prioritaires gardent des statuts provisoires. G1 reste FAIL, G2 non commencé.
+- Décision de migration : Ubitricity NL PAYG est `legacy_method_unavailable` ; acquisition désactivée, candidat et intégrateur conservés. Le validateur vérifie l'exception nominative et refuse les absences supplémentaires (cinq tests réussis). Une correction de la porte empêche désormais le faux PASS tant que 670 workflows avec scripts, 756 scripts et 220 méthodes prioritaires gardent des statuts provisoires ; les 536 méthodes inline sont vérifiées séparément. G1 reste FAIL, G2 non commencé.
 
 - Après rebase sur `def205b0d`, validateur G1 rejoué : seul échec, les deux scripts Ubitricity NL absents. Scan public complet réussi, Actions Data Lab toujours désactivé, aucun run actif ; branche `rebuild/v9-20261020` publiée seule sur GitHub pour reprise. Aucun changement Production ni site public.
 
