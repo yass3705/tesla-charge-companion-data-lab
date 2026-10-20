@@ -2,29 +2,377 @@
   "schema_version": 1,
   "status": "partial_g2_migration",
   "sources": [
-    {"id": "BE:nap", "module": "belgium_nap", "script": "scripts/belgium_nap_full_country.py", "secret_names": ["BELGIUM_NAP_TOKEN"], "legacy_workflows": [".github/workflows/belgium-nap-full-country.yml"]},
-    {"id": "FR:alize_toulouse", "module": "operator_manifest", "operator": "alize_toulouse", "manifest": "config/operator_manifests/alize_toulouse.json", "secret_names": [], "legacy_workflows": [".github/workflows/alize-toulouse-official-tariffs.yml"]},
-    {"id": "FR:mobive", "module": "operator_manifest", "operator": "mobive", "manifest": "config/operator_manifests/mobive.json", "secret_names": [], "legacy_workflows": [".github/workflows/mobive-official-tariffs.yml"]},
-    {"id": "FR:ouestcharge", "module": "operator_manifest", "operator": "ouestcharge", "manifest": "config/operator_manifests/ouestcharge.json", "secret_names": [], "legacy_workflows": [".github/workflows/ouestcharge-official-tariffs.yml"]},
-    {"id": "FR:sdey", "module": "operator_manifest", "operator": "sdey", "manifest": "config/operator_manifests/sdey.json", "secret_names": [], "legacy_workflows": [".github/workflows/sdey-official-tariffs.yml"]},
-    {"id": "FR:siceco_cotedor", "module": "operator_manifest", "operator": "siceco_cotedor", "manifest": "config/operator_manifests/siceco_cotedor.json", "secret_names": [], "legacy_workflows": [".github/workflows/siceco-cotedor-official-tariffs.yml"]},
-    {"id": "FR:sied70", "module": "operator_manifest", "operator": "sied70", "manifest": "config/operator_manifests/sied70.json", "secret_names": [], "legacy_workflows": [".github/workflows/sied70-official-tariffs.yml"]},
-    {"id": "FR:sieeen_nievre", "module": "operator_manifest", "operator": "sieeen_nievre", "manifest": "config/operator_manifests/sieeen_nievre.json", "secret_names": [], "legacy_workflows": [".github/workflows/sieeen-nievre-official-tariffs.yml"]},
-    {"id": "FR:sigeif", "module": "operator_manifest", "operator": "sigeif", "manifest": "config/operator_manifests/sigeif.json", "secret_names": [], "legacy_workflows": []},
-    {"id": "FR:syded_doubs", "module": "operator_manifest", "operator": "syded_doubs", "manifest": "config/operator_manifests/syded_doubs.json", "secret_names": [], "legacy_workflows": [".github/workflows/syded-doubs-official-tariffs.yml"]},
-    {"id": "FR:tde90_belfort", "module": "operator_manifest", "operator": "tde90_belfort", "manifest": "config/operator_manifests/tde90_belfort.json", "secret_names": [], "legacy_workflows": [".github/workflows/tde90-belfort-official-tariffs.yml"]},
-    {"id": "FR:electroverse_daily", "module": "electroverse", "mode": "daily", "secret_names": ["ELECTROVERSE_API_KEY"], "legacy_workflows": [".github/workflows/electroverse-france-daily-delta.yml"], "status": "fixture_pass_live_pending"},
-    {"id": "FR:electroverse_full", "module": "electroverse", "mode": "full", "max_chunks": 1, "secret_names": ["ELECTROVERSE_API_KEY"], "legacy_workflows": [".github/workflows/electroverse-france-full-refresh.yml"], "status": "fixture_pass_github_handoff_unverified"},
-    {"id": "FR:electroverse_status", "module": "electroverse_status", "secret_names": ["ELECTROVERSE_API_KEY"], "legacy_workflows": [".github/workflows/electroverse-status-incremental.yml"], "status": "fixture_pass_live_pending"},
-    {"id": "FR:electroverse_overlay", "module": "electroverse_overlay", "secret_names": [], "legacy_workflows": [".github/workflows/electroverse-france-evse-overlay.yml"], "status": "fixture_pass_github_handoff_unverified"},
-    {"id": "FR:atlante_direct", "module": "isolated_script", "script": "scripts/atlante_station_tariffs.py", "secret_names": ["ATLANTE_API_SUBSCRIPTION_KEY"], "legacy_workflows": [".github/workflows/atlante-direct-station-tariffs.yml"], "status": "fixture_pass_live_pending"},
-    {"id": "FR:belib", "module": "belib_chain", "secret_names": [], "legacy_workflows": [".github/workflows/belib-official-tariffs.yml", ".github/workflows/belib-station-base.yml"], "status": "fixture_pass", "github_handoff": "unverified", "live": "pending"},
-    {"id": "FR:ionity_direct_family", "module": "ionity_family", "secret_names": [], "legacy_workflows": [".github/workflows/ionity-direct-station-tariffs.yml", ".github/workflows/ionity-direct-uk-station-tariffs.yml"], "status": "fixture_pass", "github_handoff": "unverified", "live": "pending"},
-    {"id": "FR:fastned_inventory_family", "module": "fastned_family", "secret_names": [], "legacy_workflows": [".github/workflows/fastned-direct-station-inventory.yml", ".github/workflows/fastned-direct-station-inventory-uk.yml"], "status": "fixture_pass", "github_handoff": "unverified", "live": "pending"},
-    {"id": "FR:bump_inventory_family", "module": "bump_inventory_family", "secret_names": [], "legacy_workflows": [".github/workflows/bump-direct-inventory.yml", ".github/workflows/bump-direct-station-tariffs.yml"], "status": "fixture_pass", "github_handoff": "unverified", "live": "pending"},
-    {"id": "FR:bump_tariffs", "module": "bump_tariffs", "secret_names": [], "legacy_workflows": [".github/workflows/bump-national-public-tariffs-fine.yml", ".github/workflows/bump-tcc-ready-france.yml"], "status": "fixture_pass", "github_handoff": "unverified", "live": "pending"},
-    {"id": "FR:bump_official", "module": "bump_official", "secret_names": [], "legacy_workflows": [".github/workflows/bump-official-tariffs.yml"], "status": "fixture_pass", "github_handoff": "unverified", "live": "pending"},
-    {"id": "FR:allego_stations", "module": "allego_stations", "secret_names": [], "legacy_workflows": [".github/workflows/allego-station-tariffs.yml"], "status": "fixture_pass", "github_handoff": "unverified", "live": "pending"},
-    {"id": "NL:dotnl", "module": "nl_dotnl", "secret_names": [], "legacy_workflows": [".github/workflows/netherlands-dotnl-canonical.yml"], "status": "fixture_pass_live_pending"}
+    {
+      "id": "BE:nap",
+      "module": "belgium_nap",
+      "script": "scripts/belgium_nap_full_country.py",
+      "secret_names": [
+        "BELGIUM_NAP_TOKEN"
+      ],
+      "legacy_workflows": [
+        ".github/workflows/belgium-nap-full-country.yml"
+      ]
+    },
+    {
+      "id": "FR:alize_toulouse",
+      "module": "operator_manifest",
+      "operator": "alize_toulouse",
+      "manifest": "config/operator_manifests/alize_toulouse.json",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/alize-toulouse-official-tariffs.yml"
+      ]
+    },
+    {
+      "id": "FR:mobive",
+      "module": "operator_manifest",
+      "operator": "mobive",
+      "manifest": "config/operator_manifests/mobive.json",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/mobive-official-tariffs.yml"
+      ]
+    },
+    {
+      "id": "FR:ouestcharge",
+      "module": "operator_manifest",
+      "operator": "ouestcharge",
+      "manifest": "config/operator_manifests/ouestcharge.json",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/ouestcharge-official-tariffs.yml"
+      ]
+    },
+    {
+      "id": "FR:sdey",
+      "module": "operator_manifest",
+      "operator": "sdey",
+      "manifest": "config/operator_manifests/sdey.json",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/sdey-official-tariffs.yml"
+      ]
+    },
+    {
+      "id": "FR:siceco_cotedor",
+      "module": "operator_manifest",
+      "operator": "siceco_cotedor",
+      "manifest": "config/operator_manifests/siceco_cotedor.json",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/siceco-cotedor-official-tariffs.yml"
+      ]
+    },
+    {
+      "id": "FR:sied70",
+      "module": "operator_manifest",
+      "operator": "sied70",
+      "manifest": "config/operator_manifests/sied70.json",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/sied70-official-tariffs.yml"
+      ]
+    },
+    {
+      "id": "FR:sieeen_nievre",
+      "module": "operator_manifest",
+      "operator": "sieeen_nievre",
+      "manifest": "config/operator_manifests/sieeen_nievre.json",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/sieeen-nievre-official-tariffs.yml"
+      ]
+    },
+    {
+      "id": "FR:sigeif",
+      "module": "operator_manifest",
+      "operator": "sigeif",
+      "manifest": "config/operator_manifests/sigeif.json",
+      "secret_names": [],
+      "legacy_workflows": []
+    },
+    {
+      "id": "FR:syded_doubs",
+      "module": "operator_manifest",
+      "operator": "syded_doubs",
+      "manifest": "config/operator_manifests/syded_doubs.json",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/syded-doubs-official-tariffs.yml"
+      ]
+    },
+    {
+      "id": "FR:tde90_belfort",
+      "module": "operator_manifest",
+      "operator": "tde90_belfort",
+      "manifest": "config/operator_manifests/tde90_belfort.json",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/tde90-belfort-official-tariffs.yml"
+      ]
+    },
+    {
+      "id": "FR:electroverse_daily",
+      "module": "electroverse",
+      "mode": "daily",
+      "secret_names": [
+        "ELECTROVERSE_API_KEY"
+      ],
+      "legacy_workflows": [
+        ".github/workflows/electroverse-france-daily-delta.yml"
+      ],
+      "status": "fixture_pass_live_pending"
+    },
+    {
+      "id": "FR:electroverse_full",
+      "module": "electroverse",
+      "mode": "full",
+      "max_chunks": 1,
+      "secret_names": [
+        "ELECTROVERSE_API_KEY"
+      ],
+      "legacy_workflows": [
+        ".github/workflows/electroverse-france-full-refresh.yml"
+      ],
+      "status": "fixture_pass_github_handoff_unverified"
+    },
+    {
+      "id": "FR:electroverse_status",
+      "module": "electroverse_status",
+      "secret_names": [
+        "ELECTROVERSE_API_KEY"
+      ],
+      "legacy_workflows": [
+        ".github/workflows/electroverse-status-incremental.yml"
+      ],
+      "status": "fixture_pass_live_pending"
+    },
+    {
+      "id": "FR:electroverse_overlay",
+      "module": "electroverse_overlay",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/electroverse-france-evse-overlay.yml"
+      ],
+      "status": "fixture_pass_github_handoff_unverified"
+    },
+    {
+      "id": "FR:atlante_direct",
+      "module": "isolated_script",
+      "script": "scripts/atlante_station_tariffs.py",
+      "secret_names": [
+        "ATLANTE_API_SUBSCRIPTION_KEY"
+      ],
+      "legacy_workflows": [
+        ".github/workflows/atlante-direct-station-tariffs.yml"
+      ],
+      "status": "fixture_pass_live_pending"
+    },
+    {
+      "id": "FR:belib",
+      "module": "belib_chain",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/belib-official-tariffs.yml",
+        ".github/workflows/belib-station-base.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:ionity_direct_family",
+      "module": "ionity_family",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/ionity-direct-station-tariffs.yml",
+        ".github/workflows/ionity-direct-uk-station-tariffs.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:fastned_inventory_family",
+      "module": "fastned_family",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/fastned-direct-station-inventory.yml",
+        ".github/workflows/fastned-direct-station-inventory-uk.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:bump_inventory_family",
+      "module": "bump_inventory_family",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/bump-direct-inventory.yml",
+        ".github/workflows/bump-direct-station-tariffs.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:bump_tariffs",
+      "module": "bump_tariffs",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/bump-national-public-tariffs-fine.yml",
+        ".github/workflows/bump-tcc-ready-france.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:bump_official",
+      "module": "bump_official",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/bump-official-tariffs.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:allego_stations",
+      "module": "allego_stations",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/allego-station-tariffs.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "NL:dotnl",
+      "module": "nl_dotnl",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/netherlands-dotnl-canonical.yml"
+      ],
+      "status": "fixture_pass_live_pending"
+    },
+    {
+      "id": "FR:allego_official",
+      "module": "allego_official",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/allego-official-tariffs-v2.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:fastned_official",
+      "module": "official_rules",
+      "source": "fastned",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/fastned-official-tariffs.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:ionity_official",
+      "module": "official_rules",
+      "source": "ionity",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/ionity-official-tariffs.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "GL:fx",
+      "module": "fx",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/fx-daily-refresh.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "GL:suc_tracker",
+      "module": "suc_tracker",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/suc-tracker-weekly.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:atlante_official",
+      "module": "official_rules",
+      "source": "atlante",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/atlante-official-tariffs.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:etotem_inventory",
+      "module": "cwd_script",
+      "method": "etotem_inventory",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/etotem-direct-station-inventory.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:etotem_official",
+      "module": "official_rules",
+      "source": "etotem",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/etotem-official-tariffs.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:irve_national",
+      "module": "france_irve",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/france-irve-static-refresh.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    },
+    {
+      "id": "FR:canonical",
+      "module": "france_canonical",
+      "secret_names": [],
+      "legacy_workflows": [
+        ".github/workflows/france-canonical-dataset.yml"
+      ],
+      "status": "fixture_pass",
+      "github_handoff": "unverified",
+      "live": "pending"
+    }
   ]
 }

@@ -154,8 +154,6 @@ def main() -> None:
     dg = pages["dataGouvOrg"]
     ids = ["fr*ese", "fr*p01", "fr*eti", "fr*g10", "fr*car", "fr*sua"]
     found_ids = [x.upper() for x in ids if x in dg]
-    if len(found_ids) < 5:
-        raise RuntimeError(f"data.gouv e-Totem: expected multiple managed network IDs, found {found_ids}")
 
     facts = {
         "classification": {

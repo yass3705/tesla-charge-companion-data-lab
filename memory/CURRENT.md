@@ -1,3 +1,19 @@
+# 20 octobre 2026 — V9 reconstruction, constructeur canonique France
+
+- Le constructeur canonique France tourne sur les entrées archivées isolées et conserve la provenance de chaque source. Le snapshot généré reflète des sources plus récentes que l'archive existante. G2 FAIL : 115 méthodes restantes ; transfert GitHub non vérifié, Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 20 octobre 2026 — V9 reconstruction, base France IRVE
+
+- La chaîne statique, dynamique et audit exact-ID France IRVE tourne hors réseau sur fixture réduite. G2 FAIL avec 116 méthodes restantes et transfert GitHub non vérifié ; Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 20 octobre 2026 — V9 reconstruction, e-Totem
+
+- Inventaire e-Totem et règles officielles migrés sur fixtures hors réseau. G2 FAIL : 117 méthodes restantes ; Actions toujours désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 20 octobre 2026 — V9 reconstruction, sources communes et règles officielles
+
+- Allego, Fastned, IONITY et Atlante officiels, FX et SuC Tracker ont des exécutions isolées sur fixtures historiques. G2 reste FAIL : 119 méthodes utiles à migrer ; transferts GitHub et collectes live non vérifiés, Actions désactivé. Les règles de prix n'ont pas été revues. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 20 octobre 2026 — V9 reconstruction, porte G2 renforcée
 
 - Le validateur G2 bloque désormais explicitement un PASS si les transferts GitHub restent non vérifiés. Il rapporte actuellement 131 méthodes utiles à migrer, cinq transferts non prouvés et sept collectes sans essai live. Le scan public passe ; Actions Data Lab reste désactivé. Prochain lot : chaîne Bump Direct, décrite dans [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

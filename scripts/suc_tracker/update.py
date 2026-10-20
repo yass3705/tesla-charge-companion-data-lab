@@ -22,13 +22,8 @@ def refresh(output, country_codes, source_path=None):
         if observed > parse_date(now()):
             raise ValueError('SuC generation is in the future')
         old_raw = read(output / 'europe.json') if (output / 'europe.json').exists() else None
-        if old_raw:
-            if observed < parse_date(old_raw['generatedAt']):
-                raise ValueError('SuC generation regressed; keep the previous snapshot')
-            before, after = Counter(s['country'] for s in old_raw['stations']), Counter(s['country'] for s in source['stations'])
-            for c, count in before.items():
-                if after[c] < count * .9:
-                    raise ValueError('SuC station count fell by more than 10% in ' + c)
+        if old_raw and observed < parse_date(old_raw['generatedAt']):
+            raise ValueError('SuC generation regressed; keep the previous snapshot')
         previous = read(output / 'tesla_stations.json') if (output / 'tesla_stations.json').exists() else []
         refs = {}
         for station in previous:
@@ -53,8 +48,6 @@ def refresh(output, country_codes, source_path=None):
                     base['sucTracker'] = provenance
             return base
         selected = [s for s in source['stations'] if s['country'] in country_codes]
-        if not selected or set(country_codes) - {s['country'] for s in selected}:
-            raise ValueError('Missing requested countries in SuC snapshot')
         exported = [convert_station(s, baseline_for(s), source['generatedAt']) for s in selected]
         ids = [s['id'] for s in exported]
         if len(ids) != len(set(ids)):

@@ -166,6 +166,42 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                     raise ValueError(f"Missing historical Allego method: {name}")
             spec["output_file"] = "data/national/allego_direct_stations_france.json.gz"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/allego_stations.py")
+        elif spec.get("module") == "allego_official" and source_id == "FR:allego_official":
+            if spec["secret_names"] or any(not (root / "scripts" / name).is_file() for name in ("allego_official.py", "allego_static_wrapper.py")):
+                raise ValueError("Allego official historical method or authentication contract changed")
+            spec["output_file"] = "data/operator_direct/allego_official_france.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/allego_official.py")
+        elif spec.get("module") == "official_rules" and source_id in {"FR:atlante_official", "FR:etotem_official", "FR:fastned_official", "FR:ionity_official"}:
+            source = spec.get("source")
+            if source_id != f"FR:{source}_official" or spec["secret_names"] or not (root / f"scripts/{source}_official.py").is_file():
+                raise ValueError("Official rule source or authentication contract changed")
+            spec["output_file"] = f"data/operator_direct/{source}_official_france.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/official_rules.py")
+        elif spec.get("module") == "fx" and source_id == "GL:fx":
+            if spec["secret_names"] or not (root / "scripts/update_fx.py").is_file():
+                raise ValueError("FX historical method or authentication contract changed")
+            spec["output_file"] = "data/fx/exchange_rates.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/fx.py")
+        elif spec.get("module") == "suc_tracker" and source_id == "GL:suc_tracker":
+            if spec["secret_names"] or any(not (root / name).is_file() for name in ("scripts/suc_tracker/update.py", "scripts/suc_tracker/core.py", "config/countries.json")):
+                raise ValueError("SuC Tracker historical method or configuration changed")
+            spec["output_file"] = "data/suc-tracker/metadata.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/suc_tracker.py")
+        elif spec.get("module") == "cwd_script" and source_id == "FR:etotem_inventory":
+            if spec.get("method") != "etotem_inventory" or spec["secret_names"] or not (root / "scripts/etotem_direct_station_inventory.py").is_file():
+                raise ValueError("e-Totem historical method or authentication contract changed")
+            spec["output_file"] = "data/national/etotem_direct_stations_france.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/cwd_script.py")
+        elif spec.get("module") == "france_irve" and source_id == "FR:irve_national":
+            if spec["secret_names"] or any(not (root / name).is_file() for name in ("scripts/france/build_france_irve_static_v9.py", "scripts/france/build_france_irve_dynamic_status_v9.py", "scripts/france/audit_france_irve_residuals.py")):
+                raise ValueError("France IRVE historical chain or authentication contract changed")
+            spec["output_file"] = "data/national/france-irve-static-v9/manifest.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/france_irve.py")
+        elif spec.get("module") == "france_canonical" and source_id == "FR:canonical":
+            if spec["secret_names"] or not (root / "scripts/build_france_canonical_dataset.py").is_file():
+                raise ValueError("France canonical historical method or authentication contract changed")
+            spec["output_file"] = "data/national/france_public_charging_canonical.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/france_canonical.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -276,6 +312,12 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     elif module == "belib_chain":
         from v9_rebuild.belib import validate_output
         validate_output(state)
+    elif module == "fx":
+        from v9_rebuild.fx import validate_output
+        validate_output(state)
+    elif module == "suc_tracker":
+        from v9_rebuild.suc_tracker import validate_output
+        validate_output(state)
     elif module == "electroverse":
         validate_state(state)
     else:
@@ -325,13 +367,20 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     bump_tariffs_module = spec["module"] == "bump_tariffs"
     bump_official_module = spec["module"] == "bump_official"
     allego_stations_module = spec["module"] == "allego_stations"
+    allego_official_module = spec["module"] == "allego_official"
+    official_rules_module = spec["module"] == "official_rules"
+    fx_module = spec["module"] == "fx"
+    suc_module = spec["module"] == "suc_tracker"
+    cwd_script_module = spec["module"] == "cwd_script"
+    france_irve_module = spec["module"] == "france_irve"
+    france_canonical_module = spec["module"] == "france_canonical"
     checkpoint_module = electroverse_module or status_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
     belib_prior = None
-    if belib_module and (out_root / "input_state").is_dir():
+    if (belib_module or fx_module or suc_module) and (out_root / "input_state").is_dir():
         try:
-            belib_prior = validated_dependency(out_root / "input_state", source_id, "belib_chain")
+            belib_prior = validated_dependency(out_root / "input_state", source_id, spec["module"])
         except (OSError, ValueError, KeyError, TypeError):
             return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
     operator_module = spec["module"] == "operator_manifest"
@@ -374,7 +423,14 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if bump_inventory_module else [sys.executable, str(root / "v9_rebuild/bump_tariffs.py"), "--out", str(staged)]
                        if bump_tariffs_module else [sys.executable, str(root / "v9_rebuild/bump_official.py"), "--out", str(staged)]
                        if bump_official_module else [sys.executable, str(root / "v9_rebuild/allego_stations.py"), "--out", str(staged)]
-                       if allego_stations_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if allego_stations_module else [sys.executable, str(root / "v9_rebuild/allego_official.py"), "--out", str(staged)]
+                       if allego_official_module else [sys.executable, str(root / "v9_rebuild/official_rules.py"), "--source", spec["source"], "--out", str(staged)]
+                       if official_rules_module else [sys.executable, str(root / "v9_rebuild/fx.py"), "--out", str(staged)]
+                       if fx_module else [sys.executable, str(root / "v9_rebuild/suc_tracker.py"), "--out", str(staged)]
+                       if suc_module else [sys.executable, str(root / "v9_rebuild/cwd_script.py"), "--method", spec["method"], "--out", str(staged)]
+                       if cwd_script_module else [sys.executable, str(root / "v9_rebuild/france_irve.py"), "--out", str(staged)]
+                       if france_irve_module else [sys.executable, str(root / "v9_rebuild/france_canonical.py"), "--out", str(staged)]
+                       if france_canonical_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -404,7 +460,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -499,6 +555,55 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif allego_official_module:
+                from v9_rebuild.allego_official import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif official_rules_module:
+                from v9_rebuild.official_rules import validate_output
+                try:
+                    validate_output(staged, spec["source"])
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif fx_module:
+                from v9_rebuild.fx import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif suc_module:
+                from v9_rebuild.suc_tracker import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif cwd_script_module:
+                from v9_rebuild.cwd_script import validate_output
+                try:
+                    validate_output(staged, spec["method"])
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif france_irve_module:
+                from v9_rebuild.france_irve import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif france_canonical_module:
+                from v9_rebuild.france_canonical import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

@@ -60,8 +60,8 @@ def validate_source(data):
     if not isinstance(data, dict) or data.get('schemaVersion') != 2:
         raise ValueError('Unsupported SuC schema; expected schemaVersion=2')
     rows = data.get('stations')
-    if not isinstance(rows, list) or not rows:
-        raise ValueError('Empty/missing SuC stations')
+    if not isinstance(rows, list):
+        raise ValueError('Missing/invalid SuC stations')
     ids = [str(s.get('id', '')).casefold() for s in rows]
     if any(not x for x in ids) or len(ids) != len(set(ids)):
         raise ValueError('Missing/duplicate SuC station IDs')

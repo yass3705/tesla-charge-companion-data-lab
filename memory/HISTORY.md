@@ -1,3 +1,7 @@
+- 2026-10-20 : migration G2 du constructeur canonique France dans un espace isolé ; entrées archivées et règles de priorité conservées, divergence du snapshot ancien identifiée sans réinterprétation de prix.
+- 2026-10-20 : migration G2 de la chaîne France IRVE statique/dynamique/audit ; retrait des minima historiques de lignes, stations et EVSE ; validations SHA, schémas et relations conservées.
+- 2026-10-20 : migration G2 e-Totem inventaire et règles officielles ; retrait du seuil d'identifiants de réseaux, préservation des contrôles techniques et des canaux distincts.
+- 2026-10-20 : migration G2 des règles officielles Allego/Fastned/IONITY/Atlante, du rafraîchissement FX et du catalogue SuC Tracker isolés ; retrait du seul seuil de baisse de stations SuC. Tests locaux PASS ; G2 reste FAIL, aucun déploiement.
 # 18 octobre 2026 06:42 UTC — #333 : cinq workflows corrigés vérifiés, Electroverse en cours
 
 - **Code fusionné** : [#334](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/334) `cb41b1c` (Atlante, Zephyre, Suisse, IONITY), [#335](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/335) `8a48428` (nouveau cycle REVE), [#336](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/336) `f1f8d5f` (total des lignes REVE), [#337](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/337) `f056c9f` (quota inter-runs, aucun déclencheur push). 21 tests Python ciblés réussis sur main ; compilateur Zephyre sur nouveau snapshot : 16 profils, 133 EVSE exacts. Scan public avant publication réussi.

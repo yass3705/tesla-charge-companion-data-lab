@@ -462,9 +462,10 @@ def parse_country_direct(text: str) -> dict:
             }
             missing = []
     if missing:
+        ordered_eur_matches = re.findall(r"(?:\d+(?:[.,]\d+)?)\s*€\s*/\s*kwh", direct_section, flags=re.I)
         raise RuntimeError(
             f"Allego France pricing: missing {missing} in operator-direct section; "
-            f"ordered EUR/kWh values found={re.findall(r'(?:\d+(?:[.,]\d+)?)\s*€\s*/\s*kwh', direct_section, flags=re.I)}; "
+            f"ordered EUR/kWh values found={ordered_eur_matches}; "
             f"section_preview={direct_section[:1200]!r}"
         )
 

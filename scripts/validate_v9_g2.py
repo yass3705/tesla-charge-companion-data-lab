@@ -57,8 +57,15 @@ def main() -> None:
                   else "scripts/bump_graphql_national_tariffs.py" if spec["module"] == "bump_tariffs"
                   else "scripts/bump_official.py" if spec["module"] == "bump_official"
                   else "scripts/allego_dxp_national.py" if spec["module"] == "allego_stations"
+                  else "scripts/allego_official.py" if spec["module"] == "allego_official"
+                  else f"scripts/{spec['source']}_official.py" if spec["module"] == "official_rules"
+                  else "scripts/update_fx.py" if spec["module"] == "fx"
+                  else "scripts/suc_tracker/update.py" if spec["module"] == "suc_tracker"
+                  else "scripts/etotem_direct_station_inventory.py" if spec["module"] == "cwd_script"
+                  else "scripts/france/build_france_irve_static_v9.py" if spec["module"] == "france_irve"
+                  else "scripts/build_france_canonical_dataset.py" if spec["module"] == "france_canonical"
                   else spec["script"])
-        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else "v9_rebuild/ionity.py" if spec["module"] == "ionity_family" else "v9_rebuild/fastned.py" if spec["module"] == "fastned_family" else "v9_rebuild/bump_inventory.py" if spec["module"] == "bump_inventory_family" else "v9_rebuild/bump_tariffs.py" if spec["module"] == "bump_tariffs" else "v9_rebuild/bump_official.py" if spec["module"] == "bump_official" else "v9_rebuild/allego_stations.py" if spec["module"] == "allego_stations" else method)
+        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else "v9_rebuild/ionity.py" if spec["module"] == "ionity_family" else "v9_rebuild/fastned.py" if spec["module"] == "fastned_family" else "v9_rebuild/bump_inventory.py" if spec["module"] == "bump_inventory_family" else "v9_rebuild/bump_tariffs.py" if spec["module"] == "bump_tariffs" else "v9_rebuild/bump_official.py" if spec["module"] == "bump_official" else "v9_rebuild/allego_stations.py" if spec["module"] == "allego_stations" else "v9_rebuild/allego_official.py" if spec["module"] == "allego_official" else "v9_rebuild/official_rules.py" if spec["module"] == "official_rules" else "v9_rebuild/fx.py" if spec["module"] == "fx" else "v9_rebuild/suc_tracker.py" if spec["module"] == "suc_tracker" else "v9_rebuild/cwd_script.py" if spec["module"] == "cwd_script" else "v9_rebuild/france_irve.py" if spec["module"] == "france_irve" else "v9_rebuild/france_canonical.py" if spec["module"] == "france_canonical" else method)
         if not source_code.is_file():
             errors.append(f"source method/config missing: {spec['id']}")
         for workflow in spec.get("legacy_workflows", []):
