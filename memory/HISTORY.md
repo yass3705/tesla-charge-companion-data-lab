@@ -491,3 +491,7 @@ Les scripts historiques d'inventaire officiel et de base tabulaire Bump sont ex�
 
 Deux scripts historiques supplémentaires et leur parseur conservé sont exécutés hors checkout, avec vérification des requêtes, schémas et prix non inventés. Les seuils de couverture/volume arbitraires ont été supprimés. Vingt-deux tests ciblés PASS ; G2 FAIL avec 127 méthodes restantes. Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, Bump officiel
+
+Le script historique de règles officielles Bump est migré dans l'orchestrateur isolé, avec son JSON et rapport d'origine. Seize tests ciblés PASS hors réseau ; G2 FAIL avec 126 méthodes restantes, Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
+

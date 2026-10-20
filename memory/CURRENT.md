@@ -871,3 +871,7 @@ Deux méthodes historiques d'inventaire Bump fonctionnent dans l'orchestrateur i
 
 Les collecteurs historiques GraphQL et TCC Bump tournent dans un même espace isolé, avec sorties et rapports contrôlés. Fixtures hors réseau : station rapprochée avec tarif et station non rapprochée sans prix ; erreurs de tuile ou de requête rejetées. G2 reste FAIL avec 127 méthodes et sept transferts GitHub non vérifiés. Actions désactivées, Production et site public inchangés. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
 
+# 20 octobre 2026 — V9, Bump officiel
+
+La cinquième méthode Bump, `bump_official.py`, tourne hors checkout avec les règles historiques et deux sorties conservées. Une preuve absente est rejetée sans nouveau montant accepté ; tests locaux PASS. G2 reste FAIL : 126 méthodes utiles et huit transferts GitHub non vérifiés. Actions désactivées, Production et site public inchangés. Prochaine famille Allego dans [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
