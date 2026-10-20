@@ -1,3 +1,7 @@
+# 20 octobre 2026 — V9 reconstruction, porte G2 renforcée
+
+- Le validateur G2 bloque désormais explicitement un PASS si les transferts GitHub restent non vérifiés. Il rapporte actuellement 131 méthodes utiles à migrer, cinq transferts non prouvés et sept collectes sans essai live. Le scan public passe ; Actions Data Lab reste désactivé. Prochain lot : chaîne Bump Direct, décrite dans [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 20 octobre 2026 — V9 reconstruction, Fastned Direct
 
 - Les inventaires historiques Fastned FR/GB tournent dans un module isolé qui vérifie les deux sorties et le rapport UK avant artefact. Les fixtures exécutent réellement les deux scripts hors réseau ; sept tests ciblés PASS. Les seuils de pages et stations ont été retirés, les contrôles de parse, identité et somme des points restent. G2 FAIL avec 131 méthodes restantes ; Actions désactivées, site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

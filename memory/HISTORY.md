@@ -479,3 +479,7 @@ Un module familial exécute les scripts historiques IONITY Direct FR/IT/DE et GB
 
 Les inventaires historiques Fastned FR/GB tournent dans un module familial isolé, avec validation commune des sorties et du rapport UK. Seuls les seuils de pages et stations ont été retirés. Sept tests de parseur et d'orchestration sur fixtures hors ligne PASS ; G2 FAIL avec 131 méthodes en attente. Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, garde de porte G2
+
+Le validateur G2 exige désormais la preuve de transfert GitHub pour les cinq sources marquées `unverified`, indépendamment du nombre de méthodes enregistrées. Il expose également les sept collectes `live_pending` sans les présenter comme essais réels. Résultat actuel FAIL sur 131 méthodes, cinq transferts et registre partiel ; scan public OK, Actions désactivées. Voir `memory/V9_REBUILD_PROGRESS.md`.
+

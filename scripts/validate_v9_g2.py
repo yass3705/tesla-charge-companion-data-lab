@@ -33,6 +33,13 @@ def main() -> None:
     if archived.returncode != 0 or archived.stdout.strip() != "commit":
         errors.append("G1 workflow archive commit unavailable")
     sources = json.loads((ROOT / "v9_rebuild/sources.json").read_text())["sources"]
+    handoff_pending = sorted(spec["id"] for spec in sources
+                             if spec.get("github_handoff") == "unverified"
+                             or "github_handoff_unverified" in spec.get("status", ""))
+    if handoff_pending:
+        errors.append(f"GitHub artifact handoffs remain unverified: {len(handoff_pending)}")
+    live_pending = sorted(spec["id"] for spec in sources
+                          if spec.get("live") == "pending" or "live_pending" in spec.get("status", ""))
     original = {row["workflow"]: row for row in json.loads((ROOT / "migration/v9/legacy-inventory.json").read_text())["workflows"]}
     final = json.loads((ROOT / "migration/v9/method-dispositions.json").read_text())
     migrated = set()
@@ -76,6 +83,8 @@ def main() -> None:
         "migrated_legacy_workflows": len(migrated),
         "registered_source_instances": len(sources),
         "pending_useful_methods": len(pending),
+        "github_handoff_unverified": handoff_pending,
+        "live_pending": live_pending,
         "pending_sample": pending[:12],
         "errors": errors,
     }
