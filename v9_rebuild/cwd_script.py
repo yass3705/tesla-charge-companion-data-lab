@@ -23,12 +23,51 @@ METHODS = {
     "swiss_lidl": ("scripts/finalize_swiss_lidl_official.py", "data/switzerland/lidl-official-direct-tariffs.json"),
     "swiss_ionity": ("scripts/finalize_swiss_ionity_national.py", "data/switzerland/ionity-official-national-direct-tariffs.json"),
     "swiss_plenitude": ("scripts/finalize_swiss_plenitude_official.py", "data/switzerland/plenitude-official-direct-tariffs.json"),
+    "swiss_ail": ("scripts/finalize_swiss_ail_emoti.py", "data/switzerland/ail-emoti-official-direct-tariffs.json"),
+    "swiss_ebs": ("scripts/finalize_swiss_ebs_ecarup.py", "data/switzerland/ebs-ecarup-direct-tariffs.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method in {"swiss_ail", "swiss_ebs"}:
+        operator = "CH*AIL" if method == "swiss_ail" else "CH*EBS"
+        prefix = "ail" if method == "swiss_ail" else "ebs"
+        archive = ("docs/switzerland-small-cpo-national-context-2026-09-28.json" if method == "swiss_ail" else
+                   "docs/switzerland-ecarup-targeted-national-queries-2026-09-28.json")
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / f"docs/switzerland-{prefix}-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        source = json.loads((out / archive).read_text(encoding="utf-8"))
+        input_rows = source.get("operators", {}).get(operator)
+        rows = payload.get("evses")
+        unresolved = payload.get("unresolved")
+        if not all(isinstance(value, list) for value in (input_rows, rows, unresolved)):
+            raise ValueError(f"Swiss {prefix.upper()} source or output lists missing")
+        input_ids = [row.get("evseId") for row in input_rows]
+        output_ids = [row.get("evseId") for row in rows + unresolved]
+        counts = payload.get("counts") or {}
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("operatorId") != operator
+                or any(not value or not value.startswith(operator + "*E") for value in input_ids)
+                or len(input_ids) != len(set(input_ids))
+                or sorted(input_ids) != sorted(output_ids)
+                or len(output_ids) != len(set(output_ids))
+                or counts.get("nationalEvseCount") != len(input_rows)
+                or counts.get("pricedEvseCount") != len(rows)
+                or counts.get("unresolvedEvseCount") != len(unresolved)
+                or report.get("productionSource") != str(METHODS[method][1])
+                or report.get("status") != ("complete" if input_rows and not unresolved else "partial")
+                or any(report.get(key) != counts.get(key) for key in ("nationalEvseCount", "pricedEvseCount", "unresolvedEvseCount"))):
+            raise ValueError(f"Swiss {prefix.upper()} exact EVSE contract invalid")
+        if method == "swiss_ail" and any(row.get("currency") != "CHF" or row.get("powerKw", 1000) > 22 for row in rows):
+            raise ValueError("Swiss AIL <=22 kW tariff scope invalid")
+        if method == "swiss_ebs" and any(row.get("tariff", {}).get("currency") != "CHF" or
+                                         not row.get("matchedPublicConnectors") or
+                                         any(point.get("distanceMeters", 1000) > 50 for point in row["matchedPublicConnectors"])
+                                         for row in rows):
+            raise ValueError("Swiss EBS exact public connector scope invalid")
+        return payload
     if method == "swiss_plenitude":
         payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
         report = json.loads((out / "docs/switzerland-plenitude-finalization-2026-09-28.json").read_text(encoding="utf-8"))
@@ -252,6 +291,12 @@ def run(out: Path, method: str, *, runner=subprocess.run) -> None:
         destination = out / "data/switzerland" / archive_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(archive, destination)
+    if method in {"swiss_ail", "swiss_ebs"}:
+        archive_name = ("switzerland-small-cpo-national-context-2026-09-28.json" if method == "swiss_ail" else
+                        "switzerland-ecarup-targeted-national-queries-2026-09-28.json")
+        destination = out / "docs" / archive_name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / "docs" / archive_name, destination)
     result = runner([sys.executable, str(ROOT / METHODS[method][0])],
                     cwd=out, capture_output=True, text=True, timeout=1200, check=False)
     if result.returncode:
