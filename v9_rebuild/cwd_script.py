@@ -33,12 +33,36 @@ METHODS = {
     "swiss_saascharge": ("scripts/finalize_swiss_saascharge_official.py", "data/switzerland/saascharge-official-direct-tariffs.json"),
     "swiss_partino": ("scripts/finalize_swiss_par_partino.py", "data/switzerland/par-partino-restricted-direct-classification.json"),
     "swiss_iwb": ("scripts/finalize_swiss_iwb_official_basel.py", "data/switzerland/iwb-official-basel-overlay.json"),
+    "swiss_tae": ("scripts/finalize_swiss_tae.py", "data/switzerland/tae-matterhorn-terminal-direct-tariffs.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method == "swiss_tae":
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / "docs/switzerland-tae-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        unresolved = payload.get("unresolved")
+        if not isinstance(rows, list) or not isinstance(unresolved, list):
+            raise ValueError("Swiss TAE EVSE lists missing")
+        ids = [row.get("evseId") for row in rows]
+        unresolved_ids = [row.get("evseId") for row in unresolved]
+        counts = payload.get("counts") or {}
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("operatorId") != "CH*TAE"
+                or any(not value or not value.startswith("CH*TAE*E") for value in ids)
+                or len(ids) != len(set(ids)) or not set(unresolved_ids).issubset(set(ids))
+                or counts.get("nationalEvseCount") != len(rows)
+                or counts.get("pricedEvseCount") != len(rows) - len(unresolved_ids)
+                or counts.get("unresolvedEvseCount") != len(unresolved_ids)
+                or report.get("productionSource") != str(METHODS[method][1])
+                or report.get("status") != ("complete" if rows and not unresolved else "partial")
+                or any(row.get("maxPowerKw") is None or row.get("maxPowerKw") > 22.0001
+                       for row in rows if row["evseId"] not in unresolved_ids)):
+            raise ValueError("Swiss TAE exact terminal scope invalid")
+        return payload
     if method == "swiss_iwb":
         archive = "docs/switzerland-iwb-owner-reconciliation-2026-09-28.json"
         source = json.loads((out / archive).read_text(encoding="utf-8"))

@@ -612,3 +612,7 @@ Saascharge est limité aux plages tarifaires explicites ; Partino sépare l'acc�
 # 20 octobre 2026 — V9, IWB Bâle
 
 L'overlay historique IWB est isolé et testé avec cas à Bâle et hors Bâle ; l'accès public seul ne devient jamais un prix. G2 reste FAIL : 71 méthodes utiles, 62 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, TAE Matterhorn
+
+Le finaliseur historique est isolé et testé sur 22 et 50 kW ; le second EVSE reste explicitement non résolu. Son fichier brut contient des montants indicatifs sur la ligne non résolue : G3 devra les exclure du calcul. G2 reste FAIL : 70 méthodes utiles, 63 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
