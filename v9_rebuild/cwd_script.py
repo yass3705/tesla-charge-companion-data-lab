@@ -20,12 +20,36 @@ METHODS = {
     "avia_picoty_inventory": ("scripts/avia_picoty_national.py", "data/national/avia_picoty_direct_stations_france.json.gz"),
     "waat_inventory": ("scripts/waat_national.py", "data/national/waat_direct_stations_france.json.gz"),
     "swiss_fastned": ("scripts/finalize_swiss_fastned_official.py", "data/switzerland/fastned-official-direct-tariffs.json"),
+    "swiss_lidl": ("scripts/finalize_swiss_lidl_official.py", "data/switzerland/lidl-official-direct-tariffs.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method == "swiss_lidl":
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / "docs/switzerland-lidl-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        unresolved = payload.get("unresolved")
+        ids = [row.get("evseId") for row in rows] if isinstance(rows, list) else []
+        unresolved_ids = {row.get("evseId") for row in unresolved} if isinstance(unresolved, list) else set()
+        counts = payload.get("counts") or {}
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("cpo") != "Lidl" or payload.get("operatorId") != "CH*LDL"
+                or not isinstance(rows, list) or not isinstance(unresolved, list)
+                or any(not value or not value.startswith("CH*LDL*E") for value in ids)
+                or len(ids) != len(set(ids)) or not unresolved_ids.issubset(set(ids))
+                or any(row.get("currency") != "CHF" for row in rows)
+                or any((row.get("directWebPricePerKwh") is None) != (row["evseId"] in unresolved_ids) for row in rows)
+                or counts.get("nationalEvseCount") != len(rows)
+                or counts.get("pricedEvseCount") != len(rows) - len(unresolved_ids)
+                or counts.get("unresolvedEvseCount") != len(unresolved_ids)
+                or report.get("productionSource") != str(METHODS[method][1])
+                or report.get("nationalEvseCount") != len(rows)
+                or report.get("status") != ("complete" if rows and not unresolved else "partial")):
+            raise ValueError("Swiss Lidl exact EVSE and output contract invalid")
+        return payload
     if method == "swiss_fastned":
         payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
         report = json.loads((out / "docs/switzerland-fastned-finalization-2026-09-28.json").read_text(encoding="utf-8"))
@@ -33,7 +57,7 @@ def validate_output(out: Path, method: str) -> dict:
         ids = [row.get("evseId") for row in rows] if isinstance(rows, list) else []
         if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
                 or payload.get("cpo") != "Fastned" or payload.get("operatorId") != "CH*FASTNED"
-                or not isinstance(rows, list) or any(not value for value in ids)
+                or not isinstance(rows, list) or any(not value or not value.startswith("CH*FASTNED*E") for value in ids)
                 or len(ids) != len(set(ids))
                 or any(row.get("currency") != "CHF" for row in rows)
                 or any(row.get("source") != payload.get("sources", {}).get("officialPricing") for row in rows)

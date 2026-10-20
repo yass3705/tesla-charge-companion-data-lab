@@ -572,3 +572,7 @@ Le collecteur historique à quatre partitions est isolé, lié à un inventaire 
 # 20 octobre 2026 — V9, Fastned Suisse
 
 La finalisation suisse historique est isolée et testée sur flux national réduit ; identité EVSE, sorties et échec de collecte sont vérifiés. G2 reste FAIL : 85 méthodes utiles, 48 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, Lidl Suisse
+
+Le finaliseur historique est isolé et testé pour AC, DC et puissance absente ; le prix manquant reste explicite. G2 reste FAIL : 84 méthodes utiles, 49 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

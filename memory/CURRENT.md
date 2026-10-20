@@ -933,3 +933,5 @@ V9 G2 : inventaire Freshmile Direct et exclusion des réseaux régionaux isolés
 V9 G2 : WAAT/Monta à quatre partitions migré et testé hors réseau avec dépendance d’inventaire signée et reprise des shards ; 86 méthodes utiles restent, 47 transferts GitHub non vérifiés. Actions désactivé.
 
 V9 G2 : finalisation Fastned Suisse migrée avec son script historique et testée sur flux national réduit ; 85 méthodes utiles restent, 48 transferts GitHub non vérifiés. Actions désactivé.
+
+V9 G2 : finalisation Lidl Suisse isolée et testée pour AC, DC et puissance manquante ; 84 méthodes utiles restent, 49 transferts GitHub non vérifiés. Actions désactivé.
