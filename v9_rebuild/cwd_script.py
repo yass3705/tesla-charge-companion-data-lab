@@ -34,12 +34,41 @@ METHODS = {
     "swiss_partino": ("scripts/finalize_swiss_par_partino.py", "data/switzerland/par-partino-restricted-direct-classification.json"),
     "swiss_iwb": ("scripts/finalize_swiss_iwb_official_basel.py", "data/switzerland/iwb-official-basel-overlay.json"),
     "swiss_tae": ("scripts/finalize_swiss_tae.py", "data/switzerland/tae-matterhorn-terminal-direct-tariffs.json"),
+    "swiss_ewo": ("scripts/finalize_swiss_ewo_ecarup.py", "data/switzerland/ewo-ecarup-direct-tariffs.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method == "swiss_ewo":
+        archive = "data/switzerland/ecarup-public-stations.json"
+        source = json.loads((out / archive).read_text(encoding="utf-8"))
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / "docs/switzerland-ewo-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        unresolved = payload.get("unresolved")
+        if not isinstance(rows, list) or not isinstance(unresolved, list):
+            raise ValueError("Swiss EWO EVSE lists missing")
+        ids = [row.get("evseId") for row in rows + unresolved]
+        owned = {station.get("ID") for station in source.get("stations", [])
+                 if (station.get("ContactDetails") or {}).get("OperatorName") == "Elektrizitätswerk Obwalden"}
+        counts = payload.get("counts") or {}
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("operatorId") != "CH*EWO"
+                or any(not value or not value.startswith("CH*EWO*E") for value in ids)
+                or len(ids) != len(set(ids))
+                or counts.get("nationalEvseCount") != len(ids)
+                or counts.get("resolvedEvseCount") != len(rows)
+                or counts.get("unresolvedEvseCount") != len(unresolved)
+                or report.get("productionSource") != str(METHODS[method][1])
+                or report.get("status") != ("complete" if ids and not unresolved else "partial")
+                or any(row.get("ecarupStationId") not in owned or row.get("distanceMeters", 1000) > 50
+                       or not row.get("publicConnectors")
+                       or any(connector.get("accessType") != 0 or connector.get("energyPrice") is None
+                              for connector in row["publicConnectors"]) for row in rows)):
+            raise ValueError("Swiss EWO exact public connector contract invalid")
+        return payload
     if method == "swiss_tae":
         payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
         report = json.loads((out / "docs/switzerland-tae-finalization-2026-09-28.json").read_text(encoding="utf-8"))
@@ -450,6 +479,11 @@ def run(out: Path, method: str, *, runner=subprocess.run) -> None:
         destination = out / "docs" / archive_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / "docs" / archive_name, destination)
+    if method == "swiss_ewo":
+        archive_name = "ecarup-public-stations.json"
+        destination = out / "data/switzerland" / archive_name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / "data/switzerland" / archive_name, destination)
     if method == "swiss_iwb":
         archive_name = "switzerland-iwb-owner-reconciliation-2026-09-28.json"
         destination = out / "docs" / archive_name

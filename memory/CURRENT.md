@@ -955,3 +955,5 @@ V9 G2 : Saascharge et Partino Suisse migrés avec plages exactes et classificati
 V9 G2 : overlay IWB Bâle migré avec source archivée, scope géographique et EVSE exacts testés ; 71 méthodes requises restent, 62 transferts GitHub non vérifiés. Actions désactivé.
 
 V9 G2 : TAE Matterhorn migré sur flux réduit avec cas 50 kW non résolu ; ses montants bruts devront être exclus du calcul pour les EVSE non résolus. 70 méthodes requises restent, 63 transferts GitHub non vérifiés. Actions désactivé.
+
+V9 G2 : EWO/eCarUp migré avec catalogue archivé et jointure stricte opérateur, distance et connecteur public ; 69 méthodes requises restent, 64 transferts GitHub non vérifiés. Actions désactivé.
