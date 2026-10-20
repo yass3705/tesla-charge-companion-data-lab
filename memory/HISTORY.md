@@ -532,3 +532,7 @@ Les deux scripts historiques à sorties relatives tournent en espace isolé. Ré
 # 20 octobre 2026 — V9, import Tesla/Mac
 
 L’import historique du lot Mac validé est raccordé à l’orchestrateur isolé, avec reprise du dernier artefact signé et tests de corruption. Les anciens seuils de stations et d’inclusion de tous les pays sont retirés ; Updater Test reste inchangé. G2 FAIL : 95 méthodes utiles, 38 transferts GitHub non vérifiés.
+
+# 20 octobre 2026 — V9, GRIDSERVE UK PCPR
+
+Collecte et préparation historiques isolées et testées sur fixtures hors réseau. Les tarifs restent liés aux connecteurs exacts ; les références absentes restent non tarifées. G2 FAIL : 94 méthodes utiles, 39 transferts GitHub non vérifiés. Aucune publication.

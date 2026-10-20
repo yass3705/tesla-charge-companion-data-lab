@@ -913,3 +913,5 @@ V9 G2 : Lidl Plus et Plug Inn migrés sur fixtures locales avec les valeurs Lidl
 V9 G2 : Qwello Saône-et-Loire et Révéo migrés hors checkout avec tests hors ligne ; 96 méthodes utiles restent. Aucun transfert GitHub réel attesté.
 
 V9 G2 : import Tesla/Mac historique migré hors checkout et testé sur deux catalogues figés ; 95 méthodes utiles restent. Updater Test et site public inchangés.
+
+V9 G2 : GRIDSERVE UK PCPR migré et testé hors ligne avec pagination et correspondance exacte des connecteurs ; 94 méthodes utiles restent. Transfert GitHub non vérifié, Actions désactivé.

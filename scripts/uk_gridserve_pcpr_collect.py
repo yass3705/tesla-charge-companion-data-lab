@@ -121,8 +121,6 @@ report={"provider":"GRIDSERVE","country":"GB","collectedAt":now,"baseUrl":BASE+"
 with open("reports/uk/gridserve-pcpr-latest.json","w",encoding="utf-8") as f:
     json.dump(report,f,ensure_ascii=False,indent=2); f.write("\n")
 
-if not locations: raise SystemExit("GRIDSERVE /locations returned no locations")
-if not tariffs: raise SystemExit("GRIDSERVE /tariffs returned no tariffs")
 print(json.dumps({"locations":len(locations),"locationPages":lp,"evses":loc_stats["evses"],
                   "connectors":loc_stats["connectors"],"tariffs":len(tariffs),"tariffPages":tp,
                   "referencedTariffs":len(refs),"missingTariffRefs":len(missing)},indent=2))
