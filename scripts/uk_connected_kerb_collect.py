@@ -80,7 +80,9 @@ def collect(client, path, identity):
             identities[key] += 1
             rows.append(row)
         pages = pagination.get("totalPages")
-        done = (pages is not None and page >= int(pages)) or (expected is not None and len(rows) >= expected)
+        if not batch and pages is not None and page < int(pages):
+            raise ValueError(f"{path}: empty page before declared pagination end")
+        done = page >= int(pages) if pages is not None else expected is not None and len(rows) >= expected
         if done or not batch:
             if expected is not None and len(rows) != expected:
                 raise ValueError(f"{path}: collected {len(rows)} objects, expected {expected}")
@@ -176,8 +178,6 @@ def main():
     client = Client(os.environ.get("CONNECTED_KERB_TOKEN", "").strip())
     locations, lp = collect(client, "charging-pools", "id")
     tariffs, tp = collect(client, "tariffs", "id")
-    if not locations or not tariffs:
-        raise ValueError("Empty locations or tariffs; previous snapshot retained")
     counts = {"locations": len(locations), "tariffs": len(tariffs), **audit(locations, tariffs)}
     now = datetime.now(timezone.utc).isoformat()
     report = {"provider": "Connected Kerb", "country": "GB", "collectedAt": now,

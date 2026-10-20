@@ -285,6 +285,13 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("TE63 historical exact PAN method changed")
             spec["output_file"] = "data/operator_direct/chargezy_te63_official_france.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/chargezy_te63.py")
+        elif spec.get("module") == "uk_connected_kerb_operator" and source_id == "GB:connected_kerb_operator":
+            if (spec["secret_names"] != ["CONNECTED_KERB_TOKEN"]
+                    or not all((root / "scripts" / name).is_file() for name in
+                               ("uk_connected_kerb_collect.py", "uk_connected_kerb_snapshot_audit.py"))):
+                raise ValueError("Connected Kerb operator API contract changed")
+            spec["output_file"] = "data/national/uk_connected_kerb_locations.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/uk_connected_kerb_operator.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -507,6 +514,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     driveco_evse_module = spec["module"] == "driveco_evse"
     uk_midhope_module = spec["module"] == "uk_midhope"
     chargezy_te63_module = spec["module"] == "chargezy_te63"
+    uk_connected_kerb_operator_module = spec["module"] == "uk_connected_kerb_operator"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -587,7 +595,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if waat_monta_public_module else [sys.executable, str(root / "v9_rebuild/driveco_evse.py"), "--out", str(staged)]
                        if driveco_evse_module else [sys.executable, str(root / "v9_rebuild/uk_midhope.py"), "--out", str(staged)]
                        if uk_midhope_module else [sys.executable, str(root / "v9_rebuild/chargezy_te63.py"), "--out", str(staged)]
-                       if chargezy_te63_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if chargezy_te63_module else [sys.executable, str(root / "v9_rebuild/uk_connected_kerb_operator.py"), "--out", str(staged)]
+                       if uk_connected_kerb_operator_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -620,7 +629,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or freshmile_inventory_module or waat_monta_dependency) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or freshmile_inventory_module or waat_monta_dependency) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -862,6 +871,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif uk_connected_kerb_operator_module:
+                from v9_rebuild.uk_connected_kerb_operator import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

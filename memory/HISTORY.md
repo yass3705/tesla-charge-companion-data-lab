@@ -636,3 +636,7 @@ Le collecteur historique Chargezy/TE63 est isolé, avec jointure PAN par EVSE ex
 # 20 octobre 2026 — V9, garde historique de volumes
 
 L'ancien contrôle global `validate_v9_source_guards.py` est classé obsolète : il n'écrit pas de donnée et impose des volumes 2026 interdits par V9. Sa retraite est nominative et vérifiée par le validateur G2 ; les fichiers source restent couverts par leurs méthodes indépendantes. G2 reste FAIL : 64 méthodes utiles, 67 transferts GitHub non vérifiés. Actions désactivé.
+
+# 20 octobre 2026 — V9, Connected Kerb opérateur UK
+
+Le collecteur API opérateur et l'audit de snapshot sont isolés ; la pagination déclarée et les références exactes sont testées hors réseau. Le résultat reste non publié vers V9. G2 reste FAIL : 63 méthodes utiles, 68 transferts GitHub non vérifiés. Actions désactivé.

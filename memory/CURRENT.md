@@ -965,3 +965,5 @@ V9 G2 : constructeur Midhope UK isolé sur preuve et snapshot exacts déjà arch
 V9 G2 : Chargezy/TE63 migré sur fixture PAN réduite ; 65 méthodes requises restent, 67 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
 
 V9 G2 : ancien garde de volumes globaux classé obsolète avec exception G2 nominative vérifiée ; 64 méthodes requises restent, 67 transferts GitHub non vérifiés. Actions désactivé.
+
+V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nommés testés hors réseau ; 63 méthodes requises restent, 68 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
