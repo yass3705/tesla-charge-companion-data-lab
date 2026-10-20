@@ -27,6 +27,7 @@ REBUILD_TOOL_NAMES = {
     "v9_production_consumers.py",
     "v9_manual_consumer_priority.py",
     "v9_source_registry.py",
+    "v9_script_destinations.py",
 }
 
 

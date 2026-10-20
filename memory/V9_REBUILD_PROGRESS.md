@@ -5,7 +5,7 @@ Date : 20 octobre 2026. Branche locale Data Lab : `rebuild/v9-20261020`, base `0
 | Phase | Statut | Preuve / tests | Blocage |
 | --- | --- | --- | --- |
 | G0 Sécurité | Validée localement | Actions Data Lab `enabled=false` vérifié par API ; trois runs actifs annulés ; aucun run actif au dernier contrôle ; références locales de restauration vérifiées | Réactivation seulement après retrait des anciens YAML actifs et contrôle du nouveau dispositif |
-| G1 Méthodes | En cours | Registre central provisoire `source-registry.json` : 221 méthodes prioritaires (117 planifiées, 61 manuelles liées littéralement à Production, 43 scripts sans référence YAML) vers 108 modules candidats ; inventaire total 1 207 YAML/756 scripts historiques ; 26/26 portées planifiées ambiguës relues ; 80 chemins Data Lab cités littéralement par Production présents ; intégrateur Ubitricity NL `--no-write` réussi ; scan public ciblé réussi | Destinations non qualifiées par la chaîne de build ; 1 029 workflows historiques encore à classer ; deux extracteurs Ubitricity NL absents |
+| G1 Méthodes | En cours | Registre central provisoire : 221 méthodes prioritaires vers 108 modules candidats ; `script-destinations.json` rattache provisoirement 756/756 scripts historiques à un module unique, 0 ambigu ; inventaire 1 207 YAML ; 26/26 portées planifiées ambiguës relues ; 80 chemins Data Lab cités littéralement par Production présents ; intégrateur Ubitricity NL `--no-write` réussi ; scan public ciblé réussi | Destinations non qualifiées par la chaîne de build ; 1 029 wrappers historiques encore à classer ; deux extracteurs Ubitricity NL absents |
 | G2 Workflows | À faire | — | G1 |
 | G3 Données | À faire | — | G2 |
 | G4 Production | À faire | — | G3 |
