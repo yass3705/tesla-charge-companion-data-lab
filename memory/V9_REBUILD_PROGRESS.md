@@ -5,7 +5,7 @@ Date : 20 octobre 2026. Branche locale Data Lab : `rebuild/v9-20261020`, base `0
 | Phase | Statut | Preuve / tests | Blocage |
 | --- | --- | --- | --- |
 | G0 Sécurité | Validée localement | Actions Data Lab `enabled=false` vérifié par API ; trois runs actifs annulés ; aucun run actif au dernier contrôle ; références locales de restauration vérifiées | Réactivation seulement après retrait des anciens YAML actifs et contrôle du nouveau dispositif |
-| G1 Méthodes | En cours | Registre `legacy-inventory.json`, matrice `scheduled-methods.json` et audit `G1_METHOD_AUDIT.md` : 1 207 YAML, 757 scripts, 117/117 planifiés avec commandes détectées, 16 `workflow_run`, 26/26 portées ambiguës relues ; compilation Python, reproductibilité et scan public ciblé réussis | Correspondance source → module non terminée ; deux extracteurs Ubitricity NL absents du code historique accessible |
+| G1 Méthodes | En cours | Registre `legacy-inventory.json`, matrice `scheduled-methods.json` et audit `G1_METHOD_AUDIT.md` : 1 207 YAML, 757 scripts, 117/117 planifiés avec commandes et destination proposée dans 76 modules ; 26/26 portées ambiguës relues ; 80 chemins Data Lab référencés littéralement par Production, 80/80 présents ; scan public ciblé réussi | Destinations non qualifiées par la chaîne de build ; deux extracteurs Ubitricity NL absents du code historique accessible |
 | G2 Workflows | À faire | — | G1 |
 | G3 Données | À faire | — | G2 |
 | G4 Production | À faire | — | G3 |
@@ -30,6 +30,8 @@ Date : 20 octobre 2026. Branche locale Data Lab : `rebuild/v9-20261020`, base `0
 | Data Lab | `docs/r9-electra-historical-ci-local` | `e64fa057791bce9ad1516c28516fc0f02f440867` | `0b1b9d75463121b6ff86f94764b32d3349ee3e3c` | 0 / 959 |
 | Stable | `main` | `aad27bca174bbb62fc54affb93621071e2c0af43` | `97c841955b1978333ac1f076c9ac2ac0d4ed53cc` | 0 / 37 |
 | Updater Test | `main` | `1fdb3051f0f65e51ce1917c1a97e3f082ae695a3` | `86d9a60bc454214f2f6d59c0f2819c26b7b89978` | 0 / 25 |
+
+Branche Production de reconstruction séparée, sans modification : `rebuild/v9-20261020` au SHA `fba450da9092450fa7315d4c5b44e7e80394c8b4`.
 
 ## Références métier conservées
 

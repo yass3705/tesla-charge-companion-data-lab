@@ -10,6 +10,50 @@ from pathlib import Path
 
 
 COMMAND_RE = re.compile(r"^\s*(?:(?:-\s*)?run:\s*)?(?:python(?:3)?|node|bash|sh|npx)\s+[^#\n]+")
+SPECIAL_DESTINATIONS = {
+    "actions-storage": "operations/actions_storage",
+    "audit-fixed": "validation/fixed_tariffs",
+    "france-irve": "national/fr_irve",
+    "belgium-nap": "national/be_nap",
+    "netherlands-dotnl": "national/nl_dotnl",
+    "spain-reve": "national/es_reve",
+    "switzerland-tcc": "national/ch_public_charging",
+    "electra": "platform/electra",
+    "electroverse": "platform/electroverse",
+    "import-tesla": "tesla/mac_ingress",
+    "tesla-dataset": "tesla/provenance",
+    "suc-tracker": "tesla/suc_tracker",
+    "fx-daily": "shared/fx",
+    "refresh-fixed-tariffs-bfc": "fixed_tariffs/fr_bfc",
+    "refresh-fixed-tariffs-france": "fixed_tariffs/fr",
+    "refresh-fixed-tariffs-spain": "fixed_tariffs/es",
+    "watch-fixed": "validation/fixed_tariffs",
+    "validate-v9": "validation/legacy_progress",
+    "france-treated": "validation/fr_progress",
+    "france-spie": "validation/fr_spie",
+    "france-irve-public-access": "validation/fr_public_access",
+    "france-irve-tariff-coverage": "validation/fr_tariff_coverage",
+    "avia-picoty": "cpo/avia_picoty",
+    "switzerland-avia": "cpo/avia_ch",
+    "morocco-total": "cpo/totalenergies",
+    "shell-recharge": "cpo/shell_recharge",
+    "lidl-plus": "cpo/lidl_plus",
+    "uk-connected-kerb": "cpo/connected_kerb",
+    "uk-eco-movement": "cpo/eco_movement",
+    "uk-source_ev": "cpo/source_ev",
+    "uk-validated-open-feeds": "national/uk_open_feeds",
+}
+
+
+def proposed_destination(name: str) -> str:
+    stem = name.removesuffix(".yml").removesuffix(".yaml")
+    for prefix in sorted(SPECIAL_DESTINATIONS, key=len, reverse=True):
+        if stem.startswith(prefix):
+            return SPECIAL_DESTINATIONS[prefix]
+    parts = stem.replace("_", "-").split("-")
+    if parts[0] in {"uk", "morocco", "switzerland"} and len(parts) > 1:
+        return "cpo/" + parts[1]
+    return "cpo/" + parts[0]
 
 
 def main() -> None:
@@ -44,6 +88,7 @@ def main() -> None:
             "missing_script_references": item["missing_script_references"],
             "secret_names": item["secrets"],
             "literal_data_paths": item["data_paths"],
+            "proposed_destination_module": proposed_destination(name),
             "destination_module": None,
             "review_status": "pending_method_and_output_review",
         })
