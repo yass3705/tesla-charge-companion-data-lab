@@ -188,10 +188,13 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("SuC Tracker historical method or configuration changed")
             spec["output_file"] = "data/suc-tracker/metadata.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/suc_tracker.py")
-        elif spec.get("module") == "cwd_script" and source_id == "FR:etotem_inventory":
-            if spec.get("method") != "etotem_inventory" or spec["secret_names"] or not (root / "scripts/etotem_direct_station_inventory.py").is_file():
-                raise ValueError("e-Totem historical method or authentication contract changed")
-            spec["output_file"] = "data/national/etotem_direct_stations_france.json.gz"
+        elif spec.get("module") == "cwd_script" and source_id in {"FR:etotem_inventory", "FR:qwello_saone_et_loire", "FR:reveo_official"}:
+            from v9_rebuild.cwd_script import METHODS
+            method = spec.get("method")
+            if ((source_id, method) not in {("FR:etotem_inventory", "etotem_inventory"), ("FR:qwello_saone_et_loire", "qwello_saone_et_loire"), ("FR:reveo_official", "reveo_official")}
+                    or spec["secret_names"] or not (root / METHODS[method][0]).is_file()):
+                raise ValueError("Relative-output historical method or authentication contract changed")
+            spec["output_file"] = METHODS[method][1]
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/cwd_script.py")
         elif spec.get("module") == "france_irve" and source_id == "FR:irve_national":
             if spec["secret_names"] or any(not (root / name).is_file() for name in ("scripts/france/build_france_irve_static_v9.py", "scripts/france/build_france_irve_dynamic_status_v9.py", "scripts/france/audit_france_irve_residuals.py")):

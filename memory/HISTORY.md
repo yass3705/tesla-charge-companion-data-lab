@@ -524,3 +524,7 @@ Trois méthodes officielles supplémentaires migrées et testées hors ligne par
 # 20 octobre 2026 — V9, Lidl Plus et Plug Inn
 
 Deux méthodes officielles consommées par Production migrées en espace isolé et testées hors ligne. G2 FAIL : 98 méthodes utiles et 35 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, Qwello et Révéo
+
+Les deux scripts historiques à sorties relatives tournent en espace isolé. Révéo conserve le flux OCPI comme preuve de roaming, sans tarif Direct inventé ; anciens minimums de volume retirés. G2 FAIL : 96 méthodes utiles, 37 transferts GitHub non vérifiés.

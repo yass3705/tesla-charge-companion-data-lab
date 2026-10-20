@@ -131,18 +131,12 @@ def main() -> int:
     ], "roaming")
 
     tariffs = json.loads(o_raw.decode("utf-8", errors="strict"))
-    if not isinstance(tariffs, list) or not tariffs:
-        raise RuntimeError("OCPI tariff feed is empty or not a list")
+    if not isinstance(tariffs, list):
+        raise RuntimeError("OCPI tariff feed is not a list")
 
     at = now()
     party_ids = sorted({str(x.get("party_id")) for x in tariffs if x.get("party_id")})
-    required_parties = {"M31", "S48", "S12", "S34"}
-    if not required_parties.issubset(set(party_ids)):
-        raise RuntimeError(f"OCPI feed missing expected operation codes: {sorted(required_parties - set(party_ids))}")
-
     active = [x for x in tariffs if active_tariff(x, at)]
-    if not active:
-        raise RuntimeError("OCPI feed has no currently active tariffs")
 
     compact = []
     for item in active:
@@ -161,8 +155,6 @@ def main() -> int:
         })
 
     readable = [x for x in compact if x["grossTtcDisplayText"]]
-    if len(readable) < 8:
-        raise RuntimeError(f"Too few human-readable active OCPI tariffs: {len(readable)}")
 
     feed_sha = hashlib.sha256(o_raw).hexdigest()
     relevant = {

@@ -61,6 +61,8 @@ def main() -> None:
                   else f"scripts/{spec['source']}_official.py" if spec["module"] == "official_rules"
                   else "scripts/update_fx.py" if spec["module"] == "fx"
                   else "scripts/suc_tracker/update.py" if spec["module"] == "suc_tracker"
+                  else "scripts/qwello_saone_et_loire_official.py" if spec["module"] == "cwd_script" and spec["method"] == "qwello_saone_et_loire"
+                  else "scripts/reveo_official.py" if spec["module"] == "cwd_script" and spec["method"] == "reveo_official"
                   else "scripts/etotem_direct_station_inventory.py" if spec["module"] == "cwd_script"
                   else "scripts/france/build_france_irve_static_v9.py" if spec["module"] == "france_irve"
                   else "scripts/build_france_canonical_dataset.py" if spec["module"] == "france_canonical"

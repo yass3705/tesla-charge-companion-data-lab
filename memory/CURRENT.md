@@ -909,3 +909,5 @@ V9 G2 : Qovoltis, ENGIE Vianeo et Métropolis migrés sur fixtures hors ligne ; 
 V9 G2 : Plenitude, Zunder et IECharge validés sur fixtures hors ligne ; 100 méthodes utiles restent. Collectes live et transferts GitHub non attestés.
 
 V9 G2 : Lidl Plus et Plug Inn migrés sur fixtures locales avec les valeurs Lidl archivées ; 98 méthodes utiles restent. Aucun test GitHub Actions réel.
+
+V9 G2 : Qwello Saône-et-Loire et Révéo migrés hors checkout avec tests hors ligne ; 96 méthodes utiles restent. Aucun transfert GitHub réel attesté.
