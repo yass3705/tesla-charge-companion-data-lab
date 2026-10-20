@@ -516,3 +516,7 @@ DRIVECO, eborn, E55C et Freshmile migrés par le module commun et testés hors l
 # 20 octobre 2026 — V9, règles Qovoltis, Vianeo, Métropolis
 
 Trois méthodes historiques de règles officielles supplémentaires migrées et testées dans l’orchestrateur isolé. G2 FAIL : 103 méthodes restantes, 30 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, Plenitude, Zunder, IECharge
+
+Trois méthodes officielles supplémentaires migrées et testées hors ligne par l’adaptateur commun. G2 FAIL : 100 méthodes utiles, 33 transferts GitHub non vérifiés. Aucune publication.

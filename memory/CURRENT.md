@@ -905,3 +905,5 @@ V9 G2 UK PCPR : Blink, Allego UK, Source EV et Evyve migrés localement par fixt
 V9 G2 : quatre règles officielles FR supplémentaires (DRIVECO, eborn, E55C, Freshmile) validées sur fixtures locales, sans prix inventé ; 106 méthodes utiles restent. GitHub Actions Data Lab toujours désactivé.
 
 V9 G2 : Qovoltis, ENGIE Vianeo et Métropolis migrés sur fixtures hors ligne ; 103 méthodes utiles restent, aucun transfert GitHub attesté.
+
+V9 G2 : Plenitude, Zunder et IECharge validés sur fixtures hors ligne ; 100 méthodes utiles restent. Collectes live et transferts GitHub non attestés.

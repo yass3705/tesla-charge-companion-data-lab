@@ -20,10 +20,13 @@ RULES = {
     "etotem": ("e-Totem", "etotem-official-france", 5),
     "fastned": ("Fastned", "fastned-official-france", 7),
     "freshmile": ("Freshmile", "freshmile-official-france", 7),
+    "iecharge": ("IECharge", "iecharge-official-france", 5),
     "ionity": ("IONITY", "ionity-official-france", 6),
     "metropolis": ("Métropolis Recharge", "metropolis-official-grand-paris", 2),
+    "plenitude": ("Plenitude On The Road", "plenitude-on-the-road-official-france", 4),
     "qovoltis": ("Qovoltis", "qovoltis-official-france", 3),
     "vianeo": ("ENGIE Vianeo", "engie-vianeo-official-france", 7),
+    "zunder": ("Zunder", "zunder-official-france", 7),
 }
 
 
@@ -116,6 +119,23 @@ def validate_output(out: Path, source: str) -> dict:
         if (payload.get("classification", {}).get("localPublicNetwork") is not True
                 or payload.get("roaming", {}).get("incomingThirdPartyBadge", {}).get("operatorDirect") is not False):
             raise ValueError("Métropolis local network or roaming scope invalid")
+    elif source == "plenitude":
+        if (payload.get("classification", {}).get("stationLevelLookupRequiredForThirdPartyRoaming") is not True
+                or payload.get("roaming", {}).get("operatorDirect") is not False
+                or payload.get("b2bInteroperability", {}).get("consumerTariff") is not False
+                or payload.get("fees", {}).get("blockingFee", {}).get("graceMinutesAfterEndOfCharge") is None):
+            raise ValueError("Plenitude official direct, roaming or blocking fee scope invalid")
+    elif source == "zunder":
+        if (payload.get("classification", {}).get("stationLevelPriceLookupRequiredForExactPublicPrice") is not True
+                or payload.get("roaming", {}).get("operatorDirect") is not False
+                or payload.get("specialPrograms", {}).get("socialLeasing2026", {}).get("generalPublicTariff") is not False
+                or payload.get("loyalty", {}).get("mustRemainSeparateFromBaseEnergyTariff") is not True):
+            raise ValueError("Zunder official special-program or roaming scope invalid")
+    elif source == "iecharge":
+        if (payload.get("classification", {}).get("singleNationalDirectTariff") is not True
+                or payload.get("classification", {}).get("thirdPartyEmspPriceCanDiffer") is not True
+                or payload.get("roaming", {}).get("operatorDirect") is not False):
+            raise ValueError("IECharge direct or eMSP scope invalid")
     elif source == "fastned":
         direct = payload["operatorDirect"]
         if (payload.get("classification", {}).get("singleNationalOperatorTariff") is not True
