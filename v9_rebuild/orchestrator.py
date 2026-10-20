@@ -113,6 +113,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Atlante direct historical method changed")
             spec["output_file"] = "data/national/atlante_direct_stations_france.json.gz"
             spec["manifest_sha256"] = sha256(root / script)
+        elif spec.get("module") == "isolated_script" and source_id == "FR:labornebleue_direct":
+            script = safe_relative(spec.get("script", ""))
+            if script.as_posix() != "scripts/labornebleue_station_inventory.py" or spec["secret_names"]:
+                raise ValueError("La Borne Bleue historical method changed")
+            spec["output_file"] = "data/national/labornebleue_direct_stations_idf.json.gz"
+            spec["manifest_sha256"] = sha256(root / script)
         elif spec.get("module") == "belib_chain" and source_id == "FR:belib":
             if spec["secret_names"]:
                 raise ValueError("Belib historical collection has no secret")
@@ -386,6 +392,33 @@ def validate_isolated_script_output(spec: dict, output: Path) -> bool:
                     or row.get("operatorName") != "Atlante" or not isinstance(row.get("connectors"), list)):
                 return False
             ids.add(key)
+        return True
+    if spec["id"] == "FR:labornebleue_direct":
+        scope = data.get("scope") or {}
+        stations = data.get("stations")
+        counts = data.get("counts") or {}
+        if (data.get("dataset") != "labornebleue-direct-tcc-v8-idf"
+                or scope.get("countryCode") != "FR" or scope.get("onlyDirectCpo") is not True
+                or scope.get("strictExplicitNetworkLabel") is not True
+                or scope.get("partnerLocationsIncluded") is not False
+                or scope.get("partnerTariffsIncluded") is not False
+                or not isinstance(stations, list) or counts.get("publishedStations") != len(stations)):
+            return False
+        ids = set()
+        for station in stations:
+            sid = station.get("stationId")
+            if (not sid or sid in ids or station.get("countryCode") != "FR"
+                    or not isinstance(station.get("configurations"), list)):
+                return False
+            ids.add(sid)
+            config_ids = set()
+            for config in station["configurations"]:
+                config_id = config.get("id")
+                if (not config_id or config_id in config_ids
+                        or config.get("offerType") != "operator_direct"
+                        or config.get("labornebleueOwnNetworkOnly") is not True):
+                    return False
+                config_ids.add(config_id)
         return True
     return False
 

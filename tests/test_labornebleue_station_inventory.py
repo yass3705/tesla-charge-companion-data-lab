@@ -1,6 +1,14 @@
 import importlib.util
+import csv
+import gzip
+import json
 import pathlib
+import subprocess
+import sys
+import tempfile
 import unittest
+
+from v9_rebuild.orchestrator import validate_isolated_script_output
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "labornebleue_station_inventory.py"
 spec = importlib.util.spec_from_file_location("labornebleue_station_inventory", SCRIPT)
@@ -54,22 +62,46 @@ class LaBorneBleueInventoryTests(unittest.TestCase):
 
     def test_build_is_direct_only_and_subscription_is_explicit(self):
         rows = []
-        for s in range(200):
+        for s in range(2):
             sid = f"FRLBB{s:05d}"
             for p in range(4):
                 rows.append(row(sid, f"{sid}*P{p}", power=22))
         rows.append(row("FRECO00001", "FRECO00001*P1", power=22, network="Ecocharge77"))
         payload = mod.build(rows)
-        self.assertEqual(payload["counts"]["strictSourceStations"], 200)
-        self.assertEqual(payload["counts"]["strictSourceChargePoints"], 800)
-        self.assertEqual(payload["counts"]["publishedStations"], 200)
-        self.assertEqual(payload["counts"]["publishedConfigurations"], 400)
+        self.assertEqual(payload["counts"]["strictSourceStations"], 2)
+        self.assertEqual(payload["counts"]["strictSourceChargePoints"], 8)
+        self.assertEqual(payload["counts"]["publishedStations"], 2)
+        self.assertEqual(payload["counts"]["publishedConfigurations"], 4)
         self.assertFalse(payload["scope"]["partnerLocationsIncluded"])
         self.assertFalse(payload["scope"]["partnerTariffsIncluded"])
         self.assertFalse(payload["scope"]["subscriptionDiscountAtPartnerOperators"])
         configs = payload["stations"][0]["configurations"]
         self.assertEqual({c["subscriptionId"] for c in configs}, {None, "labornebleue-annual"})
         self.assertTrue(all(c["labornebleueOwnNetworkOnly"] for c in configs))
+
+    def test_historical_script_runs_off_checkout_with_small_fixture(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = pathlib.Path(tmp) / "source.csv"
+            output = pathlib.Path(tmp) / "lbb.json.gz"
+            rows = [row("FRLBB1", "FRLBB1*1"), row("OTHER1", "OTHER1*1", network="Ecocharge77")]
+            with fixture.open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.DictWriter(stream, fieldnames=rows[0].keys(), delimiter=";")
+                writer.writeheader()
+                writer.writerows(rows)
+            subprocess.run([sys.executable, str(SCRIPT), "--input", str(fixture), "--out", str(output)], check=True, capture_output=True)
+            spec = {"id": "FR:labornebleue_direct"}
+            self.assertTrue(validate_isolated_script_output(spec, output))
+            with gzip.open(output, "rt") as stream:
+                payload = json.load(stream)
+            self.assertEqual([station["stationId"] for station in payload["stations"]], ["FRLBB1"])
+            payload["stations"].append(payload["stations"][0])
+            with gzip.open(output, "wt") as stream:
+                json.dump(payload, stream)
+            self.assertFalse(validate_isolated_script_output(spec, output))
+
+    def test_other_network_only_is_valid_empty_result(self):
+        payload = mod.build([row("OTHER1", "OTHER1*1", network="Ecocharge77")])
+        self.assertEqual(payload["stations"], [])
 
 
 if __name__ == "__main__":

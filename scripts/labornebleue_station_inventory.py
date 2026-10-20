@@ -203,12 +203,6 @@ def runtime_rules(exact: dict[str, Any]) -> dict[str, Any]:
 
 def build(rows: list[dict[str, str]]) -> dict[str, Any]:
     selected = [r for r in rows if is_lbb(r)]
-    if not selected:
-        # Keep diagnostics useful in Actions logs without broadening the published scope.
-        enseignes = Counter(field(r, "nom_enseigne") for r in rows if field(r, "nom_enseigne"))
-        operators = Counter(field(r, "nom_operateur") for r in rows if field(r, "nom_operateur"))
-        raise RuntimeError(f"no explicit La Borne Bleue rows; top enseignes={enseignes.most_common(20)}; "
-                           f"top operators={operators.most_common(20)}")
 
     grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in selected:
@@ -278,10 +272,6 @@ def build(rows: list[dict[str, str]]) -> dict[str, Any]:
         })
 
     source_pdc = sum(len(v) for v in grouped.values())
-    if source_pdc < 800 or source_pdc > 2500:
-        raise RuntimeError(f"strict La Borne Bleue source point count outside guardrail: {source_pdc}")
-    if len(stations) < 200 or len(stations) > 1500:
-        raise RuntimeError(f"strict La Borne Bleue priced station count outside guardrail: {len(stations)}")
 
     return {
         "schemaVersion": "1.0.0",

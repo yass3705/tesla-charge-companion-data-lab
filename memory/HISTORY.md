@@ -540,3 +540,7 @@ Collecte et préparation historiques isolées et testées sur fixtures hors rés
 # 20 octobre 2026 — V9, Ubitricity UK PCPR
 
 La collecte et la validation historiques UK tournent en espace isolé sur archives figées. Les offres restent liées aux connecteurs exacts et les absences de prix sont explicites. G2 FAIL : 93 méthodes utiles, 40 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, La Borne Bleue
+
+Le collecteur historique est isolé et testé sur CSV réduit. Les anciens seuils de volumes sont retirés ; réseau Direct et abonnement restent distincts. G2 FAIL : 92 méthodes utiles, 41 transferts GitHub non vérifiés. Aucune publication.
