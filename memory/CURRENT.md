@@ -875,3 +875,7 @@ Les collecteurs historiques GraphQL et TCC Bump tournent dans un même espace is
 
 La cinquième méthode Bump, `bump_official.py`, tourne hors checkout avec les règles historiques et deux sorties conservées. Une preuve absente est rejetée sans nouveau montant accepté ; tests locaux PASS. G2 reste FAIL : 126 méthodes utiles et huit transferts GitHub non vérifiés. Actions désactivées, Production et site public inchangés. Prochaine famille Allego dans [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
 
+# 20 octobre 2026 — V9, stations Allego
+
+La chaîne historique Allego DXP, normalisation et coordonnées de repli tourne dans l'orchestrateur isolé et a passé ses fixtures hors réseau. G2 reste FAIL avec 125 méthodes utiles et neuf transferts GitHub non vérifiés. Selenium n'a été ajouté qu'à la source Allego dans le workflow commun ; Actions désactivées, Production et site public inchangés. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+

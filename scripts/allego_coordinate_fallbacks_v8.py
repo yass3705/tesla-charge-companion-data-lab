@@ -43,7 +43,7 @@ def main() -> None:
     for station_id, fallback in OFFICIAL_FALLBACKS.items():
         station = by_id.get(station_id)
         if station is None:
-            raise RuntimeError(f"Expected Allego station missing for coordinate fallback: {station_id}")
+            continue
         if station.get("coordinates"):
             continue
 

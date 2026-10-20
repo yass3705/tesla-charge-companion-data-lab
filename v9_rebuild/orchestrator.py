@@ -158,6 +158,14 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Bump official method or authentication contract changed")
             spec["output_file"] = "data/operator_direct/bump_official_france.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/bump_official.py")
+        elif spec.get("module") == "allego_stations" and source_id == "FR:allego_stations":
+            if spec["secret_names"]:
+                raise ValueError("Allego public DXP method has no named secret")
+            for name in ("allego_dxp_national.py", "allego_normalize_v8.py", "allego_coordinate_fallbacks_v8.py"):
+                if not (root / "scripts" / name).is_file():
+                    raise ValueError(f"Missing historical Allego method: {name}")
+            spec["output_file"] = "data/national/allego_direct_stations_france.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/allego_stations.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -316,6 +324,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     bump_inventory_module = spec["module"] == "bump_inventory_family"
     bump_tariffs_module = spec["module"] == "bump_tariffs"
     bump_official_module = spec["module"] == "bump_official"
+    allego_stations_module = spec["module"] == "allego_stations"
     checkpoint_module = electroverse_module or status_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
@@ -364,7 +373,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if fastned_module else [sys.executable, str(root / "v9_rebuild/bump_inventory.py"), "--out", str(staged)]
                        if bump_inventory_module else [sys.executable, str(root / "v9_rebuild/bump_tariffs.py"), "--out", str(staged)]
                        if bump_tariffs_module else [sys.executable, str(root / "v9_rebuild/bump_official.py"), "--out", str(staged)]
-                       if bump_official_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if bump_official_module else [sys.executable, str(root / "v9_rebuild/allego_stations.py"), "--out", str(staged)]
+                       if allego_stations_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -394,7 +404,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -482,6 +492,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif allego_stations_module:
+                from v9_rebuild.allego_stations import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

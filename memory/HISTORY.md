@@ -495,3 +495,7 @@ Deux scripts historiques supplémentaires et leur parseur conservé sont exécut
 
 Le script historique de règles officielles Bump est migré dans l'orchestrateur isolé, avec son JSON et rapport d'origine. Seize tests ciblés PASS hors réseau ; G2 FAIL avec 126 méthodes restantes, Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, stations Allego
+
+La chaîne historique Allego DXP → normalisation → coordonnées de repli est migrée dans un seul module isolé. Le minimum EVSE et la présence obligatoire d'une station précise ont été retirés ; relations et identité restent validées. Dix-sept tests ciblés PASS hors réseau ; G2 FAIL avec 125 méthodes. Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
+
