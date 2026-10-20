@@ -5,7 +5,7 @@ Date : 20 octobre 2026. Branche locale Data Lab : `rebuild/v9-20261020`, base `0
 | Phase | Statut | Preuve / tests | Blocage |
 | --- | --- | --- | --- |
 | G0 Sécurité | Validée localement | Actions Data Lab `enabled=false` vérifié par API ; trois runs actifs annulés ; aucun run actif au dernier contrôle ; références locales de restauration vérifiées | Réactivation seulement après retrait des anciens YAML actifs et contrôle du nouveau dispositif |
-| G1 Méthodes | En cours | Registre statique `migration/v9/legacy-inventory.json` et audit `migration/v9/G1_METHOD_AUDIT.md` : 1 207 YAML, 757 fichiers scripts, 117 planifiés, 16 déclenchés par `workflow_run` ; portée des 26 cas planifiés ambigus relue, contrôle exhaustif 26/26 ; compilation Python, reproductibilité et scan public ciblé réussis | Correspondance source → module non terminée ; deux extracteurs Ubitricity NL absents du code historique accessible |
+| G1 Méthodes | En cours | Registre `legacy-inventory.json`, matrice `scheduled-methods.json` et audit `G1_METHOD_AUDIT.md` : 1 207 YAML, 757 scripts, 117/117 planifiés avec commandes détectées, 16 `workflow_run`, 26/26 portées ambiguës relues ; compilation Python, reproductibilité et scan public ciblé réussis | Correspondance source → module non terminée ; deux extracteurs Ubitricity NL absents du code historique accessible |
 | G2 Workflows | À faire | — | G1 |
 | G3 Données | À faire | — | G2 |
 | G4 Production | À faire | — | G3 |
@@ -37,4 +37,4 @@ Lire `memory/README.md` et les documents qu'il indexe avant chaque module. Les P
 
 ## Prochaine action exacte
 
-Compléter les 117 lignes des workflows planifiés : commande, paramètres, secret nommé, sortie, source et destination de module. La portée des 26 cas ambigus est dans `migration/v9/scheduled-scope-review.json` ; traiter le contrat Ubitricity NL détaillé dans `migration/v9/G1_METHOD_AUDIT.md`. Classer ensuite les workflows manuels par familles et préserver chaque méthode utile ; le registre actuel est **statique et provisoire** (`migration_status=unreviewed`, `destination_module=null`). Ne retirer aucun YAML avant G1 validée. Garder Actions désactivé.
+Qualifier les sorties et dépendances des 117 lignes de `migration/v9/scheduled-methods.json`, puis affecter une destination de module à chaque méthode utile. La portée des 26 cas ambigus est dans `scheduled-scope-review.json` ; traiter le contrat Ubitricity NL détaillé dans `G1_METHOD_AUDIT.md`. Classer ensuite les workflows manuels par familles et préserver chaque méthode utile ; le registre reste **provisoire** (`migration_status=unreviewed`, `destination_module=null`). Ne retirer aucun YAML avant G1 validée. Garder Actions désactivé.

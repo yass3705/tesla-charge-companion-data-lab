@@ -6,6 +6,8 @@
 
 `python3 scripts/v9_rebuild_inventory.py --output migration/v9/legacy-inventory.json` produit un registre statique de 1 207 workflows et 757 fichiers dans `scripts/`. Il conserve, pour chaque YAML, les scripts nommés, les noms de secrets, les chemins de données explicites et les événements déclencheurs. Les valeurs de secrets ne sont jamais extraites.
 
+`python3 scripts/v9_scheduled_methods.py --output migration/v9/scheduled-methods.json` produit la matrice des 117 workflows planifiés. Chaque ligne garde les commandes exactes détectées, les scripts, les secrets nommés, les chemins de fichiers et la portée. Le contrôle exige 117/117 lignes avec au moins une commande. `destination_module` reste vide tant que la méthode et ses sorties n'ont pas été qualifiées. Trois YAML n'ont aucun chemin de fichier littéral détecté ; l'un est le collecteur REVE, dont le répertoire est défini par `REVE_DATA_DIR=data/spain_reve/full_20261018` et `scripts/reve_es_stream_collect.py`. Les deux autres sont une maintenance Actions et une validation historique.
+
 | Catégorie observable | Nombre | Conséquence pour la migration |
 | --- | ---: | --- |
 | Workflows planifiés | 117 | Revoir les commandes et sorties comme méthodes de collecte candidates. |

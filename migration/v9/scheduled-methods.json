@@ -1,0 +1,2949 @@
+{
+  "schema_version": 1,
+  "rows": [
+    {
+      "workflow": ".github/workflows/actions-storage-maintenance.yml",
+      "scope": [],
+      "role": "repository_maintenance",
+      "commands": [
+        "python3 - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/allego-official-tariffs-v2.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m pip install --disable-pip-version-check selenium",
+        "python -m py_compile scripts/allego_official.py scripts/allego_static_wrapper.py",
+        "python scripts/allego_official.py --out out/allego 2> >(tee out/allego/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/allego_official.py",
+        "scripts/allego_static_wrapper.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/allego_official_france.json",
+        "reports/allego/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/allego-station-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/allego_dxp_national.py scripts/allego_normalize_v8.py scripts/allego_coordinate_fallbacks_v8.py",
+        "python scripts/allego_coordinate_fallbacks_v8.py",
+        "python scripts/allego_dxp_national.py",
+        "python scripts/allego_normalize_v8.py",
+        "python scripts/public_safety_check.py .allego-safety",
+        "run: python -m pip install --disable-pip-version-check -q selenium"
+      ],
+      "scripts": [
+        "scripts/allego_coordinate_fallbacks_v8.py",
+        "scripts/allego_dxp_national.py",
+        "scripts/allego_normalize_v8.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/allego_direct_stations_france.json.gz",
+        "data/reports/allego_station_tariffs_report.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/atlante-direct-station-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m unittest tests/test_atlante_station_tariffs.py -v",
+        "run: python scripts/atlante_station_tariffs.py"
+      ],
+      "scripts": [
+        "scripts/atlante_station_tariffs.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "ATLANTE_API_SUBSCRIPTION_KEY"
+      ],
+      "literal_data_paths": [
+        "data/national/atlante_direct_stations_france.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/atlante-fr-it-live-validation.yml",
+      "scope": [
+        "FR",
+        "IT"
+      ],
+      "role": "collector_validation",
+      "commands": [
+        "python - <<'PY'",
+        "python scripts/atlante/extract_atlante.py \\",
+        "run: bash scripts/atlante/bootstrap_subscription_key.sh"
+      ],
+      "scripts": [
+        "scripts/atlante/bootstrap_subscription_key.sh",
+        "scripts/atlante/extract_atlante.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "ATLANTE_API_SUBSCRIPTION_KEY"
+      ],
+      "literal_data_paths": [
+        "data/national/atlante_direct_stations_france_latest.json.gz",
+        "data/national/atlante_direct_stations_italy_latest.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/atlante-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/atlante_official.py",
+        "python scripts/atlante_official.py --out out/atlante 2> >(tee out/atlante/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python -m unittest tests/test_atlante_official_promotion.py -v",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/atlante_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/atlante_official_france.json",
+        "reports/atlante/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/audit-fixed-tariff-refresh.yml",
+      "scope": [],
+      "role": "cross_source_audit",
+      "commands": [
+        "run: python3 scripts/audit_fixed_tariff_refresh.py"
+      ],
+      "scripts": [
+        "scripts/audit_fixed_tariff_refresh.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/fixed-tariff-refresh-audit.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/avia-picoty-irve-extract.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/avia_picoty_irve_extract.py scripts/avia_picoty_compact_index.py",
+        "python scripts/avia_picoty_compact_index.py \"$OUTPUT_JSON\" \"$INDEX_JSON\"",
+        "python scripts/avia_picoty_irve_extract.py \\"
+      ],
+      "scripts": [
+        "scripts/avia_picoty_compact_index.py",
+        "scripts/avia_picoty_irve_extract.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/avia_volt_picoty_irve_extract.json",
+        "data/national/avia_volt_picoty_station_index.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/avia-picoty-station-inventory.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/avia_picoty_national.py",
+        "python scripts/avia_picoty_national.py"
+      ],
+      "scripts": [
+        "scripts/avia_picoty_national.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/avia_picoty_direct_stations_france.json.gz",
+        "data/reports/avia_picoty_station_inventory_report.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/belgium-nap-full-country.yml",
+      "scope": [
+        "BE"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "run: python scripts/belgium_nap_full_country.py"
+      ],
+      "scripts": [
+        "scripts/belgium_nap_full_country.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "BELGIUM_NAP_TOKEN"
+      ],
+      "literal_data_paths": [
+        "data/belgium/nap-belgium-full.json",
+        "data/belgium/nap-belgium-manifest.json",
+        "reports/belgium-missing-price-evses-2026-09-28.json",
+        "reports/belgium-national-full-extraction-2026-09-28.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/belib-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/belib_official.py",
+        "python scripts/belib_official.py --out out/belib 2> >(tee out/belib/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/belib_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/belib_official_paris.json",
+        "reports/belib/latest_diagnostic.json",
+        "reports/belib/latest_run_status.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/belib-station-base.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/belib_station_base.py tests/test_belib_station_base.py",
+        "python scripts/belib_station_base.py \\",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/belib_station_base.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/belib_stations_paris.json",
+        "data/operator_direct/belib_official_paris.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/bump-direct-inventory.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m unittest tests/test_bump_direct_inventory.py -v",
+        "run: python scripts/bump_direct_inventory.py"
+      ],
+      "scripts": [
+        "scripts/bump_direct_inventory.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/bump_direct_inventory_france.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/bump-direct-station-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python scripts/bump_direct_station_tariffs.py"
+      ],
+      "scripts": [
+        "scripts/bump_direct_station_tariffs.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/bump_direct_stations_france.json.gz",
+        "data/reports/bump_direct_tariffs_report.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/bump-national-public-tariffs-fine.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m py_compile scripts/bump_graphql_national_tariffs.py scripts/bump_direct_inventory.py"
+      ],
+      "scripts": [
+        "scripts/bump_direct_inventory.py",
+        "scripts/bump_graphql_national_tariffs.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/bump_direct_tariffs_graphql_france.json.gz",
+        "reports/bump/national_tariff_harvest_latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/bump-national-public-tariffs-station-fallback.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/bump_direct_tariffs_graphql_france.json.gz",
+        "reports/bump/national_tariff_distribution_latest.json",
+        "reports/bump/national_tariff_harvest_latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/bump-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/bump_official.py",
+        "python scripts/bump_official.py --out out/bump 2> >(tee out/bump/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/bump_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/bump_official_france.json",
+        "reports/bump/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/bump-tcc-ready-france.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m unittest discover -s tests -p test_bump_variable_tariff_parser.py"
+      ],
+      "scripts": [
+        "scripts/bump_tcc_ready_france.py",
+        "scripts/bump_variable_tariff_parser.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/bump_direct_tariffs_tcc_france.json.gz",
+        "reports/bump/tcc_ready_france_latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/chargezy-te63-official-direct.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "- run: python3 scripts/chargezy_te63_official_direct.py"
+      ],
+      "scripts": [
+        "scripts/chargezy_te63_official_direct.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/chargezy_te63_official_france.json",
+        "reports/france/spie-citynetworks/chargezy-te63-summary.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/driveco-evse-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/driveco_evse_tariffs.py",
+        "python scripts/driveco_evse_tariffs.py --out out/driveco-evse"
+      ],
+      "scripts": [
+        "scripts/driveco_evse_tariffs.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/driveco_evse_tariffs.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/driveco-exact-price-discovery.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "technical_probe",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/driveco_public_portal_probe.py",
+        "python scripts/driveco_public_portal_probe.py --out out/exact-price/driveco",
+        "python scripts/public_safety_check.py out/exact-price/driveco",
+        "python scripts/public_safety_check.py reports/exact-price/driveco_latest.json",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/driveco_public_portal_probe.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/exact-price/driveco_latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/driveco-inventory-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "source_audit",
+      "commands": [
+        "python - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/driveco/inventory_tariffs_latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/driveco-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/driveco_official.py",
+        "python scripts/driveco_official.py --out out/driveco 2> >(tee out/driveco/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/driveco_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/driveco_official_france.json",
+        "reports/driveco/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/eborn-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/eborn_official.py",
+        "python scripts/eborn_official.py --out out/eborn 2> >(tee out/eborn/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/eborn_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/eborn_official_france.json",
+        "reports/eborn/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/electra-france-platform-snapshot.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "node scripts/electra_france_platform_snapshot.mjs data/platforms/electra/france data/national/france-irve-static-v9/all.json.gz",
+        "run: node tests/electra-france-congestion-soc80.test.mjs",
+        "run: node tests/electra-france-evse-power-scope.test.mjs",
+        "run: node tests/electra-powerdot-acdc-family.test.mjs"
+      ],
+      "scripts": [
+        "scripts/electra_france_platform_snapshot.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/manual_verification/electra_powerdot_action_angouleme_2026-10-11.json",
+        "data/manual_verification/electra_powerdot_saint_arnoult_2026-10-10.json",
+        "data/national/france-irve-static-v9/all.json.gz",
+        "data/platforms/electra/irve-associations-batch-01.json",
+        "data/platforms/electra/verified-app-evse-tariff-map.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/electra-pan-exact-tariff-snapshot.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/france-irve-static-v9/all.json.gz",
+        "data/operator_direct/electra_exact_france.json",
+        "reports/france/electra/pan-exact-tariff-snapshot.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/electric55-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/electric55_official.py",
+        "python scripts/electric55_official.py --out out/electric55 2> >(tee out/electric55/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/electric55_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/electric55_official_france.json",
+        "reports/electric55/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/electric55-station-base.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile \\",
+        "python scripts/electric55_direct_tariffs.py \\",
+        "python scripts/electric55_station_base.py \\",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/electric55_direct_tariffs.py",
+        "scripts/electric55_station_base.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/electric55_stations_france.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/electroverse-france-daily-delta.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "node scripts/electroverse_hybrid_refresh.mjs",
+        "run: node scripts/electroverse_daily_delta_selector.mjs"
+      ],
+      "scripts": [
+        "scripts/electroverse_daily_delta_selector.mjs",
+        "scripts/electroverse_hybrid_refresh.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "ELECTROVERSE_API_KEY"
+      ],
+      "literal_data_paths": [
+        "reports/electroverse/daily-delta.json",
+        "reports/electroverse/hybrid-refresh-failures.json",
+        "reports/electroverse/incremental-selection.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/electroverse-france-full-refresh.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "node scripts/electroverse_force_chunk_selection.mjs",
+        "node scripts/electroverse_hybrid_refresh.mjs"
+      ],
+      "scripts": [
+        "scripts/electroverse_force_chunk_selection.mjs",
+        "scripts/electroverse_hybrid_refresh.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "ELECTROVERSE_API_KEY"
+      ],
+      "literal_data_paths": [
+        "reports/electroverse/hybrid-refresh-failures.json",
+        "reports/electroverse/incremental-selection.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/electroverse-status-incremental.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "node scripts/electroverse_merge_status_partitions.mjs \"/tmp/electroverse-status-parts/$part\" \"data/electroverse/live_statuses/parts/$part\"",
+        "node scripts/electroverse_status_incremental.mjs finalize",
+        "node scripts/electroverse_status_incremental.mjs validate",
+        "run: node --check scripts/electroverse_status_incremental.mjs",
+        "run: node scripts/electroverse_status_incremental.mjs collect \"$PART\""
+      ],
+      "scripts": [
+        "scripts/electroverse_merge_status_partitions.mjs",
+        "scripts/electroverse_status_incremental.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "ELECTROVERSE_API_KEY"
+      ],
+      "literal_data_paths": [
+        "data/electroverse/live_statuses/evses.json.gz",
+        "data/electroverse/live_statuses/manifest.json",
+        "reports/electroverse/status-national-finalization.json",
+        "reports/electroverse/status-partition-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/etotem-direct-station-inventory.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m unittest tests/test_etotem_direct_station_inventory.py -v",
+        "run: python scripts/etotem_direct_station_inventory.py"
+      ],
+      "scripts": [
+        "scripts/etotem_direct_station_inventory.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/etotem_direct_stations_france.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/etotem-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/etotem_official.py",
+        "python scripts/etotem_official.py --out out/etotem 2> >(tee out/etotem/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/etotem_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/etotem_official_france.json",
+        "reports/etotem/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/evadea-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/evadea_tariff_image_discovery.py scripts/evadea_official.py",
+        "python scripts/evadea_official.py --out out/evadea-final 2> >(tee out/evadea-final/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/evadea_official.py",
+        "scripts/evadea_tariff_image_discovery.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/evadea_official_france.json",
+        "reports/evadea/latest_final_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/fastned-direct-station-inventory-uk.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "- run: python scripts/fastned_station_inventory_uk.py",
+        "python - <<'PY'"
+      ],
+      "scripts": [
+        "scripts/fastned_station_inventory_uk.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/fastned_direct_stations_uk.json.gz",
+        "reports/uk/fastned-direct-uk-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/fastned-direct-station-inventory.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m unittest tests/test_fastned_station_inventory.py -v",
+        "run: python scripts/fastned_station_inventory.py",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/fastned_station_inventory.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/fastned_direct_stations_france.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/fastned-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/fastned_official.py",
+        "python scripts/fastned_official.py --out out/fastned 2> >(tee out/fastned/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/fastned_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/fastned_official_france.json",
+        "reports/fastned/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/france-irve-public-access-audit.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m py_compile scripts/audit_france_irve_public_access.py",
+        "run: python scripts/audit_france_irve_public_access.py"
+      ],
+      "scripts": [
+        "scripts/audit_france_irve_public_access.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/france/irve-public-access-audit.json",
+        "reports/france/irve-public-access-suspects.csv"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/france-irve-static-refresh.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python scripts/france/audit_france_irve_residuals.py \\",
+        "python scripts/france/build_france_irve_dynamic_status_v9.py \\",
+        "python scripts/france/build_france_irve_static_v9.py \\",
+        "run: python tests/test_france_irve_allowed_connectors.py"
+      ],
+      "scripts": [
+        "scripts/france/audit_france_irve_residuals.py",
+        "scripts/france/build_france_irve_dynamic_status_v9.py",
+        "scripts/france/build_france_irve_static_v9.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/france-irve-dynamic-status-v9.json.gz",
+        "data/national/france-irve-static-v9/all.json.gz",
+        "data/national/france-irve-static-v9/manifest.json",
+        "data/platforms/electra/france/residuals.json.gz",
+        "reports/france/irve/irve-residual-crosswalk-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/france-irve-tariff-coverage-archive.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python scripts/france/archive_irve_tariff_coverage.py \\",
+        "python scripts/france/check_irve_tariff_review_gate.py \\",
+        "run: python -m unittest discover -s tests -p test_irve_tariff_review_gate.py -v"
+      ],
+      "scripts": [
+        "scripts/audit_fr_tariff_left_join_20261009.py",
+        "scripts/audit_fr_three_priority_match_20261009.py",
+        "scripts/audit_fr_two_level_tariff_join_20261009.py",
+        "scripts/france/archive_irve_tariff_coverage.py",
+        "scripts/france/check_irve_tariff_review_gate.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/electroverse/irve_location_mapping.json",
+        "data/national/france-irve-dynamic-status-v9.json.gz",
+        "reports/france/tariff-coverage/latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/france-spie-citynetworks-audit.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/france/spie-citynetworks/pan-tariff-audit.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/france-treated-reliability-audit.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "run: python3 scripts/france_treated_reliability_audit.py"
+      ],
+      "scripts": [
+        "scripts/france_treated_reliability_audit.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/france/cpo-treated-reliability-audit-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/freshmile-direct-cpo-inventory.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/freshmile_direct_inventory.py scripts/freshmile_prune_regional_networks.py",
+        "run: python scripts/freshmile_direct_inventory.py",
+        "run: python scripts/freshmile_prune_regional_networks.py"
+      ],
+      "scripts": [
+        "scripts/freshmile_direct_inventory.py",
+        "scripts/freshmile_prune_regional_networks.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "config/freshmile_regional_network_exclusions.json",
+        "data/national/freshmile_direct_stations_france.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/freshmile-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/freshmile_official.py",
+        "python scripts/freshmile_official.py --out out/freshmile 2> >(tee out/freshmile/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/freshmile_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/freshmile_official_france.json",
+        "reports/freshmile/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/fx-daily-refresh.yml",
+      "scope": [],
+      "role": "shared_exchange_rates",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m unittest discover -s tests -p 'test_update_fx.py'",
+        "run: python scripts/update_fx.py"
+      ],
+      "scripts": [
+        "scripts/update_fx.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/fx/exchange_rates.json",
+        "data/fx/metadata.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/greenspot-france-extract.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python scripts/greenspot/extract_greenspot.py             --workers 4             --out data/greenspot/france/greenspot-france-current.json             --report docs/france-greenspot-direct-report-current.json"
+      ],
+      "scripts": [
+        "scripts/greenspot/extract_greenspot.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/greenspot/france/greenspot-france-current.json",
+        "data/greenspot/france/greenspot-france-current.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/iecharge-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/iecharge_official.py",
+        "python scripts/iecharge_official.py --out out/iecharge 2> >(tee out/iecharge/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/iecharge_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/iecharge_official_france.json",
+        "reports/iecharge/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/import-tesla-mac-ingress.yml",
+      "scope": [
+        "TESLA"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 scripts/import_tesla_mac_ingress.py",
+        "python3 scripts/public_safety_check.py data/tesla/mac",
+        "run: python3 -m unittest discover -s tests -p test_import_tesla_mac_ingress.py -v"
+      ],
+      "scripts": [
+        "scripts/import_tesla_mac_ingress.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/tesla/mac/catalogue.json",
+        "data/tesla/mac/last-good.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/ionity-direct-station-tariffs.yml",
+      "scope": [
+        "FR",
+        "IT",
+        "DE"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python scripts/ionity_station_tariffs.py --country DE",
+        "python scripts/ionity_station_tariffs.py --country FR",
+        "python scripts/ionity_station_tariffs.py --country IT",
+        "run: python -m unittest tests/test_ionity_station_tariffs.py -v"
+      ],
+      "scripts": [
+        "scripts/ionity_station_tariffs.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/ionity_direct_stations_france.json.gz",
+        "data/national/ionity_direct_stations_germany.json.gz",
+        "data/national/ionity_direct_stations_italy.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/ionity-direct-uk-station-tariffs.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python scripts/ionity_station_tariffs_uk.py"
+      ],
+      "scripts": [
+        "scripts/ionity_station_tariffs_uk.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/ionity_direct_stations_uk.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/ionity-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/ionity_official.py",
+        "python scripts/ionity_official.py --out out/ionity 2> >(tee out/ionity/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/ionity_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/ionity_official_france.json",
+        "reports/ionity/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/izivia-fast-capture.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 - <<'PY'",
+        "run: python3 scripts/build_izivia_fast_offers.py out/izivia-fast-national-capture.json.gz out/izivia-fast-direct-france.json --inventory-output out/izivia-fast-inventory-france.json",
+        "run: python3 scripts/izivia_fast_capture.py"
+      ],
+      "scripts": [
+        "scripts/build_izivia_fast_offers.py",
+        "scripts/izivia_fast_capture.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/izivia_fast_direct_france_2026_10_06.json",
+        "data/operator_direct/izivia_fast_inventory_france_2026_10_06.json",
+        "data/operator_direct/izivia_fast_national_capture_2026_10_06.json.gz",
+        "reports/france/izivia/izivia-fast-national-summary-2026-10-06.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/izivia-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python - <<'PY' >> \"$GITHUB_STEP_SUMMARY\"",
+        "python -m pip install --disable-pip-version-check --quiet \"selenium>=4.20,<5\"",
+        "python -m py_compile scripts/izivia_official.py",
+        "python -m py_compile scripts/izivia_station_tariffs.py scripts/izivia_fast_probe.py",
+        "python -m unittest discover -s scripts -p 'test_izivia_station_tariffs.py'",
+        "python scripts/izivia_official.py --out out/izivia",
+        "python scripts/izivia_station_tariffs.py",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/izivia_fast_probe.py",
+        "scripts/izivia_official.py",
+        "scripts/izivia_station_tariffs.py",
+        "scripts/public_safety_check.py",
+        "scripts/test_izivia_station_tariffs.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/izivia_official_france.json",
+        "data/operator_direct/izivia_station_tariffs_latest.json",
+        "reports/izivia/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/labornebleue-direct-station-inventory.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m unittest tests.test_labornebleue_station_inventory -v",
+        "run: python scripts/labornebleue_station_inventory.py --out data/national/labornebleue_direct_stations_idf.json.gz"
+      ],
+      "scripts": [
+        "scripts/labornebleue_station_inventory.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/labornebleue_direct_stations_idf.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/lidl-plus-official-tariff.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/lidl_plus_official.py",
+        "python scripts/lidl_plus_official.py --out out/lidl-plus",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/lidl_plus_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/lidl_plus_france.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/loadmotion-france-refresh.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "node - <<'NODE'",
+        "node scripts/loadmotion/compile_loadmotion_v9_offers.mjs \\",
+        "node scripts/loadmotion/extract_loadmotion_france.mjs --tenant loadstations --out data/loadmotion/france/current/loadstations.json.gz",
+        "node scripts/loadmotion/extract_loadmotion_france.mjs --tenant mobisdec --out data/loadmotion/france/current/mobisdec.json.gz",
+        "node scripts/loadmotion/extract_loadmotion_france.mjs --tenant reveo --concurrency 2 --out data/loadmotion/france/current/reveo.json.gz",
+        "node scripts/loadmotion/extract_loadmotion_france.mjs --tenant yes55 --out data/loadmotion/france/current/yes55.json.gz"
+      ],
+      "scripts": [
+        "scripts/loadmotion/compile_loadmotion_v9_offers.mjs",
+        "scripts/loadmotion/extract_loadmotion_france.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "LOADMOTION_ID",
+        "LOADSTATIONS_PASS",
+        "MOBISDEC_PASS",
+        "REVEO_PASS",
+        "YES55_PASS"
+      ],
+      "literal_data_paths": [
+        "data/loadmotion/france/current/loadstations.json.gz",
+        "data/loadmotion/france/current/mobisdec.json.gz",
+        "data/loadmotion/france/current/reveo.json.gz",
+        "data/loadmotion/france/current/yes55.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/metropolis-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/metropolis_official.py",
+        "python scripts/metropolis_official.py --out out/metropolis 2> >(tee out/metropolis/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/metropolis_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/metropolis_official_grand_paris.json",
+        "reports/metropolis/latest_diagnostic.json",
+        "reports/metropolis/latest_run_status.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/metropolis-spie-exact-france.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/metropolis_spie_official_france.json",
+        "reports/france/spie-citynetworks/metropolis-summary.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/mobisdec-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m pip install --disable-pip-version-check selenium",
+        "python -m py_compile scripts/mobisdec_official.py",
+        "python scripts/mobisdec_official.py 2> >(tee out/mobisdec/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/mobisdec_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/mobisdec_official_calvados.json",
+        "reports/mobisdec/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/morocco-evgo-fresh-sanitized-artifact.yml",
+      "scope": [
+        "MA"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 - <<'PY'",
+        "python3 scripts/morocco_evgo_apply_fresh_status_overlay.py",
+        "python3 scripts/morocco_evgo_normalize.py",
+        "python3 scripts/morocco_evgo_pin_hydration_probe.py",
+        "python3 scripts/morocco_evgo_status_overlay_from_hydration.py"
+      ],
+      "scripts": [
+        "scripts/morocco_evgo_apply_fresh_status_overlay.py",
+        "scripts/morocco_evgo_normalize.py",
+        "scripts/morocco_evgo_pin_hydration_probe.py",
+        "scripts/morocco_evgo_status_overlay_from_hydration.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/morocco/evgo/latest-normalized-stations.json",
+        "reports/morocco/evgo/latest-pin-hydration.json",
+        "reports/morocco/evgo/latest-production-stations.json",
+        "reports/morocco/evgo/latest-status-overlay.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/morocco-kilowatt-native-tariff-extract.yml",
+      "scope": [
+        "MA"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 - <<'PY'",
+        "python3 /tmp/hermes-dec/hbc-decompiler /tmp/kwh-native/apk/assets/index.android.bundle /tmp/kwh-native/decompiled.js >/dev/null"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/morocco/kilowatt/latest-native-connector-tariffs.json",
+        "reports/morocco/kilowatt/latest-public-station-inventory.json",
+        "reports/morocco/kilowatt/native-connector-tariffs-2026-09-27.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/morocco-total-public-guest-native-overlay.yml",
+      "scope": [
+        "MA"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json",
+        "reports/morocco/totalenergies/club-ev-charge-remote-config-keys-2026-09-26.json",
+        "reports/morocco/totalenergies/latest-native-overlay.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/netherlands-dotnl-canonical.yml",
+      "scope": [
+        "NL"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python scripts/dotnl_netherlands_access_patch.py             data/national/netherlands_dotnl/normalized.json.gz             data/national/netherlands_dotnl/runtime             docs/netherlands-dotnl-access-report.json",
+        "python scripts/dotnl_netherlands_build.py             /tmp/dotnl/locations.json.gz             /tmp/dotnl/tariffs.json.gz             data/national/netherlands_dotnl/normalized.json.gz             docs/netherlands-dotnl-build-report.json",
+        "python scripts/dotnl_netherlands_runtime.py             data/national/netherlands_dotnl/normalized.json.gz             data/national/netherlands_dotnl/runtime             docs/netherlands-dotnl-runtime-report.json",
+        "python scripts/integrate_electra_nl_graphql.py",
+        "python scripts/integrate_ubitricity_nl_payg.py",
+        "python3 scripts/dotnl_national_tariff_guard.py \\",
+        "run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/dotnl_netherlands_runtime.py scripts/dotnl_netherlands_access_patch.py scripts/integrate_ubitricity_nl_payg.py scripts/integrate_electra_nl_graphql.py scripts/integrate_stellapower_nl_official.py scripts/dotnl_national_tariff_guard.py"
+      ],
+      "scripts": [
+        "scripts/dotnl_national_tariff_guard.py",
+        "scripts/dotnl_netherlands_access_patch.py",
+        "scripts/dotnl_netherlands_build.py",
+        "scripts/dotnl_netherlands_runtime.py",
+        "scripts/integrate_electra_nl_graphql.py",
+        "scripts/integrate_stellapower_nl_official.py",
+        "scripts/integrate_ubitricity_nl_payg.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/netherlands_dotnl/normalized.json.gz",
+        "data/national/netherlands_dotnl/runtime/manifest.json",
+        "data/operator_direct/electra_nl_graphql_exact_overlay.json",
+        "data/operator_direct/stellapower_nl_official_exact_overlay.json",
+        "data/operator_direct/ubitricity_nl_payg_exact_overlay.json",
+        "reports/netherlands/dotnl-national-tariff-preservation-latest.json",
+        "reports/netherlands/electra-direct-payg-integration-latest.json",
+        "reports/netherlands/ubitricity-direct-payg-integration-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/ozecar-france-extract.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "- run: python -m unittest tests/test_ozecar_extract.py",
+        "python -m pip install --disable-pip-version-check playwright==1.55.0",
+        "python -m playwright install --with-deps chromium",
+        "python scripts/ozecar/extract_ozecar.py \\"
+      ],
+      "scripts": [
+        "scripts/ozecar/extract_ozecar.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/ozecar/france/ozecar-france-current.json",
+        "data/ozecar/france/ozecar-france-current.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/plenitude-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/plenitude_official.py",
+        "python scripts/plenitude_official.py --out out/plenitude 2> >(tee out/plenitude/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/plenitude_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/plenitude_official_france.json",
+        "reports/plenitude/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/pluginn-fastcharge-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m pip install --disable-pip-version-check selenium",
+        "python -m py_compile scripts/pluginn_fastcharge_official.py",
+        "python scripts/pluginn_fastcharge_official.py --out out/pluginn 2> >(tee out/pluginn/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/pluginn_fastcharge_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/pluginn_fastcharge_official_france.json",
+        "reports/pluginn/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/powerdot-national-direct-extract.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/powerdot_direct_france.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/powerdot-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m pip install --disable-pip-version-check selenium",
+        "python -m py_compile scripts/powerdot_official.py",
+        "python scripts/powerdot_official.py --out out/powerdot 2> >(tee out/powerdot/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python -m unittest discover -s tests -p \"test_powerdot_electroverse_subscriptions.py\" -v",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/powerdot_official.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/powerdot_official_france.json",
+        "reports/powerdot/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/qovoltis-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/qovoltis_official.py",
+        "python scripts/public_safety_check.py .",
+        "python scripts/qovoltis_official.py --out out/qovoltis 2> >(tee out/qovoltis/error.log >&2)",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/public_safety_check.py",
+        "scripts/qovoltis_official.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/qovoltis_official_france.json",
+        "reports/qovoltis/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/qwello-saone-et-loire-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/qwello_saone_et_loire_official.py",
+        "python scripts/public_safety_check.py .",
+        "python scripts/qwello_saone_et_loire_official.py 2> >(tee out/qwello_saone_et_loire/error.log >&2)",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/public_safety_check.py",
+        "scripts/qwello_saone_et_loire_official.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/qwello_saone_et_loire_official.json",
+        "reports/qwello_saone_et_loire/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/refresh-fixed-tariffs-bfc.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector_group",
+      "commands": [
+        "run: python3 scripts/refresh_fixed_tariffs_bfc.py"
+      ],
+      "scripts": [
+        "scripts/refresh_fixed_tariffs_bfc.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/sdey_official_yonne.json",
+        "data/operator_direct/siceco_cotedor_official.json",
+        "data/operator_direct/sied70_official_haute_saone.json",
+        "data/operator_direct/sieeen_nievre_official.json",
+        "data/operator_direct/syded_doubs_official.json",
+        "data/operator_direct/tde90_belfort_official.json",
+        "reports/fixed-tariff-refresh-bfc-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/refresh-fixed-tariffs-france-core.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "run: python3 scripts/refresh_fixed_tariffs_france_core.py"
+      ],
+      "scripts": [
+        "scripts/refresh_fixed_tariffs_france_core.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/eborn_easycharge_official_france.json",
+        "data/operator_direct/lidl_official_france.json",
+        "data/operator_direct/lidl_tariff_rules_france.json",
+        "data/operator_direct/stations_e_tariff_rules_france.json",
+        "reports/fixed-tariff-refresh-france-core-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/refresh-fixed-tariffs-france-delmonicos.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "- run: python3 scripts/refresh_fixed_tariffs_france_delmonicos.py"
+      ],
+      "scripts": [
+        "scripts/refresh_fixed_tariffs_france_delmonicos.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/delmonicos_direct_france_20261001.json",
+        "reports/fixed-tariff-refresh-france-delmonicos-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/refresh-fixed-tariffs-france-secondary.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "run: python3 scripts/refresh_fixed_tariffs_france_secondary.py"
+      ],
+      "scripts": [
+        "scripts/refresh_fixed_tariffs_france_secondary.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/indigo_official_france.json",
+        "data/operator_direct/indigo_recharge_official_france.json",
+        "data/operator_direct/interparking_tariff_rules_france.json",
+        "data/operator_direct/seolis_alterbase_tariff_rules_france_2026.json",
+        "reports/fixed-tariff-refresh-france-secondary-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/refresh-fixed-tariffs-france-watch.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "- run: python3 scripts/refresh_fixed_tariffs_france_watch.py"
+      ],
+      "scripts": [
+        "scripts/refresh_fixed_tariffs_france_watch.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/dream_energy_promotional_tariff_france_2026.json",
+        "data/operator_direct/mobive_official_france.json",
+        "data/operator_direct/soregies_tariff_rules_france_2026.json",
+        "reports/fixed-tariff-refresh-france-watch-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/refresh-fixed-tariffs-spain-core.yml",
+      "scope": [
+        "ES"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "run: python3 scripts/refresh_fixed_tariffs_spain_core.py"
+      ],
+      "scripts": [
+        "scripts/refresh_fixed_tariffs_spain_core.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/acciona_official_spain.json",
+        "data/operator_direct/eranovum_official_spain.json",
+        "data/operator_direct/repsol_official_spain.json",
+        "data/operator_direct/wenea_official_spain.json",
+        "data/operator_direct/zunder_official_spain.json",
+        "reports/fixed-tariff-refresh-spain-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/refresh-fixed-tariffs-spain-secondary.yml",
+      "scope": [
+        "ES"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "- run: python3 scripts/refresh_fixed_tariffs_spain_secondary.py"
+      ],
+      "scripts": [
+        "scripts/refresh_fixed_tariffs_spain_secondary.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/emt_madrid_official_spain.json",
+        "data/operator_direct/endesa_official_spain.json",
+        "data/operator_direct/plenergy_official_spain.json",
+        "reports/fixed-tariff-refresh-spain-secondary-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/reveo-national-exact-evse-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/reveo_national_exact_evse_tariffs.json",
+        "reports/france/reveo/national-exact-coverage.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/reveo-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/reveo_official.py",
+        "python scripts/public_safety_check.py .",
+        "python scripts/reveo_official.py 2> >(tee out/reveo/error.log >&2)",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/public_safety_check.py",
+        "scripts/reveo_official.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/reveo_official_france.json",
+        "reports/reveo/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/sdey-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/operator_manifest_runner.py",
+        "python scripts/operator_manifest_runner.py --operator sdey --out out/sdey 2> >(tee out/sdey/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/operator_manifest_runner.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "config/operator_manifests/sdey.json",
+        "reports/sdey/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/shell-recharge-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m pip install --disable-pip-version-check selenium",
+        "python -m py_compile scripts/shell_recharge_official.py",
+        "python scripts/public_safety_check.py .",
+        "python scripts/shell_recharge_official.py --out out/shell_recharge 2> >(tee out/shell_recharge/error.log >&2)",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/public_safety_check.py",
+        "scripts/shell_recharge_official.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/shell_recharge_official_france.json",
+        "reports/shell_recharge/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/siceco-cotedor-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/operator_manifest_runner.py",
+        "python scripts/operator_manifest_runner.py --operator siceco_cotedor --out out/siceco_cotedor 2> >(tee out/siceco_cotedor/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/operator_manifest_runner.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "config/operator_manifests/siceco_cotedor.json",
+        "reports/siceco_cotedor/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/sied70-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/operator_manifest_runner.py",
+        "python scripts/operator_manifest_runner.py --operator sied70 --out out/sied70 2> >(tee out/sied70/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/operator_manifest_runner.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "config/operator_manifests/sied70.json",
+        "reports/sied70/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/sieeen-nievre-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/operator_manifest_runner.py",
+        "python scripts/operator_manifest_runner.py --operator sieeen_nievre --out out/sieeen_nievre 2> >(tee out/sieeen_nievre/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/operator_manifest_runner.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "config/operator_manifests/sieeen_nievre.json",
+        "reports/sieeen_nievre/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/soregies-mobilites-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/soregies_mobilites_official.py",
+        "python scripts/public_safety_check.py .",
+        "python scripts/soregies_mobilites_official.py 2> >(tee out/soregies/error.log >&2)",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/public_safety_check.py",
+        "scripts/soregies_mobilites_official.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/soregies_mobilites_official_vienne.json",
+        "reports/soregies/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/spain-reve-v9-national-refresh.yml",
+      "scope": [
+        "ES"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "node --check \"$file\"",
+        "node -e \"const r=require('./data/reve-v2/tcc-integration/spain-tcc-build-report.json');if(!r.ok)process.exit(1)\"",
+        "node scripts/reve-v2-analyze.mjs",
+        "node scripts/reve-v2-build-canonical.mjs",
+        "node scripts/reve-v2-build-tcc.mjs",
+        "node scripts/reve-v2-web-extract.mjs",
+        "python scripts/validate_reve_v2_runtime.py \"$work/candidate\" --baseline data/reve_v2/validated_runtime",
+        "python scripts/validate_reve_v2_runtime.py data/reve_v2/validated_runtime",
+        "python scripts/validate_reve_v2_runtime.py stable-seed/v9-production-runtime/data/v9",
+        "run: python scripts/validate_reve_v2_runtime.py data/reve_v2/validated_runtime"
+      ],
+      "scripts": [
+        "scripts/reve-v2-analyze.mjs",
+        "scripts/reve-v2-build-canonical.mjs",
+        "scripts/reve-v2-build-tcc.mjs",
+        "scripts/reve-v2-web-extract.mjs",
+        "scripts/validate_reve_v2_runtime.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/reve-v2/tcc-integration/all.json.gz",
+        "data/reve-v2/tcc-integration/spain-reve-offers-manifest.json",
+        "data/reve-v2/tcc-integration/spain-static-manifest.json",
+        "data/reve_v2/validated_runtime/spain-static/manifest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/spain-reve-v9-stream-refresh.yml",
+      "scope": [
+        "ES"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python -m unittest tests/test_reve_es_stream_collect.py -v",
+        "run: python scripts/reve_es_stream_collect.py --collect"
+      ],
+      "scripts": [
+        "scripts/reve_es_stream_collect.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "MAPA_REVE_API_KEY",
+        "REVE_API_KEY"
+      ],
+      "literal_data_paths": [],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/suc-tracker-weekly.yml",
+      "scope": [
+        "TESLA"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 - <<'PY'",
+        "run: python3 -m unittest discover -s tests/suc_tracker -p 'test_*.py' -v",
+        "run: python3 scripts/suc_tracker/update.py"
+      ],
+      "scripts": [
+        "scripts/suc_tracker/update.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/suc-tracker/europe.json",
+        "data/suc-tracker/metadata.json",
+        "data/suc-tracker/tesla_stations.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/switzerland-avia-guest-pricing.yml",
+      "scope": [
+        "CH"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 - <<'PY'",
+        "run: python3 -m py_compile scripts/collect_avia_switzerland_guest.py",
+        "run: python3 scripts/collect_avia_switzerland_guest.py",
+        "run: python3 scripts/reconcile_avia_switzerland_guest.py"
+      ],
+      "scripts": [
+        "scripts/collect_avia_switzerland_guest.py",
+        "scripts/reconcile_avia_switzerland_guest.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "AVIA_APIM_SUBSCRIPTION_KEY"
+      ],
+      "literal_data_paths": [
+        "data/switzerland/avia-guest-direct-tariffs.json",
+        "data/switzerland/avia-successor-alias-overlay.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/switzerland-tcc-v9-bundle.yml",
+      "scope": [
+        "CH"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "- run: python3 -m py_compile scripts/build_swiss_tcc_v9_bundle.py scripts/guard_swiss_bundle_refresh.py",
+        "- run: python3 -m unittest discover -s tests -p 'test_guard_swiss_bundle_refresh.py'",
+        "- run: python3 scripts/build_swiss_tcc_v9_bundle.py",
+        "python3 - <<'PY'"
+      ],
+      "scripts": [
+        "scripts/build_swiss_tcc_v9_bundle.py",
+        "scripts/guard_swiss_bundle_refresh.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/switzerland_oicp_source.json.gz",
+        "data/tcc_v9/switzerland.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/syded-doubs-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/operator_manifest_runner.py",
+        "python scripts/operator_manifest_runner.py --operator syded_doubs --out out/syded_doubs 2> >(tee out/syded_doubs/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/operator_manifest_runner.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "config/operator_manifests/syded_doubs.json",
+        "reports/syded_doubs/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/tde90-belfort-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "collector",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/operator_manifest_runner.py",
+        "python scripts/operator_manifest_runner.py --operator tde90_belfort --out out/tde90_belfort 2> >(tee out/tde90_belfort/error.log >&2)",
+        "python scripts/public_safety_check.py .",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/operator_manifest_runner.py",
+        "scripts/public_safety_check.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "config/operator_manifests/tde90_belfort.json",
+        "reports/tde90_belfort/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/tesla-dataset-provenance-20261010.yml",
+      "scope": [
+        "TESLA"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python scripts/tesla_dataset_provenance_audit_20261010.py",
+        "run: python scripts/tesla_global_tariff_inventory_20261009.py",
+        "run: python scripts/tesla_mac_batch_history.py",
+        "run: python scripts/tesla_source_selection_audit_20261009.py"
+      ],
+      "scripts": [
+        "scripts/tesla_dataset_provenance_audit_20261010.py",
+        "scripts/tesla_global_tariff_inventory_20261009.py",
+        "scripts/tesla_mac_batch_history.py",
+        "scripts/tesla_source_selection_audit_20261009.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "GITHUB_TOKEN"
+      ],
+      "literal_data_paths": [
+        "reports/tariff-scenarios/tesla-global-complete-config-fixtures.json",
+        "reports/tariff-scenarios/tesla-global-inventory-latest.json",
+        "reports/tariff-scenarios/tesla-global-real-rule-fixtures.json",
+        "reports/tariff-scenarios/tesla-source-selection-audit-latest.json",
+        "reports/tariff-scenarios/tesla-source-selection-station-detail-latest.json",
+        "reports/tesla/tesla-dataset-provenance-audit-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/totalenergies-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/totalenergies_official.py",
+        "python scripts/public_safety_check.py .",
+        "python scripts/totalenergies_official.py --out out/totalenergies 2> >(tee out/totalenergies/error.log >&2)",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/public_safety_check.py",
+        "scripts/totalenergies_official.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/totalenergies_official_france.json",
+        "reports/totalenergies/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/ubitricity-nl-payg-refresh.yml",
+      "scope": [
+        "NL"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python scripts/audit_nl_ubitricity_payg_portal.py --normalized /tmp/dotnl/normalized.json.gz --out /tmp/dotnl/portal-audit.json --report /tmp/dotnl/portal-report.json --workers 10",
+        "python scripts/dotnl_netherlands_build.py /tmp/dotnl/locations.json.gz /tmp/dotnl/tariffs.json.gz /tmp/dotnl/normalized.json.gz /tmp/dotnl/build-report.json",
+        "python scripts/reconcile_nl_ubitricity_payg_overlay.py --normalized /tmp/dotnl/normalized.json.gz --audit /tmp/dotnl/portal-audit.json --out /tmp/dotnl/overlay-candidate.json --report /tmp/dotnl/reconcile-report.json",
+        "run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/audit_nl_ubitricity_payg_portal.py scripts/reconcile_nl_ubitricity_payg_overlay.py"
+      ],
+      "scripts": [
+        "scripts/audit_nl_ubitricity_payg_portal.py",
+        "scripts/dotnl_netherlands_build.py",
+        "scripts/reconcile_nl_ubitricity_payg_overlay.py"
+      ],
+      "missing_script_references": [
+        "scripts/audit_nl_ubitricity_payg_portal.py",
+        "scripts/reconcile_nl_ubitricity_payg_overlay.py"
+      ],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/ubitricity_nl_payg_exact_overlay_candidate.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-allego_uk-pcpr-collect.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "run: python3 -m unittest discover -s tests -p 'test_uk_pcpr_cpo_collect.py' -v",
+        "run: python3 -u scripts/uk_allego_pcpr_validate.py",
+        "run: python3 -u scripts/uk_pcpr_cpo_collect.py allego_uk"
+      ],
+      "scripts": [
+        "scripts/uk_allego_pcpr_validate.py",
+        "scripts/uk_pcpr_cpo_collect.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "ALLEGO_UK_PCPR_TOKEN"
+      ],
+      "literal_data_paths": [
+        "data/national/uk_allego_uk_pcpr.json.gz",
+        "data/national/uk_allego_uk_pcpr_v9.json.gz",
+        "reports/uk/allego_uk-pcpr-latest.json",
+        "reports/uk/allego_uk-pcpr-validation-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-believ-daily-review.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [
+        "BELIEV_CLIENT_ID",
+        "BELIEV_CLIENT_SECRET"
+      ],
+      "literal_data_paths": [
+        "data/national/uk_believ_daily_state.json",
+        "data/national/uk_believ_official_api.json",
+        "data/national/uk_believ_public_labels.json",
+        "reports/uk/believ-daily-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-believ-public-label-inventory.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/uk_believ_public_labels.json",
+        "reports/uk/believ-public-label-inventory-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-blink-pcpr-collect.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "run: python3 -m unittest discover -s tests -p 'test_uk_blink_pcpr_collect.py' -v",
+        "run: python3 -u scripts/uk_blink_pcpr_collect.py"
+      ],
+      "scripts": [
+        "scripts/uk_blink_pcpr_collect.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "BLINK_PCPR_TOKEN"
+      ],
+      "literal_data_paths": [
+        "data/national/uk_blink_pcpr.json.gz",
+        "data/national/uk_blink_pcpr_v9.json.gz",
+        "reports/uk/blink-pcpr-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-connected-kerb-daily.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python scripts/uk_connected_kerb_collect.py --update-progress",
+        "python scripts/uk_connected_kerb_reconcile.py",
+        "run: python -u scripts/uk_connected_kerb_app_collect.py",
+        "run: python -u scripts/uk_connected_kerb_collect.py",
+        "run: python scripts/uk_connected_kerb_reconcile.py",
+        "run: python scripts/uk_connected_kerb_snapshot_audit.py"
+      ],
+      "scripts": [
+        "scripts/uk_connected_kerb_app_collect.py",
+        "scripts/uk_connected_kerb_collect.py",
+        "scripts/uk_connected_kerb_reconcile.py",
+        "scripts/uk_connected_kerb_snapshot_audit.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "CONNECTED_KERB_TOKEN"
+      ],
+      "literal_data_paths": [
+        "data/national/uk_connected_kerb_app_details.json.gz",
+        "data/national/uk_connected_kerb_app_direct_offers.json.gz",
+        "data/national/uk_connected_kerb_locations.json.gz",
+        "data/national/uk_connected_kerb_price_unambiguous_locations.json.gz",
+        "data/national/uk_connected_kerb_tariffs.json.gz",
+        "data/national/uk_connected_kerb_v9.json.gz",
+        "reports/uk/connected-kerb-app-collection-latest.json",
+        "reports/uk/connected-kerb-latest.json",
+        "reports/uk/connected-kerb-price-exclusions-latest.json",
+        "reports/uk/connected-kerb-snapshot-audit-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-eco-movement-pcpr-collect.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 - <<'PY'",
+        "run: python3 scripts/uk_eco_movement_pcpr_audit.py"
+      ],
+      "scripts": [
+        "scripts/uk_eco_movement_pcpr_audit.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "ECO_MOVEMENT_PCPR_TOKEN"
+      ],
+      "literal_data_paths": [
+        "data/national/uk_eco_movement_pcpr.json.gz",
+        "data/national/uk_eco_movement_pcpr_v9.json.gz",
+        "reports/uk/eco-movement-pcpr-connector-audit.json",
+        "reports/uk/eco-movement-pcpr-latest.json",
+        "reports/uk/eco-movement-pcpr-v9-staging.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-evyve-pcpr-collect.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 - <<'PY'",
+        "run: python3 -m unittest discover -s tests -p 'test_uk_evyve_pcpr_collect.py' -v",
+        "run: python3 -u scripts/uk_evyve_pcpr_collect.py"
+      ],
+      "scripts": [
+        "scripts/uk_evyve_pcpr_collect.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "BLINK_PCPR_TOKEN",
+        "EVYVE_PCPR_TOKEN"
+      ],
+      "literal_data_paths": [
+        "data/national/uk_evyve_pcpr.json.gz",
+        "data/national/uk_evyve_pcpr_v9.json.gz",
+        "reports/uk/evyve-pcpr-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-gridserve-pcpr-refresh.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: python scripts/uk_gridserve_pcpr_collect.py",
+        "run: python scripts/uk_gridserve_v9_prepare.py"
+      ],
+      "scripts": [
+        "scripts/uk_gridserve_pcpr_collect.py",
+        "scripts/uk_gridserve_v9_prepare.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "GRIDSERVE_API_KEY"
+      ],
+      "literal_data_paths": [
+        "data/national/uk_gridserve_pcpr_locations.json.gz",
+        "data/national/uk_gridserve_pcpr_tariffs.json.gz",
+        "data/national/uk_gridserve_v9.json.gz",
+        "reports/uk/gridserve-pcpr-latest.json",
+        "reports/uk/gridserve-v9-connector-crosswalk.json.gz",
+        "reports/uk/gridserve-v9-integration-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-source_ev-pcpr-collect.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python3 scripts/public_safety_check.py data/national",
+        "python3 scripts/public_safety_check.py reports/uk",
+        "run: python3 -m unittest discover -s tests -p 'test_uk_pcpr_cpo_collect.py' -v",
+        "run: python3 -u scripts/uk_pcpr_cpo_collect.py source_ev",
+        "run: python3 scripts/uk_source_ev_pcpr_validate.py"
+      ],
+      "scripts": [
+        "scripts/public_safety_check.py",
+        "scripts/uk_pcpr_cpo_collect.py",
+        "scripts/uk_source_ev_pcpr_validate.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "SOURCE_EV_PCPR_TOKEN"
+      ],
+      "literal_data_paths": [
+        "data/national/uk_source_ev_pcpr.json.gz",
+        "data/national/uk_source_ev_pcpr_v9.json.gz",
+        "reports/uk/source_ev-pcpr-latest.json",
+        "reports/uk/source_ev-pcpr-validation-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-ubitricity-pcpr-refresh.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PYTHON'",
+        "python -m unittest discover -s tests -p 'test_uk_ubitricity_pcpr_collect.py' -v",
+        "python -m unittest discover -s tests -p 'test_uk_ubitricity_pcpr_tariff_semantics.py' -v",
+        "run: python -u scripts/uk_ubitricity_pcpr_collect.py",
+        "run: python -u scripts/uk_ubitricity_pcpr_validate.py"
+      ],
+      "scripts": [
+        "scripts/uk_ubitricity_pcpr_collect.py",
+        "scripts/uk_ubitricity_pcpr_validate.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [
+        "UBITRICITY_API_KEY",
+        "UBITRICITY_PCPR_TOKEN",
+        "UBITRICITY_UK_PCPR_API_KEY"
+      ],
+      "literal_data_paths": [
+        "data/national/uk_ubitricity_pcpr.json.gz",
+        "data/national/uk_ubitricity_v9.json.gz",
+        "data/operator_direct/ubitricity_uk_pcpr_payg_evidence.json",
+        "reports/uk/ubitricity-pcpr-latest.json",
+        "reports/uk/ubitricity-pcpr-validation-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/uk-validated-open-feeds-publish.yml",
+      "scope": [
+        "UK"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python scripts/collect_uk_validated_open_feeds.py --output artifacts/uk-validated-open-feeds.json"
+      ],
+      "scripts": [
+        "scripts/collect_uk_validated_open_feeds.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/uk_validated_open_feeds.json.gz",
+        "reports/uk/validated-open-feeds-latest.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/validate-v9-country-progress.yml",
+      "scope": [
+        "TESLA",
+        "FR",
+        "ES",
+        "IT",
+        "CH",
+        "DE",
+        "NL",
+        "UK",
+        "MA"
+      ],
+      "role": "legacy_cross_source_validation_with_volume_assertions",
+      "commands": [
+        "- run: python scripts/validate_v9_country_progress.py",
+        "python - <<'PY'"
+      ],
+      "scripts": [
+        "scripts/validate_v9_country_progress.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/vianeo-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/vianeo_official.py",
+        "python scripts/public_safety_check.py .",
+        "python scripts/vianeo_official.py --out out/vianeo 2> >(tee out/vianeo/error.log >&2)",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/public_safety_check.py",
+        "scripts/vianeo_official.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/vianeo_official_france.json",
+        "reports/vianeo/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/waat-direct-inventory.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/waat_national.py",
+        "python scripts/waat_national.py"
+      ],
+      "scripts": [
+        "scripts/waat_national.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/waat_direct_stations_france.json.gz",
+        "data/reports/waat_station_inventory_report.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/waat-monta-national-sharded.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: node scripts/waat_monta_shard.mjs"
+      ],
+      "scripts": [
+        "scripts/waat_monta_shard.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/waat_monta_direct_tariffs_france.json.gz",
+        "data/reports/waat_monta_national_tariffs_report.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/waat-monta-national-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "run: node scripts/waat_monta_national.mjs"
+      ],
+      "scripts": [
+        "scripts/waat_monta_national.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/waat_direct_stations_france.json.gz",
+        "data/national/waat_monta_direct_tariffs_france.json.gz",
+        "data/reports/waat_monta_national_tariffs_report.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/waat-monta-public-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "node --check scripts/waat_monta_public_tariffs.mjs",
+        "node scripts/waat_monta_public_tariffs.mjs",
+        "python - <<'PY'"
+      ],
+      "scripts": [
+        "scripts/waat_monta_public_tariffs.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/waat_monta_public_tariffs_france.json.gz",
+        "data/reports/waat_monta_public_tariffs_report.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/waat-qualicharge-direct-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'"
+      ],
+      "scripts": [],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/national/waat_direct_tariffs_qualicharge_france.json.gz",
+        "data/reports/waat_qualicharge_direct_tariffs_report.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/watch-fixed-tariff-sources.yml",
+      "scope": [],
+      "role": "cross_source_watch",
+      "commands": [
+        "run: python3 scripts/watch_fixed_tariff_sources.py"
+      ],
+      "scripts": [
+        "scripts/watch_fixed_tariff_sources.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "reports/fixed-tariff-refresh-audit.json",
+        "reports/fixed-tariff-source-watch.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/zephyre-france-refresh.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "node - <<'NODE'",
+        "node --check scripts/zephyre/compile_zephyre_v9_offers.mjs",
+        "node --check scripts/zephyre/extract_zephyre_france.mjs",
+        "node scripts/zephyre/compile_zephyre_v9_offers.mjs \\",
+        "node scripts/zephyre/extract_zephyre_france.mjs \\"
+      ],
+      "scripts": [
+        "scripts/zephyre/compile_zephyre_v9_offers.mjs",
+        "scripts/zephyre/extract_zephyre_france.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/zephyre/france/current/summary.json",
+        "data/zephyre/france/current/zephyre.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/zewatt-france-refresh.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "node - <<'NODE'",
+        "node scripts/zewatt/compile_zewatt_v9_offers.mjs \\",
+        "node scripts/zewatt/extract_zewatt_france.mjs \\"
+      ],
+      "scripts": [
+        "scripts/zewatt/compile_zewatt_v9_offers.mjs",
+        "scripts/zewatt/extract_zewatt_france.mjs"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/zewatt/france/current/summary.json",
+        "data/zewatt/france/current/zewatt.json.gz"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    },
+    {
+      "workflow": ".github/workflows/zunder-official-tariffs.yml",
+      "scope": [
+        "FR"
+      ],
+      "role": "requires_role_review",
+      "commands": [
+        "python - <<'PY'",
+        "python -m py_compile scripts/zunder_official.py",
+        "python scripts/public_safety_check.py .",
+        "python scripts/zunder_official.py --out out/zunder 2> >(tee out/zunder/error.log >&2)",
+        "run: python scripts/public_safety_check.py ."
+      ],
+      "scripts": [
+        "scripts/public_safety_check.py",
+        "scripts/zunder_official.py"
+      ],
+      "missing_script_references": [],
+      "secret_names": [],
+      "literal_data_paths": [
+        "data/operator_direct/zunder_official_france.json",
+        "reports/zunder/latest_diagnostic.json"
+      ],
+      "destination_module": null,
+      "review_status": "pending_method_and_output_review"
+    }
+  ]
+}

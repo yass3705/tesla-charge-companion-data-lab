@@ -435,5 +435,5 @@ Entrées append-only, datées, avec liens vers les documents et commits sources.
 
 # 20 octobre 2026 — reprise de l'inventaire G1
 
-- Le registre a été enrichi des indicateurs de planification, déclenchement indirect et références manquantes. Revue du YAML Ubitricity NL PAYG et de son historique : deux extracteurs référencés n'existent pas dans le code accessible, tandis que l'intégrateur et le candidat historique exact existent et se lisent. Voir `migration/v9/G1_METHOD_AUDIT.md`. G1 reste ouverte et Actions Data Lab demeure désactivé.
+- Le registre a été enrichi des indicateurs de planification, déclenchement indirect et références manquantes. La matrice `scheduled-methods.json` conserve 117/117 commandes planifiées, scripts et noms de secrets ; les 26 portées sans pays unique ont une revue explicite. Revue du YAML Ubitricity NL PAYG et de son historique : deux extracteurs référencés n'existent pas dans le code accessible, tandis que l'intégrateur et le candidat historique exact existent et se lisent. Voir `migration/v9/G1_METHOD_AUDIT.md`. G1 reste ouverte et Actions Data Lab demeure désactivé.
 
