@@ -193,6 +193,32 @@ def previous_electroverse_state(out_root: Path, source_id: str, module: str = "e
     return None
 
 
+def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
+    """Resolve one exact source from a downloaded immutable collection bundle."""
+    from v9_rebuild.electroverse import validate_state
+    from v9_rebuild.electroverse_status import validate_complete
+    manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("schema_version") != 1 or manifest.get("status") != "complete":
+        raise ValueError("Dependency collection manifest is incomplete")
+    rows = [row for row in manifest.get("sources", []) if row.get("source") == source_id
+            and row.get("module") == module and row.get("status") == "ok"]
+    if len(rows) != 1:
+        raise ValueError(f"Missing validated dependency: {source_id}")
+    row = rows[0]
+    artifact = bundle / safe_relative(row["artifact"])
+    if not artifact.resolve().is_relative_to(bundle.resolve()) or sha256(artifact) != row.get("sha256"):
+        raise ValueError(f"Dependency manifest SHA mismatch: {source_id}")
+    state = artifact.parents[3]
+    if module == "electroverse_status":
+        validate_complete(state, require_fresh_parts=False)
+    else:
+        validate_state(state)
+    digest, files = artifact_digest(state)
+    if digest != row.get("artifact_set_sha256") or files != row.get("files"):
+        raise ValueError(f"Dependency file integrity mismatch: {source_id}")
+    return state
+
+
 def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int = 2, timeout_s: int = 2400, runner=subprocess.run) -> dict:
     source_id = spec["id"]
     missing = [name for name in spec["secret_names"] if not os.environ.get(name)]
@@ -220,10 +246,18 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
         staged = checkpoint if checkpoint_module and checkpoint.is_dir() else Path(tempfile.mkdtemp(prefix="attempt-", dir=source_dir))
         try:
             if overlay_module:
-                status_input = out_root / "input_dependencies" / "FR_electroverse_status"
-                tariff_input = out_root / "input_dependencies" / "FR_electroverse_daily"
-                if not status_input.is_dir() or not tariff_input.is_dir():
+                dependencies = out_root / "input_dependencies"
+                status_bundle = dependencies / "FR_electroverse_status"
+                tariff_bundles = [(source, dependencies / source.replace(":", "_")) for source in ("FR:electroverse_daily", "FR:electroverse_full")]
+                present_tariffs = [(source, path) for source, path in tariff_bundles if path.is_dir()]
+                if not status_bundle.is_dir() or len(present_tariffs) != 1:
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_missing", "attempts": 0}
+                try:
+                    tariff_id, tariff_bundle = present_tariffs[0]
+                    tariff_input = validated_dependency(tariff_bundle, tariff_id, "electroverse")
+                    status_input = validated_dependency(status_bundle, "FR:electroverse_status", "electroverse_status")
+                except (OSError, ValueError, KeyError, TypeError, RuntimeError, gzip.BadGzipFile):
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
             command = ([sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
                        if operator_module else [sys.executable, str(root / "v9_rebuild/nl_dotnl.py"), "--out", str(staged)]
                        if nl_module else [sys.executable, str(root / "v9_rebuild/electroverse.py"), "--out", str(staged), "--mode", spec["mode"]]

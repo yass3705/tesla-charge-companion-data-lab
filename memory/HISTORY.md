@@ -459,3 +459,7 @@ Adaptateur isolé daily/full et checkpoint technique ajoutés à l'orchestrateur
 
 Adaptateur de statuts en 16 partitions, reprise et fusion historique, finalisation nationale hors checkout ; les checkpoints partiels restent séparés des artefacts validés. L'overlay exige le recensement complet et audite les tuiles, mais son constructeur historique complet et le passage des deux dépendances via Actions restent à valider. Le seuil artificiel de 5 000 offres a été retiré. Vingt tests ciblés PASS sans appel API ; G2 FAIL avec 138 méthodes en attente. Actions désactivées et site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, dépendances Electroverse
+
+Sélection locale de deux artefacts indépendants par source et branche, vérification du manifeste et de tous les SHA avant overlay. Le workflow commun télécharge ces deux états hors checkout et sépare les manifestes d'échec des collections validées. Le constructeur et l'audit historiques ont réellement été exécutés sur une fixture FR réduite ; les échecs et la reprise sont couverts. Transfert GitHub Actions encore non testé en run réel, Actions désactivées. G2 reste FAIL avec 138 méthodes. Voir `memory/V9_REBUILD_PROGRESS.md`.
+

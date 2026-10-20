@@ -2,7 +2,7 @@
 
 import unittest
 
-from v9_rebuild.artifact_selection import choose, source_slug
+from v9_rebuild.artifact_selection import choose, choose_overlay_dependencies, source_slug
 
 
 def artifact(kind: str, run_id: int, created: str, *, branch: str = "rebuild/v9-20261020", expired: bool = False) -> dict:
@@ -11,6 +11,16 @@ def artifact(kind: str, run_id: int, created: str, *, branch: str = "rebuild/v9-
 
 
 class ArtifactSelectionTests(unittest.TestCase):
+    def test_overlay_uses_two_independent_validated_sources_on_same_branch(self):
+        daily = {**artifact("collection", 21, "2026-10-20T01:00:00Z"), "name": "tcc-v9-collection-FR_electroverse_daily"}
+        full = artifact("collection", 22, "2026-10-20T02:00:00Z")
+        status = {**artifact("collection", 23, "2026-10-20T03:00:00Z"), "name": "tcc-v9-collection-FR_electroverse_status"}
+        self.assertEqual(choose_overlay_dependencies([daily], [full], [status], "rebuild/v9-20261020"),
+                         ("FR_electroverse_full", 22, 23))
+        wrong = {**status, "workflow_run": {"id": 23, "head_branch": "main"}}
+        self.assertEqual(choose_overlay_dependencies([daily], [full], [wrong], "rebuild/v9-20261020"),
+                         ("FR_electroverse_full", 22, None))
+
     def test_newer_checkpoint_takes_precedence(self):
         old = artifact("collection", 11, "2026-10-20T01:00:00Z")
         progress = artifact("checkpoints", 12, "2026-10-20T02:00:00Z")

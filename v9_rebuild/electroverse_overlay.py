@@ -74,7 +74,7 @@ def run(out: Path, *, source: Path = ROOT, status_source: Path, runner=subproces
     if out == ROOT or ROOT in out.parents:
         raise ValueError("Overlay output must be outside checkout")
     validate_complete(status_source, require_fresh_parts=False)
-    validate_state(source, require_complete=False)
+    validate_state(source)
     status_manifest = json.loads((status_source / STATUS / "manifest.json").read_text(encoding="utf-8"))
     generated = datetime.fromisoformat(status_manifest["generatedAt"].replace("Z", "+00:00"))
     if not 0 <= (datetime.now(timezone.utc) - generated).total_seconds() <= 72 * 3600:
@@ -82,9 +82,9 @@ def run(out: Path, *, source: Path = ROOT, status_source: Path, runner=subproces
     out.mkdir(parents=True, exist_ok=True)
     stage_state(source, out)
     copy_input(status_source, out, STATUS)
-    copy_input(source, out, VALIDATED)
+    copy_input(ROOT, out, VALIDATED)
     for relative in DIRECT:
-        copy_input(source, out, relative)
+        copy_input(ROOT, out, relative)
     if cache_fingerprint(out) != status_manifest["sourceFingerprint"]:
         raise ValueError("Status ledger and tariff cache have different provenance")
     for script in ("build_electroverse_france_evse_overlay.mjs", "audit_electroverse_status_gate_postbuild.mjs"):

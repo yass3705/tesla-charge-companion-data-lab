@@ -46,14 +46,30 @@ jobs:
           run-id: ${{ steps.prior.outputs.state_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_state
+      - name: Restore validated tariff dependency for the overlay
+        if: ${{ inputs.source == 'FR:electroverse_overlay' && steps.prior.outputs.tariff_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-collection-${{ steps.prior.outputs.tariff_slug }}
+          run-id: ${{ steps.prior.outputs.tariff_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/${{ steps.prior.outputs.tariff_slug }}
+      - name: Restore validated national-status dependency for the overlay
+        if: ${{ inputs.source == 'FR:electroverse_overlay' && steps.prior.outputs.status_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-collection-FR_electroverse_status
+          run-id: ${{ steps.prior.outputs.status_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/FR_electroverse_status
       - name: Collect migrated sources into isolated artifacts
         env:
           SOURCE_ID: ${{ inputs.source }}
           ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
           BELGIUM_NAP_TOKEN: ${{ secrets.BELGIUM_NAP_TOKEN }}
         run: python -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/tcc-v9-artifacts" --workers 1 --attempts 2
-      - name: Preserve immutable outputs and failure manifest
-        if: always()
+      - name: Preserve validated immutable outputs
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: tcc-v9-collection-${{ steps.prior.outputs.slug }}
@@ -62,6 +78,14 @@ jobs:
             ${{ runner.temp }}/tcc-v9-artifacts/objects
           if-no-files-found: warn
           retention-days: 30
+      - name: Preserve failure manifest separately
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcc-v9-failure-${{ steps.prior.outputs.slug }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/manifest.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Retain failed technical checkpoint for an explicit retry
         if: failure()
         uses: actions/upload-artifact@v4

@@ -43,6 +43,17 @@ def choose(checkpoints: list[dict], states: list[dict], source_id: str, branch: 
     return "baseline", None
 
 
+def choose_overlay_dependencies(tariff_daily: list[dict], tariff_full: list[dict], statuses: list[dict], branch: str) -> tuple[str | None, int | None, int | None]:
+    """Select two independent validated collections; never use checkpoints."""
+    daily = latest(tariff_daily, "tcc-v9-collection-FR_electroverse_daily", branch)
+    full = latest(tariff_full, "tcc-v9-collection-FR_electroverse_full", branch)
+    status = latest(statuses, "tcc-v9-collection-FR_electroverse_status", branch)
+    tariff = max((row for row in (daily, full) if row), key=lambda row: (row.get("created_at") or "", row.get("id") or 0), default=None)
+    return (("FR_electroverse_daily" if tariff is daily else "FR_electroverse_full") if tariff else None,
+            tariff["workflow_run"]["id"] if tariff else None,
+            status["workflow_run"]["id"] if status else None)
+
+
 def fetch(repo: str, name: str, token: str) -> list[dict]:
     query = urllib.parse.urlencode({"name": name, "per_page": 100})
     url = f"https://api.github.com/repos/{repo}/actions/artifacts?{query}"
@@ -69,6 +80,16 @@ def main() -> None:
     token = os.environ.get("GH_TOKEN")
     if not token:
         parser.error("GH_TOKEN is required")
+    if args.source == "FR:electroverse_overlay":
+        daily = fetch(args.repo, "tcc-v9-collection-FR_electroverse_daily", token)
+        full = fetch(args.repo, "tcc-v9-collection-FR_electroverse_full", token)
+        statuses = fetch(args.repo, "tcc-v9-collection-FR_electroverse_status", token)
+        tariff_slug, tariff_run, status_run = choose_overlay_dependencies(daily, full, statuses, args.branch)
+        with args.github_output.open("a", encoding="utf-8") as handle:
+            handle.write(f"slug={slug}\ncheckpoint_run_id=\nstate_run_id=\n")
+            handle.write(f"tariff_slug={tariff_slug or ''}\ntariff_run_id={tariff_run or ''}\nstatus_run_id={status_run or ''}\n")
+        print(json.dumps({"source": args.source, "tariff_run_id": tariff_run, "status_run_id": status_run}))
+        return
     checkpoints = fetch(args.repo, f"tcc-v9-checkpoints-{slug}", token)
     states = fetch(args.repo, f"tcc-v9-collection-{slug}", token)
     kind, run_id = choose(checkpoints, states, args.source, args.branch)
