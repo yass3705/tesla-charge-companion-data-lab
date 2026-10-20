@@ -608,3 +608,7 @@ Les trois finaliseurs historiques sont isolés et testés sur flux national réd
 # 20 octobre 2026 — V9, Saascharge et Partino Suisse
 
 Saascharge est limité aux plages tarifaires explicites ; Partino sépare l'accès restreint du prix inconnu. Tests hors réseau réussis. G2 reste FAIL : 72 méthodes requises, 61 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, IWB Bâle
+
+L'overlay historique IWB est isolé et testé avec cas à Bâle et hors Bâle ; l'accès public seul ne devient jamais un prix. G2 reste FAIL : 71 méthodes utiles, 62 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

@@ -32,12 +32,35 @@ METHODS = {
     "swiss_shell_evpass": ("scripts/finalize_swiss_shell_evpass_official.py", "data/switzerland/shell-evpass-official-direct-tariffs.json"),
     "swiss_saascharge": ("scripts/finalize_swiss_saascharge_official.py", "data/switzerland/saascharge-official-direct-tariffs.json"),
     "swiss_partino": ("scripts/finalize_swiss_par_partino.py", "data/switzerland/par-partino-restricted-direct-classification.json"),
+    "swiss_iwb": ("scripts/finalize_swiss_iwb_official_basel.py", "data/switzerland/iwb-official-basel-overlay.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method == "swiss_iwb":
+        archive = "docs/switzerland-iwb-owner-reconciliation-2026-09-28.json"
+        source = json.loads((out / archive).read_text(encoding="utf-8"))
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / "docs/switzerland-iwb-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        if not isinstance(rows, list):
+            raise ValueError("Swiss IWB overlay list missing")
+        ids = [row.get("evseId") for row in rows]
+        eligible = {row.get("evseId") for key in ("public_unpriced", "owner_not_seen_in_atlas")
+                    for row in source.get("classes", {}).get(key, [])}
+        if (source.get("operatorId") != "CH*IWB" or payload.get("operatorId") != "CH*IWB"
+                or report.get("operatorId") != "CH*IWB"
+                or any(not value or not value.startswith("CH*IWB*E") for value in ids)
+                or len(ids) != len(set(ids)) or not set(ids).issubset(eligible)
+                or payload.get("overlayCount") != len(rows)
+                or report.get("officialBaselOverlayCount") != len(rows)
+                or report.get("productionSources") != ["data/switzerland/iwb-direct-tariffs-second-pass.json", str(METHODS[method][1])]
+                or any(row.get("city") not in {"Basel", "Riehen"} or row.get("currency") != "CHF"
+                       or row.get("energyType") not in {"AC", "DC"} for row in rows)):
+            raise ValueError("Swiss IWB exact Basel overlay contract invalid")
+        return payload
     if method in {"swiss_saascharge", "swiss_partino"}:
         operator, label = (("CH*SCH", "saascharge") if method == "swiss_saascharge" else ("CH*PAR", "par"))
         payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
@@ -400,6 +423,11 @@ def run(out: Path, method: str, *, runner=subprocess.run) -> None:
     if method in {"swiss_ail", "swiss_ebs"}:
         archive_name = ("switzerland-small-cpo-national-context-2026-09-28.json" if method == "swiss_ail" else
                         "switzerland-ecarup-targeted-national-queries-2026-09-28.json")
+        destination = out / "docs" / archive_name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / "docs" / archive_name, destination)
+    if method == "swiss_iwb":
+        archive_name = "switzerland-iwb-owner-reconciliation-2026-09-28.json"
         destination = out / "docs" / archive_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / "docs" / archive_name, destination)

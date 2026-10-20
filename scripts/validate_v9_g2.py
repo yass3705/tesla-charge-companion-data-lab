@@ -79,6 +79,7 @@ def main() -> None:
                   else "scripts/finalize_swiss_shell_evpass_official.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_shell_evpass"
                   else "scripts/finalize_swiss_saascharge_official.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_saascharge"
                   else "scripts/finalize_swiss_par_partino.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_partino"
+                  else "scripts/finalize_swiss_iwb_official_basel.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_iwb"
                   else "scripts/etotem_direct_station_inventory.py" if spec["module"] == "cwd_script"
                   else "scripts/france/build_france_irve_static_v9.py" if spec["module"] == "france_irve"
                   else "scripts/build_france_canonical_dataset.py" if spec["module"] == "france_canonical"

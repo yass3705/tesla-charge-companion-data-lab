@@ -951,3 +951,5 @@ V9 G2 : le monolithique WAAT/Monta est classé supplanté par le collecteur à q
 V9 G2 : autoSense/AMAG, CHEVP et Shell/evpass Suisse migrés ; offre conditionnelle séparée et puissance manquante non tarifée. 73 méthodes utiles restent, 59 transferts GitHub non vérifiés. Actions désactivé.
 
 V9 G2 : Saascharge et Partino Suisse migrés avec plages exactes et classification d'accès sans prix inventé ; 72 méthodes requises restent, 61 transferts GitHub non vérifiés. Actions désactivé.
+
+V9 G2 : overlay IWB Bâle migré avec source archivée, scope géographique et EVSE exacts testés ; 71 méthodes requises restent, 62 transferts GitHub non vérifiés. Actions désactivé.
