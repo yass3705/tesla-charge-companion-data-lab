@@ -963,3 +963,5 @@ V9 G2 : DRIVECO EVSE exact migré sur fixture CSV archivée ; le prix énergie e
 V9 G2 : constructeur Midhope UK isolé sur preuve et snapshot exacts déjà archivés ; 66 méthodes requises restent, 66 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
 
 V9 G2 : Chargezy/TE63 migré sur fixture PAN réduite ; 65 méthodes requises restent, 67 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+V9 G2 : ancien garde de volumes globaux classé obsolète avec exception G2 nominative vérifiée ; 64 méthodes requises restent, 67 transferts GitHub non vérifiés. Actions désactivé.

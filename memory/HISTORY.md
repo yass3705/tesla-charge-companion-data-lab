@@ -632,3 +632,7 @@ Le constructeur historique Midhope est isolé avec preuve et snapshot Connected 
 # 20 octobre 2026 — V9, Chargezy/TE63
 
 Le collecteur historique Chargezy/TE63 est isolé, avec jointure PAN par EVSE exact, cas spécial et lacunes conservés. Son ancien seuil de 280 lignes a été retiré ; la dépendance HTTP historique est installée uniquement pour cette source. G2 reste FAIL : 65 méthodes utiles, 67 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, garde historique de volumes
+
+L'ancien contrôle global `validate_v9_source_guards.py` est classé obsolète : il n'écrit pas de donnée et impose des volumes 2026 interdits par V9. Sa retraite est nominative et vérifiée par le validateur G2 ; les fichiers source restent couverts par leurs méthodes indépendantes. G2 reste FAIL : 64 méthodes utiles, 67 transferts GitHub non vérifiés. Actions désactivé.

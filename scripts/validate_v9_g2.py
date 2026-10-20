@@ -134,7 +134,30 @@ def main() -> None:
             errors.append(f"invalid explicit G2 supersession: {workflow}")
         else:
             superseded_workflows.add(workflow)
-    pending = sorted(required - migrated - superseded_workflows)
+    retired = json.loads((ROOT / "migration/v9/g2-retired-methods.json").read_text())
+    retired_workflows = set()
+    if retired.get("schema_version") != 1 or len(retired.get("retired", [])) != 1:
+        errors.append("G2 retirement registry differs from the reviewed obsolete guard")
+    for row in retired.get("retired", []):
+        workflow = row.get("workflow")
+        script = row.get("script")
+        legacy = next((item for item in final["workflow_rows"] if item["workflow"] == workflow), None)
+        body = (ROOT / script).read_text(encoding="utf-8") if isinstance(script, str) and (ROOT / script).is_file() else ""
+        forbidden_volume_checks = ("resolvedNationalEvseCount\"]==583", "nfr>=160", "nit>=470",
+                                   "franceConnectorCount\"]>=1800", "inventoryCount\"]>=160000",
+                                   "len(lstores)>=300", "productionStations\"]==43", "station_count\"]==18")
+        if (workflow != ".github/workflows/validate-v9-source-guards.yml"
+                or script != "scripts/validate_v9_source_guards.py"
+                or row.get("classification") != "obsolete_volume_gate"
+                or not row.get("reason") or workflow not in required or workflow in migrated
+                or not legacy or legacy["source_scripts"] != [script]
+                or legacy["published_paths_in_git_add"]
+                or not all(token in body for token in forbidden_volume_checks)
+                or workflow in retired_workflows):
+            errors.append(f"invalid explicit G2 retirement: {workflow}")
+        else:
+            retired_workflows.add(workflow)
+    pending = sorted(required - migrated - superseded_workflows - retired_workflows)
     if pending:
         errors.append(f"useful historical methods not yet migrated: {len(pending)}")
     if json.loads((ROOT / "v9_rebuild/sources.json").read_text()).get("status") != "complete_g2_migration":
@@ -146,6 +169,7 @@ def main() -> None:
         "new_workflows": [path.name for path in workflows],
         "migrated_legacy_workflows": len(migrated),
         "superseded_legacy_workflows": sorted(superseded_workflows),
+        "retired_obsolete_legacy_workflows": sorted(retired_workflows),
         "registered_source_instances": len(sources),
         "pending_useful_methods": len(pending),
         "github_handoff_unverified": handoff_pending,
