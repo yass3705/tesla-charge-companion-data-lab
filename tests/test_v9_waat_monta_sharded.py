@@ -10,6 +10,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from tests.test_v9_waat_inventory import FixtureRunner
+from tests.test_v9_waat_monta_public import archived_fixture
+from v9_rebuild.electroverse import ROOT
 from v9_rebuild.cwd_script import run as inventory_run
 from v9_rebuild.orchestrator import read_sources, run_source
 from v9_rebuild.waat_monta_sharded import INPUT, OUTPUT, run, validate_output
@@ -45,6 +47,22 @@ class WaatMontaMigrationTests(unittest.TestCase):
             self.assertEqual(payload["counts"]["rankablePhysicalConfigs"], 0)
             self.assertEqual([payload["stations"][0]["stationIdNormalized"]], ["FRWA2P000001"])
             self.assertTrue((root / "monta/data/shards/waat_monta_shard_3.json.gz").is_file())
+
+    def test_monolithic_output_fields_preserved_by_partitioned_collector(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inventory, _ = self.setup_source(root)
+            public_fixture = json.loads(archived_fixture(root).read_text())
+            raw = public_fixture["map:48.85,2.35"]["data"]
+            shard_fixture = root / "shard-map.json"
+            shard_fixture.write_text(json.dumps({"FRWA2P000001": {"status": 200, "data": raw}}))
+            run(root / "monta", inventory, fixture_map=shard_fixture)
+            station = validate_output(root / "monta")["stations"][0]
+            with gzip.open(ROOT / "data/national/waat_monta_direct_tariffs_france.json.gz", "rt", encoding="utf-8") as stream:
+                legacy = json.load(stream)["stations"][0]
+            self.assertTrue(set(legacy).issubset(station))
+            self.assertTrue(set(legacy["montaGroups"][0]).issubset(station["montaGroups"][0]))
+            self.assertEqual(station["montaGroups"][0]["priceLabel"], public_fixture["map:48.85,2.35"]["data"]["list"][0]["price_label"])
 
     def test_failed_partition_preserves_finished_shard_and_resumes(self):
         with tempfile.TemporaryDirectory() as tmp:

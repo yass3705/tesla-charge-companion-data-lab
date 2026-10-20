@@ -168,7 +168,7 @@ async function worker(){
     const configs=physicalConfigs(st);
     const safeConfigs=integrationConfigs(unique,configs);
     const rankableGroups=unique.filter(g=>g.rankable);
-    results[idx]={stationId:st.stationId,stationIdNormalized:st.stationIdNormalized,stationName:st.stationName,address:st.address,cityCodeInsee:st.cityCodeInsee,coordinates:st.coordinates,evseIds:(st.evses||[]).map(e=>e.evseIdNormalized),physicalConfigs:configs,mapHttpStatus:status,mapError:error,montaGroups:unique,rankableGroups,integrationConfigs:safeConfigs,rankableDirect:safeConfigs.some(c=>c.rankable),blockingReason:safeConfigs.some(c=>c.rankable)?null:(unique.length?'no_safe_config_match':'no_close_waat_group_found')};
+    results[idx]={stationId:st.stationId,stationIdNormalized:st.stationIdNormalized,stationName:st.stationName,address:st.address,cityCodeInsee:st.cityCodeInsee,coordinates:st.coordinates,evseIds:(st.evses||[]).map(e=>e.evseIdNormalized),powerKwValues:st.powerKwValues||[],physicalKinds:[...new Set((st.evses||[]).flatMap(evseKinds))],distinctRankablePricesEur:[...new Set(rankableGroups.map(g=>g.directEurPerKwh))],physicalConfigs:configs,mapHttpStatus:status,mapError:error,montaGroups:unique,rankableGroups,integrationConfigs:safeConfigs,rankableDirect:safeConfigs.some(c=>c.rankable),blockingReason:safeConfigs.some(c=>c.rankable)?null:(unique.length?'no_safe_config_match':'no_close_waat_group_found')};
     completed++; if(completed%25===0||completed===stations.length)console.log(`WAAT shard ${SHARD_INDEX}: ${completed}/${stations.length}`);
   }
   if(page)await page.close();

@@ -596,3 +596,7 @@ Les deux finaliseurs historiques sont isolés et testés sur flux national rédu
 # 20 octobre 2026 — V9, WAAT/Monta public
 
 La méthode publique historique est isolée avec inventaire WAAT signé et fixture hors réseau ; sorties brutes et détails restent non classables jusqu'à normalisation. G2 reste FAIL : 77 méthodes utiles, 56 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, WAAT/Monta monolithique supplanté
+
+Le collecteur à quatre partitions produit les mêmes chemins, conserve les champs historiques et ajoute les configurations exactes par connecteur. Le monolithique reste archivé ; sa non-exécution est nominative et vérifiée. G2 reste FAIL : 76 méthodes utiles, 56 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

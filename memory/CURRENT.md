@@ -945,3 +945,5 @@ V9 G2 : AIL et EBS Suisse migrés avec entrées archivées, exactitude EVSE et c
 V9 G2 : EWD et Migrol Suisse migrés sur flux national réduit, avec puissance Migrol manquante explicitement non tarifée ; 78 méthodes utiles restent, 55 transferts GitHub non vérifiés. Actions désactivé.
 
 V9 G2 : WAAT/Monta public migré avec inventaire signé et preuves de détails, testé hors réseau ; 77 méthodes utiles restent, 56 transferts GitHub non vérifiés. Actions désactivé.
+
+V9 G2 : le monolithique WAAT/Monta est classé supplanté par le collecteur à quatre partitions après vérification des deux chemins et champs historiques ; 76 méthodes utiles restent, 56 transferts GitHub non vérifiés. Actions désactivé.

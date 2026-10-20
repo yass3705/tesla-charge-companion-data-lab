@@ -107,7 +107,23 @@ def main() -> None:
             else:
                 migrated.add(workflow)
     required = {row["workflow"] for row in final["workflow_rows"] if row["disposition"] in REQUIRED_METHOD_DISPOSITIONS}
-    pending = sorted(required - migrated)
+    superseded = json.loads((ROOT / "migration/v9/g2-superseded-methods.json").read_text())["superseded"]
+    superseded_workflows = set()
+    for row in superseded:
+        workflow = row["workflow"]
+        replacement = row["replacement_workflow"]
+        source = next((item for item in sources if item["id"] == row["replacement_source"]), None)
+        old = next((item for item in final["workflow_rows"] if item["workflow"] == workflow), None)
+        new = next((item for item in final["workflow_rows"] if item["workflow"] == replacement), None)
+        if (workflow in superseded_workflows or workflow not in required or workflow in migrated
+                or not source or replacement not in source["legacy_workflows"] or replacement not in migrated
+                or not old or not new or old["source_scripts"] != [row["script"]]
+                or old["published_paths_in_git_add"] != new["published_paths_in_git_add"]
+                or not (ROOT / row["script"]).is_file() or not row.get("reason")):
+            errors.append(f"invalid explicit G2 supersession: {workflow}")
+        else:
+            superseded_workflows.add(workflow)
+    pending = sorted(required - migrated - superseded_workflows)
     if pending:
         errors.append(f"useful historical methods not yet migrated: {len(pending)}")
     if json.loads((ROOT / "v9_rebuild/sources.json").read_text()).get("status") != "complete_g2_migration":
@@ -118,6 +134,7 @@ def main() -> None:
         "legacy_active_workflows_removed": len(expected) == len(workflows),
         "new_workflows": [path.name for path in workflows],
         "migrated_legacy_workflows": len(migrated),
+        "superseded_legacy_workflows": sorted(superseded_workflows),
         "registered_source_instances": len(sources),
         "pending_useful_methods": len(pending),
         "github_handoff_unverified": handoff_pending,
