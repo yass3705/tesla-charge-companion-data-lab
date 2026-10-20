@@ -435,6 +435,8 @@ Entrées append-only, datées, avec liens vers les documents et commits sources.
 
 # 20 octobre 2026 — reprise de l'inventaire G1
 
+- Décision de migration : Ubitricity NL PAYG est `legacy_method_unavailable` ; acquisition désactivée, candidat et intégrateur conservés. Le validateur vérifie l'exception nominative et refuse les absences supplémentaires (cinq tests réussis). Une correction de la porte empêche désormais le faux PASS tant que les 1 207 workflows, 756 scripts et 221 méthodes prioritaires gardent des statuts provisoires. G1 reste FAIL, G2 non commencé.
+
 - Après rebase sur `def205b0d`, validateur G1 rejoué : seul échec, les deux scripts Ubitricity NL absents. Scan public complet réussi, Actions Data Lab toujours désactivé, aucun run actif ; branche `rebuild/v9-20261020` publiée seule sur GitHub pour reprise. Aucun changement Production ni site public.
 
 - Nouveau fetch après scan public complet : deux commits Blink UK issus de runs déjà lancés ont avancé `main` à `def205b0d`, sans modifier workflows ni scripts. Rebase propre de la branche G1 ; Actions toujours désactivé, aucun run actif au contrôle. Les quatre fichiers de données/rapports distants sont préservés. Porte G1 à rejouer avant toute publication de branche.

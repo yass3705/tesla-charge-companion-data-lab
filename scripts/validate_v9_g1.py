@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed when a historical method lacks its code or module destination."""
+"""Fail closed on unclassified historical methods and unlisted missing code."""
 
 from __future__ import annotations
 
@@ -10,6 +10,54 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_SCOPE = {"FR", "IT", "CH", "DE", "ES", "NL", "UK", "MA", "BE", "TESLA"}
+ALLOWED_UNAVAILABLE = {
+    ".github/workflows/ubitricity-nl-payg-refresh.yml": {
+        "scripts/audit_nl_ubitricity_payg_portal.py",
+        "scripts/reconcile_nl_ubitricity_payg_overlay.py",
+    },
+}
+
+
+def validate_missing_code(root: Path, inventory: dict, exceptions: dict) -> list[str]:
+    """Allow only exact, archived, explicitly disabled historical exceptions."""
+    errors: list[str] = []
+    workflows = {row["workflow"]: row for row in inventory["workflows"]}
+    missing = {row["workflow"]: set(row["missing_script_references"]) for row in inventory["workflows"] if row["missing_script_references"]}
+    registered: set[str] = set()
+    for entry in exceptions.get("exceptions", []):
+        workflow = entry.get("workflow")
+        if workflow in registered:
+            errors.append(f"duplicate missing-method exception: {workflow}")
+            continue
+        registered.add(workflow)
+        expected = set(entry.get("missing_scripts", []))
+        if ALLOWED_UNAVAILABLE.get(workflow) != expected:
+            errors.append(f"unapproved missing-method exception: {workflow}")
+        if workflow not in workflows or not expected or missing.get(workflow) != expected:
+            errors.append(f"missing-method exception does not match inventory: {workflow}")
+            continue
+        if entry.get("status") != "legacy_method_unavailable" or entry.get("disposition") != "acquisition_disabled_last_good_retained":
+            errors.append(f"missing-method exception is not disabled: {workflow}")
+        if not entry.get("reason") or not entry.get("module_destination") or not entry.get("reactivation_condition"):
+            errors.append(f"missing-method exception lacks justification/destination: {workflow}")
+        if hashlib.sha256((root / workflow).read_bytes()).hexdigest() != entry.get("workflow_sha256"):
+            errors.append(f"missing-method workflow changed: {workflow}")
+        candidate = entry.get("last_good_candidate")
+        if not candidate or not (root / candidate).is_file() or hashlib.sha256((root / candidate).read_bytes()).hexdigest() != entry.get("last_good_candidate_sha256"):
+            errors.append(f"missing-method last-good candidate changed: {workflow}")
+        integrator = entry.get("preserved_integrator")
+        if not integrator or not (root / integrator).is_file():
+            errors.append(f"missing-method integrator absent: {workflow}")
+        for script in expected:
+            if (root / script).exists():
+                errors.append(f"disabled exception references restored script: {script}")
+    unlisted = sorted(set(missing) - registered)
+    if unlisted:
+        errors.append(f"historical workflow references unlisted missing code: {unlisted}")
+    extra = sorted(registered - set(missing))
+    if extra:
+        errors.append(f"stale missing-method exceptions: {extra}")
+    return errors
 
 
 def main() -> None:
@@ -19,6 +67,7 @@ def main() -> None:
     inline = json.loads((ROOT / "migration/v9/inline-methods.json").read_text())["rows"]
     data_reviews = json.loads((ROOT / "migration/v9/inline-data-review.json").read_text())["rows"]
     historical_reviews = json.loads((ROOT / "migration/v9/inline-historical-review.json").read_text())["rows"]
+    exceptions = json.loads((ROOT / "migration/v9/legacy-method-exceptions.json").read_text())
     errors = []
     expected_workflows = {str(p.relative_to(ROOT)) for p in (ROOT / ".github/workflows").glob("*.y*ml")}
     registered_workflows = {w["workflow"] for w in inv["workflows"]}
@@ -31,9 +80,7 @@ def main() -> None:
     bad_modules = [r["script"] for r in destinations if len(r["candidate_modules"]) != 1]
     if bad_modules:
         errors.append(f"scripts without one candidate module: {bad_modules}")
-    missing_code = sorted({s for w in inv["workflows"] for s in w["missing_script_references"]})
-    if missing_code:
-        errors.append(f"historical workflow references missing code: {missing_code}")
+    errors.extend(validate_missing_code(ROOT, inv, exceptions))
     expected_inline = {w["workflow"] for w in inv["workflows"] if not w["scripts"]}
     registered_inline = {r["workflow"] for r in inline}
     if expected_inline != registered_inline:
@@ -61,6 +108,17 @@ def main() -> None:
     scope = {country for module in registry for country in module["country_scope_hints"]}
     if REQUIRED_SCOPE - scope:
         errors.append(f"country/source scope absent: {sorted(REQUIRED_SCOPE - scope)}")
+    pending_workflows = [w["workflow"] for w in inv["workflows"] if w["migration_status"] == "unreviewed" or not w["destination_module"]]
+    if pending_workflows:
+        errors.append(f"historical workflows without final disposition/destination: {len(pending_workflows)}")
+    pending_scripts = [r["script"] for r in destinations if r["review_status"] in {"candidate_destination_pending_review", "ambiguous_shared_method"}]
+    if pending_scripts:
+        errors.append(f"historical scripts without final review: {len(pending_scripts)}")
+    pending_priority = [m for module in registry for m in module["methods"] if m["migration_status"] == "method_review_pending"]
+    if pending_priority:
+        errors.append(f"priority methods without final review: {len(pending_priority)}")
+    if any(module["status"] == "provisional_method_destination" for module in registry):
+        errors.append("source registry still provisional")
     result = {
         "gate": "G1",
         "status": "pass" if not errors else "fail",

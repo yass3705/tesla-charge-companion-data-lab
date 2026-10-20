@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "exceptions": [
+    {
+      "workflow": ".github/workflows/ubitricity-nl-payg-refresh.yml",
+      "workflow_sha256": "1b3ac0df34ab46408d6a69a2d2894bb78a288d043409f23f84bd1114c65e0a6e",
+      "status": "legacy_method_unavailable",
+      "disposition": "acquisition_disabled_last_good_retained",
+      "missing_scripts": [
+        "scripts/audit_nl_ubitricity_payg_portal.py",
+        "scripts/reconcile_nl_ubitricity_payg_overlay.py"
+      ],
+      "reason": "The scheduled workflow calls two scripts absent from all accessible Git references and local TCC worktrees; the PR #151 file list also omits them. The workflow and candidate describe the output contract but do not specify the full portal parser or reconciliation algorithm, so equivalent acquisition cannot be proved without new assumptions.",
+      "last_good_candidate": "data/operator_direct/ubitricity_nl_payg_exact_overlay_candidate.json.gz.b64",
+      "last_good_candidate_sha256": "c2204d8c0089a7a4740a81f27aa453d8319a262ff3ad65688d9197019debf5a0",
+      "preserved_integrator": "scripts/integrate_ubitricity_nl_payg.py",
+      "module_destination": "cpo/ubitricity",
+      "evidence": "migration/v9/G1_METHOD_AUDIT.md",
+      "reactivation_condition": "Recover the exact historical scripts or prove a reconstruction with frozen fixtures and an approved format contract; keep acquisition disabled until then."
+    }
+  ]
+}
