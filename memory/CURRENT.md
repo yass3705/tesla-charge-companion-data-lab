@@ -907,3 +907,5 @@ V9 G2 : quatre règles officielles FR supplémentaires (DRIVECO, eborn, E55C, Fr
 V9 G2 : Qovoltis, ENGIE Vianeo et Métropolis migrés sur fixtures hors ligne ; 103 méthodes utiles restent, aucun transfert GitHub attesté.
 
 V9 G2 : Plenitude, Zunder et IECharge validés sur fixtures hors ligne ; 100 méthodes utiles restent. Collectes live et transferts GitHub non attestés.
+
+V9 G2 : Lidl Plus et Plug Inn migrés sur fixtures locales avec les valeurs Lidl archivées ; 98 méthodes utiles restent. Aucun test GitHub Actions réel.

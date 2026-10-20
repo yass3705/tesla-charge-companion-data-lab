@@ -22,8 +22,10 @@ RULES = {
     "freshmile": ("Freshmile", "freshmile-official-france", 7),
     "iecharge": ("IECharge", "iecharge-official-france", 5),
     "ionity": ("IONITY", "ionity-official-france", 6),
+    "lidl_plus": ("Lidl", "operator-direct-lidl-plus-france", 1),
     "metropolis": ("Métropolis Recharge", "metropolis-official-grand-paris", 2),
     "plenitude": ("Plenitude On The Road", "plenitude-on-the-road-official-france", 4),
+    "pluginn_fastcharge": ("Plug Inn fast charge", "pluginn-fastcharge-official-france", 3),
     "qovoltis": ("Qovoltis", "qovoltis-official-france", 3),
     "vianeo": ("ENGIE Vianeo", "engie-vianeo-official-france", 7),
     "zunder": ("Zunder", "zunder-official-france", 7),
@@ -33,7 +35,7 @@ RULES = {
 def paths(source: str) -> tuple[Path, Path, Path]:
     if source not in RULES:
         raise ValueError(f"Unsupported preserved official rule: {source}")
-    return (Path("data/operator_direct/metropolis_official_grand_paris.json") if source == "metropolis" else Path(f"data/operator_direct/{source}_official_france.json"),
+    return (Path("data/operator_direct/metropolis_official_grand_paris.json") if source == "metropolis" else Path("data/operator_direct/lidl_plus_france.json") if source == "lidl_plus" else Path(f"data/operator_direct/{source}_official_france.json"),
             Path(f"reports/{source}/latest_summary.md"), Path(f"out/{source}"))
 
 
@@ -41,6 +43,21 @@ def validate_output(out: Path, source: str) -> dict:
     output, report, _ = paths(source)
     payload = json.loads((out / output).read_text(encoding="utf-8"))
     operator, dataset, expected_evidence = RULES[source]
+    if source == "lidl_plus":
+        evidence = payload.get("sourceEvidence") or {}
+        pricing = payload.get("pricing") or []
+        fingerprint = evidence.get("relevantTariffFingerprintSha256")
+        if (payload.get("schemaVersion") != "1.0.0" or payload.get("dataset") != dataset
+                or payload.get("operator") != operator or payload.get("country") != "FR"
+                or payload.get("source") != "operator_direct"
+                or payload.get("networkScope", {}).get("confirmedByOfficialSource") is not True
+                or evidence.get("officialPage") is not True or evidence.get("httpStatus") != 200
+                or len(pricing) != 2 or {row.get("currentType") for row in pricing} != {"AC", "DC"}
+                or any(row.get("currency") != "EUR" or row.get("billingUnit") != "kWh" or not isinstance(row.get("pricePerKwh"), (int, float)) for row in pricing)
+                or not isinstance(fingerprint, str) or len(fingerprint) != 64
+                or not (out / report).is_file() or not (out / report).read_text(encoding="utf-8").strip()):
+            raise ValueError("Lidl Plus official technical contract invalid")
+        return payload
     evidence = payload.get("sourceEvidence") or {}
     sources = evidence.get("sources") or []
     if (payload.get("schemaVersion") != ("1.0.1" if source == "freshmile" else "1.0.0") or payload.get("dataset") != dataset
@@ -136,6 +153,12 @@ def validate_output(out: Path, source: str) -> dict:
                 or payload.get("classification", {}).get("thirdPartyEmspPriceCanDiffer") is not True
                 or payload.get("roaming", {}).get("operatorDirect") is not False):
             raise ValueError("IECharge direct or eMSP scope invalid")
+    elif source == "pluginn_fastcharge":
+        if (payload.get("classification", {}).get("singleNationalBankCardDirectTariff") is not True
+                or payload.get("mobilityService", {}).get("mustRemainSeparateFromPublicBankCardCpoTariff") is not True
+                or payload.get("roaming", {}).get("operatorDirect") is not False
+                or payload.get("fees", {}).get("overstayOrParkingDuration", {}).get("doNotModelAsChargeEndedOnly") is not True):
+            raise ValueError("Plug Inn direct, Charge Pass or overstay scope invalid")
     elif source == "fastned":
         direct = payload["operatorDirect"]
         if (payload.get("classification", {}).get("singleNationalOperatorTariff") is not True

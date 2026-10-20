@@ -520,3 +520,7 @@ Trois méthodes historiques de règles officielles supplémentaires migrées et 
 # 20 octobre 2026 — V9, Plenitude, Zunder, IECharge
 
 Trois méthodes officielles supplémentaires migrées et testées hors ligne par l’adaptateur commun. G2 FAIL : 100 méthodes utiles, 33 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, Lidl Plus et Plug Inn
+
+Deux méthodes officielles consommées par Production migrées en espace isolé et testées hors ligne. G2 FAIL : 98 méthodes utiles et 35 transferts GitHub non vérifiés. Aucune publication.
