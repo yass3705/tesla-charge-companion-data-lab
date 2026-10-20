@@ -552,3 +552,7 @@ Le collecteur national historique est isolé et testé sur fixture IRVE réduite
 # 20 octobre 2026 — V9, AVIA Picoty PAN brut/index
 
 Les deux processeurs historiques PAN sont migrés ensemble et testés hors réseau. Le CSV brut et les sorties restent séparés et les anciens minimums de stations sont retirés. G2 FAIL : 90 méthodes utiles, 43 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, E55C stations et Direct
+
+La base E55C et son enrichissement Scan Pay exact sont enchaînés hors checkout avec reprise d’un dernier état validé. Les seuils de stations et de couverture tarifaire sont retirés ; les identités et SHA restent contrôlés. G2 FAIL : 89 méthodes utiles, 44 transferts GitHub non vérifiés. Aucune publication.

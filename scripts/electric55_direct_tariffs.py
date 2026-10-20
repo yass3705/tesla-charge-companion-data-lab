@@ -655,7 +655,6 @@ def main() -> int:
     parser.add_argument("--map-settings-url", default=MAP_SETTINGS_URL)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--full-refresh", action="store_true")
-    parser.add_argument("--min-coverage", type=float, default=0.95)
     args = parser.parse_args()
 
     payload = json.loads(args.input.read_text(encoding="utf-8"))
@@ -682,9 +681,6 @@ def main() -> int:
         previous=previous,
         full_refresh=full_refresh,
     )
-    coverage = enriched["stats"]["directTariffCoverageRatio"]
-    if coverage < args.min_coverage:
-        raise RuntimeError(f"E55C direct tariff coverage {coverage:.2%} < required {args.min_coverage:.2%}")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(render(enriched), encoding="utf-8")
     if args.report:

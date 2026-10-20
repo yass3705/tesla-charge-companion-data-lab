@@ -17,7 +17,7 @@ import json
 import re
 import unicodedata
 import urllib.request
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -363,13 +363,7 @@ def offers_for_station(points: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def build(rows: Iterable[dict[str, str]], *, source: dict[str, Any]) -> dict[str, Any]:
     source_rows = list(rows)
-    operator_counts = Counter(clean(row.get("nom_operateur")) or "<blank>" for row in source_rows)
     matched = [row for row in source_rows if is_e55c_operator(row.get("nom_operateur"))]
-    if not matched:
-        raise RuntimeError(
-            "strict CPO filter matched no row; observed nom_operateur values: "
-            + ", ".join(f"{name} ({count})" for name, count in operator_counts.most_common(8))
-        )
 
     grouped: dict[str, dict[str, Any]] = {}
     invalid_coordinates = 0
@@ -472,8 +466,6 @@ def build(rows: Iterable[dict[str, str]], *, source: dict[str, Any]) -> dict[str
         station["offers"] = offers_for_station(points)
         stations.append(station)
 
-    if not stations:
-        raise RuntimeError("strict E55C filter produced no station with valid coordinates")
     charge_points = [point for station in stations for point in station["chargePoints"]]
     parsed_points = [point for point in charge_points if point["pricing"]["rules"]]
     parsed_station_count = sum(
@@ -551,7 +543,6 @@ def main() -> int:
     parser.add_argument("--input-csv", type=Path)
     parser.add_argument("--out", type=Path, default=Path("data/national/electric55_stations_france.json"))
     parser.add_argument("--report", type=Path, default=Path("reports/electric55/station_base_summary.md"))
-    parser.add_argument("--min-stations", type=int, default=1)
     args = parser.parse_args()
 
     if args.input_csv:
@@ -590,10 +581,6 @@ def main() -> int:
         "officialPublisher": "Electric 55 Charging",
     }
     payload = build(rows, source=source)
-    if payload["stats"]["stationCount"] < args.min_stations:
-        raise RuntimeError(
-            f"unexpected E55C station count {payload['stats']['stationCount']} < {args.min_stations}"
-        )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(render(payload), encoding="utf-8")

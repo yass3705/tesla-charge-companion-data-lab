@@ -250,6 +250,11 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("AVIA Picoty PAN methods or authentication contract changed")
             spec["output_file"] = "data/national/avia_volt_picoty_irve_extract.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/avia_picoty_extract.py")
+        elif spec.get("module") == "electric55_chain" and source_id == "FR:electric55_chain":
+            if spec["secret_names"] or any(not (root / name).is_file() for name in ("scripts/electric55_station_base.py", "scripts/electric55_direct_tariffs.py")):
+                raise ValueError("E55C historical chain or authentication contract changed")
+            spec["output_file"] = "data/national/electric55_stations_france.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/electric55_chain.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -369,6 +374,9 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     elif module == "tesla_mac":
         from v9_rebuild.tesla_mac import validate_output
         validate_output(state)
+    elif module == "electric55_chain":
+        from v9_rebuild.electric55_chain import validate_output
+        validate_output(state)
     elif module == "electroverse":
         validate_state(state)
     else:
@@ -459,11 +467,12 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     uk_gridserve_module = spec["module"] == "uk_gridserve"
     uk_ubitricity_module = spec["module"] == "uk_ubitricity"
     avia_picoty_extract_module = spec["module"] == "avia_picoty_extract"
+    electric55_chain_module = spec["module"] == "electric55_chain"
     checkpoint_module = electroverse_module or status_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
     belib_prior = None
-    if (belib_module or fx_module or suc_module or tesla_mac_module) and (out_root / "input_state").is_dir():
+    if (belib_module or fx_module or suc_module or tesla_mac_module or electric55_chain_module) and (out_root / "input_state").is_dir():
         try:
             belib_prior = validated_dependency(out_root / "input_state", source_id, spec["module"])
         except (OSError, ValueError, KeyError, TypeError):
@@ -522,7 +531,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if uk_evyve_module else [sys.executable, str(root / "v9_rebuild/uk_gridserve.py"), "--out", str(staged)]
                        if uk_gridserve_module else [sys.executable, str(root / "v9_rebuild/uk_ubitricity.py"), "--out", str(staged)]
                        if uk_ubitricity_module else [sys.executable, str(root / "v9_rebuild/avia_picoty_extract.py"), "--out", str(staged)]
-                       if avia_picoty_extract_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if avia_picoty_extract_module else [sys.executable, str(root / "v9_rebuild/electric55_chain.py"), "--out", str(staged)]
+                       if electric55_chain_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -741,6 +751,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif avia_picoty_extract_module:
                 from v9_rebuild.avia_picoty_extract import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif electric55_chain_module:
+                from v9_rebuild.electric55_chain import validate_output
                 try:
                     validate_output(staged)
                     valid = True

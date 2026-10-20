@@ -923,3 +923,5 @@ V9 G2 : La Borne Bleue migrée avec son script historique, testée sur CSV rédu
 V9 G2 : inventaire AVIA Picoty isolé et testé hors réseau ; 91 méthodes utiles restent, sans tarif Direct attribué par proximité ou marque. Actions désactivé.
 
 V9 G2 : extraction PAN et index AVIA Picoty migrés avec CSV brut isolé ; 90 méthodes utiles restent. Actions désactivé.
+
+V9 G2 : chaîne E55C stations puis Direct exact migrée avec reprise du dernier état validé ; 89 méthodes utiles restent. Actions désactivé.
