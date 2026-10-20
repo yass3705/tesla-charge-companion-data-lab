@@ -429,3 +429,7 @@ Entrées append-only, datées, avec liens vers les documents et commits sources.
 ## Format des prochaines entrées
 
 `YYYY-MM-DD — sujet` ; décision ou constat ; preuves et liens ; fichiers/commits concernés ; vérification ; statut de publication ; action restante. Ne jamais présenter un résultat expérimental comme déployé.
+# 20 octobre 2026 — démarrage reconstruction V9
+
+- Après fetch et comparaison des quatre dépôts, le risque des anciens workflows Data Lab capables d'écrire sur `main` a été neutralisé par désactivation des Actions au niveau du dépôt. Trois runs actifs ont été annulés ; aucune exécution active au contrôle suivant. Deux références Git locales restaurables conservent le `main` distant et l'ancien HEAD local. Branche locale `rebuild/v9-20261020`, sans publication ni déploiement. Tableau de bord et prochaine opération : [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
