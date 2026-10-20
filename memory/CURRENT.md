@@ -931,3 +931,5 @@ V9 G2 : inventaire WAAT FR*WA2 isolé et testé sur CSV réduit ; 88 méthodes u
 V9 G2 : inventaire Freshmile Direct et exclusion des réseaux régionaux isolés et testés ; 87 méthodes utiles restent. Aucun prix Direct n’est déduit du texte IRVE, Actions désactivé.
 
 V9 G2 : WAAT/Monta à quatre partitions migré et testé hors réseau avec dépendance d’inventaire signée et reprise des shards ; 86 méthodes utiles restent, 47 transferts GitHub non vérifiés. Actions désactivé.
+
+V9 G2 : finalisation Fastned Suisse migrée avec son script historique et testée sur flux national réduit ; 85 méthodes utiles restent, 48 transferts GitHub non vérifiés. Actions désactivé.

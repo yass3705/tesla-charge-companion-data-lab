@@ -19,12 +19,31 @@ METHODS = {
     "reveo_official": ("scripts/reveo_official.py", "data/operator_direct/reveo_official_france.json"),
     "avia_picoty_inventory": ("scripts/avia_picoty_national.py", "data/national/avia_picoty_direct_stations_france.json.gz"),
     "waat_inventory": ("scripts/waat_national.py", "data/national/waat_direct_stations_france.json.gz"),
+    "swiss_fastned": ("scripts/finalize_swiss_fastned_official.py", "data/switzerland/fastned-official-direct-tariffs.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method == "swiss_fastned":
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / "docs/switzerland-fastned-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        ids = [row.get("evseId") for row in rows] if isinstance(rows, list) else []
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("cpo") != "Fastned" or payload.get("operatorId") != "CH*FASTNED"
+                or not isinstance(rows, list) or any(not value for value in ids)
+                or len(ids) != len(set(ids))
+                or any(row.get("currency") != "CHF" for row in rows)
+                or any(row.get("source") != payload.get("sources", {}).get("officialPricing") for row in rows)
+                or payload.get("counts", {}).get("nationalEvseCount") != len(rows)
+                or payload.get("counts", {}).get("pricedEvseCount") != len(rows)
+                or report.get("productionSource") != str(METHODS[method][1])
+                or report.get("nationalEvseCount") != len(rows)
+                or report.get("status") != ("complete" if rows else "partial")):
+            raise ValueError("Swiss Fastned exact owner and output contract invalid")
+        return payload
     if method == "qwello_saone_et_loire":
         payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
         evidence = payload.get("sourceEvidence") or {}

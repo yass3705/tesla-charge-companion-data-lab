@@ -66,6 +66,7 @@ def main() -> None:
                   else "scripts/reveo_official.py" if spec["module"] == "cwd_script" and spec["method"] == "reveo_official"
                   else "scripts/avia_picoty_national.py" if spec["module"] == "cwd_script" and spec["method"] == "avia_picoty_inventory"
                   else "scripts/waat_national.py" if spec["module"] == "cwd_script" and spec["method"] == "waat_inventory"
+                  else "scripts/finalize_swiss_fastned_official.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_fastned"
                   else "scripts/etotem_direct_station_inventory.py" if spec["module"] == "cwd_script"
                   else "scripts/france/build_france_irve_static_v9.py" if spec["module"] == "france_irve"
                   else "scripts/build_france_canonical_dataset.py" if spec["module"] == "france_canonical"
