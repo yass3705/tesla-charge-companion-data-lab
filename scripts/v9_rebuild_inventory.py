@@ -28,6 +28,8 @@ REBUILD_TOOL_NAMES = {
     "v9_manual_consumer_priority.py",
     "v9_source_registry.py",
     "v9_script_destinations.py",
+    "validate_v9_g1.py",
+    "v9_inline_methods.py",
 }
 
 
