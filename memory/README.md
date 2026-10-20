@@ -2,6 +2,12 @@
 
 Point d'entrée versionné pour reprendre le travail depuis Codex Mac ou ChatGPT mobile via GitHub. Ce répertoire est un **index et un journal**, pas une copie des dossiers `docs/`, `reports/` ni des données. Les liens ci-dessous pointent vers la source de référence dans chaque dépôt. Une affirmation ancienne reste datée ; vérifier le code, les artefacts et les commits avant de la présenter comme déployée.
 
+## Reconstruction complète V9 (G0 à G9)
+
+- **[Cahier des charges permanent, décisions utilisateur et portes de recette G0–G9](../docs/v9-rebuild/PROJECT_SPEC_G0_G9.md)** : à relire au début de chaque session Codex, même après remise à zéro du quota ou ouverture d'une nouvelle conversation.
+- **[Tableau de bord reprenable V9](V9_REBUILD_PROGRESS.md)** : consulter le dernier statut PASS/FAIL, le SHA, les preuves et la prochaine opération avant d'agir. Le statut exact peut évoluer indépendamment du cahier des charges.
+- Sur la branche de reconstruction, ne pas rétablir les anciennes validations par volumes EVSE ni reprendre les enquêtes de tarifs. Garder les Actions Data Lab désactivées jusqu'à neutralisation et autorisation ; ne pas modifier le site public avant validation finale.
+
 ## Carte des quatre dépôts
 
 | Dépôt | Rôle | Références |
