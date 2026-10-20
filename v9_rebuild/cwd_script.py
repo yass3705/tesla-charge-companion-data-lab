@@ -25,12 +25,44 @@ METHODS = {
     "swiss_plenitude": ("scripts/finalize_swiss_plenitude_official.py", "data/switzerland/plenitude-official-direct-tariffs.json"),
     "swiss_ail": ("scripts/finalize_swiss_ail_emoti.py", "data/switzerland/ail-emoti-official-direct-tariffs.json"),
     "swiss_ebs": ("scripts/finalize_swiss_ebs_ecarup.py", "data/switzerland/ebs-ecarup-direct-tariffs.json"),
+    "swiss_ewd": ("scripts/finalize_swiss_ewd_official.py", "data/switzerland/ewd-official-direct-tariffs.json"),
+    "swiss_migrol": ("scripts/finalize_swiss_migrol_official.py", "data/switzerland/migrol-official-direct-tariffs.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method in {"swiss_ewd", "swiss_migrol"}:
+        operator = "CH*EWD" if method == "swiss_ewd" else "CH*MIG"
+        label = "ewd" if method == "swiss_ewd" else "migrol"
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / f"docs/switzerland-{label}-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        if not isinstance(rows, list):
+            raise ValueError(f"Swiss {label.upper()} EVSE list missing")
+        ids = [row.get("evseId") for row in rows]
+        unresolved = payload.get("unresolved", [])
+        if not isinstance(unresolved, list):
+            raise ValueError(f"Swiss {label.upper()} unresolved list invalid")
+        unresolved_ids = {row.get("evseId") for row in unresolved}
+        counts = payload.get("counts") or {}
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("operatorId") != operator
+                or any(not value or not value.startswith(operator + "*E") for value in ids)
+                or len(ids) != len(set(ids)) or not unresolved_ids.issubset(set(ids))
+                or any(row.get("currency") != "CHF" for row in rows)
+                or any((row.get("pricePerKwh") is None) != (row["evseId"] in unresolved_ids) for row in rows)
+                or counts.get("nationalEvseCount") != len(rows)
+                or counts.get("pricedEvseCount") != len(rows) - len(unresolved_ids)
+                or counts.get("unresolvedEvseCount") != len(unresolved_ids)
+                or report.get("productionSource") != str(METHODS[method][1])
+                or report.get("status") != ("complete" if rows and not unresolved else "partial")
+                or report.get("nationalEvseCount") != len(rows)
+                or report.get("pricedEvseCount") != len(rows) - len(unresolved_ids)
+                or report.get("unresolvedEvseCount") != ((0 if rows else 1) if method == "swiss_ewd" else len(unresolved_ids))):
+            raise ValueError(f"Swiss {label.upper()} exact EVSE contract invalid")
+        return payload
     if method in {"swiss_ail", "swiss_ebs"}:
         operator = "CH*AIL" if method == "swiss_ail" else "CH*EBS"
         prefix = "ail" if method == "swiss_ail" else "ebs"

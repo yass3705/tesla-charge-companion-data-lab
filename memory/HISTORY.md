@@ -588,3 +588,7 @@ La finalisation historique est isolée avec catalogue archivé et testée sur de
 # 20 octobre 2026 — V9, AIL et EBS Suisse
 
 Les deux finaliseurs historiques utilisent leurs entrées archivées hors checkout et sont testés sur fixtures réduites, avec cas non résolu conservé. G2 reste FAIL : 80 méthodes utiles, 53 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, EWD et Migrol Suisse
+
+Les deux finaliseurs historiques sont isolés et testés sur flux national réduit ; un EVSE Migrol sans puissance reste non tarifé. G2 reste FAIL : 78 méthodes utiles, 55 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

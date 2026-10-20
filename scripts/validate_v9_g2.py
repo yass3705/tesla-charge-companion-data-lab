@@ -72,6 +72,8 @@ def main() -> None:
                   else "scripts/finalize_swiss_plenitude_official.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_plenitude"
                   else "scripts/finalize_swiss_ail_emoti.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_ail"
                   else "scripts/finalize_swiss_ebs_ecarup.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_ebs"
+                  else "scripts/finalize_swiss_ewd_official.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_ewd"
+                  else "scripts/finalize_swiss_migrol_official.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_migrol"
                   else "scripts/etotem_direct_station_inventory.py" if spec["module"] == "cwd_script"
                   else "scripts/france/build_france_irve_static_v9.py" if spec["module"] == "france_irve"
                   else "scripts/build_france_canonical_dataset.py" if spec["module"] == "france_canonical"

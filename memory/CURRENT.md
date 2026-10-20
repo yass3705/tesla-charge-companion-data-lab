@@ -941,3 +941,5 @@ V9 G2 : IONITY Suisse national finalisé hors checkout sur fixture à puissance 
 V9 G2 : Plenitude Suisse finalisé hors checkout avec catalogue archivé et limite 75 kW non tarifée ; 82 méthodes utiles restent, 51 transferts GitHub non vérifiés. Actions désactivé.
 
 V9 G2 : AIL et EBS Suisse migrés avec entrées archivées, exactitude EVSE et cas non résolus testés ; 80 méthodes utiles restent, 53 transferts GitHub non vérifiés. Actions désactivé.
+
+V9 G2 : EWD et Migrol Suisse migrés sur flux national réduit, avec puissance Migrol manquante explicitement non tarifée ; 78 méthodes utiles restent, 55 transferts GitHub non vérifiés. Actions désactivé.
