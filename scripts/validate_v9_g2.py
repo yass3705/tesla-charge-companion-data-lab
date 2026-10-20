@@ -43,14 +43,18 @@ def main() -> None:
                   else "scripts/electroverse_status_incremental.mjs" if spec["module"] == "electroverse_status"
                   else "scripts/build_electroverse_france_evse_overlay.mjs" if spec["module"] == "electroverse_overlay"
                   else spec["script"] if spec["module"] == "isolated_script"
+                  else "scripts/belib_official.py" if spec["module"] == "belib_chain"
                   else spec["script"])
-        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else method)
+        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else method)
         if not source_code.is_file():
             errors.append(f"source method/config missing: {spec['id']}")
         for workflow in spec.get("legacy_workflows", []):
+            workflow_method = ("scripts/belib_official.py" if workflow.endswith("belib-official-tariffs.yml")
+                               else "scripts/belib_station_base.py" if workflow.endswith("belib-station-base.yml")
+                               else method)
             if workflow not in original or workflow in migrated:
                 errors.append(f"invalid or duplicate legacy workflow mapping: {workflow}")
-            elif method not in original[workflow]["scripts"]:
+            elif workflow_method not in original[workflow]["scripts"]:
                 errors.append(f"legacy workflow uses a different extraction method: {workflow}")
             else:
                 migrated.add(workflow)

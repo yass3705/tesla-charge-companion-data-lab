@@ -113,6 +113,14 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Atlante direct historical method changed")
             spec["output_file"] = "data/national/atlante_direct_stations_france.json.gz"
             spec["manifest_sha256"] = sha256(root / script)
+        elif spec.get("module") == "belib_chain" and source_id == "FR:belib":
+            if spec["secret_names"]:
+                raise ValueError("Belib historical collection has no secret")
+            for name in ("belib_official.py", "belib_station_base.py"):
+                if not (root / "scripts" / name).is_file():
+                    raise ValueError(f"Missing historical Belib script: {name}")
+            spec["output_file"] = "data/national/belib_stations_paris.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/belib.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -211,14 +219,22 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     if len(rows) != 1:
         raise ValueError(f"Missing validated dependency: {source_id}")
     row = rows[0]
-    artifact = bundle / safe_relative(row["artifact"])
+    relative = safe_relative(row["artifact"])
+    if (len(relative.parts) < 5 or relative.parts[:2] != ("objects", source_id.replace(":", "_"))):
+        raise ValueError(f"Dependency object path invalid: {source_id}")
+    artifact = bundle / relative
     if not artifact.resolve().is_relative_to(bundle.resolve()) or sha256(artifact) != row.get("sha256"):
         raise ValueError(f"Dependency manifest SHA mismatch: {source_id}")
-    state = artifact.parents[3]
+    state = bundle / Path(*relative.parts[:3])
     if module == "electroverse_status":
         validate_complete(state, require_fresh_parts=False)
-    else:
+    elif module == "belib_chain":
+        from v9_rebuild.belib import validate_output
+        validate_output(state)
+    elif module == "electroverse":
         validate_state(state)
+    else:
+        raise ValueError(f"Unsupported dependency module: {module}")
     digest, files = artifact_digest(state)
     if digest != row.get("artifact_set_sha256") or files != row.get("files"):
         raise ValueError(f"Dependency file integrity mismatch: {source_id}")
@@ -257,9 +273,16 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     electroverse_module = spec["module"] == "electroverse"
     status_module = spec["module"] == "electroverse_status"
     overlay_module = spec["module"] == "electroverse_overlay"
+    belib_module = spec["module"] == "belib_chain"
     checkpoint_module = electroverse_module or status_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
+    belib_prior = None
+    if belib_module and (out_root / "input_state").is_dir():
+        try:
+            belib_prior = validated_dependency(out_root / "input_state", source_id, "belib_chain")
+        except (OSError, ValueError, KeyError, TypeError):
+            return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
     operator_module = spec["module"] == "operator_manifest"
     nl_module = spec["module"] == "nl_dotnl"
     isolated_script = spec["module"] == "isolated_script"
@@ -293,9 +316,12 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if nl_module else [sys.executable, str(root / "v9_rebuild/electroverse.py"), "--out", str(staged), "--mode", spec["mode"]]
                        if electroverse_module else [sys.executable, str(root / "v9_rebuild/electroverse_status.py"), "--out", str(staged)]
                        if status_module else [sys.executable, str(root / "v9_rebuild/electroverse_overlay.py"), "--out", str(staged), "--source", str(tariff_input), "--status-source", str(status_input)]
-                       if overlay_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if overlay_module else [sys.executable, str(root / "v9_rebuild/belib.py"), "--out", str(staged)]
+                       if belib_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
+            if belib_prior is not None:
+                command.extend(["--source", str(belib_prior)])
             if electroverse_module and spec["mode"] == "full":
                 command.extend(["--max-chunks", "1"])
             completed = runner(command, cwd=staged if spec["module"] == "belgium_nap" else root,
@@ -368,6 +394,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = validate_isolated_script_output(spec, output)
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
+            elif belib_module:
+                from v9_rebuild.belib import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)
             if not valid:
@@ -399,6 +432,10 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
             reason = "collector_timeout"
         finally:
             if staged.exists() and staged.name.startswith("attempt-"):
+                if belib_module and (staged / "reports/belib/latest_diagnostic.json").is_file():
+                    diagnostic = out_root / "failures" / source_id.replace(":", "_") / "latest_diagnostic.json"
+                    diagnostic.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(staged / "reports/belib/latest_diagnostic.json", diagnostic)
                 shutil.rmtree(staged)
     return {"source": source_id, "status": "failed", "reason": reason, "attempts": attempts}
 

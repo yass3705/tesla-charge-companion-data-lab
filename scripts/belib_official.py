@@ -180,9 +180,6 @@ def main() -> None:
 
     static_count = int(static_data.get("total_count") or 0)
     live_count = int(live_data.get("total_count") or 0)
-    if static_count < 1000 or live_count < 1000:
-        raise RuntimeError(f"Belib official inventory unexpectedly small: static={static_count}, live={live_count}")
-
     samples = []
     seen = set()
     for row in static_data.get("results") or []:

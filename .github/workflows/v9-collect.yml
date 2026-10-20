@@ -24,6 +24,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install preserved Belib PDF extractor
+        if: ${{ inputs.source == 'FR:belib' }}
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
       - name: Find the latest state for this source and branch
         id: prior
         env:
@@ -84,7 +87,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tcc-v9-failure-${{ steps.prior.outputs.slug }}
-          path: ${{ runner.temp }}/tcc-v9-artifacts/manifest.json
+          path: |
+            ${{ runner.temp }}/tcc-v9-artifacts/manifest.json
+            ${{ runner.temp }}/tcc-v9-artifacts/failures
           if-no-files-found: ignore
           retention-days: 7
       - name: Retain failed technical checkpoint for an explicit retry

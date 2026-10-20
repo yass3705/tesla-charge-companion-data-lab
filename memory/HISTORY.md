@@ -467,3 +467,7 @@ Sélection locale de deux artefacts indépendants par source et branche, vérifi
 
 Le collecteur historique Atlante Direct, déjà référencé par Production, est raccordé au module `isolated_script` et produit un artefact vérifié hors checkout. Les gardes arbitraires sur le nombre de sites ont été retirées ; la complétude de l'hydratation reste obligatoire. Tests de parseur et d'orchestration hors ligne réussis. G2 FAIL sur 137 méthodes restantes ; Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, chaîne Belib
+
+Les méthodes `belib_official.py` et `belib_station_base.py` partagent désormais un espace de collecte isolé : tarif officiel validé puis construction et contrôle de la base de stations. La reprise d'un artefact Belib vérifie source, SHA et fichiers ; les rapports historiques restent conservés. Seule la garde de volume arbitraire a été retirée de l'extracteur. Fixtures et tests hors ligne réussis, aucun nouveau prix ni API. G2 FAIL avec 135 méthodes ; Actions désactivées. Voir `memory/V9_REBUILD_PROGRESS.md`.
+

@@ -1,3 +1,7 @@
+# 20 octobre 2026 — V9 reconstruction, chaîne Belib
+
+- Les deux scripts historiques Belib sont exécutés dans l'ordre hors checkout : tarif officiel, puis base de stations. Les deux sorties canoniques et rapports sont vérifiés ; la reprise utilise le dernier artefact Belib validé avec contrôle SHA. Les assertions tarifaires restent dans le script historique sans être copiées dans l'orchestrateur ; le seuil de volume d'inventaire a été retiré. Fixtures hors ligne et tests ciblés PASS. G2 reste FAIL avec 135 méthodes à migrer ; Actions désactivées, site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 20 octobre 2026 — V9 reconstruction, Atlante Direct
 
 - Le collecteur Atlante Direct utilisé par Production passe par l'adaptateur isolé du workflow commun, avec le secret historique et une sortie gzip vérifiée. Les tests du parseur et de l'adaptateur passent sans réseau. Deux anciens rejets fondés sur le seul volume ont été retirés ; le contrôle de complétude map/détails reste. G2 reste FAIL avec 137 méthodes utiles à migrer ; Actions désactivées, site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
