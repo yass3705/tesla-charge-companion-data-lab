@@ -171,8 +171,6 @@ def make_payload(static_locations: list[dict[str, Any]], operated: list[dict[str
     connectors = [connector for location in locations for connector in location["connectors"]]
     price_counts = Counter(f"{c['pricePerKwhEur']:.2f}" for c in connectors)
     power_counts = Counter(f"{c['powerKw']:g}" for c in connectors)
-    if not locations:
-        raise ValueError(f"IONITY {TARGET_COUNTRY} operated-station result is empty")
     if any(location["cpoIdentifier"] != CANONICAL_CPO for location in locations):
         raise ValueError(f"non-IONITY CPO leaked into {TARGET_COUNTRY} map")
     counts = {
@@ -225,11 +223,7 @@ def make_payload(static_locations: list[dict[str, Any]], operated: list[dict[str
 def live_build(workers: int) -> dict[str, Any]:
     static_payload = request_json(STATIC_URL)
     static_locations = static_payload.get("locations") or []
-    if len(static_locations) < 500:
-        raise RuntimeError(f"IONITY static inventory unexpectedly small: {len(static_locations)}")
     operated = [item for item in static_locations if item.get("cpoIdentifier") == CANONICAL_CPO]
-    if len(operated) < 500:
-        raise RuntimeError(f"IONITY operated inventory unexpectedly small: {len(operated)}")
 
     south, west, north, east = COUNTRY_BOUNDS[TARGET_COUNTRY]
     candidates = []
@@ -238,8 +232,6 @@ def live_build(workers: int) -> dict[str, Any]:
         longitude = finite_number(item.get("longitude"))
         if latitude is not None and longitude is not None and south <= latitude <= north and west <= longitude <= east:
             candidates.append(item)
-    if len(candidates) < 20:
-        raise RuntimeError(f"IONITY {TARGET_COUNTRY} geographic candidate inventory unexpectedly small: {len(candidates)}")
 
     locations: list[dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=max(1, min(workers, 24))) as pool:

@@ -121,6 +121,14 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                     raise ValueError(f"Missing historical Belib script: {name}")
             spec["output_file"] = "data/national/belib_stations_paris.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/belib.py")
+        elif spec.get("module") == "ionity_family" and source_id == "FR:ionity_direct_family":
+            if spec["secret_names"]:
+                raise ValueError("IONITY Direct historical method has no secret")
+            for name in ("ionity_station_tariffs.py", "ionity_station_tariffs_uk.py"):
+                if not (root / "scripts" / name).is_file():
+                    raise ValueError(f"Missing historical IONITY script: {name}")
+            spec["output_file"] = "data/national/ionity_direct_stations_france.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/ionity.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -274,6 +282,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     status_module = spec["module"] == "electroverse_status"
     overlay_module = spec["module"] == "electroverse_overlay"
     belib_module = spec["module"] == "belib_chain"
+    ionity_module = spec["module"] == "ionity_family"
     checkpoint_module = electroverse_module or status_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
@@ -317,7 +326,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if electroverse_module else [sys.executable, str(root / "v9_rebuild/electroverse_status.py"), "--out", str(staged)]
                        if status_module else [sys.executable, str(root / "v9_rebuild/electroverse_overlay.py"), "--out", str(staged), "--source", str(tariff_input), "--status-source", str(status_input)]
                        if overlay_module else [sys.executable, str(root / "v9_rebuild/belib.py"), "--out", str(staged)]
-                       if belib_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if belib_module else [sys.executable, str(root / "v9_rebuild/ionity.py"), "--out", str(staged)]
+                       if ionity_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -347,7 +357,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if isolated_script and output.suffix == ".gz":
+                if (isolated_script or ionity_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -400,6 +410,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif ionity_module:
+                from v9_rebuild.ionity import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

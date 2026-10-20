@@ -44,13 +44,15 @@ def main() -> None:
                   else "scripts/build_electroverse_france_evse_overlay.mjs" if spec["module"] == "electroverse_overlay"
                   else spec["script"] if spec["module"] == "isolated_script"
                   else "scripts/belib_official.py" if spec["module"] == "belib_chain"
+                  else "scripts/ionity_station_tariffs.py" if spec["module"] == "ionity_family"
                   else spec["script"])
-        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else method)
+        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else "v9_rebuild/ionity.py" if spec["module"] == "ionity_family" else method)
         if not source_code.is_file():
             errors.append(f"source method/config missing: {spec['id']}")
         for workflow in spec.get("legacy_workflows", []):
             workflow_method = ("scripts/belib_official.py" if workflow.endswith("belib-official-tariffs.yml")
                                else "scripts/belib_station_base.py" if workflow.endswith("belib-station-base.yml")
+                               else "scripts/ionity_station_tariffs_uk.py" if workflow.endswith("ionity-direct-uk-station-tariffs.yml")
                                else method)
             if workflow not in original or workflow in migrated:
                 errors.append(f"invalid or duplicate legacy workflow mapping: {workflow}")

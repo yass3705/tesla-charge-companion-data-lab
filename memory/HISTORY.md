@@ -471,3 +471,7 @@ Le collecteur historique Atlante Direct, déjà référencé par Production, est
 
 Les méthodes `belib_official.py` et `belib_station_base.py` partagent désormais un espace de collecte isolé : tarif officiel validé puis construction et contrôle de la base de stations. La reprise d'un artefact Belib vérifie source, SHA et fichiers ; les rapports historiques restent conservés. Seule la garde de volume arbitraire a été retirée de l'extracteur. Fixtures et tests hors ligne réussis, aucun nouveau prix ni API. G2 FAIL avec 135 méthodes ; Actions désactivées. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, IONITY Direct
+
+Un module familial exécute les scripts historiques IONITY Direct FR/IT/DE et GB dans un espace isolé ; les quatre sorties sont vérifiées avant versionnement. Seuls les seuils historiques de volume ont été retirés ; identifiants, CPO, devise et relations restent contrôlés. Sept tests sur fixtures hors ligne PASS ; G2 FAIL avec 133 méthodes en attente. Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
+

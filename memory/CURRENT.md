@@ -1,3 +1,7 @@
+# 20 octobre 2026 — V9 reconstruction, IONITY Direct
+
+- Les scripts IONITY Direct FR/IT/DE et GB produisent quatre sorties historiques dans un même espace isolé, validées ensemble avant artefact. Les fixtures hors réseau exécutent les scripts réels sur une station par pays ; un échec IT laisse le lot incomplet hors des objets publiables. Seuls les anciens seuils de volume ont été retirés. Sept tests ciblés PASS ; G2 FAIL avec 133 méthodes restantes. Actions désactivées, site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 20 octobre 2026 — V9 reconstruction, chaîne Belib
 
 - Les deux scripts historiques Belib sont exécutés dans l'ordre hors checkout : tarif officiel, puis base de stations. Les deux sorties canoniques et rapports sont vérifiés ; la reprise utilise le dernier artefact Belib validé avec contrôle SHA. Les assertions tarifaires restent dans le script historique sans être copiées dans l'orchestrateur ; le seuil de volume d'inventaire a été retiré. Fixtures hors ligne et tests ciblés PASS. G2 reste FAIL avec 135 méthodes à migrer ; Actions désactivées, site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
