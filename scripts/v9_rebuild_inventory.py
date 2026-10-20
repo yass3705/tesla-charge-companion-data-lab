@@ -31,6 +31,7 @@ REBUILD_TOOL_NAMES = {
     "validate_v9_g1.py",
     "v9_inline_methods.py",
     "v9_inline_data_review.py",
+    "v9_inline_historical_review.py",
 }
 
 

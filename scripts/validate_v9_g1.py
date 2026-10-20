@@ -17,6 +17,8 @@ def main() -> None:
     destinations = json.loads((ROOT / "migration/v9/script-destinations.json").read_text())["rows"]
     registry = json.loads((ROOT / "migration/v9/source-registry.json").read_text())["modules"]
     inline = json.loads((ROOT / "migration/v9/inline-methods.json").read_text())["rows"]
+    data_reviews = json.loads((ROOT / "migration/v9/inline-data-review.json").read_text())["rows"]
+    historical_reviews = json.loads((ROOT / "migration/v9/inline-historical-review.json").read_text())["rows"]
     errors = []
     expected_workflows = {str(p.relative_to(ROOT)) for p in (ROOT / ".github/workflows").glob("*.y*ml")}
     registered_workflows = {w["workflow"] for w in inv["workflows"]}
@@ -39,6 +41,20 @@ def main() -> None:
     changed_inline = [r["workflow"] for r in inline if hashlib.sha256((ROOT / r["workflow"]).read_bytes()).hexdigest() != r["yaml_sha256"]]
     if changed_inline:
         errors.append(f"inline method YAML hash mismatch: {changed_inline}")
+    expected_data = {r["workflow"]: r for r in inline if r["review_priority"] == "data_candidate"}
+    reviewed_data = {r["workflow"]: r for r in data_reviews}
+    if expected_data.keys() != reviewed_data.keys():
+        errors.append(f"data method review mismatch: missing={sorted(expected_data.keys() - reviewed_data.keys())}, extra={sorted(reviewed_data.keys() - expected_data.keys())}")
+    mismatched_data = [path for path, row in expected_data.items() if path in reviewed_data and (row["yaml_sha256"], row["method_role"], row["disposition"]) != (reviewed_data[path]["yaml_sha256"], reviewed_data[path]["role"], reviewed_data[path]["disposition"])]
+    if mismatched_data:
+        errors.append(f"data method role/hash mismatch: {mismatched_data}")
+    expected_historical = {r["workflow"]: r for r in inline if r["review_priority"] == "historical_reference"}
+    reviewed_historical = {r["workflow"]: r for r in historical_reviews}
+    if expected_historical.keys() != reviewed_historical.keys():
+        errors.append(f"historical method review mismatch: missing={sorted(expected_historical.keys() - reviewed_historical.keys())}, extra={sorted(reviewed_historical.keys() - expected_historical.keys())}")
+    mismatched_historical = [path for path, row in expected_historical.items() if path in reviewed_historical and (row["yaml_sha256"], row["method_role"], row["disposition"]) != (reviewed_historical[path]["yaml_sha256"], reviewed_historical[path]["role"], reviewed_historical[path]["disposition"])]
+    if mismatched_historical:
+        errors.append(f"historical method role/hash mismatch: {mismatched_historical}")
     pending_inline = sum(r["method_status"] == "inline_yaml_review_pending" for r in inline)
     if pending_inline:
         errors.append(f"inline methods not yet classified: {pending_inline}")
