@@ -624,3 +624,7 @@ Le finaliseur historique est isolé avec catalogue eCarUp archivé et correspond
 # 20 octobre 2026 — V9, DRIVECO EVSE exact
 
 Le collecteur CSV historique est isolé et testé sur une valeur et une matrice OSF archivées. Le coût de session reste explicitement incalculable tant que la sémantique OSF manque ; aucun seuil de volume. G2 reste FAIL : 68 méthodes utiles, 65 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, Midhope exact UK
+
+Le constructeur historique Midhope est isolé avec preuve et snapshot Connected Kerb archivés. Les deux workflows de reconstruction équivalents sont couverts, avec EVSE, connecteurs et QR exacts. G2 reste FAIL : 66 méthodes utiles, 66 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

@@ -959,3 +959,5 @@ V9 G2 : TAE Matterhorn migré sur flux réduit avec cas 50 kW non résolu ; ses 
 V9 G2 : EWO/eCarUp migré avec catalogue archivé et jointure stricte opérateur, distance et connecteur public ; 69 méthodes requises restent, 64 transferts GitHub non vérifiés. Actions désactivé.
 
 V9 G2 : DRIVECO EVSE exact migré sur fixture CSV archivée ; le prix énergie et les frais OSF non interprétés restent distincts, sans total de session inventé. 68 méthodes requises restent, 65 transferts GitHub non vérifiés. Actions désactivé.
+
+V9 G2 : constructeur Midhope UK isolé sur preuve et snapshot exacts déjà archivés ; 66 méthodes requises restent, 66 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
