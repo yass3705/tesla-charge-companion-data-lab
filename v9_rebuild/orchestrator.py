@@ -188,6 +188,11 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("SuC Tracker historical method or configuration changed")
             spec["output_file"] = "data/suc-tracker/metadata.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/suc_tracker.py")
+        elif spec.get("module") == "tesla_mac" and source_id == "GL:tesla_mac":
+            if spec["secret_names"] or not (root / "scripts/import_tesla_mac_ingress.py").is_file():
+                raise ValueError("Tesla/Mac historical ingress method or authentication contract changed")
+            spec["output_file"] = "data/tesla/mac/last-good.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/tesla_mac.py")
         elif spec.get("module") == "cwd_script" and source_id in {"FR:etotem_inventory", "FR:qwello_saone_et_loire", "FR:reveo_official"}:
             from v9_rebuild.cwd_script import METHODS
             method = spec.get("method")
@@ -340,6 +345,9 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     elif module == "suc_tracker":
         from v9_rebuild.suc_tracker import validate_output
         validate_output(state)
+    elif module == "tesla_mac":
+        from v9_rebuild.tesla_mac import validate_output
+        validate_output(state)
     elif module == "electroverse":
         validate_state(state)
     else:
@@ -393,6 +401,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     official_rules_module = spec["module"] == "official_rules"
     fx_module = spec["module"] == "fx"
     suc_module = spec["module"] == "suc_tracker"
+    tesla_mac_module = spec["module"] == "tesla_mac"
     cwd_script_module = spec["module"] == "cwd_script"
     france_irve_module = spec["module"] == "france_irve"
     france_canonical_module = spec["module"] == "france_canonical"
@@ -403,7 +412,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
     belib_prior = None
-    if (belib_module or fx_module or suc_module) and (out_root / "input_state").is_dir():
+    if (belib_module or fx_module or suc_module or tesla_mac_module) and (out_root / "input_state").is_dir():
         try:
             belib_prior = validated_dependency(out_root / "input_state", source_id, spec["module"])
         except (OSError, ValueError, KeyError, TypeError):
@@ -452,7 +461,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if allego_official_module else [sys.executable, str(root / "v9_rebuild/official_rules.py"), "--source", spec["source"], "--out", str(staged)]
                        if official_rules_module else [sys.executable, str(root / "v9_rebuild/fx.py"), "--out", str(staged)]
                        if fx_module else [sys.executable, str(root / "v9_rebuild/suc_tracker.py"), "--out", str(staged)]
-                       if suc_module else [sys.executable, str(root / "v9_rebuild/cwd_script.py"), "--method", spec["method"], "--out", str(staged)]
+                       if suc_module else [sys.executable, str(root / "v9_rebuild/tesla_mac.py"), "--out", str(staged)]
+                       if tesla_mac_module else [sys.executable, str(root / "v9_rebuild/cwd_script.py"), "--method", spec["method"], "--out", str(staged)]
                        if cwd_script_module else [sys.executable, str(root / "v9_rebuild/france_irve.py"), "--out", str(staged)]
                        if france_irve_module else [sys.executable, str(root / "v9_rebuild/france_canonical.py"), "--out", str(staged)]
                        if france_canonical_module else [sys.executable, str(root / "v9_rebuild/uk_blink.py"), "--out", str(staged)]
@@ -607,6 +617,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif suc_module:
                 from v9_rebuild.suc_tracker import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif tesla_mac_module:
+                from v9_rebuild.tesla_mac import validate_output
                 try:
                     validate_output(staged)
                     valid = True

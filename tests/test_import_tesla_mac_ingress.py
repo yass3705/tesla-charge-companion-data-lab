@@ -47,8 +47,17 @@ class ImportTest(unittest.TestCase):
             validate(item, self.second, prior, self.first)
         item = ready(self.first, 2, "2026-10-09")
         item["stationCount"] = 1179
-        with self.assertRaisesRegex(ValueError, "incomplete"):
+        with self.assertRaisesRegex(ValueError, "count differs"):
             validate(item, self.first, prior, self.first)
+
+    def test_station_removal_is_not_a_technical_error(self):
+        rows = json.loads(self.first)
+        reduced = json.dumps(rows[:2]).encode()
+        prior = {"stationCount": len(rows), "countryDates": ready(self.first, 1, "2026-10-08")["countryDates"]}
+        pin = ready(reduced, 2, "2026-10-09")
+        pin["countryDates"] = {row["countryCode"]: "2026-10-09" for row in rows[:2]}
+        result = validate(pin, reduced, prior, self.first)
+        self.assertEqual(result["stationCount"], 2)
 
     def test_older_run_and_date_rollback_rejected(self):
         prior = {"stationCount": 1178, "updaterRunId": 3,

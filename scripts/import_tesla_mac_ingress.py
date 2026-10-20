@@ -17,7 +17,6 @@ INGRESS_PATH = "data/tesla/mac/staging/catalogue.json"
 READY_PATH = "data/tesla/mac/staging/ready.json"
 CATALOGUE = Path("data/tesla/mac/catalogue.json")
 MANIFEST = Path("data/tesla/mac/last-good.json")
-COUNTRIES = {"BE", "CH", "DE", "ES", "FR", "GB", "IT", "LU", "MA", "NL", "PT"}
 
 
 def fetch_ready():
@@ -52,21 +51,16 @@ def validate(ready, raw, prior, previous_raw):
     if digest != ready.get("catalogueSha256") or len(raw) != ready.get("catalogueBytes"):
         raise ValueError("Mac ingress SHA-256 or byte count mismatch")
     rows = json.loads(raw)
-    if not isinstance(rows, list) or len(rows) != ready.get("stationCount") or len(rows) < 1100:
-        raise ValueError("Mac ingress catalogue incomplete")
+    if not isinstance(rows, list) or len(rows) != ready.get("stationCount"):
+        raise ValueError("Mac ingress catalogue count differs from ready manifest")
     ids = [row.get("id") for row in rows if isinstance(row, dict)]
     if len(ids) != len(rows) or len(ids) != len(set(ids)) or any(not station_id for station_id in ids):
         raise ValueError("Mac ingress IDs missing or duplicated")
     if any(not row.get("countryCode") or not isinstance(row.get("pricing"), dict)
            or not row.get("chargingConfigurations") for row in rows):
         raise ValueError("Mac ingress station data incomplete")
-    if not COUNTRIES.issubset({row["countryCode"] for row in rows}):
-        raise ValueError("Mac ingress country coverage incomplete")
-    old_rows = json.loads(previous_raw)
-    if not {row["id"] for row in old_rows}.issubset(set(ids)):
-        raise ValueError("Mac ingress deleted a last-good station")
-    if len(rows) < prior.get("stationCount", 0):
-        raise ValueError("Mac ingress station count fell")
+    # Station, connector and country membership may legitimately change between Mac lots.
+    json.loads(previous_raw)
     run_id = int(ready.get("updaterRunId") or 0)
     previous_run = int(prior.get("updaterRunId") or 0)
     if run_id < previous_run:
@@ -74,10 +68,10 @@ def validate(ready, raw, prior, previous_raw):
     if run_id == previous_run and digest != prior.get("catalogueSha256"):
         raise ValueError("Conflicting Mac run digest")
     dates = ready.get("countryDates")
-    if not isinstance(dates, dict) or not COUNTRIES.issubset(dates):
-        raise ValueError("Mac ingress country dates incomplete")
+    if not isinstance(dates, dict) or not {row["countryCode"] for row in rows}.issubset(dates):
+        raise ValueError("Mac ingress country dates missing for current rows")
     for code, old_date in (prior.get("countryDates") or {}).items():
-        if dates.get(code, "") < old_date:
+        if code in dates and dates[code] < old_date:
             raise ValueError(f"Mac ingress date rollback for {code}")
     manifest = {
         "schemaVersion": 1, "status": "last-good", "cataloguePath": str(CATALOGUE),

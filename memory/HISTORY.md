@@ -528,3 +528,7 @@ Deux méthodes officielles consommées par Production migrées en espace isolé 
 # 20 octobre 2026 — V9, Qwello et Révéo
 
 Les deux scripts historiques à sorties relatives tournent en espace isolé. Révéo conserve le flux OCPI comme preuve de roaming, sans tarif Direct inventé ; anciens minimums de volume retirés. G2 FAIL : 96 méthodes utiles, 37 transferts GitHub non vérifiés.
+
+# 20 octobre 2026 — V9, import Tesla/Mac
+
+L’import historique du lot Mac validé est raccordé à l’orchestrateur isolé, avec reprise du dernier artefact signé et tests de corruption. Les anciens seuils de stations et d’inclusion de tous les pays sont retirés ; Updater Test reste inchangé. G2 FAIL : 95 méthodes utiles, 38 transferts GitHub non vérifiés.
