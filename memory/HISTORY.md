@@ -433,3 +433,7 @@ Entrées append-only, datées, avec liens vers les documents et commits sources.
 
 - Après fetch et comparaison des quatre dépôts, le risque des anciens workflows Data Lab capables d'écrire sur `main` a été neutralisé par désactivation des Actions au niveau du dépôt. Trois runs actifs ont été annulés ; aucune exécution active au contrôle suivant. Deux références Git locales restaurables conservent le `main` distant et l'ancien HEAD local. Branche locale `rebuild/v9-20261020`, sans publication ni déploiement. Tableau de bord et prochaine opération : [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
 
+# 20 octobre 2026 — reprise de l'inventaire G1
+
+- Le registre a été enrichi des indicateurs de planification, déclenchement indirect et références manquantes. Revue du YAML Ubitricity NL PAYG et de son historique : deux extracteurs référencés n'existent pas dans le code accessible, tandis que l'intégrateur et le candidat historique exact existent et se lisent. Voir `migration/v9/G1_METHOD_AUDIT.md`. G1 reste ouverte et Actions Data Lab demeure désactivé.
+

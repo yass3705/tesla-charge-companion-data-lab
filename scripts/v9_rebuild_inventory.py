@@ -43,7 +43,10 @@ def inventory(root: Path) -> dict:
             "secrets": sorted(set(SECRET_RE.findall(body))),
             "data_paths": paths,
             "triggers": triggers,
+            "scheduled": "schedule" in triggers,
+            "indirect_trigger": "workflow_run" in triggers,
             "contains_write_command_or_permission": bool(WRITE_RE.search(body)),
+            "missing_script_references": [s for s in scripts if not (root / s).is_file()],
             "migration_status": "unreviewed",
             "destination_module": None,
         })
