@@ -600,3 +600,7 @@ La méthode publique historique est isolée avec inventaire WAAT signé et fixtu
 # 20 octobre 2026 — V9, WAAT/Monta monolithique supplanté
 
 Le collecteur à quatre partitions produit les mêmes chemins, conserve les champs historiques et ajoute les configurations exactes par connecteur. Le monolithique reste archivé ; sa non-exécution est nominative et vérifiée. G2 reste FAIL : 76 méthodes utiles, 56 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, autoSense/AMAG, CHEVP et Shell/evpass Suisse
+
+Les trois finaliseurs historiques sont isolés et testés sur flux national réduit. L'offre de marque reste conditionnelle et les EVSE sans puissance demeurent non tarifés. G2 reste FAIL : 73 méthodes utiles, 59 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

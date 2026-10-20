@@ -27,12 +27,54 @@ METHODS = {
     "swiss_ebs": ("scripts/finalize_swiss_ebs_ecarup.py", "data/switzerland/ebs-ecarup-direct-tariffs.json"),
     "swiss_ewd": ("scripts/finalize_swiss_ewd_official.py", "data/switzerland/ewd-official-direct-tariffs.json"),
     "swiss_migrol": ("scripts/finalize_swiss_migrol_official.py", "data/switzerland/migrol-official-direct-tariffs.json"),
+    "swiss_autosense": ("scripts/finalize_swiss_autosense_amag.py", "data/switzerland/autosense-amag-direct-tariffs.json"),
+    "swiss_chevp": ("scripts/finalize_swiss_chevp_evpass.py", "data/switzerland/chevp-evpass-official-direct-tariffs.json"),
+    "swiss_shell_evpass": ("scripts/finalize_swiss_shell_evpass_official.py", "data/switzerland/shell-evpass-official-direct-tariffs.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method in {"swiss_autosense", "swiss_chevp", "swiss_shell_evpass"}:
+        operator, label = {
+            "swiss_autosense": ("CH*AUTOSENSE", "autosense"),
+            "swiss_chevp": ("CHEVP", "chevp"),
+            "swiss_shell_evpass": ("CH*SHE", "shell"),
+        }[method]
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / f"docs/switzerland-{label}-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        unresolved = payload.get("unresolved")
+        if not isinstance(rows, list) or not isinstance(unresolved, list):
+            raise ValueError(f"Swiss {label} output lists missing")
+        ids = [row.get("evseId") for row in rows]
+        unresolved_ids = [row.get("evseId") for row in unresolved]
+        all_ids = ids if method == "swiss_shell_evpass" else ids + unresolved_ids
+        counts = payload.get("counts") or {}
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("operatorId") != operator
+                or any(not value or not value.startswith(operator + ("*E" if operator != "CHEVP" else "E")) for value in all_ids)
+                or len(all_ids) != len(set(all_ids))
+                or any(row.get("currency") != "CHF" for row in rows)
+                or counts.get("nationalEvseCount") != len(all_ids)
+                or counts.get("pricedEvseCount") != len(all_ids) - len(unresolved_ids)
+                or counts.get("unresolvedEvseCount") != len(unresolved_ids)
+                or report.get("productionSource") != str(METHODS[method][1])
+                or report.get("status") != ("complete" if all_ids and not unresolved else "partial")
+                or any(report.get(key) != counts.get(key) for key in ("nationalEvseCount", "pricedEvseCount", "unresolvedEvseCount"))):
+            raise ValueError(f"Swiss {label} exact EVSE contract invalid")
+        if method == "swiss_shell_evpass":
+            if (not set(unresolved_ids).issubset(set(ids))
+                    or any((row.get("pricePerKwh") is None) != (row["evseId"] in unresolved_ids) for row in rows)):
+                raise ValueError("Swiss Shell/evpass missing-price policy invalid")
+        elif method == "swiss_autosense":
+            if any(not row.get("stationName", "").startswith("AMAG Charging Station")
+                   or row.get("conditionalEligibleBrandPricePerKwh") is None for row in rows):
+                raise ValueError("Swiss autoSense AMAG scope or conditional tariff invalid")
+        elif any(row.get("maxPowerKw") is None or row.get("parkingPenalty") != "excluded; station-specific if applicable" for row in rows):
+            raise ValueError("Swiss CHEVP exact power or parking scope invalid")
+        return payload
     if method in {"swiss_ewd", "swiss_migrol"}:
         operator = "CH*EWD" if method == "swiss_ewd" else "CH*MIG"
         label = "ewd" if method == "swiss_ewd" else "migrol"
