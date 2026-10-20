@@ -37,13 +37,16 @@ def main() -> None:
     final = json.loads((ROOT / "migration/v9/method-dispositions.json").read_text())
     migrated = set()
     for spec in sources:
-        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else spec["script"])
+        method = ("scripts/operator_manifest_runner.py" if spec["module"] == "operator_manifest"
+                  else "scripts/dotnl_netherlands_build.py" if spec["module"] == "nl_dotnl"
+                  else spec["script"])
+        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else method)
         if not source_code.is_file():
             errors.append(f"source method/config missing: {spec['id']}")
         for workflow in spec.get("legacy_workflows", []):
             if workflow not in original or workflow in migrated:
                 errors.append(f"invalid or duplicate legacy workflow mapping: {workflow}")
-            elif ("scripts/operator_manifest_runner.py" if spec["module"] == "operator_manifest" else spec["script"]) not in original[workflow]["scripts"]:
+            elif method not in original[workflow]["scripts"]:
                 errors.append(f"legacy workflow uses a different extraction method: {workflow}")
             else:
                 migrated.add(workflow)

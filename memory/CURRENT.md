@@ -1,3 +1,9 @@
+# 20 octobre 2026 — V9 reconstruction, lot G2 DOT-NL
+
+- G1 reste PASS au commit `15657f4a8`, sans réouverture Ubitricity NL. La branche `rebuild/v9-20261020` a désormais un module DOT-NL isolé qui réutilise les scripts et URLs historiques, conserve la priorité du tarif national et vérifie les SHA des artefacts runtime. Aucun seuil de volume ni push `main` dans le nouveau module ; Actions Data Lab restent désactivées et le site public inchangé.
+- 21 tests ciblés PASS : chaîne DOT-NL sur fixture gzip figée, rejet de corruption, garde nationale, orchestrateur et compilateur tarifaire DOT-NL. `scripts/validate_v9_g2.py` = FAIL attendu : 12 sources enregistrées, 11 anciens wrappers migrés, 142 méthodes actives encore à migrer. La collecte Electra NL live n'a pas été exécutée dans la fixture ; ce n'est pas une validation de collecte réelle.
+- Suivi exact, prochaine opération et preuves : [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md). Prochaine famille : eMSP Electroverse/Electra, via les scripts et sorties déjà inventoriés. G3 ne commence pas avant G2 PASS.
+
 # 18 octobre 2026 06:42 UTC — #333 : cinq workflows corrigés vérifiés, Electroverse en cours
 
 - **Code fusionné** : [#334](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/334) `cb41b1c` (Atlante, Zephyre, Suisse, IONITY), [#335](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/335) `8a48428` (nouveau cycle REVE), [#336](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/336) `f1f8d5f` (total des lignes REVE), [#337](https://github.com/yass3705/tesla-charge-companion-data-lab/pull/337) `f056c9f` (quota inter-runs, aucun déclencheur push). 21 tests Python ciblés réussis sur main ; compilateur Zephyre sur nouveau snapshot : 16 profils, 133 EVSE exacts. Scan public avant publication réussi.

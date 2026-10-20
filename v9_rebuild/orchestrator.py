@@ -75,6 +75,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Belgium NAP authentication contract changed")
             spec["output_file"] = "data/belgium/nap-belgium-manifest.json"
             spec["manifest_sha256"] = sha256(root / script)
+        elif spec.get("module") == "nl_dotnl" and source_id == "NL:dotnl":
+            script = root / "v9_rebuild/nl_dotnl.py"
+            if not script.is_file() or spec["secret_names"]:
+                raise ValueError("DOT-NL module or authentication contract invalid")
+            spec["output_file"] = "data/national/netherlands_dotnl/runtime/manifest.json"
+            spec["manifest_sha256"] = sha256(script)
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -128,13 +134,16 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     source_dir = out_root / "objects" / source_id.replace(":", "_")
     source_dir.mkdir(parents=True, exist_ok=True)
     operator_module = spec["module"] == "operator_manifest"
+    nl_module = spec["module"] == "nl_dotnl"
     reason = "collector_failed"
     for attempt in range(1, attempts + 1):
         staged = Path(tempfile.mkdtemp(prefix="attempt-", dir=source_dir))
         try:
             command = ([sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
-                       if operator_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
-            completed = runner(command, cwd=root if operator_module else staged, capture_output=True, text=True, timeout=timeout_s, check=False)
+                       if operator_module else [sys.executable, str(root / "v9_rebuild/nl_dotnl.py"), "--out", str(staged)]
+                       if nl_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+            completed = runner(command, cwd=staged if spec["module"] == "belgium_nap" else root,
+                               capture_output=True, text=True, timeout=timeout_s, check=False)
             output = staged / spec["output_file"]
             if completed.returncode != 0:
                 reason = "collector_exit_nonzero"
@@ -153,6 +162,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                          and payload.get("dataset") == spec["expected_dataset"]
                          and payload.get("country") == spec["expected_country"]
                          and isinstance(source_evidence, dict) and source_evidence.get("officialOnly") is True)
+            elif nl_module:
+                from v9_rebuild.nl_dotnl import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)
             if not valid:
