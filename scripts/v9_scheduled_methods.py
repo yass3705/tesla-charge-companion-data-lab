@@ -42,6 +42,16 @@ SPECIAL_DESTINATIONS = {
     "uk-eco-movement": "cpo/eco_movement",
     "uk-source_ev": "cpo/source_ev",
     "uk-validated-open-feeds": "national/uk_open_feeds",
+    "switzerland-v9-integration": "national/ch_public_charging",
+    "switzerland-post-first-pass": "validation/ch_reconciliation",
+    "belgium-final": "national/be_nap",
+    "belgium-monta": "national/be_nap",
+    "germany-afir": "national/de_afir",
+    "france-canonical": "national/fr_irve",
+    "uk-zero-cost": "operations/uk_source_audit",
+    "validate-v9-source": "validation/legacy_source_guards",
+    "audit-electra": "platform/electra",
+    "ionity-france": "cpo/ionity",
 }
 
 
