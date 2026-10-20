@@ -548,3 +548,7 @@ Le collecteur historique est isolé et testé sur CSV réduit. Les anciens seuil
 # 20 octobre 2026 — V9, AVIA Picoty stations
 
 Le collecteur national historique est isolé et testé sur fixture IRVE réduite. Les prix observés restent des preuves, sans attribution tarifaire Direct. G2 FAIL : 91 méthodes utiles, 42 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, AVIA Picoty PAN brut/index
+
+Les deux processeurs historiques PAN sont migrés ensemble et testés hors réseau. Le CSV brut et les sorties restent séparés et les anciens minimums de stations sont retirés. G2 FAIL : 90 méthodes utiles, 43 transferts GitHub non vérifiés. Aucune publication.
