@@ -145,6 +145,14 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                     raise ValueError(f"Missing historical Bump method: {name}")
             spec["output_file"] = "data/national/bump_direct_inventory_france.json.gz"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/bump_inventory.py")
+        elif spec.get("module") == "bump_tariffs" and source_id == "FR:bump_tariffs":
+            if spec["secret_names"]:
+                raise ValueError("Bump public GraphQL method has no secret")
+            for name in ("bump_graphql_national_tariffs.py", "bump_tcc_ready_france.py", "bump_variable_tariff_parser.py"):
+                if not (root / "scripts" / name).is_file():
+                    raise ValueError(f"Missing historical Bump tariff method: {name}")
+            spec["output_file"] = "data/national/bump_direct_tariffs_tcc_france.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/bump_tariffs.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -301,6 +309,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     ionity_module = spec["module"] == "ionity_family"
     fastned_module = spec["module"] == "fastned_family"
     bump_inventory_module = spec["module"] == "bump_inventory_family"
+    bump_tariffs_module = spec["module"] == "bump_tariffs"
     checkpoint_module = electroverse_module or status_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
@@ -347,7 +356,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if belib_module else [sys.executable, str(root / "v9_rebuild/ionity.py"), "--out", str(staged)]
                        if ionity_module else [sys.executable, str(root / "v9_rebuild/fastned.py"), "--out", str(staged)]
                        if fastned_module else [sys.executable, str(root / "v9_rebuild/bump_inventory.py"), "--out", str(staged)]
-                       if bump_inventory_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if bump_inventory_module else [sys.executable, str(root / "v9_rebuild/bump_tariffs.py"), "--out", str(staged)]
+                       if bump_tariffs_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -377,7 +387,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -447,6 +457,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif bump_inventory_module:
                 from v9_rebuild.bump_inventory import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif bump_tariffs_module:
+                from v9_rebuild.bump_tariffs import validate_output
                 try:
                     validate_output(staged)
                     valid = True

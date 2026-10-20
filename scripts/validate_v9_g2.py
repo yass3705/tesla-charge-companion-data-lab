@@ -54,8 +54,9 @@ def main() -> None:
                   else "scripts/ionity_station_tariffs.py" if spec["module"] == "ionity_family"
                   else "scripts/fastned_station_inventory.py" if spec["module"] == "fastned_family"
                   else "scripts/bump_direct_inventory.py" if spec["module"] == "bump_inventory_family"
+                  else "scripts/bump_graphql_national_tariffs.py" if spec["module"] == "bump_tariffs"
                   else spec["script"])
-        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else "v9_rebuild/ionity.py" if spec["module"] == "ionity_family" else "v9_rebuild/fastned.py" if spec["module"] == "fastned_family" else "v9_rebuild/bump_inventory.py" if spec["module"] == "bump_inventory_family" else method)
+        source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else "v9_rebuild/ionity.py" if spec["module"] == "ionity_family" else "v9_rebuild/fastned.py" if spec["module"] == "fastned_family" else "v9_rebuild/bump_inventory.py" if spec["module"] == "bump_inventory_family" else "v9_rebuild/bump_tariffs.py" if spec["module"] == "bump_tariffs" else method)
         if not source_code.is_file():
             errors.append(f"source method/config missing: {spec['id']}")
         for workflow in spec.get("legacy_workflows", []):
@@ -64,6 +65,7 @@ def main() -> None:
                                else "scripts/ionity_station_tariffs_uk.py" if workflow.endswith("ionity-direct-uk-station-tariffs.yml")
                                else "scripts/fastned_station_inventory_uk.py" if workflow.endswith("fastned-direct-station-inventory-uk.yml")
                                else "scripts/bump_direct_station_tariffs.py" if workflow.endswith("bump-direct-station-tariffs.yml")
+                               else "scripts/bump_tcc_ready_france.py" if workflow.endswith("bump-tcc-ready-france.yml")
                                else method)
             if workflow not in original or workflow in migrated:
                 errors.append(f"invalid or duplicate legacy workflow mapping: {workflow}")

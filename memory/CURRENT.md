@@ -867,3 +867,7 @@ La mission de reconstruction intégrale est suivie dans [V9_REBUILD_PROGRESS.md]
 
 Deux méthodes historiques d'inventaire Bump fonctionnent dans l'orchestrateur isolé avec leurs sorties et rapports d'origine. Les scripts réels ont passé des fixtures hors réseau ; la pagination incomplète et un gzip corrompu sont rejetés. G2 reste FAIL : 129 méthodes utiles et six transferts GitHub non vérifiés. Actions Data Lab désactivées, Production et site public inchangés. La chaîne GraphQL/TCC et le module officiel Bump sont la prochaine tâche, détaillée dans [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
 
+# 20 octobre 2026 — V9, chaîne Bump GraphQL/TCC
+
+Les collecteurs historiques GraphQL et TCC Bump tournent dans un même espace isolé, avec sorties et rapports contrôlés. Fixtures hors réseau : station rapprochée avec tarif et station non rapprochée sans prix ; erreurs de tuile ou de requête rejetées. G2 reste FAIL avec 127 méthodes et sept transferts GitHub non vérifiés. Actions désactivées, Production et site public inchangés. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+

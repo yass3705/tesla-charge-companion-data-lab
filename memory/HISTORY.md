@@ -487,3 +487,7 @@ Le validateur G2 exige désormais la preuve de transfert GitHub pour les cinq so
 
 Les scripts historiques d'inventaire officiel et de base tabulaire Bump sont exécutés hors checkout dans une famille commune, avec contrôle des quatre sorties. Vingt-deux tests ciblés PASS ; pagination prématurée et sortie corrompue sont rejetées. G2 FAIL avec 129 méthodes restantes, Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, chaîne Bump GraphQL/TCC
+
+Deux scripts historiques supplémentaires et leur parseur conservé sont exécutés hors checkout, avec vérification des requêtes, schémas et prix non inventés. Les seuils de couverture/volume arbitraires ont été supprimés. Vingt-deux tests ciblés PASS ; G2 FAIL avec 127 méthodes restantes. Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
+
