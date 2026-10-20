@@ -580,3 +580,7 @@ Le finaliseur historique est isolé et testé pour AC, DC et puissance absente ;
 # 20 octobre 2026 — V9, IONITY Suisse national
 
 Le rapprochement historique national/officiel est isolé avec entrée archivée et testé par coordonnées et puissance exactes ; un EVSE non résolu reste sans prix. G2 reste FAIL : 83 méthodes utiles, 50 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, Plenitude Suisse
+
+La finalisation historique est isolée avec catalogue archivé et testée sur deux EVSE classés exactement et un cas 75 kW non résolu. G2 reste FAIL : 82 méthodes utiles, 51 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

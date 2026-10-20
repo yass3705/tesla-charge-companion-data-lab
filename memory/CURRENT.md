@@ -937,3 +937,5 @@ V9 G2 : finalisation Fastned Suisse migrée avec son script historique et testé
 V9 G2 : finalisation Lidl Suisse isolée et testée pour AC, DC et puissance manquante ; 84 méthodes utiles restent, 49 transferts GitHub non vérifiés. Actions désactivé.
 
 V9 G2 : IONITY Suisse national finalisé hors checkout sur fixture à puissance et coordonnées exactes, avec cas non résolu ; 83 méthodes utiles restent, 50 transferts GitHub non vérifiés. Actions désactivé.
+
+V9 G2 : Plenitude Suisse finalisé hors checkout avec catalogue archivé et limite 75 kW non tarifée ; 82 méthodes utiles restent, 51 transferts GitHub non vérifiés. Actions désactivé.
