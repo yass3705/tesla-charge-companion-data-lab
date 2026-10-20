@@ -260,6 +260,11 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Freshmile direct inventory historical chain changed")
             spec["output_file"] = "data/national/freshmile_direct_stations_france.json.gz"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/freshmile_inventory.py")
+        elif spec.get("module") == "waat_monta_sharded" and source_id == "FR:waat_monta_sharded":
+            if spec["secret_names"] or not (root / "scripts/waat_monta_shard.mjs").is_file():
+                raise ValueError("WAAT/Monta historical shard method changed")
+            spec["output_file"] = "data/national/waat_monta_direct_tariffs_france.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/waat_monta_sharded.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -382,6 +387,9 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     elif module == "electric55_chain":
         from v9_rebuild.electric55_chain import validate_output
         validate_output(state)
+    elif module == "cwd_script" and source_id == "FR:waat_inventory":
+        from v9_rebuild.cwd_script import validate_output
+        validate_output(state, "waat_inventory")
     elif module == "electroverse":
         validate_state(state)
     else:
@@ -474,9 +482,10 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     avia_picoty_extract_module = spec["module"] == "avia_picoty_extract"
     electric55_chain_module = spec["module"] == "electric55_chain"
     freshmile_inventory_module = spec["module"] == "freshmile_inventory"
-    checkpoint_module = electroverse_module or status_module
+    waat_monta_module = spec["module"] == "waat_monta_sharded"
+    checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
-    previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
+    previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if (electroverse_module or status_module) else None
     belib_prior = None
     if (belib_module or fx_module or suc_module or tesla_mac_module or electric55_chain_module) and (out_root / "input_state").is_dir():
         try:
@@ -491,8 +500,9 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
         if checkpoint_module and checkpoint.is_dir():
             from v9_rebuild.electroverse import validate_state
             from v9_rebuild.electroverse_status import validate_partial
+            from v9_rebuild.waat_monta_sharded import validate_checkpoint
             try:
-                validate_partial(checkpoint) if status_module else validate_state(checkpoint, require_complete=False)
+                validate_checkpoint(checkpoint) if waat_monta_module else validate_partial(checkpoint) if status_module else validate_state(checkpoint, require_complete=False)
             except (OSError, ValueError, KeyError, TypeError):
                 return {"source": source_id, "status": "failed", "reason": "collector_checkpoint_invalid", "attempts": attempt - 1}
         staged = checkpoint if checkpoint_module and checkpoint.is_dir() else Path(tempfile.mkdtemp(prefix="attempt-", dir=source_dir))
@@ -509,6 +519,14 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     tariff_input = validated_dependency(tariff_bundle, tariff_id, "electroverse")
                     status_input = validated_dependency(status_bundle, "FR:electroverse_status", "electroverse_status")
                 except (OSError, ValueError, KeyError, TypeError, RuntimeError, gzip.BadGzipFile):
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
+            if waat_monta_module:
+                dependency = out_root / "input_dependencies/FR_waat_inventory"
+                if not dependency.is_dir():
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_missing", "attempts": 0}
+                try:
+                    inventory_state = validated_dependency(dependency, "FR:waat_inventory", "cwd_script")
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
             command = ([sys.executable, str(root / safe_relative(spec["script"])), "--out", str(staged / spec["output_file"])]
                        if isolated_script else [sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
@@ -539,11 +557,14 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if uk_ubitricity_module else [sys.executable, str(root / "v9_rebuild/avia_picoty_extract.py"), "--out", str(staged)]
                        if avia_picoty_extract_module else [sys.executable, str(root / "v9_rebuild/electric55_chain.py"), "--out", str(staged)]
                        if electric55_chain_module else [sys.executable, str(root / "v9_rebuild/freshmile_inventory.py"), "--out", str(staged)]
-                       if freshmile_inventory_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if freshmile_inventory_module else [sys.executable, str(root / "v9_rebuild/waat_monta_sharded.py"), "--out", str(staged)]
+                       if waat_monta_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
                 command.extend(["--source", str(belib_prior)])
+            if waat_monta_module:
+                command.extend(["--inventory", str(inventory_state)])
             if electroverse_module and spec["mode"] == "full":
                 command.extend(["--max-chunks", "1"])
             completed = runner(command, cwd=staged if spec["module"] == "belgium_nap" else root,
@@ -551,11 +572,12 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
             output = staged / spec["output_file"]
             if completed.returncode != 0:
                 reason = "collector_exit_nonzero"
-                if checkpoint_module and (output.is_file() or status_module):
+                if checkpoint_module and (output.is_file() or status_module or (waat_monta_module and any((staged / f"data/shards/waat_monta_shard_{index}.json.gz").is_file() for index in range(4)))):
                     from v9_rebuild.electroverse import validate_state
                     from v9_rebuild.electroverse_status import validate_partial
+                    from v9_rebuild.waat_monta_sharded import validate_checkpoint
                     try:
-                        validate_partial(staged) if status_module else validate_state(staged, require_complete=False)
+                        validate_checkpoint(staged) if waat_monta_module else validate_partial(staged) if status_module else validate_state(staged, require_complete=False)
                         if staged != checkpoint:
                             checkpoint.parent.mkdir(parents=True, exist_ok=True)
                             if checkpoint.exists():
@@ -569,7 +591,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or freshmile_inventory_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or freshmile_inventory_module or waat_monta_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -772,6 +794,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif freshmile_inventory_module:
                 from v9_rebuild.freshmile_inventory import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif waat_monta_module:
+                from v9_rebuild.waat_monta_sharded import validate_output
                 try:
                     validate_output(staged)
                     valid = True

@@ -30,6 +30,9 @@ jobs:
       - name: Install preserved Allego browser dependency
         if: ${{ inputs.source == 'FR:allego_stations' || inputs.source == 'FR:allego_official' }}
         run: python -m pip install --disable-pip-version-check -q selenium
+      - name: Install preserved WAAT browser dependency
+        if: ${{ inputs.source == 'FR:waat_monta_sharded' }}
+        run: npm install --no-save playwright-core@1.55.0
       - name: Find the latest state for this source and branch
         id: prior
         env:
@@ -68,6 +71,14 @@ jobs:
           run-id: ${{ steps.prior.outputs.status_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/FR_electroverse_status
+      - name: Restore validated WAAT inventory for Monta shards
+        if: ${{ inputs.source == 'FR:waat_monta_sharded' && steps.prior.outputs.inventory_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-collection-FR_waat_inventory
+          run-id: ${{ steps.prior.outputs.inventory_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/FR_waat_inventory
       - name: Collect migrated sources into isolated artifacts
         env:
           SOURCE_ID: ${{ inputs.source }}

@@ -90,6 +90,18 @@ def main() -> None:
             handle.write(f"tariff_slug={tariff_slug or ''}\ntariff_run_id={tariff_run or ''}\nstatus_run_id={status_run or ''}\n")
         print(json.dumps({"source": args.source, "tariff_run_id": tariff_run, "status_run_id": status_run}))
         return
+    if args.source == "FR:waat_monta_sharded":
+        rows = fetch(args.repo, "tcc-v9-collection-FR_waat_inventory", token)
+        dependency = latest(rows, "tcc-v9-collection-FR_waat_inventory", args.branch)
+        checkpoints = fetch(args.repo, f"tcc-v9-checkpoints-{slug}", token)
+        states = fetch(args.repo, f"tcc-v9-collection-{slug}", token)
+        kind, run_id = choose(checkpoints, states, args.source, args.branch)
+        with args.github_output.open("a", encoding="utf-8") as handle:
+            handle.write(f"slug={slug}\ncheckpoint_run_id={run_id if kind == 'checkpoint' else ''}\n")
+            handle.write(f"state_run_id={run_id if kind == 'state' else ''}\n")
+            handle.write(f"inventory_run_id={dependency['workflow_run']['id'] if dependency else ''}\n")
+        print(json.dumps({"source": args.source, "inventory_run_id": dependency["workflow_run"]["id"] if dependency else None}))
+        return
     checkpoints = fetch(args.repo, f"tcc-v9-checkpoints-{slug}", token)
     states = fetch(args.repo, f"tcc-v9-collection-{slug}", token)
     kind, run_id = choose(checkpoints, states, args.source, args.branch)

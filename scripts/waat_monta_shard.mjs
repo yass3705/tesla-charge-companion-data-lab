@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import zlib from 'node:zlib';
-import { chromium } from 'playwright-core';
 
 const INPUT='data/national/waat_direct_stations_france.json.gz';
 const SHARD_COUNT=Math.max(1,Number(process.env.WAAT_SHARD_COUNT||4));
@@ -110,33 +109,37 @@ function integrationConfigs(groups,configs){
 const source=gunzipJson(INPUT);
 const all=(source.stations||[]).filter(s=>Array.isArray(s.coordinates)&&s.coordinates.length>=2);
 const stations=all.filter((_,i)=>i%SHARD_COUNT===SHARD_INDEX);
-if(!stations.length)throw new Error('empty shard');
+const fixture=process.env.WAAT_OFFLINE_FIXTURE?JSON.parse(fs.readFileSync(process.env.WAAT_OFFLINE_FIXTURE,'utf8')):null;
 
-const chromeCandidates=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'];
-const executablePath=chromeCandidates.find(p=>fs.existsSync(p));
-if(!executablePath)throw new Error('No Chromium/Chrome executable found');
-const browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
-const context=await browser.newContext({locale:'fr-FR',viewport:{width:1280,height:900}});
-const boot=await context.newPage();
-let mapHeaders=null;
-boot.on('response',async r=>{if(r.url().includes('api.monta.app/api/v1/charge_points/map'))try{mapHeaders=await r.request().allHeaders();}catch{}});
-const [seedLat,seedLng]=stations[0].coordinates;
-await boot.goto(`https://maps.monta.app/?lat=${seedLat}&lng=${seedLng}&zoom=16&locale=fr`,{waitUntil:'domcontentloaded',timeout:60000});
-for(let i=0;i<30&&!mapHeaders;i++)await boot.waitForTimeout(500);
-if(!mapHeaders)throw new Error('Monta public map did not expose map request headers');
-const safeHeaders={};
-for(const [k,v] of Object.entries(mapHeaders)){
-  const lk=k.toLowerCase();
-  if(['host','content-length','cookie','origin','referer'].includes(lk)||lk.startsWith('sec-')||lk.startsWith(':'))continue;
-  safeHeaders[k]=v;
+let browser=null,context=null,safeHeaders={};
+if(stations.length&&!fixture){
+  const {chromium}=await import('playwright-core');
+  const chromeCandidates=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'];
+  const executablePath=chromeCandidates.find(p=>fs.existsSync(p));
+  if(!executablePath)throw new Error('No Chromium/Chrome executable found');
+  browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+  context=await browser.newContext({locale:'fr-FR',viewport:{width:1280,height:900}});
+  const boot=await context.newPage();
+  let mapHeaders=null;
+  boot.on('response',async r=>{if(r.url().includes('api.monta.app/api/v1/charge_points/map'))try{mapHeaders=await r.request().allHeaders();}catch{}});
+  const [seedLat,seedLng]=stations[0].coordinates;
+  await boot.goto(`https://maps.monta.app/?lat=${seedLat}&lng=${seedLng}&zoom=16&locale=fr`,{waitUntil:'domcontentloaded',timeout:60000});
+  for(let i=0;i<30&&!mapHeaders;i++)await boot.waitForTimeout(500);
+  if(!mapHeaders)throw new Error('Monta public map did not expose map request headers');
+  for(const [k,v] of Object.entries(mapHeaders)){
+    const lk=k.toLowerCase();
+    if(['host','content-length','cookie','origin','referer'].includes(lk)||lk.startsWith('sec-')||lk.startsWith(':'))continue;
+    safeHeaders[k]=v;
+  }
+  if(!Object.keys(safeHeaders).some(k=>k.toLowerCase()==='authorization'))throw new Error('Monta guest Authorization header not observed');
+  await boot.close();
 }
-if(!Object.keys(safeHeaders).some(k=>k.toLowerCase()==='authorization'))throw new Error('Monta guest Authorization header not observed');
-await boot.close();
 
 let cursor=0,completed=0;
 const results=new Array(stations.length);
 async function worker(){
-  const page=await context.newPage(); await page.setExtraHTTPHeaders(safeHeaders);
+  const page=context?await context.newPage():null;
+  if(page)await page.setExtraHTTPHeaders(safeHeaders);
   while(true){
     const idx=cursor++; if(idx>=stations.length)break;
     const st=stations[idx],[lat,lng]=st.coordinates,dLat=0.0020,dLon=0.0028;
@@ -144,8 +147,11 @@ async function worker(){
     let status=null,error=null,items=[];
     for(let attempt=0;attempt<4;attempt++){
       try{
-        const r=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000}); status=r?.status()??null;
-        const txt=await r?.text(); let j=null; try{j=JSON.parse(txt||'')}catch{}
+        const r=page?await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000}):null;
+        status=fixture?fixture[st.stationIdNormalized]?.status??null:r?.status()??null;
+        const txt=page?await r?.text():null;
+        let j=fixture?fixture[st.stationIdNormalized]?.data??null:null;
+        if(page)try{j=JSON.parse(txt||'')}catch{}
         if(status===200&&j){
           const raw=[...(j.list||[]),...(j.single_list||[])];
           const dedup=[...new Map(raw.map(x=>[`${x.document||''}:${x.id}`,x])).values()];
@@ -165,10 +171,10 @@ async function worker(){
     results[idx]={stationId:st.stationId,stationIdNormalized:st.stationIdNormalized,stationName:st.stationName,address:st.address,cityCodeInsee:st.cityCodeInsee,coordinates:st.coordinates,evseIds:(st.evses||[]).map(e=>e.evseIdNormalized),physicalConfigs:configs,mapHttpStatus:status,mapError:error,montaGroups:unique,rankableGroups,integrationConfigs:safeConfigs,rankableDirect:safeConfigs.some(c=>c.rankable),blockingReason:safeConfigs.some(c=>c.rankable)?null:(unique.length?'no_safe_config_match':'no_close_waat_group_found')};
     completed++; if(completed%25===0||completed===stations.length)console.log(`WAAT shard ${SHARD_INDEX}: ${completed}/${stations.length}`);
   }
-  await page.close();
+  if(page)await page.close();
 }
 await Promise.all(Array.from({length:CONCURRENCY},worker));
-await browser.close();
+if(browser)await browser.close();
 
 const valid=results.filter(Boolean);
 const out={schemaVersion:'2.0.0',dataset:'waat-monta-direct-tariffs-shard',operator:'WAAT',country:'FR',generatedAt:new Date().toISOString(),shardIndex:SHARD_INDEX,shardCount:SHARD_COUNT,sourceInventoryStations:all.length,stations:valid};

@@ -929,3 +929,5 @@ V9 G2 : chaîne E55C stations puis Direct exact migrée avec reprise du dernier 
 V9 G2 : inventaire WAAT FR*WA2 isolé et testé sur CSV réduit ; 88 méthodes utiles restent. Les méthodes Monta restent à migrer, Actions désactivé.
 
 V9 G2 : inventaire Freshmile Direct et exclusion des réseaux régionaux isolés et testés ; 87 méthodes utiles restent. Aucun prix Direct n’est déduit du texte IRVE, Actions désactivé.
+
+V9 G2 : WAAT/Monta à quatre partitions migré et testé hors réseau avec dépendance d’inventaire signée et reprise des shards ; 86 méthodes utiles restent, 47 transferts GitHub non vérifiés. Actions désactivé.

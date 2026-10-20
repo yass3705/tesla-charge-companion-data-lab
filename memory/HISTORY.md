@@ -564,3 +564,7 @@ Le collecteur national FR*WA2 historique est isolé et testé hors réseau ; auc
 # 20 octobre 2026 — V9, Freshmile Direct CPO
 
 Les deux scripts historiques d’inventaire et d’exclusion régionale sont isolés et testés. Les textes tarifaires restent des candidats non classables ; les seuils de volume nul sont retirés. G2 FAIL : 87 méthodes utiles, 46 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, WAAT/Monta sharded
+
+Le collecteur historique à quatre partitions est isolé, lié à un inventaire WAAT validé et doté d'une reprise conservant les partitions bonnes. Tests hors réseau de la fusion, des erreurs de carte, de la dépendance et du SHA : 24 PASS. G2 reste FAIL : 86 méthodes utiles, 47 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
