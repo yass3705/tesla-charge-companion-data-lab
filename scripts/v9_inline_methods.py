@@ -25,7 +25,9 @@ def main() -> None:
         row["workflow"]
         for row in json.loads((root / "migration/v9/production-linked-manual-workflows.json").read_text())["rows"]
     }
+    critical_reviews = json.loads((root / "migration/v9/inline-critical-review.json").read_text())["workflows"]
     rows = []
+    critical_names = set()
     for item in workflows:
         if item["scripts"]:
             continue
@@ -35,6 +37,13 @@ def main() -> None:
             else "data_candidate" if any(p.startswith("data/") for p in item["data_paths"])
             else "historical_reference"
         )
+        review = critical_reviews.get(path.name)
+        if priority == "critical":
+            critical_names.add(path.name)
+            if review is None:
+                raise ValueError(f"Critical inline method lacks review: {path.name}")
+        elif review is not None:
+            raise ValueError(f"Unexpected critical review for noncritical method: {path.name}")
         rows.append({
             "workflow": item["workflow"],
             "archive_commit": ARCHIVE_COMMIT,
@@ -45,8 +54,12 @@ def main() -> None:
             "country_hint": item["country_hint"],
             "proposed_destination_module": proposed_destination(path.name),
             "review_priority": priority,
-            "method_status": "inline_yaml_review_pending",
+            "method_role": review["role"] if review else None,
+            "disposition": review["disposition"] if review else None,
+            "method_status": "classified" if review else "inline_yaml_review_pending",
         })
+    if critical_names != set(critical_reviews):
+        raise ValueError(f"Critical review mismatch: {sorted(set(critical_reviews) - critical_names)}")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps({"schema_version": 1, "rows": rows}, ensure_ascii=False, indent=2) + "\n")
     print(f"{len(rows)} inline-only workflows with immutable YAML hashes")
