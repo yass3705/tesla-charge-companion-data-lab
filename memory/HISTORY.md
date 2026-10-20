@@ -556,3 +556,7 @@ Les deux processeurs historiques PAN sont migrés ensemble et testés hors rése
 # 20 octobre 2026 — V9, E55C stations et Direct
 
 La base E55C et son enrichissement Scan Pay exact sont enchaînés hors checkout avec reprise d’un dernier état validé. Les seuils de stations et de couverture tarifaire sont retirés ; les identités et SHA restent contrôlés. G2 FAIL : 89 méthodes utiles, 44 transferts GitHub non vérifiés. Aucune publication.
+
+# 20 octobre 2026 — V9, inventaire WAAT
+
+Le collecteur national FR*WA2 historique est isolé et testé hors réseau ; aucune tarification Monta n’est attribuée par la seule proximité. G2 FAIL : 88 méthodes utiles, 45 transferts GitHub non vérifiés. Aucune publication.
