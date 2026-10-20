@@ -604,3 +604,7 @@ Le collecteur à quatre partitions produit les mêmes chemins, conserve les cham
 # 20 octobre 2026 — V9, autoSense/AMAG, CHEVP et Shell/evpass Suisse
 
 Les trois finaliseurs historiques sont isolés et testés sur flux national réduit. L'offre de marque reste conditionnelle et les EVSE sans puissance demeurent non tarifés. G2 reste FAIL : 73 méthodes utiles, 59 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, Saascharge et Partino Suisse
+
+Saascharge est limité aux plages tarifaires explicites ; Partino sépare l'accès restreint du prix inconnu. Tests hors réseau réussis. G2 reste FAIL : 72 méthodes requises, 61 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

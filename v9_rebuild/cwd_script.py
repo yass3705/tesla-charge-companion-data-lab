@@ -30,12 +30,44 @@ METHODS = {
     "swiss_autosense": ("scripts/finalize_swiss_autosense_amag.py", "data/switzerland/autosense-amag-direct-tariffs.json"),
     "swiss_chevp": ("scripts/finalize_swiss_chevp_evpass.py", "data/switzerland/chevp-evpass-official-direct-tariffs.json"),
     "swiss_shell_evpass": ("scripts/finalize_swiss_shell_evpass_official.py", "data/switzerland/shell-evpass-official-direct-tariffs.json"),
+    "swiss_saascharge": ("scripts/finalize_swiss_saascharge_official.py", "data/switzerland/saascharge-official-direct-tariffs.json"),
+    "swiss_partino": ("scripts/finalize_swiss_par_partino.py", "data/switzerland/par-partino-restricted-direct-classification.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method in {"swiss_saascharge", "swiss_partino"}:
+        operator, label = (("CH*SCH", "saascharge") if method == "swiss_saascharge" else ("CH*PAR", "par"))
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / f"docs/switzerland-{label}-finalization-2026-09-28.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        unresolved = payload.get("unresolved")
+        if not isinstance(rows, list) or not isinstance(unresolved, list):
+            raise ValueError(f"Swiss {label} EVSE lists missing")
+        ids = [row.get("evseId") for row in rows]
+        unresolved_ids = [row.get("evseId") for row in unresolved]
+        all_ids = ids if method == "swiss_partino" else ids + unresolved_ids
+        counts = payload.get("counts") or {}
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("operatorId") != operator
+                or any(not value or not value.startswith(operator + "*E") for value in all_ids)
+                or len(all_ids) != len(set(all_ids))
+                or counts.get("nationalEvseCount") != len(all_ids)
+                or counts.get("unresolvedEvseCount") != len(unresolved_ids)
+                or report.get("productionSource") != str(METHODS[method][1])
+                or report.get("status") != ("complete" if all_ids and not unresolved else "partial")):
+            raise ValueError(f"Swiss {label} exact EVSE contract invalid")
+        if method == "swiss_saascharge":
+            if (counts.get("pricedEvseCount") != len(rows)
+                    or any(row.get("currency") != "CHF" or row.get("tariffCategory") not in {"AC_CH_Max_AC", "DC_CH_Max_DC"} for row in rows)):
+                raise ValueError("Swiss Saascharge exact tariff band invalid")
+        elif (not set(unresolved_ids).issubset(set(ids)) or report.get("pricedEvseCount") != 0
+              or counts.get("classifiedNoPublicDirectTariffCount") != sum(row.get("classification") == "no_public_direct_tariff" for row in rows)
+              or any(row.get("classification") not in {"no_public_direct_tariff", "unresolved"} for row in rows)):
+            raise ValueError("Swiss Partino restricted-access classification invalid")
+        return payload
     if method in {"swiss_autosense", "swiss_chevp", "swiss_shell_evpass"}:
         operator, label = {
             "swiss_autosense": ("CH*AUTOSENSE", "autosense"),
