@@ -6,14 +6,6 @@ on:
         description: Exact source ID from v9_rebuild/sources.json
         required: true
         type: string
-      checkpoint_run_id:
-        description: Optional prior failed run ID to resume a validated checkpoint
-        required: false
-        type: string
-      state_run_id:
-        description: Optional prior successful collection run ID as cache seed
-        required: false
-        type: string
 permissions:
   contents: read
   actions: read
@@ -32,20 +24,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Find the latest state for this source and branch
+        id: prior
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_ID: ${{ inputs.source }}
+        run: python -m v9_rebuild.artifact_selection --repo "$GITHUB_REPOSITORY" --branch "$GITHUB_REF_NAME" --source "$SOURCE_ID" --github-output "$GITHUB_OUTPUT"
       - name: Restore a technical checkpoint when requested
-        if: ${{ inputs.checkpoint_run_id != '' }}
+        if: ${{ steps.prior.outputs.checkpoint_run_id != '' }}
         uses: actions/download-artifact@v4
         with:
-          name: tcc-v9-checkpoints
-          run-id: ${{ inputs.checkpoint_run_id }}
+          name: tcc-v9-checkpoints-${{ steps.prior.outputs.slug }}
+          run-id: ${{ steps.prior.outputs.checkpoint_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/checkpoints
       - name: Restore the last validated Electroverse state when requested
-        if: ${{ inputs.state_run_id != '' }}
+        if: ${{ steps.prior.outputs.state_run_id != '' }}
         uses: actions/download-artifact@v4
         with:
-          name: tcc-v9-collection
-          run-id: ${{ inputs.state_run_id }}
+          name: tcc-v9-collection-${{ steps.prior.outputs.slug }}
+          run-id: ${{ steps.prior.outputs.state_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_state
       - name: Collect migrated sources into isolated artifacts
@@ -58,7 +56,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tcc-v9-collection
+          name: tcc-v9-collection-${{ steps.prior.outputs.slug }}
           path: |
             ${{ runner.temp }}/tcc-v9-artifacts/manifest.json
             ${{ runner.temp }}/tcc-v9-artifacts/objects
@@ -68,7 +66,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: tcc-v9-checkpoints
+          name: tcc-v9-checkpoints-${{ steps.prior.outputs.slug }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/checkpoints
           if-no-files-found: ignore
           retention-days: 7

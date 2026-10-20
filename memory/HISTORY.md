@@ -453,5 +453,5 @@ La chaîne nationale néerlandaise historique a été adaptée en module isolé 
 
 # 20 octobre 2026 — reconstruction V9, Electroverse en G2
 
-Adaptateur isolé daily/full et checkpoint technique ajoutés à l'orchestrateur sans changer les scripts historiques. Tests de reprise, shards, chunk borné et intégrité des artefacts réussis sur fixtures ; G2 reste FAIL sur 140 méthodes et sur le transfert automatique du checkpoint full entre runs. Actions Data Lab désactivées, site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
+Adaptateur isolé daily/full et checkpoint technique ajoutés à l'orchestrateur sans changer les scripts historiques. Tests de reprise, shards, chunk borné et intégrité des artefacts réussis sur fixtures ; sélection automatique du plus récent checkpoint ou jeu validé GitHub testée localement. G2 reste FAIL sur 140 méthodes ; transfert en run Actions non vérifié. Actions Data Lab désactivées, site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
