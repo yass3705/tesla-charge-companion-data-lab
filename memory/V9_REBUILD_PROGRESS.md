@@ -1,12 +1,12 @@
 # Reconstruction V9 — état reprenable
 
-Date : 20 octobre 2026. Branche Data Lab : `rebuild/v9-20261020`, base `origin/main=def205b0de51dd55bd36a2e7fa672031364e6f75`. Commit de porte G1 : `15657f4a89c98e5e7c1d119c91c6cb55a891a913`. L'archive G0 précédente reste `0b1b9d75463121b6ff86f94764b32d3349ee3e3c`.
+Date : 20 octobre 2026. Branche Data Lab : `rebuild/v9-20261020`, base `origin/main=def205b0de51dd55bd36a2e7fa672031364e6f75`. Commit de porte G1 : `15657f4a89c98e5e7c1d119c91c6cb55a891a913`. Premier lot G2 : `2003a7073919cb927f356cd022e56ea91fe634ff` (porte encore FAIL). L'archive G0 précédente reste `0b1b9d75463121b6ff86f94764b32d3349ee3e3c`.
 
 | Phase | Statut | Preuve / tests | Blocage |
 | --- | --- | --- | --- |
 | G0 Sécurité | Validée localement | Actions Data Lab `enabled=false` vérifié par API ; trois runs actifs annulés ; aucun run actif au dernier contrôle ; références locales de restauration vérifiées | Réactivation seulement après retrait des anciens YAML actifs et contrôle du nouveau dispositif |
 | G1 Méthodes | **PASS** | `scripts/validate_v9_g1.py` : 1 207/1 207 workflows, 756/756 scripts, 536 inline, dix périmètres ; deux registres régénérés à l'identique ; dix tests ciblés et compilation réussis ; scan public `OK` ; commit `15657f4a8` | Sept méthodes dormantes partielles et cinq planifiées partielles attendent les tests d'exécution G2 ; Ubitricity NL désactivée et last-good conservé |
-| G2 Workflows | **FAIL — migration partielle** | Les 1 207 anciens YAML sont retirés sur la branche et restaurables au commit G1 ; deux nouveaux workflows en lecture seule ; orchestrateur isolé pour dix sources à manifeste et Belgique NAP ; onze tests unitaires PASS, dont pagination complète/incomplète, concurrence et exception isolée ; essai technique `FR:sdey` PASS vers `/tmp` avec contrôle du contrat ; `scripts/validate_v9_g2.py` exécuté | 143 méthodes actives restantes non migrées ; Actions Data Lab toujours désactivé |
+| G2 Workflows | **FAIL — migration partielle** | Commit `2003a7073` : 1 207 anciens YAML retirés sur la branche et restaurables au commit G1 ; deux nouveaux workflows en lecture seule ; orchestrateur isolé pour dix sources à manifeste et Belgique NAP ; onze tests unitaires PASS, pagination/concurrence/exceptions ; essai technique `FR:sdey` PASS vers `/tmp` ; scan public OK ; `scripts/validate_v9_g2.py` exécuté | 143 méthodes actives restantes non migrées ; Actions Data Lab toujours désactivé |
 | G3 Données | À faire | — | G2 |
 | G4 Production | À faire | — | G3 |
 | G5 Jointures | À faire | — | G4 |
