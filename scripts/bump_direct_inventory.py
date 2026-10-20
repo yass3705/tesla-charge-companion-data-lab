@@ -170,16 +170,12 @@ def station_from_rows(key: str, rows: list[dict[str, str]]) -> dict[str, Any]:
 
 def build_payload(dataset: dict[str, Any], resource: dict[str, Any], blob: bytes) -> dict[str, Any]:
     rows, headers = decode_csv(blob)
-    if not rows:
-        raise RuntimeError("Bump IRVE dataset is empty")
     if "nom_operateur" not in headers:
         raise RuntimeError(f"Unexpected Bump IRVE schema: {headers}")
     tariff_field_present = "tarification" in headers
 
     operated = [r for r in rows if is_bump_operator(r.get("nom_operateur"))]
     rejected = [r for r in rows if not is_bump_operator(r.get("nom_operateur"))]
-    if not operated:
-        raise RuntimeError("No Bump-operated rows found in Bump official dataset")
 
     grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in operated:

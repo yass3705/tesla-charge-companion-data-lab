@@ -70,6 +70,8 @@ def main() -> None:
         meta = payload.get("meta") or {}
         total = meta.get("total", total)
         print(f"page={page} rows={len(batch)} collected={len(rows)} total={total}")
+        if not batch and total is not None and len(rows) < int(total):
+            raise RuntimeError("Bump tabular pagination ended before declared total")
         if not batch or (total is not None and len(rows) >= int(total)):
             break
         page += 1

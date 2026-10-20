@@ -483,3 +483,7 @@ Les inventaires historiques Fastned FR/GB tournent dans un module familial isol�
 
 Le validateur G2 exige désormais la preuve de transfert GitHub pour les cinq sources marquées `unverified`, indépendamment du nombre de méthodes enregistrées. Il expose également les sept collectes `live_pending` sans les présenter comme essais réels. Résultat actuel FAIL sur 131 méthodes, cinq transferts et registre partiel ; scan public OK, Actions désactivées. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, inventaires Bump
+
+Les scripts historiques d'inventaire officiel et de base tabulaire Bump sont exécutés hors checkout dans une famille commune, avec contrôle des quatre sorties. Vingt-deux tests ciblés PASS ; pagination prématurée et sortie corrompue sont rejetées. G2 FAIL avec 129 méthodes restantes, Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
+

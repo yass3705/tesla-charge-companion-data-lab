@@ -863,3 +863,7 @@ Le [registre statique](../migration/v9/legacy-inventory.json) recense 1 207 work
 
 La mission de reconstruction intégrale est suivie dans [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md). Data Lab GitHub Actions est désactivé au niveau du dépôt (`enabled=false` relu par API) ; trois runs en cours ont été annulés et aucun run actif ne restait au contrôle. Le `main` distant n'a pas été modifié. Références locales de restauration : `0b1b9d754` (`origin/main`) et `e64fa0577` (ancienne branche locale), chacune protégée par `refs/tcc-recovery/*`. Branche de travail locale `rebuild/v9-20261020` issue du `main` distant. G0 validée localement ; G1 en cours. Le registre statique provisoire `migration/v9/legacy-inventory.json` recense 1 207 workflows et 757 fichiers scripts, sans certifier encore leur destination. Aucun push, PR, fusion ou déploiement. Prochaine action : qualifier les méthodes, paramètres et sorties avant retrait des anciens workflows. Les anciens constats ci-dessous sont historiques.
 
+# 20 octobre 2026 — V9, inventaires Bump
+
+Deux méthodes historiques d'inventaire Bump fonctionnent dans l'orchestrateur isolé avec leurs sorties et rapports d'origine. Les scripts réels ont passé des fixtures hors réseau ; la pagination incomplète et un gzip corrompu sont rejetés. G2 reste FAIL : 129 méthodes utiles et six transferts GitHub non vérifiés. Actions Data Lab désactivées, Production et site public inchangés. La chaîne GraphQL/TCC et le module officiel Bump sont la prochaine tâche, détaillée dans [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
