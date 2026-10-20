@@ -1,12 +1,12 @@
 # Reconstruction V9 — état reprenable
 
-Date : 20 octobre 2026. Branche Data Lab : `rebuild/v9-20261020`, réalignée sur `origin/main=def205b0de51dd55bd36a2e7fa672031364e6f75` après fetch et comparaison. L'archive G0 précédente reste `0b1b9d75463121b6ff86f94764b32d3349ee3e3c`.
+Date : 20 octobre 2026. Branche Data Lab : `rebuild/v9-20261020`, base `origin/main=def205b0de51dd55bd36a2e7fa672031364e6f75`. Commit de porte G1 : `15657f4a89c98e5e7c1d119c91c6cb55a891a913`. L'archive G0 précédente reste `0b1b9d75463121b6ff86f94764b32d3349ee3e3c`.
 
 | Phase | Statut | Preuve / tests | Blocage |
 | --- | --- | --- | --- |
 | G0 Sécurité | Validée localement | Actions Data Lab `enabled=false` vérifié par API ; trois runs actifs annulés ; aucun run actif au dernier contrôle ; références locales de restauration vérifiées | Réactivation seulement après retrait des anciens YAML actifs et contrôle du nouveau dispositif |
-| G1 Méthodes | En cours, porte échouée | Ubitricity NL classée `legacy_method_unavailable`, dernier candidat et intégrateur conservés ; cinq tests de l'exception réussis. Inventaire 1 207 YAML, 756 scripts et 536 méthodes inline classées ; validateur G1 rejoué | 670 workflows avec scripts, 756 revues de script et 220 revues prioritaires encore provisoires ; G2 interdit |
-| G2 Workflows | À faire | — | G1 |
+| G1 Méthodes | **PASS** | `scripts/validate_v9_g1.py` : 1 207/1 207 workflows, 756/756 scripts, 536 inline, dix périmètres ; deux registres régénérés à l'identique ; dix tests ciblés et compilation réussis ; scan public `OK` ; commit `15657f4a8` | Sept méthodes dormantes partielles et cinq planifiées partielles attendent les tests d'exécution G2 ; Ubitricity NL désactivée et last-good conservé |
+| G2 Workflows | En cours | Registre G1 et références restaurables prêts ; anciennes Actions toujours désactivées | Nouveaux modules, orchestrateur et tests de porte à construire |
 | G3 Données | À faire | — | G2 |
 | G4 Production | À faire | — | G3 |
 | G5 Jointures | À faire | — | G4 |
@@ -39,6 +39,6 @@ Lire `memory/README.md` et les documents qu'il indexe avant chaque module. Les P
 
 ## Prochaine action exacte
 
-La recherche ciblée dans les références Git accessibles, la branche historique Ubitricity et les arbres locaux ne retrouve pas les deux scripts. L'exception nominative `migration/v9/legacy-method-exceptions.json` les classe indisponibles et désactivés, tout en épinglant le YAML, le candidat last-good et l'intégrateur ; cinq tests empêchent qu'une autre absence soit masquée. Le contrat archivé ne démontre pas assez le parser et la réconciliation pour déclarer une réimplémentation équivalente sans hypothèses. L'API GitHub confirme `Actions enabled=false`, zéro run actif et `origin/main=def205b0d`.
+G1 est validée sur `15657f4a8` : [registre définitif](../migration/v9/method-dispositions.json), [preuves de source](../migration/v9/script-workflow-evidence.json) et [audit](../migration/v9/G1_METHOD_AUDIT.md). Les 221 méthodes prioritaires et les autres méthodes historiques ont une disposition explicite. La comparaison avec le constructeur Production a inclus ses chemins et glob dynamiques ; les données existantes restent préservées. Le scan public a réussi. L'exception Ubitricity NL reste close, désactivée et séparée du candidat last-good. L'API GitHub confirme `Actions enabled=false`, zéro run actif et `origin/main=def205b0d`.
 
-Compléter la classification et la destination finales des 117 workflows planifiés, 61 workflows manuels liés à Production, 43 scripts isolés et autres workflows archivés ; vérifier les références dynamiques, dépendances, sorties et noms de secrets. Mutualiser les 108 modules candidats selon les responsabilités réelles. Rejouer `scripts/validate_v9_g1.py` ; son résultat actuel est **FAIL** avec quatre catégories provisoires (670 workflows avec scripts, 756 scripts, 220 méthodes prioritaires, registre des modules). Les 536 méthodes inline ont déjà leur disposition contrôlée séparément ; Ubitricity NL est l'exception documentée. Passer à G2 uniquement après PASS avec preuves, sans réactiver Actions ni retirer les YAML auparavant.
+Construire G2 : créer un registre d'exécution limité aux méthodes utiles dont la commande est maîtrisée, un orchestrateur hors GitHub Actions, des sorties isolées et des tests de reprise/concurrence/secrets. Ensuite retirer les 1 207 anciens YAML actifs sur la branche de reconstruction, en préservant `15657f4a8` et les références G0 pour le retour arrière ; ajouter seulement quelques workflows nouveaux en lecture seule, sans push vers `main`. Tester chaque famille migrée avant G2 PASS. Actions Data Lab reste désactivé pendant toute cette opération. Ne pas commencer G3 avant réussite de G2.
