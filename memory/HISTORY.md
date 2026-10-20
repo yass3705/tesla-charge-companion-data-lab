@@ -628,3 +628,7 @@ Le collecteur CSV historique est isolé et testé sur une valeur et une matrice 
 # 20 octobre 2026 — V9, Midhope exact UK
 
 Le constructeur historique Midhope est isolé avec preuve et snapshot Connected Kerb archivés. Les deux workflows de reconstruction équivalents sont couverts, avec EVSE, connecteurs et QR exacts. G2 reste FAIL : 66 méthodes utiles, 66 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+# 20 octobre 2026 — V9, Chargezy/TE63
+
+Le collecteur historique Chargezy/TE63 est isolé, avec jointure PAN par EVSE exact, cas spécial et lacunes conservés. Son ancien seuil de 280 lignes a été retiré ; la dépendance HTTP historique est installée uniquement pour cette source. G2 reste FAIL : 65 méthodes utiles, 67 transferts GitHub non vérifiés. Actions désactivé, aucune publication.

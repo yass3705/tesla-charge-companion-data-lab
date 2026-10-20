@@ -30,6 +30,9 @@ jobs:
       - name: Install preserved Allego browser dependency
         if: ${{ inputs.source == 'FR:allego_stations' || inputs.source == 'FR:allego_official' }}
         run: python -m pip install --disable-pip-version-check -q selenium
+      - name: Install preserved TE63 HTTP dependency
+        if: ${{ inputs.source == 'FR:chargezy_te63' }}
+        run: python -m pip install --disable-pip-version-check -q requests
       - name: Install preserved WAAT browser dependency
         if: ${{ inputs.source == 'FR:waat_monta_sharded' }}
         run: npm install --no-save playwright-core@1.55.0

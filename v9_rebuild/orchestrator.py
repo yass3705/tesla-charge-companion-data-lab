@@ -280,6 +280,11 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Midhope historical exact socket method changed")
             spec["output_file"] = "data/national/uk_connected_kerb_midhope_verified_v9.json.gz"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/uk_midhope.py")
+        elif spec.get("module") == "chargezy_te63" and source_id == "FR:chargezy_te63":
+            if spec["secret_names"] or not (root / "scripts/chargezy_te63_official_direct.py").is_file():
+                raise ValueError("TE63 historical exact PAN method changed")
+            spec["output_file"] = "data/operator_direct/chargezy_te63_official_france.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/chargezy_te63.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -501,6 +506,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     waat_monta_public_module = spec["module"] == "waat_monta_public"
     driveco_evse_module = spec["module"] == "driveco_evse"
     uk_midhope_module = spec["module"] == "uk_midhope"
+    chargezy_te63_module = spec["module"] == "chargezy_te63"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -580,7 +586,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if waat_monta_module else [sys.executable, str(root / "v9_rebuild/waat_monta_public.py"), "--out", str(staged)]
                        if waat_monta_public_module else [sys.executable, str(root / "v9_rebuild/driveco_evse.py"), "--out", str(staged)]
                        if driveco_evse_module else [sys.executable, str(root / "v9_rebuild/uk_midhope.py"), "--out", str(staged)]
-                       if uk_midhope_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if uk_midhope_module else [sys.executable, str(root / "v9_rebuild/chargezy_te63.py"), "--out", str(staged)]
+                       if chargezy_te63_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -848,6 +855,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif chargezy_te63_module:
+                from v9_rebuild.chargezy_te63 import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

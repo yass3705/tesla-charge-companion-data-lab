@@ -961,3 +961,5 @@ V9 G2 : EWO/eCarUp migré avec catalogue archivé et jointure stricte opérateur
 V9 G2 : DRIVECO EVSE exact migré sur fixture CSV archivée ; le prix énergie et les frais OSF non interprétés restent distincts, sans total de session inventé. 68 méthodes requises restent, 65 transferts GitHub non vérifiés. Actions désactivé.
 
 V9 G2 : constructeur Midhope UK isolé sur preuve et snapshot exacts déjà archivés ; 66 méthodes requises restent, 66 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+V9 G2 : Chargezy/TE63 migré sur fixture PAN réduite ; 65 méthodes requises restent, 67 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
