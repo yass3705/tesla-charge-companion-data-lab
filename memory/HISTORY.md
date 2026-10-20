@@ -435,6 +435,8 @@ Entrées append-only, datées, avec liens vers les documents et commits sources.
 
 # 20 octobre 2026 — reprise de l'inventaire G1
 
+- G2 démarré après G1 PASS : retrait sur la seule branche de reconstruction des 1 207 anciens workflows, code restaurable au commit `15657f4a8`. Deux nouveaux YAML lecture seule, registre partiel de dix sources à manifeste et Belgique NAP, orchestrateur à artefacts isolés. Onze tests hors réseau et un essai technique réel `FR:sdey` réussis avec contrôle du contrat ; validateur G2 FAIL sur 143 méthodes actives restantes. Data Lab Actions désactivé ; pas de push `main`, ni de modification Production/site public.
+
 - Porte G1 validée sur `15657f4a8` après revue regroupée des commandes, chemins `git add`, artefacts, scripts, secrets nommés et consommateurs Production. Le registre final couvre 1 207 workflows et 756 scripts ; dix tests ciblés, validateur G1, compilation et scan public réussis. Sept méthodes dormantes et cinq planifiées gardent une sortie partielle explicite à tester en G2. Actions Data Lab désactivé, aucun site public modifié. G2 ouvert.
 
 - Décision de migration : Ubitricity NL PAYG est `legacy_method_unavailable` ; acquisition désactivée, candidat et intégrateur conservés. Le validateur vérifie l'exception nominative et refuse les absences supplémentaires (cinq tests réussis). Une correction de la porte empêche désormais le faux PASS tant que 670 workflows avec scripts, 756 scripts et 220 méthodes prioritaires gardent des statuts provisoires ; les 536 méthodes inline sont vérifiées séparément. G1 reste FAIL, G2 non commencé.

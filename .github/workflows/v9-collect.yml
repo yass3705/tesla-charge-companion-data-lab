@@ -1,0 +1,27 @@
+name: V9 isolated collection
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v9-collection
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Collect migrated sources into isolated artifacts
+        run: python -m v9_rebuild.orchestrator --out "$RUNNER_TEMP/tcc-v9-artifacts" --workers 2 --attempts 2
+      - name: Preserve immutable outputs and failure manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcc-v9-collection
+          path: ${{ runner.temp }}/tcc-v9-artifacts
+          if-no-files-found: warn
+          retention-days: 30

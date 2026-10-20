@@ -1,0 +1,22 @@
+name: V9 read-only checks
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile and test isolated orchestration
+        run: |
+          python -m py_compile v9_rebuild/orchestrator.py
+          python -m unittest discover -s tests -p test_v9_orchestrator.py -v
+          python -m v9_rebuild.orchestrator --out "$RUNNER_TEMP/tcc-v9-check" --dry-run
+      - name: Public repository safety scan
+        run: python scripts/public_safety_check.py .
