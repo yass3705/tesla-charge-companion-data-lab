@@ -107,6 +107,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Electroverse overlay historical method missing or unexpected secret")
             spec["output_file"] = "data/platforms/electroverse/france-evse/manifest.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/electroverse_overlay.py")
+        elif spec.get("module") == "isolated_script" and source_id == "FR:atlante_direct":
+            script = safe_relative(spec.get("script", ""))
+            if script.as_posix() != "scripts/atlante_station_tariffs.py" or spec["secret_names"] != ["ATLANTE_API_SUBSCRIPTION_KEY"]:
+                raise ValueError("Atlante direct historical method changed")
+            spec["output_file"] = "data/national/atlante_direct_stations_france.json.gz"
+            spec["manifest_sha256"] = sha256(root / script)
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -219,6 +225,28 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     return state
 
 
+def validate_isolated_script_output(spec: dict, output: Path) -> bool:
+    with gzip.open(output, "rt", encoding="utf-8") as handle:
+        data = json.load(handle)
+    if spec["id"] == "FR:atlante_direct":
+        scope = data.get("scope") or {}
+        locations = data.get("locations")
+        if (data.get("dataset") != "atlante-direct-operated-stations-france" or data.get("operator") != "Atlante"
+                or data.get("country") != "FR" or scope.get("requiredCpo") != "FRATL"
+                or scope.get("onlyOperatedLocations") is not True or scope.get("partnerLocationsIncluded") is not False
+                or not isinstance(locations, list) or data.get("counts", {}).get("franceLocationCount") != len(locations)):
+            return False
+        ids = set()
+        for row in locations:
+            key = row.get("id")
+            if (not key or key in ids or row.get("countryCode") != "FR" or row.get("partyId") != "ATL"
+                    or row.get("operatorName") != "Atlante" or not isinstance(row.get("connectors"), list)):
+                return False
+            ids.add(key)
+        return True
+    return False
+
+
 def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int = 2, timeout_s: int = 2400, runner=subprocess.run) -> dict:
     source_id = spec["id"]
     missing = [name for name in spec["secret_names"] if not os.environ.get(name)]
@@ -234,6 +262,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if checkpoint_module else None
     operator_module = spec["module"] == "operator_manifest"
     nl_module = spec["module"] == "nl_dotnl"
+    isolated_script = spec["module"] == "isolated_script"
     reason = "collector_failed"
     for attempt in range(1, attempts + 1):
         if checkpoint_module and checkpoint.is_dir():
@@ -258,7 +287,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     status_input = validated_dependency(status_bundle, "FR:electroverse_status", "electroverse_status")
                 except (OSError, ValueError, KeyError, TypeError, RuntimeError, gzip.BadGzipFile):
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
-            command = ([sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
+            command = ([sys.executable, str(root / safe_relative(spec["script"])), "--out", str(staged / spec["output_file"])]
+                       if isolated_script else [sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
                        if operator_module else [sys.executable, str(root / "v9_rebuild/nl_dotnl.py"), "--out", str(staged)]
                        if nl_module else [sys.executable, str(root / "v9_rebuild/electroverse.py"), "--out", str(staged), "--mode", spec["mode"]]
                        if electroverse_module else [sys.executable, str(root / "v9_rebuild/electroverse_status.py"), "--out", str(staged)]
@@ -291,8 +321,12 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                payload = json.loads(output.read_text(encoding="utf-8"))
-            except (OSError, UnicodeError, json.JSONDecodeError):
+                if isolated_script and output.suffix == ".gz":
+                    with gzip.open(output, "rt", encoding="utf-8") as handle:
+                        payload = json.load(handle)
+                else:
+                    payload = json.loads(output.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError, gzip.BadGzipFile):
                 reason = "collector_output_invalid_json"
                 continue
             if operator_module:
@@ -328,6 +362,11 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, RuntimeError, gzip.BadGzipFile):
+                    valid = False
+            elif isolated_script:
+                try:
+                    valid = validate_isolated_script_output(spec, output)
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

@@ -210,7 +210,7 @@ def make_payload(map_payload: dict[str, Any], locations: list[dict[str, Any]]) -
     ]
     locations = sorted(locations, key=lambda x: (x["name"].lower(), x["id"]))
     connectors = [connector for location in locations for connector in location["connectors"]]
-    if len(locations) != len(operated) or not locations:
+    if len(locations) != len(operated):
         raise ValueError(f"Atlante hydration incomplete: {len(locations)} / {len(operated)}")
     price_counts = Counter(f"{x['pricePerKwhEur']:.2f}" for x in connectors)
     power_counts = Counter(f"{x['powerKw']:g}" for x in connectors)
@@ -265,9 +265,6 @@ def live_build(api_key: str, workers: int) -> dict[str, Any]:
         if str(x.get("countryCode") or "").upper() == COUNTRY_CODE
         and str(x.get("partyId") or "").upper() == PARTY_ID
     ]
-    if len(summaries) < 100:
-        raise RuntimeError(f"Atlante France inventory unexpectedly small: {len(summaries)}")
-
     def hydrate(summary: dict[str, Any]) -> dict[str, Any] | None:
         location_id = str(summary.get("id") or "")
         if not location_id:

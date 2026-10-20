@@ -463,3 +463,7 @@ Adaptateur de statuts en 16 partitions, reprise et fusion historique, finalisati
 
 Sélection locale de deux artefacts indépendants par source et branche, vérification du manifeste et de tous les SHA avant overlay. Le workflow commun télécharge ces deux états hors checkout et sépare les manifestes d'échec des collections validées. Le constructeur et l'audit historiques ont réellement été exécutés sur une fixture FR réduite ; les échecs et la reprise sont couverts. Transfert GitHub Actions encore non testé en run réel, Actions désactivées. G2 reste FAIL avec 138 méthodes. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, Atlante Direct
+
+Le collecteur historique Atlante Direct, déjà référencé par Production, est raccordé au module `isolated_script` et produit un artefact vérifié hors checkout. Les gardes arbitraires sur le nombre de sites ont été retirées ; la complétude de l'hydratation reste obligatoire. Tests de parseur et d'orchestration hors ligne réussis. G2 FAIL sur 137 méthodes restantes ; Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
+

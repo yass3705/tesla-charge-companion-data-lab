@@ -1,3 +1,7 @@
+# 20 octobre 2026 — V9 reconstruction, Atlante Direct
+
+- Le collecteur Atlante Direct utilisé par Production passe par l'adaptateur isolé du workflow commun, avec le secret historique et une sortie gzip vérifiée. Les tests du parseur et de l'adaptateur passent sans réseau. Deux anciens rejets fondés sur le seul volume ont été retirés ; le contrôle de complétude map/détails reste. G2 reste FAIL avec 137 méthodes utiles à migrer ; Actions désactivées, site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 20 octobre 2026 — V9 reconstruction, transmission de l'overlay Electroverse
 
 - Le workflow commun sélectionne deux artefacts validés indépendants (cache tarifaire daily/full et statuts nationaux) sur la branche demandée. L'orchestrateur vérifie les SHA du manifeste et de tous les fichiers. Le constructeur historique et son audit passent hors ligne sur une fixture d'une station source FR, 128 shards et 16 partitions ; les refus et la reprise sont testés. GitHub Actions n'a pas été exécuté : `github_handoff_unverified`. G2 reste FAIL avec 138 méthodes à migrer, Actions désactivées et site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
