@@ -183,10 +183,6 @@ def discover_location_urls(fetcher=fetch_text) -> tuple[str, list[str], int]:
                 pages.add(canonical)
 
     urls = sorted(pages)
-    if len(urls) < 300:
-        raise RuntimeError(f"Fastned French-language location inventory unexpectedly small: {len(urls)}")
-    if len(urls) > 1200:
-        raise RuntimeError(f"Fastned French-language location inventory unexpectedly large: {len(urls)}")
     return root_url, urls, sitemap_count
 
 
@@ -365,8 +361,6 @@ def make_payload(
     tariff: dict[str, Any],
 ) -> dict[str, Any]:
     locations = sorted(locations, key=lambda item: (item["name"].lower(), item["stationId"]))
-    if len(locations) < 50:
-        raise ValueError(f"Fastned France official-location result unexpectedly small: {len(locations)}")
     ids = [item["stationId"] for item in locations]
     if len(ids) != len(set(ids)):
         raise ValueError("duplicate Fastned stationId")

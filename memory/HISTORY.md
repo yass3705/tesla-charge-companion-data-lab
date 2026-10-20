@@ -475,3 +475,7 @@ Les méthodes `belib_official.py` et `belib_station_base.py` partagent désormai
 
 Un module familial exécute les scripts historiques IONITY Direct FR/IT/DE et GB dans un espace isolé ; les quatre sorties sont vérifiées avant versionnement. Seuls les seuils historiques de volume ont été retirés ; identifiants, CPO, devise et relations restent contrôlés. Sept tests sur fixtures hors ligne PASS ; G2 FAIL avec 133 méthodes en attente. Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, Fastned Direct
+
+Les inventaires historiques Fastned FR/GB tournent dans un module familial isolé, avec validation commune des sorties et du rapport UK. Seuls les seuils de pages et stations ont été retirés. Sept tests de parseur et d'orchestration sur fixtures hors ligne PASS ; G2 FAIL avec 131 méthodes en attente. Actions désactivées, aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
+

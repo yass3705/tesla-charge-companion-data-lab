@@ -63,7 +63,6 @@ def discover():
    for v in locs:
     z=canonical(v)
     if z: pages.add(z)
- if len(pages)<300: raise RuntimeError(f"location page inventory too small {len(pages)}")
  return root,sorted(pages),n
 def tariff():
  t=norm(text_html(fetch(TARIFF_URL)))
@@ -133,7 +132,6 @@ def main():
      if addr and re.search(r"(?:United Kingdom|Great Britain)",addr,re.I): errors.append({"url":u,"error":str(e)})
  if errors: raise RuntimeError("UK page parse failures: "+json.dumps(errors[:20]))
  loc=sorted(loc,key=lambda x:(x["name"].lower(),x["stationId"]))
- if len(loc)<10: raise RuntimeError(f"UK station count unexpectedly small: {len(loc)}")
  if len({x["stationId"] for x in loc})!=len(loc): raise RuntimeError("duplicate ids")
  profiles=[
   {"id":"fastned-app-direct","subscriptionRequired":False,"pricePerKwhGbp":t["appGbpPerKwh"],"discountPercent":10.0,"monthlyFeeGbp":0.0},

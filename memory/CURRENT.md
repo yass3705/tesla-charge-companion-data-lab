@@ -1,3 +1,7 @@
+# 20 octobre 2026 — V9 reconstruction, Fastned Direct
+
+- Les inventaires historiques Fastned FR/GB tournent dans un module isolé qui vérifie les deux sorties et le rapport UK avant artefact. Les fixtures exécutent réellement les deux scripts hors réseau ; sept tests ciblés PASS. Les seuils de pages et stations ont été retirés, les contrôles de parse, identité et somme des points restent. G2 FAIL avec 131 méthodes restantes ; Actions désactivées, site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 20 octobre 2026 — V9 reconstruction, IONITY Direct
 
 - Les scripts IONITY Direct FR/IT/DE et GB produisent quatre sorties historiques dans un même espace isolé, validées ensemble avant artefact. Les fixtures hors réseau exécutent les scripts réels sur une station par pays ; un échec IT laisse le lot incomplet hors des objets publiables. Seuls les anciens seuils de volume ont été retirés. Sept tests ciblés PASS ; G2 FAIL avec 133 méthodes restantes. Actions désactivées, site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
