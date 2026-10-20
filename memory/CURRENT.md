@@ -903,3 +903,5 @@ La chaîne historique Allego DXP, normalisation et coordonnées de repli tourne 
 V9 G2 UK PCPR : Blink, Allego UK, Source EV et Evyve migrés localement par fixtures ; 110 méthodes utiles restent. Actions Data Lab désactivées ; transfert GitHub non vérifié.
 
 V9 G2 : quatre règles officielles FR supplémentaires (DRIVECO, eborn, E55C, Freshmile) validées sur fixtures locales, sans prix inventé ; 106 méthodes utiles restent. GitHub Actions Data Lab toujours désactivé.
+
+V9 G2 : Qovoltis, ENGIE Vianeo et Métropolis migrés sur fixtures hors ligne ; 103 méthodes utiles restent, aucun transfert GitHub attesté.

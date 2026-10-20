@@ -21,13 +21,16 @@ RULES = {
     "fastned": ("Fastned", "fastned-official-france", 7),
     "freshmile": ("Freshmile", "freshmile-official-france", 7),
     "ionity": ("IONITY", "ionity-official-france", 6),
+    "metropolis": ("Métropolis Recharge", "metropolis-official-grand-paris", 2),
+    "qovoltis": ("Qovoltis", "qovoltis-official-france", 3),
+    "vianeo": ("ENGIE Vianeo", "engie-vianeo-official-france", 7),
 }
 
 
 def paths(source: str) -> tuple[Path, Path, Path]:
     if source not in RULES:
         raise ValueError(f"Unsupported preserved official rule: {source}")
-    return (Path(f"data/operator_direct/{source}_official_france.json"),
+    return (Path("data/operator_direct/metropolis_official_grand_paris.json") if source == "metropolis" else Path(f"data/operator_direct/{source}_official_france.json"),
             Path(f"reports/{source}/latest_summary.md"), Path(f"out/{source}"))
 
 
@@ -94,6 +97,25 @@ def validate_output(out: Path, source: str) -> dict:
                 or payload.get("mobilityProvider", {}).get("incomingRoamingOnFreshmileCpo", {}).get("operatorDirect") is not False
                 or payload.get("fees", {}).get("connectionTime", {}).get("exactStationLookupRequired") is not True):
             raise ValueError("Freshmile official CPO/eMSP or station price scope invalid")
+    elif source == "qovoltis":
+        direct = payload["operatorDirect"]
+        if (payload.get("classification", {}).get("stationLevelPriceLookupRequiredForExactCpoDirect") is not True
+                or direct.get("nomadOpen", {}).get("nationalEurPerKwh") is not None
+                or direct.get("nomadGold", {}).get("monthlyFeeEur") is not None
+                or direct.get("adHocBankCard", {}).get("exactPriceLookupRequired") is not True
+                or payload.get("roaming", {}).get("operatorDirect") is not False):
+            raise ValueError("Qovoltis official direct/roaming scope invalid")
+    elif source == "vianeo":
+        direct = payload["operatorDirect"]
+        if (payload.get("classification", {}).get("stationLevelPriceLookupRequiredForExactSimulation") is not True
+                or payload.get("classification", {}).get("nationalSubscriptionTariffExists") is not True
+                or direct.get("vianeoMax", {}).get("classification") != "operator_direct_subscription"
+                or payload.get("roaming", {}).get("operatorDirect") is not False):
+            raise ValueError("Vianeo official subscription or roaming scope invalid")
+    elif source == "metropolis":
+        if (payload.get("classification", {}).get("localPublicNetwork") is not True
+                or payload.get("roaming", {}).get("incomingThirdPartyBadge", {}).get("operatorDirect") is not False):
+            raise ValueError("Métropolis local network or roaming scope invalid")
     elif source == "fastned":
         direct = payload["operatorDirect"]
         if (payload.get("classification", {}).get("singleNationalOperatorTariff") is not True
@@ -123,7 +145,7 @@ def run(out: Path, source: str, *, runner=subprocess.run) -> None:
         raise RuntimeError(f"Historical {source} official method failed")
     (out / output).parent.mkdir(parents=True, exist_ok=True)
     (out / report).parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(out / temp / f"{source}_official_france.json", out / output)
+    shutil.copy2(out / temp / output.name, out / output)
     shutil.copy2(out / temp / "SUMMARY.md", out / report)
     shutil.rmtree(out / "out")
     validate_output(out, source)
