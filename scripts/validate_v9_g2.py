@@ -40,6 +40,8 @@ def main() -> None:
         method = ("scripts/operator_manifest_runner.py" if spec["module"] == "operator_manifest"
                   else "scripts/dotnl_netherlands_build.py" if spec["module"] == "nl_dotnl"
                   else "scripts/electroverse_hybrid_refresh.mjs" if spec["module"] == "electroverse"
+                  else "scripts/electroverse_status_incremental.mjs" if spec["module"] == "electroverse_status"
+                  else "scripts/build_electroverse_france_evse_overlay.mjs" if spec["module"] == "electroverse_overlay"
                   else spec["script"])
         source_code = ROOT / (spec["manifest"] if spec["module"] == "operator_manifest" else method)
         if not source_code.is_file():

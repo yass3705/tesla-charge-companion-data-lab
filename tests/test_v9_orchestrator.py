@@ -11,6 +11,8 @@ from unittest.mock import patch
 from v9_rebuild.orchestrator import ROOT, read_sources, run_batch, run_source
 from v9_rebuild.electroverse import IncompleteCollection, run as run_electroverse, validate_state as validate_electroverse
 from tests.test_v9_electroverse import SimulatedCollector, fixture
+from tests.test_v9_electroverse_status import fixture as status_fixture, part as status_part
+from v9_rebuild.electroverse_status import cache_fingerprint, part_path, validate_partial
 
 
 class OrchestratorTests(unittest.TestCase):
@@ -20,6 +22,7 @@ class OrchestratorTests(unittest.TestCase):
         cls.sources = [source for source in registry if source["module"] == "operator_manifest"]
         cls.belgium = next(source for source in registry if source["id"] == "BE:nap")
         cls.electroverse_daily = next(source for source in registry if source["id"] == "FR:electroverse_daily")
+        cls.electroverse_status = next(source for source in registry if source["id"] == "FR:electroverse_status")
         cls.output_names = {source["operator"]: source["output_file"] for source in cls.sources}
         cls.by_operator = {source["operator"]: source for source in cls.sources}
 
@@ -214,6 +217,30 @@ class OrchestratorTests(unittest.TestCase):
             shard.write_text(shard.read_text() + " ")
             with self.assertRaises(ValueError):
                 run_source(self.electroverse_daily, out, attempts=1, runner=adapter)
+
+    def test_status_partial_checkpoint_survives_failed_runs_without_public_object(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
+            out = Path(temp) / "artifacts"
+            calls = 0
+
+            def partial(command, **kwargs):
+                nonlocal calls
+                calls += 1
+                staged = Path(command[command.index("--out") + 1])
+                if calls == 1:
+                    status_fixture(staged, [])
+                    from tests.test_v9_electroverse import save
+                    save(part_path(staged, 0), status_part(0, cache_fingerprint(staged),
+                                                           {"A": {"EVSE-A": "AVAILABLE"}}, expected=2))
+                self.assertEqual(validate_partial(staged)["verified_locations"], 1)
+                return SimpleNamespace(returncode=2)
+
+            first = run_source(self.electroverse_status, out, attempts=1, runner=partial)
+            second = run_source(self.electroverse_status, out, attempts=1, runner=partial)
+            self.assertEqual((first["status"], second["status"]), ("failed", "failed"))
+            self.assertEqual(calls, 2)
+            self.assertEqual(validate_partial(out / "checkpoints/FR_electroverse_status")["verified_locations"], 1)
+            self.assertFalse(list((out / "objects/FR_electroverse_status").glob("[0-9a-f]" * 64)))
 
 
 if __name__ == "__main__":

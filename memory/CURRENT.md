@@ -1,3 +1,7 @@
+# 20 octobre 2026 — V9 reconstruction, statuts et overlay Electroverse
+
+- Les 16 partitions de statuts, leur reprise, la fusion historique et la finalisation nationale passent sur fixtures hors réseau. L'overlay refuse un état national incomplet et vérifie ses tuiles ; le constructeur complet et le transfert des dépendances GitHub restent à tester. Vingt tests ciblés PASS, G2 FAIL avec 138 méthodes encore à migrer ; Actions désactivées, site public inchangé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 20 octobre 2026 — V9 reconstruction, lot G2 Electroverse
 
 - Le module Electroverse daily/full réutilise les trois scripts existants dans un espace isolé. Les fixtures réduites prouvent qu'un chunk en échec conserve les shards déjà écrits et reprend uniquement les PK en échec. L'orchestrateur garde le checkpoint hors des objets validés, contrôle les SHA avant de reprendre un ancien jeu et échoue si le jeu fourni est corrompu. Aucun appel API live effectué.

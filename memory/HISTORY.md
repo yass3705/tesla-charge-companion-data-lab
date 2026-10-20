@@ -455,3 +455,7 @@ La chaîne nationale néerlandaise historique a été adaptée en module isolé 
 
 Adaptateur isolé daily/full et checkpoint technique ajoutés à l'orchestrateur sans changer les scripts historiques. Tests de reprise, shards, chunk borné et intégrité des artefacts réussis sur fixtures ; sélection automatique du plus récent checkpoint ou jeu validé GitHub testée localement. G2 reste FAIL sur 140 méthodes ; transfert en run Actions non vérifié. Actions Data Lab désactivées, site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
+# 20 octobre 2026 — reconstruction V9, statuts et overlay Electroverse
+
+Adaptateur de statuts en 16 partitions, reprise et fusion historique, finalisation nationale hors checkout ; les checkpoints partiels restent séparés des artefacts validés. L'overlay exige le recensement complet et audite les tuiles, mais son constructeur historique complet et le passage des deux dépendances via Actions restent à valider. Le seuil artificiel de 5 000 offres a été retiré. Vingt tests ciblés PASS sans appel API ; G2 FAIL avec 138 méthodes en attente. Actions désactivées et site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
+
