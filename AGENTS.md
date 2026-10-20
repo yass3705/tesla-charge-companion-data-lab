@@ -2,6 +2,12 @@
 
 Ce fichier est la référence versionnée du projet. Depuis `/Users/yassine/Projects/TCC`, le fichier parent `AGENTS.md` est un lien symbolique vers celui-ci. Les instructions explicites de la mission en cours priment.
 
+## Reconstruction intégrale V9 — cahier des charges prioritaire
+
+Pour toute session de reconstruction TCC V9 (G0 à G9), lire **avant de développer** le [cahier des charges permanent](docs/v9-rebuild/PROJECT_SPEC_G0_G9.md) puis le [tableau de progression](memory/V9_REBUILD_PROGRESS.md). Le premier contient les exigences utilisateur non négociables ; le second contient les phases réellement validées, les tests, blocages et la prochaine opération. Les anciennes consignes de collecte/workflows ne doivent pas contredire le cahier des charges de reconstruction.
+
+Les décisions centrales sont : réutiliser les méthodes existantes sans nouvelle recherche tarifaire, éliminer les seuils de variation des volumes EVSE, garder les Actions Data Lab désactivées jusqu'à sécurisation et autorisation, et poursuivre en autonomie jusqu'à la préproduction TCC validable visuellement par l'utilisateur. Ne pas refaire les étapes PASS ni demander des validations techniques ordinaires.
+
 ## Au début d'une mission TCC
 
 1. Lire `tesla-charge-companion-data-lab/memory/README.md` et `tesla-charge-companion-data-lab/memory/CURRENT.md` (ou `memory/...` depuis Data Lab). Lire ensuite les documents métier sources cités pour le sujet ; ne pas réinventer une règle déjà validée.
