@@ -1,3 +1,7 @@
+# 22 octobre 2026 — V9, inventaires publics Maroc
+
+- FastVolt et Kilowatt : méthodes historiques isolées, fixtures hors ligne et contrats de sortie vérifiés. G2 reste FAIL avec 45 méthodes utiles ; Actions désactivé, transferts GitHub non vérifiés. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 20 octobre 2026 — V9 reconstruction, PCPR UK
 
 - Blink, Allego UK et Source EV disposent d'une chaîne de collecte et audit isolée, avec correspondance tarifaire exacte au connecteur et tests hors ligne. G2 FAIL : 111 méthodes restantes ; Actions désactivé et transferts GitHub non vérifiés. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

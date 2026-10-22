@@ -344,6 +344,14 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Swiss Plenitude closeout archived inputs missing")
             spec["output_file"] = "data/switzerland/plenitude-official-direct-tariffs.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_plenitude_closeout.py")
+        elif spec.get("module") == "morocco_inventory" and source_id in {"MA:fastvolt_inventory", "MA:kilowatt_inventory"}:
+            from v9_rebuild.morocco_inventory import METHODS
+            method = spec.get("method")
+            if (source_id != f"MA:{method}_inventory" or method not in METHODS
+                    or spec["secret_names"] or not (root / METHODS[method][0]).is_file()):
+                raise ValueError("Morocco public-map historical method changed")
+            spec["output_file"] = METHODS[method][1]
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/morocco_inventory.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -586,6 +594,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     swiss_ecarup_finalizer_module = spec["module"] == "swiss_ecarup_finalizer"
     swiss_move_module = spec["module"] == "swiss_move"
     swiss_plenitude_closeout_module = spec["module"] == "swiss_plenitude_closeout"
+    morocco_inventory_module = spec["module"] == "morocco_inventory"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -706,7 +715,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if energyvision_module else [sys.executable, str(root / "v9_rebuild/swiss_ecarup_finalizer.py"), "--out", str(staged), "--source", str(coordinate_state)]
                        if swiss_ecarup_finalizer_module else [sys.executable, str(root / "v9_rebuild/swiss_move.py"), "--method", spec["method"], "--out", str(staged)]
                        if swiss_move_module else [sys.executable, str(root / "v9_rebuild/swiss_plenitude_closeout.py"), "--out", str(staged), "--source", str(plenitude_state)]
-                       if swiss_plenitude_closeout_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if swiss_plenitude_closeout_module else [sys.executable, str(root / "v9_rebuild/morocco_inventory.py"), "--method", spec["method"], "--out", str(staged)]
+                       if morocco_inventory_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1037,6 +1047,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 from v9_rebuild.swiss_plenitude_closeout import validate_output
                 try:
                     validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif morocco_inventory_module:
+                from v9_rebuild.morocco_inventory import validate_output
+                try:
+                    validate_output(staged, spec["method"])
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
