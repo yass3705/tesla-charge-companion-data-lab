@@ -315,6 +315,14 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Electra France curated association batches missing")
             spec["output_file"] = "data/platforms/electra/france/manifest.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/electra_france.py")
+        elif spec.get("module") == "energyvision" and source_id == "BE:energyvision":
+            from v9_rebuild.energyvision import METHODS, NAP_MANIFEST
+            if (spec["secret_names"] != ["ENERGYVISION_API_KEY"]
+                    or any(not (root / "scripts" / name).is_file() for name in METHODS)
+                    or not (root / NAP_MANIFEST).is_file()):
+                raise ValueError("EnergyVision archived methods, NAP or authentication missing")
+            spec["output_file"] = "data/belgium/energyvision-official-2026-10-13.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/energyvision.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -544,6 +552,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     uk_connected_kerb_app_module = spec["module"] == "uk_connected_kerb_app"
     uk_eco_movement_module = spec["module"] == "uk_eco_movement"
     electra_france_module = spec["module"] == "electra_france"
+    energyvision_module = spec["module"] == "energyvision"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -636,7 +645,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if uk_connected_kerb_operator_module else [sys.executable, str(root / "v9_rebuild/uk_connected_kerb_app.py"), "--out", str(staged), "--operator-state", str(operator_state)]
                        if uk_connected_kerb_app_module else [sys.executable, str(root / "v9_rebuild/uk_eco_movement.py"), "--out", str(staged)]
                        if uk_eco_movement_module else [sys.executable, str(root / "v9_rebuild/electra_france.py"), "--out", str(staged)]
-                       if electra_france_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if electra_france_module else [sys.executable, str(root / "v9_rebuild/energyvision.py"), "--out", str(staged)]
+                       if energyvision_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -669,7 +679,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or freshmile_inventory_module or waat_monta_dependency) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or energyvision_module or freshmile_inventory_module or waat_monta_dependency) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -935,6 +945,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif electra_france_module:
                 from v9_rebuild.electra_france import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif energyvision_module:
+                from v9_rebuild.energyvision import validate_output
                 try:
                     validate_output(staged)
                     valid = True

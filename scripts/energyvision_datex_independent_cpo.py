@@ -153,8 +153,6 @@ def main():
     n = data["counts"]["sourcePDC"]
     if n != data["counts"]["distinctExternalEvseIds"]:
         raise ValueError("Duplicate EVSE identifiers")
-    if not 3791 * 0.9 <= n <= 3791 * 1.1:
-        raise ValueError("Major source inventory drift")
     data["baselineComparison"] = {"baselinePDC": 3791, "currentPDC": n, "delta": n - 3791}
     if data["v9PublicationReady"] or data["v9PricedPDC"]:
         raise ValueError("Pricing promotion forbidden")

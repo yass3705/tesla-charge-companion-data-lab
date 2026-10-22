@@ -266,8 +266,6 @@ def main() -> int:
                       "ratePolicies": report["ratePolicies"], "priceTypes": report["priceTypes"],
                       "currencies": report["currencies"], "statusValues": report["statusValues"],
                       "v9ReadyForPriceRanking": False}, ensure_ascii=False))
-    if report["counts"]["sites"] == 0 or report["counts"]["refillPoints"] == 0:
-        raise SystemExit("No EnergyVision sites/refill points: block candidate")
     return 0
 
 

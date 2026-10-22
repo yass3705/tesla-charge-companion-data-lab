@@ -656,3 +656,7 @@ Le collecteur inline archivé est extrait et exécuté hors checkout avec son au
 # 22 octobre 2026 — V9, Electra plateforme France
 
 Le constructeur historique national a été isolé avec ses données d'identité et d'association archivées. Pagination et SHA des sorties sont vérifiés ; le seuil arbitraire de 1 000 offres a été retiré. Les tests hors réseau couvrent EVSE exact, échec de page, interruption et corruption. G2 reste FAIL : 58 méthodes utiles, 71 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, EnergyVision Belgique
+
+Les méthodes DATEX, CPO indépendante et rapprochement NAP s'enchaînent hors checkout sur tous les fichiers NAP référencés. Un tarif de station reste hors EVSE et hors classement. Les anciens rejets de volume ont été retirés ; tests hors réseau sur un PDC et échecs techniques réussis. G2 reste FAIL : 55 méthodes utiles, 72 transferts GitHub non vérifiés. Actions désactivé.
