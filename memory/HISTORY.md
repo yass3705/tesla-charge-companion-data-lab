@@ -732,3 +732,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 2026-10-22 — V9 G2 Espagne core : cinq parseurs historiques executes hors checkout, fixture issue des valeurs archivees, mutation tarifaire rejetee ; 2 tests PASS. G2 reste FAIL (30 methodes, 95 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 BFC fixed tariffs : cinq surveillances et SIED70 executes hors checkout sur fixtures archivees ; contexte et prix changes refuses, 2 tests PASS. G2 reste FAIL (29 methodes, 96 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 tarifs France core : Lidl, STATIONS-E et eborn executes hors checkout sur fixtures de valeurs archivees ; mutation refusee, 2 tests PASS. G2 reste FAIL (28 methodes, 97 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
