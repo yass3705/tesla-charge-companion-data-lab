@@ -134,9 +134,10 @@ def parse_inventory(csv_text: str) -> dict:
         dialect = csv.excel
         dialect.delimiter = ";"
     reader = csv.DictReader(io.StringIO(csv_text), dialect=dialect)
+    fields = {str(name).strip().lower() for name in (reader.fieldnames or []) if name is not None}
+    if not fields.intersection({"id_station_itinerance", "id_pdc_itinerance", "id_pdc_local"}):
+        raise RuntimeError("Powerdot inventory CSV: incompatible station/EVSE schema")
     rows = list(reader)
-    if not rows:
-        raise RuntimeError("Powerdot inventory CSV: no rows")
 
     samples = []
     for city in TARGET_CITIES:
