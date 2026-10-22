@@ -14,6 +14,16 @@ def artifact(kind: str, run_id: int, created: str, *, branch: str = "rebuild/v9-
 
 
 class ArtifactSelectionTests(unittest.TestCase):
+    def test_swisscharge_restores_newer_checkpoint_from_same_branch(self):
+        state = {**artifact("collection", 101, "2026-10-22T00:00:00Z"),
+                 "name": "tcc-v9-collection-CH_swisscharge_full"}
+        checkpoint = {**artifact("checkpoints", 102, "2026-10-22T01:00:00Z"),
+                      "name": "tcc-v9-checkpoints-CH_swisscharge_full"}
+        wrong = {**checkpoint, "id": 103, "created_at": "2026-10-22T02:00:00Z",
+                 "workflow_run": {"id": 103, "head_branch": "main"}}
+        self.assertEqual(choose([checkpoint, wrong], [state], "CH:swisscharge_full",
+                                "rebuild/v9-20261020"), ("checkpoint", 102))
+
     def test_powerup_closeout_selects_same_branch_collection(self):
         first = {**artifact("collection", 91, "2026-10-22T00:00:00Z"),
                  "name": "tcc-v9-collection-CH_powerup_monta"}

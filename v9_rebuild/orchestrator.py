@@ -390,6 +390,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Swiss PowerUp residual script missing")
             spec["output_file"] = "data/switzerland/powerup-monta-direct-tariffs.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_powerup_closeout.py")
+        elif spec.get("module") == "swisscharge" and source_id == "CH:swisscharge_full":
+            from v9_rebuild.swisscharge import SCRIPT
+            if spec["secret_names"] or not (root / SCRIPT).is_file():
+                raise ValueError("Swisscharge preserved sharded collector missing")
+            spec["output_file"] = "data/swisscharge/swisscharge-tariffs.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/swisscharge.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -648,6 +654,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     swiss_cpi_module = spec["module"] == "swiss_cpi"
     swiss_powerup_module = spec["module"] == "swiss_powerup"
     swiss_powerup_closeout_module = spec["module"] == "swiss_powerup_closeout"
+    swisscharge_module = spec["module"] == "swisscharge"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -806,6 +813,9 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/swiss_powerup.py"), "--out", str(staged)]
             if swiss_powerup_closeout_module:
                 command = [sys.executable, str(root / "v9_rebuild/swiss_powerup_closeout.py"), "--out", str(staged), "--source", str(powerup_state)]
+            if swisscharge_module:
+                command = [sys.executable, str(root / "v9_rebuild/swisscharge.py"), "--out", str(staged),
+                           "--checkpoint", str(checkpoint)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1188,6 +1198,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
+            elif swisscharge_module:
+                from v9_rebuild.swisscharge import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)
             if not valid:
@@ -1203,6 +1220,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     if not target.exists():
                         raise
             elif checkpoint_module and staged == checkpoint:
+                shutil.rmtree(checkpoint)
+            if swisscharge_module and checkpoint.is_dir():
                 shutil.rmtree(checkpoint)
             return {
                 "source": source_id,

@@ -1,3 +1,7 @@
+# 22 October 2026 - V9 Swisscharge shards
+
+- Four historical partitions, independent SHA checkpoints and exact merge are tested offline. G2 FAIL: 38 useful methods and 88 unverified GitHub handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 22 October 2026 - V9 Swiss PowerUp residual closeout
 
 - The two documented exact EVSE pages are reached only for missing national IDs; same-snapshot counts replace historical constants. G2 FAIL: 39 useful methods and 87 unverified handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

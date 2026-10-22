@@ -708,3 +708,7 @@ The existing public collector runs off checkout and exposes original source IDs 
 # 22 October 2026 - V9 Swiss PowerUp residual closeout
 
 The preserved direct-page method consumes a signed first pass, keeps other EVSE unchanged and uses no fixed historical total. G2 FAIL: 39 useful methods and 87 unverified handoffs.
+
+# 22 October 2026 - V9 Swisscharge shards
+
+The preserved four-shard collector has isolated retry state and immutable merge validation. No live provider request was made. G2 FAIL: 38 useful methods and 88 unverified handoffs.
