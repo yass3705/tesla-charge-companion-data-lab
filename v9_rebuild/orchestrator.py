@@ -535,6 +535,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("TotalEnergies historical method or archive missing")
             spec["output_file"] = OUTPUT.as_posix()
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/totalenergies_official.py")
+        elif spec.get("module") == "mobisdec_official" and source_id == "FR:mobisdec_official":
+            from v9_rebuild.mobisdec_official import SCRIPT, OUTPUT
+            if spec["secret_names"] or not (root / SCRIPT).is_file() or not (root / OUTPUT).is_file():
+                raise ValueError("MobiSDEC historical method or archive missing")
+            spec["output_file"] = OUTPUT.as_posix()
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/mobisdec_official.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -817,6 +823,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     powerdot_official_module = spec["module"] == "powerdot_official"
     shell_official_module = spec["module"] == "shell_official"
     totalenergies_official_module = spec["module"] == "totalenergies_official"
+    mobisdec_official_module = spec["module"] == "mobisdec_official"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -1026,6 +1033,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/shell_official.py"), "--out", str(staged)]
             if totalenergies_official_module:
                 command = [sys.executable, str(root / "v9_rebuild/totalenergies_official.py"), "--out", str(staged)]
+            if mobisdec_official_module:
+                command = [sys.executable, str(root / "v9_rebuild/mobisdec_official.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1577,6 +1586,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif totalenergies_official_module:
                 from v9_rebuild.totalenergies_official import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif mobisdec_official_module:
+                from v9_rebuild.mobisdec_official import validate_output
                 try:
                     validate_output(staged)
                     valid = True

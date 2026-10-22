@@ -1071,3 +1071,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 Shell Recharge : cinq pages configurees requises en fixture, ancien etat partiel conserve, nouvelle sortie rejetee si page/HTTP/prix change ; 2 tests PASS. G2 reste FAIL (14 methodes, 110 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 TotalEnergies officiel : methode historique isolee, absence de garde de volume, faux prix promotionnel corrige, 16 tests cibles PASS. G2 FAIL (13 methodes, 111 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 MobiSDEC officiel : methode historique isolee, garde de volume retire, fixture CSV reduite et erreurs techniques verifiees ; 16 tests cibles PASS. G2 FAIL (12 methodes, 112 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

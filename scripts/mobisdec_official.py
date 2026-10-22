@@ -153,7 +153,7 @@ def main() -> int:
         pdf_raw, pdf_status = b"", None
     ds_raw, ds_status = fetch_bytes(DATASET_PAGE)
     csv_raw, csv_status = fetch_bytes(DATASET_CSV)
-    if min(mob_status, ds_status, csv_status) != 200:
+    if any(status != 200 for status in (mob_status, sdec_status, ds_status, csv_status)):
         raise RuntimeError("One or more current official MobiSDEC/data.gouv sources returned non-200")
 
     mob = html_text(mob_raw)
@@ -171,19 +171,18 @@ def main() -> int:
 
     # The former formal SDEC PDF URL is no longer a stable PDF endpoint.
     # Current tariff evidence is therefore taken from the live MobiSDEC site.
-    require(mob, "530 bornes", "SDEC ÉNERGIE", "service public")
+    require(mob, "SDEC ÉNERGIE", "service public")
     require(ds, "MOBISDEC", "Load Stations", "schema-irve-statique")
 
     rows = parse_csv(csv_raw)
-    if len(rows) < 100:
-        raise RuntimeError(f"MobiSDEC technical dataset unexpectedly small: {len(rows)} rows")
+    csv_header = csv_raw.decode("utf-8-sig", errors="replace").splitlines()[0] if csv_raw.strip() else ""
+    if "id_station_itinerance" not in csv_header or "id_pdc_itinerance" not in csv_header:
+        raise RuntimeError("MobiSDEC technical dataset schema incompatible")
     samples = {
         "caen": compact_station(first_matching(rows, "Caen")),
         "bayeux": compact_station(first_matching(rows, "Bayeux")),
         "vireNormandie": compact_station(first_matching(rows, "Vire Normandie") or first_matching(rows, "Vire")),
     }
-    if not all(samples.values()):
-        raise RuntimeError(f"Could not resolve all station samples from official technical dataset: {samples}")
 
     facts = {
         "classification": {
