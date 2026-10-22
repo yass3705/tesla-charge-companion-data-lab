@@ -35,6 +35,7 @@ async function fetchJson(url, retry=0){
 
 async function fetchTabular(resource){
   const rows=[];
+  let reportedTotal=null;
   for(let page=1;page<100;page++){
     const url=`${tabularBase}/${resource}/data/?page=${page}&page_size=200`;
     const r=await fetchJson(url);
@@ -42,9 +43,12 @@ async function fetchTabular(resource){
     const batch=Array.isArray(r.body?.data)?r.body.data:[];
     rows.push(...batch);
     const total=Number(r.body?.meta?.total||rows.length);
+    reportedTotal=total;
     console.log(`tabular resource=${resource} page=${page} rows=${batch.length} total=${rows.length}/${total}`);
-    if(rows.length>=total || batch.length===0) break;
+    if(batch.length===0&&rows.length<total)throw new Error(`Incomplete tabular pagination for ${resource}`);
+    if(rows.length>=total) break;
   }
+  if(reportedTotal!==null&&rows.length<reportedTotal)throw new Error(`Tabular page limit reached for ${resource}`);
   return rows;
 }
 

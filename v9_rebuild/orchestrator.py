@@ -463,6 +463,18 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("OZECAR historical method missing")
             spec["output_file"] = str(DATA)
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/ozecar.py")
+        elif spec.get("module") == "zephyre" and source_id == "FR:zephyre":
+            from v9_rebuild.zephyre import COMPILE, EXTRACT, OFFERS
+            if spec["secret_names"] or not (root / EXTRACT).is_file() or not (root / COMPILE).is_file():
+                raise ValueError("Zephyre historical methods missing")
+            spec["output_file"] = str(OFFERS)
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/zephyre.py")
+        elif spec.get("module") == "zewatt" and source_id == "FR:zewatt":
+            from v9_rebuild.zewatt import COMPILE, EXTRACT, OFFERS
+            if spec["secret_names"] or not (root / EXTRACT).is_file() or not (root / COMPILE).is_file():
+                raise ValueError("Ze-Watt historical methods missing")
+            spec["output_file"] = str(OFFERS)
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/zewatt.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -733,6 +745,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     france_fixed_core_module = spec["module"] == "france_fixed_core"
     france_fixed_secondary_module = spec["module"] == "france_fixed_secondary"
     ozecar_module = spec["module"] == "ozecar"
+    zephyre_module = spec["module"] == "zephyre"
+    zewatt_module = spec["module"] == "zewatt"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -917,6 +931,10 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/france_fixed_secondary.py"), "--out", str(staged)]
             if ozecar_module:
                 command = [sys.executable, str(root / "v9_rebuild/ozecar.py"), "--out", str(staged)]
+            if zephyre_module:
+                command = [sys.executable, str(root / "v9_rebuild/zephyre.py"), "--out", str(staged)]
+            if zewatt_module:
+                command = [sys.executable, str(root / "v9_rebuild/zewatt.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1378,6 +1396,20 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif ozecar_module:
                 from v9_rebuild.ozecar import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif zephyre_module:
+                from v9_rebuild.zephyre import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif zewatt_module:
+                from v9_rebuild.zewatt import validate_output
                 try:
                     validate_output(staged)
                     valid = True

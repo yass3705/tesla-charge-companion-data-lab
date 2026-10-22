@@ -1045,3 +1045,7 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 France secondary : INDIGO, Interparking, SEOLIS executes hors checkout sur tarifs archives ; changement de prix rejete, 2 tests PASS. G2 reste FAIL (27 methodes, 98 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 OZECAR France : collecteur producteur/Monta execute hors checkout sur fixtures, erreurs techniques visibles, identite EVSE et fichiers controles ; 7 tests PASS. G2 reste FAIL (26 methodes, 99 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 Zephyre : extracteur/compilateur historiques executes hors checkout sur fixture archivee, EVSE exact et erreurs techniques controles, zero offre Direct permis ; 2 tests PASS. G2 reste FAIL (25 methodes, 100 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 Ze-Watt : extraction/compilation historiques hors checkout, deux EVSE archives exacts, pagination et erreurs controlees, zero offre Direct permis ; 2 tests PASS. G2 reste FAIL (24 methodes, 101 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
