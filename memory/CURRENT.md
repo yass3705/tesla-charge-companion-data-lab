@@ -1,3 +1,7 @@
+# 22 October 2026 - V9 Swiss CPI closeout
+
+- The archived ChargePoint closeout runs on isolated inputs and keeps exact priced and restricted EVSE separate. G2 FAIL: 41 useful methods and 85 unverified GitHub handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 22 October 2026 - V9 Swiss EBS closeout
 
 - Signed first-pass data, archived official-location prices and the exact Sahli proof reproduce the known six-EVSE result offline. G2 FAIL: 42 useful methods, 84 unverified GitHub handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

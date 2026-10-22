@@ -696,3 +696,7 @@ The archived constructor consumes a signed inventory and preserves existing evid
 # 22 October 2026 - V9 Swiss EBS closeout
 
 The archived exact-location method now consumes a signed first pass. Existing priced EVSE are preserved and the separately archived Sahli proof is retained. G2 FAIL: 42 useful methods and 84 unverified handoffs.
+
+# 22 October 2026 - V9 Swiss CPI closeout
+
+The preserved exact-EVSE finalizer runs off checkout. Historical fixed totals were removed while same-snapshot identity checks remain. G2 FAIL: 41 useful methods and 85 unverified handoffs.

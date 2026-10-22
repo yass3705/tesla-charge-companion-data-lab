@@ -14,7 +14,6 @@ rec=json.loads(REC.read_text(encoding="utf-8"))
 ctx=json.loads(CTX.read_text(encoding="utf-8"))
 row=next(x for x in rec["operators"] if x["operatorId"]=="CH*CPI")
 restricted={x["evseId"]:x["record"] for x in ctx["hits"]}
-assert len(restricted)==6
 assert all(r.get("Accessibility")=="Restricted access" and not (r.get("AuthenticationModes") or []) for r in restricted.values())
 
 # Flatten exact atlas tariff evidence by atlas EVSE id.
@@ -34,14 +33,14 @@ atlas_by_norm={norm(k):k for k in a}
 current_ids=set()
 # National current IDs are all matched or residual; take matched atlas set plus explicit residuals.
 # Obtain them from reconciliation's matched-unpriced list + priced matches inferred from atlas/national normalized equality.
-# National owner count is authoritative 35.
+# The reconciliation snapshot carries its own national count.
 # Use known current forms from exact residual and atlas keys; canonicalize CPI IDs lacking stars from national residual.
-# For priced IDs, atlas and national forms coincide for current 29 in this operator.
+# For priced IDs, atlas and national forms coincide in the archived reconciliation.
 for eid,v in a.items():
     if v["directTariffs"] and eid not in {"CH*CPI*E2872725*1","CH*CPI*E2872725*2","CH*CPI*E2873345*1","CH*CPI*E2873345*2"}:
         current_ids.add(eid)
 current_ids.update(restricted)
-assert len(current_ids)==35, len(current_ids)
+assert len(current_ids)==row["nationalEvseCount"], (len(current_ids),row["nationalEvseCount"])
 
 rows=[]
 for eid in sorted(current_ids):
@@ -56,7 +55,8 @@ for eid in sorted(current_ids):
 
 now=datetime.now(timezone.utc).isoformat()
 payload={"schemaVersion":1,"country":"CH","cpo":"ChargePoint","operatorId":"CH*CPI","generatedAt":now,
-         "nationalEvseCount":35,"pricedEvseCount":29,"classifiedNoPublicDirectTariffCount":6,
+         "nationalEvseCount":len(rows),"pricedEvseCount":sum(x["classification"]=="priced_direct_atlas" for x in rows),
+         "classifiedNoPublicDirectTariffCount":sum(x["classification"]=="restricted_no_public_direct_tariff" for x in rows),
          "unresolvedEvseCount":0,
          "policy":"Exact current national CH*CPI scope only. Direct non-roaming tariff evidence retained per EVSE; restricted national records with no authentication modes are explicitly no-public-direct. No extrapolation.",
          "evses":rows}
