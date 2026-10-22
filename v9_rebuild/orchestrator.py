@@ -547,6 +547,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("IZIVIA historical method or archive missing")
             spec["output_file"] = OUTPUT.as_posix()
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/izivia_official.py")
+        elif spec.get("module") == "uk_open_feeds" and source_id == "UK:validated_open_feeds":
+            from v9_rebuild.uk_open_feeds import SCRIPT, OUTPUT
+            if spec["secret_names"] or not (root / SCRIPT).is_file() or not (root / OUTPUT).is_file():
+                raise ValueError("UK open feeds historical method or archive missing")
+            spec["output_file"] = OUTPUT.as_posix()
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/uk_open_feeds.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -831,6 +837,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     totalenergies_official_module = spec["module"] == "totalenergies_official"
     mobisdec_official_module = spec["module"] == "mobisdec_official"
     izivia_official_module = spec["module"] == "izivia_official"
+    uk_open_feeds_module = spec["module"] == "uk_open_feeds"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -1044,6 +1051,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/mobisdec_official.py"), "--out", str(staged)]
             if izivia_official_module:
                 command = [sys.executable, str(root / "v9_rebuild/izivia_official.py"), "--out", str(staged)]
+            if uk_open_feeds_module:
+                command = [sys.executable, str(root / "v9_rebuild/uk_open_feeds.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1084,7 +1093,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or energyvision_module or freshmile_inventory_module or waat_monta_dependency or greenspot_module or ozecar_module or atlante_fr_it_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or energyvision_module or freshmile_inventory_module or waat_monta_dependency or greenspot_module or ozecar_module or atlante_fr_it_module or uk_open_feeds_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -1613,6 +1622,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif uk_open_feeds_module:
+                from v9_rebuild.uk_open_feeds import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

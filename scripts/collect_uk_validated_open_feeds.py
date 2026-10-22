@@ -64,6 +64,8 @@ def fetch_offset(url,page_size=50,pause_seconds=0):
             if observed_total is not None: total=int(observed_total)
         except Exception: pass
         guard+=1
+        if not batch and total is not None and len(rows)<total:
+            raise RuntimeError(f'pagination incomplete for {url}: {len(rows)}/{total}')
         if not batch or (total is not None and len(rows)>=total) or (len(batch)<current_limit and total is None): break
         offset+=len(batch)
         if guard>1000: raise RuntimeError(f'pagination guard hit for {url}')
@@ -86,7 +88,9 @@ def fetch_pogo_hybrid(src):
             try: reported_total=int(meta['total'])
             except Exception: pass
 
-    tail_end=reported_total if reported_total is not None else 159
+    if reported_total is None:
+        raise RuntimeError('PoGo pagination total missing from source metadata')
+    tail_end=reported_total
     for offset in range(150,tail_end):
         try:
             payload,_=request_json(add_query(src['locations'],limit=1,offset=offset),retries=2)
