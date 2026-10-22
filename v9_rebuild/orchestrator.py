@@ -402,6 +402,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Greenspot historical collector missing")
             spec["output_file"] = "data/greenspot/france/greenspot-france-current.json.gz"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/greenspot.py")
+        elif spec.get("module") == "reve_stream" and source_id == "ES:reve_stream":
+            from v9_rebuild.reve_stream import SCRIPT
+            if spec["secret_names"] != ["REVE_API_KEY"] or not (root / SCRIPT).is_file():
+                raise ValueError("REVE historical stream collector or secret changed")
+            spec["output_file"] = "data/spain_reve/full_20261018/tariff_status_stream_state.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/reve_stream.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -662,6 +668,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     swiss_powerup_closeout_module = spec["module"] == "swiss_powerup_closeout"
     swisscharge_module = spec["module"] == "swisscharge"
     greenspot_module = spec["module"] == "greenspot"
+    reve_stream_module = spec["module"] == "reve_stream"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -825,6 +832,9 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                            "--checkpoint", str(checkpoint)]
             if greenspot_module:
                 command = [sys.executable, str(root / "v9_rebuild/greenspot.py"), "--out", str(staged)]
+            if reve_stream_module:
+                command = [sys.executable, str(root / "v9_rebuild/reve_stream.py"), "--out", str(staged),
+                           "--checkpoint", str(checkpoint)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1221,6 +1231,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
+            elif reve_stream_module:
+                from v9_rebuild.reve_stream import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)
             if not valid:
@@ -1238,6 +1255,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
             elif checkpoint_module and staged == checkpoint:
                 shutil.rmtree(checkpoint)
             if swisscharge_module and checkpoint.is_dir():
+                shutil.rmtree(checkpoint)
+            if reve_stream_module and checkpoint.is_dir():
                 shutil.rmtree(checkpoint)
             return {
                 "source": source_id,
