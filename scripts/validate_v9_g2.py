@@ -157,8 +157,12 @@ def main() -> None:
             superseded_workflows.add(workflow)
     retired = json.loads((ROOT / "migration/v9/g2-retired-methods.json").read_text())
     retired_workflows = set()
-    if retired.get("schema_version") != 1 or len(retired.get("retired", [])) != 1:
-        errors.append("G2 retirement registry differs from the reviewed obsolete guard")
+    approved_retirements = {".github/workflows/validate-v9-source-guards.yml",
+                            ".github/workflows/audit-fixed-tariff-refresh.yml"}
+    if (retired.get("schema_version") != 1
+            or {row.get("workflow") for row in retired.get("retired", [])} != approved_retirements
+            or len(retired.get("retired", [])) != len(approved_retirements)):
+        errors.append("G2 retirement registry differs from the two reviewed obsolete audits")
     for row in retired.get("retired", []):
         workflow = row.get("workflow")
         script = row.get("script")
@@ -167,13 +171,22 @@ def main() -> None:
         forbidden_volume_checks = ("resolvedNationalEvseCount\"]==583", "nfr>=160", "nit>=470",
                                    "franceConnectorCount\"]>=1800", "inventoryCount\"]>=160000",
                                    "len(lstores)>=300", "productionStations\"]==43", "station_count\"]==18")
-        if (workflow != ".github/workflows/validate-v9-source-guards.yml"
-                or script != "scripts/validate_v9_source_guards.py"
-                or row.get("classification") != "obsolete_volume_gate"
-                or not row.get("reason") or workflow not in required or workflow in migrated
+        volume_guard = (workflow == ".github/workflows/validate-v9-source-guards.yml"
+                        and script == "scripts/validate_v9_source_guards.py"
+                        and row.get("classification") == "obsolete_volume_gate"
+                        and not legacy["published_paths_in_git_add"]
+                        and all(token in body for token in forbidden_volume_checks)) if legacy else False
+        workflow_audit = (workflow == ".github/workflows/audit-fixed-tariff-refresh.yml"
+                          and script == "scripts/audit_fixed_tariff_refresh.py"
+                          and row.get("classification") == "obsolete_workflow_reference_audit"
+                          and legacy["published_paths_in_git_add"] == ["reports/fixed-tariff-refresh-audit.json"]
+                          and "WORKFLOWS=ROOT/\".github\"/\"workflows\"" in body
+                          and "managed=bool(refs)" in body
+                          and not any("fixed-tariff-refresh-audit.json" in str(item)
+                                      for item in sources)) if legacy else False
+        if (not row.get("reason") or workflow not in required or workflow in migrated
                 or not legacy or legacy["source_scripts"] != [script]
-                or legacy["published_paths_in_git_add"]
-                or not all(token in body for token in forbidden_volume_checks)
+                or not (volume_guard or workflow_audit)
                 or workflow in retired_workflows):
             errors.append(f"invalid explicit G2 retirement: {workflow}")
         else:

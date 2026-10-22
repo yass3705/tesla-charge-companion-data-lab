@@ -712,3 +712,7 @@ The preserved direct-page method consumes a signed first pass, keeps other EVSE 
 # 22 October 2026 - V9 Swisscharge shards
 
 The preserved four-shard collector has isolated retry state and immutable merge validation. No live provider request was made. G2 FAIL: 38 useful methods and 88 unverified handoffs.
+
+# 22 October 2026 - V9 legacy audit retirement
+
+The fixed-tariff refresh audit was archived because it infers management from workflows removed by V9. A fixture demonstrates the dependence, while the historical code remains restorable. G2 FAIL: 37 useful methods, 88 unverified handoffs.

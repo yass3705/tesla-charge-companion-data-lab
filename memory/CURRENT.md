@@ -1,3 +1,7 @@
+# 22 October 2026 - V9 obsolete fixed-tariff audit archived
+
+- The legacy YAML-reference audit is retired after a functional test proved its result changes with YAML files alone. Its historical code and report remain restorable. G2 FAIL: 37 useful methods and 88 unverified handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 22 October 2026 - V9 Swisscharge shards
 
 - Four historical partitions, independent SHA checkpoints and exact merge are tested offline. G2 FAIL: 38 useful methods and 88 unverified GitHub handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

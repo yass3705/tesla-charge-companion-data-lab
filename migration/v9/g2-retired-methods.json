@@ -6,6 +6,12 @@
       "script": "scripts/validate_v9_source_guards.py",
       "classification": "obsolete_volume_gate",
       "reason": "This historical report only asserts fixed 2026 station, EVSE, connector and priced-row counts for AVIA, Atlante, IONITY, Electroverse, Lidl, Kilowatt and TotalEnergies. Those predicates are prohibited in V9. Its source files remain mapped independently to collectors or pending migrations; schema, pagination, SHA and exact-identifier validation belongs to the corresponding collector. Production reads the source files, not this script or a report emitted by it."
+    },
+    {
+      "workflow": ".github/workflows/audit-fixed-tariff-refresh.yml",
+      "script": "scripts/audit_fixed_tariff_refresh.py",
+      "classification": "obsolete_workflow_reference_audit",
+      "reason": "The historical audit defines refresh-managed tariff sources by searching for their paths in the old per-CPO GitHub workflow YAML files. G1 archived those YAML files and G2 replaced them with a source registry and one common workflow, so rerunning this audit would misclassify preserved tariff files as unmanaged. Production references neither this script nor its report. The original script and last report remain restorable; source freshness and provenance must be checked against the new registry in a later technical gate."
     }
   ]
 }
