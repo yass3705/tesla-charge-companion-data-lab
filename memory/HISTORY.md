@@ -672,3 +672,7 @@ Le rapprochement par Hubject ID exact et la sélection de son artefact immuable 
 # 22 octobre 2026 — V9, finalisation eCarUp Suisse
 
 Le constructeur final utilise l'état signé du rapprochement et compte séparément bornes tarifées, accès restreints et cas non résolus. La constante historique de 6 764 EVSE a été retirée ; les identités et les SHA restent contrôlés. G2 reste FAIL : 52 méthodes utiles, 75 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, MOVE Suisse CCI/SOC/MMN
+
+Les trois finaliseurs CPO réutilisent un adaptateur isolé commun et les sources CCI/SOC archivées. Les tests couvrent segments AC/DC, cas MMN AC et prises non résolues, sans nouvelle enquête tarifaire. G2 reste FAIL : 49 méthodes utiles, 78 transferts GitHub non vérifiés. Actions désactivé.

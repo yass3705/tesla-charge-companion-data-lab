@@ -983,3 +983,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 22 octobre 2026 — eCarUp Suisse exact : collecte historique propriétaire isolée et dépendance immuable raccordée au rapprochement géographique ; absence ou corruption d'artefact bloque la suite. G2 reste FAIL : 53 méthodes requises et 74 transferts GitHub non vérifiés. Actions désactivé.
 
 22 octobre 2026 — eCarUp Suisse finalisation : l'artefact coordonnées signé alimente le finaliseur. Les EVSE restreints ne sont plus comptés comme tarifés ; aucun total national historique n'est figé. G2 reste FAIL : 52 méthodes requises et 75 transferts GitHub non vérifiés. Actions désactivé.
+
+22 octobre 2026 — MOVE Suisse CCI/SOC/MMN : trois finaliseurs historiques isolés et testés sur sources archivées, avec portée AC/DC conservée ; les cas sans preuve de segment restent non résolus. G2 reste FAIL : 49 méthodes requises et 78 transferts GitHub non vérifiés. Actions désactivé.
