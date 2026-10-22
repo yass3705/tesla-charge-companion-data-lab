@@ -457,6 +457,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("France secondary historical files missing")
             spec["output_file"] = "reports/fixed-tariff-refresh-france-secondary-latest.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/france_fixed_secondary.py")
+        elif spec.get("module") == "ozecar" and source_id == "FR:ozecar":
+            from v9_rebuild.ozecar import DATA, SCRIPT
+            if spec["secret_names"] or not (root / SCRIPT).is_file():
+                raise ValueError("OZECAR historical method missing")
+            spec["output_file"] = str(DATA)
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/ozecar.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -726,6 +732,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     bfc_fixed_watch_module = spec["module"] == "bfc_fixed_watch"
     france_fixed_core_module = spec["module"] == "france_fixed_core"
     france_fixed_secondary_module = spec["module"] == "france_fixed_secondary"
+    ozecar_module = spec["module"] == "ozecar"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -908,6 +915,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/france_fixed_core.py"), "--out", str(staged)]
             if france_fixed_secondary_module:
                 command = [sys.executable, str(root / "v9_rebuild/france_fixed_secondary.py"), "--out", str(staged)]
+            if ozecar_module:
+                command = [sys.executable, str(root / "v9_rebuild/ozecar.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -942,7 +951,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or energyvision_module or freshmile_inventory_module or waat_monta_dependency or greenspot_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or energyvision_module or freshmile_inventory_module or waat_monta_dependency or greenspot_module or ozecar_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -1366,6 +1375,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif ozecar_module:
+                from v9_rebuild.ozecar import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

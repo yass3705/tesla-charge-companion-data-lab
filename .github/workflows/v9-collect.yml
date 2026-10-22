@@ -36,6 +36,11 @@ jobs:
       - name: Install preserved EnergyVision XML parser
         if: ${{ inputs.source == 'BE:energyvision' }}
         run: python -m pip install --disable-pip-version-check -q defusedxml==0.7.1
+      - name: Install preserved OZECAR browser dependency
+        if: ${{ inputs.source == 'FR:ozecar' }}
+        run: |
+          python -m pip install --disable-pip-version-check -q playwright==1.55.0
+          python -m playwright install --with-deps chromium
       - name: Install preserved WAAT browser dependency
         if: ${{ inputs.source == 'FR:waat_monta_sharded' }}
         run: npm install --no-save playwright-core@1.55.0

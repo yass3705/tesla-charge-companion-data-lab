@@ -736,3 +736,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 2026-10-22 — V9 G2 tarifs France core : Lidl, STATIONS-E et eborn executes hors checkout sur fixtures de valeurs archivees ; mutation refusee, 2 tests PASS. G2 reste FAIL (28 methodes, 97 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 France secondary : INDIGO, Interparking, SEOLIS executes hors checkout sur tarifs archives ; changement de prix rejete, 2 tests PASS. G2 reste FAIL (27 methodes, 98 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 OZECAR France : collecteur producteur/Monta execute hors checkout sur fixtures, erreurs techniques visibles, identite EVSE et fichiers controles ; 7 tests PASS. G2 reste FAIL (26 methodes, 99 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

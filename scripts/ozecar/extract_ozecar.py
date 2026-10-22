@@ -135,6 +135,7 @@ def main():
     # Use producer spelling for public deep link; normalized IDs are only keys.
     evses=[str(inv[k]["id_pdc_itinerance"]).strip() for k in keys]
     results=asyncio.run(run_all(evses,args.workers))
+    technical_errors=[r.get("evse") for r in results if r.get("error")]
     by_norm={norm(r["evse"]):r for r in results}
     records=[]
     for k in keys:
@@ -159,6 +160,7 @@ def main():
       "tariffSignatures":[{"count":n,"components":json.loads(s)} for s,n in signatures.most_common()],
       "privateEvses":[r["irve"].get("id_pdc_itinerance") for r in private],
       "unresolvedEvses":[r["irve"].get("id_pdc_itinerance") for r in unresolved],
+      "technicalErrorEvses":technical_errors,
       "classification":{"exactEvseOnly":True,"nationalConstantAllowed":False,"privateOrUnresolved":"fail_closed_then_TCC_fallback","preserveComponents":True}}
     for path,obj in ((args.out,payload),(args.report,report)):
         p=pathlib.Path(path);p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(obj,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
