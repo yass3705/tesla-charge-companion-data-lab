@@ -511,6 +511,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Electra residual audit historical method or inputs missing")
             spec["output_file"] = REPORT.as_posix()
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/electra_residual_audit.py")
+        elif spec.get("module") == "evadea_official" and source_id == "FR:evadea_official":
+            from v9_rebuild.evadea_official import SCRIPTS, OUTPUT
+            if spec["secret_names"] or any(not (root / path).is_file() for path in (*SCRIPTS, OUTPUT)):
+                raise ValueError("e-Vadea official scripts or archived grid missing")
+            spec["output_file"] = OUTPUT.as_posix()
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/evadea_official.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -789,6 +795,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     france_treated_audit_module = spec["module"] == "france_treated_audit"
     soregies_official_module = spec["module"] == "soregies_official"
     electra_residual_audit_module = spec["module"] == "electra_residual_audit"
+    evadea_official_module = spec["module"] == "evadea_official"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -990,6 +997,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/soregies_official.py"), "--out", str(staged)]
             if electra_residual_audit_module:
                 command = [sys.executable, str(root / "v9_rebuild/electra_residual_audit.py"), "--out", str(staged)]
+            if evadea_official_module:
+                command = [sys.executable, str(root / "v9_rebuild/evadea_official.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1517,6 +1526,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif evadea_official_module:
+                from v9_rebuild.evadea_official import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)

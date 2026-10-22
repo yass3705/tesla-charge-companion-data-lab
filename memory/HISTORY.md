@@ -756,3 +756,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 2026-10-22 — V9 G2 Soregies Mobilites : collecteur officiel hors checkout, planchers de lignes retires, erreur HTTP 503 correctement rejetee, montants marketing archives non generalises ; 3 tests PASS. G2 reste FAIL (18 methodes, 106 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 audit Electra residuel : script historique rejoue hors checkout avec SHA source valide ; cas non attribues conserves, zero publication automatique, 2 tests PASS. G2 reste FAIL (17 methodes, 107 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 e-Vadea : decouverte image/OCR et grille historique executees hors checkout sur fixture archivee ; prix/frais changes et image absente rejetes, 16 tests cibles PASS. G2 reste FAIL (16 methodes, 108 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
