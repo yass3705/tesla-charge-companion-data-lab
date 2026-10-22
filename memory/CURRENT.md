@@ -1041,3 +1041,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 BFC fixed tariffs : cinq surveillances et SIED70 executes hors checkout sur fixtures archivees ; contexte et prix changes refuses, 2 tests PASS. G2 reste FAIL (29 methodes, 96 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 tarifs France core : Lidl, STATIONS-E et eborn executes hors checkout sur fixtures de valeurs archivees ; mutation refusee, 2 tests PASS. G2 reste FAIL (28 methodes, 97 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 France secondary : INDIGO, Interparking, SEOLIS executes hors checkout sur tarifs archives ; changement de prix rejete, 2 tests PASS. G2 reste FAIL (27 methodes, 98 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
