@@ -481,6 +481,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Atlante FR/IT historical method or authentication contract changed")
             spec["output_file"] = OUTPUTS["FR"].as_posix()
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/atlante_fr_it.py")
+        elif spec.get("module") == "belgium_gap_archive" and source_id == "BE:final_gap_archive":
+            from v9_rebuild.belgium_gap_archive import DETAIL, FINAL, SCRIPT, SHELL
+            if spec["secret_names"] or any(not (root / path).is_file() for path in (SCRIPT, DETAIL, FINAL, SHELL)):
+                raise ValueError("Belgium archived gap method or inputs missing")
+            spec["output_file"] = FINAL.as_posix()
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/belgium_gap_archive.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -754,6 +760,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     zephyre_module = spec["module"] == "zephyre"
     zewatt_module = spec["module"] == "zewatt"
     atlante_fr_it_module = spec["module"] == "atlante_fr_it"
+    belgium_gap_archive_module = spec["module"] == "belgium_gap_archive"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -945,6 +952,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
             if atlante_fr_it_module:
                 command = [sys.executable, str(root / "v9_rebuild/atlante_fr_it.py"), "--out", str(staged),
                            "--checkpoint", str(checkpoint)]
+            if belgium_gap_archive_module:
+                command = [sys.executable, str(root / "v9_rebuild/belgium_gap_archive.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -955,8 +964,14 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command.extend(["--source", str(owner_state)])
             if electroverse_module and spec["mode"] == "full":
                 command.extend(["--max-chunks", "1"])
+            # File-invoked adapters import the shared v9_rebuild package. Python
+            # otherwise puts only the adapter's directory on sys.path.
+            process_env = os.environ.copy()
+            process_env["PYTHONPATH"] = str(root) + (os.pathsep + process_env["PYTHONPATH"]
+                                                    if process_env.get("PYTHONPATH") else "")
             completed = runner(command, cwd=staged if spec["module"] == "belgium_nap" else root,
-                               capture_output=True, text=True, timeout=timeout_s, check=False)
+                               env=process_env, capture_output=True, text=True,
+                               timeout=timeout_s, check=False)
             output = staged / spec["output_file"]
             if completed.returncode != 0:
                 reason = "collector_exit_nonzero"
@@ -1431,6 +1446,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif belgium_gap_archive_module:
+                from v9_rebuild.belgium_gap_archive import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)
