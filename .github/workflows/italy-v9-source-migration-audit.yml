@@ -1,0 +1,50 @@
+name: Italy V9 source migration audit (no publish)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - audit/italy-v9-source-migration-20261014
+    paths:
+      - "scripts/audit_italy_v9_migration.py"
+      - "scripts/audit_italy_cpo_join_discovery.py"
+      - "scripts/audit_italy_direct_overlay_inputs.py"
+      - "scripts/audit_italy_cpo_offer_shapes.py"
+      - "scripts/verify_italy_v9_runtime_parity.py"
+      - "tests/test_italy_v9_runtime_parity.py"
+      - "scripts/audit_italy_pun_evse_integrity.py"
+      - "tests/test_italy_pun_evse_integrity.py"
+      - ".github/workflows/italy-v9-source-migration-audit.yml"
+      - "docs/italy-cpo-progress-2026-09.json"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Italian source inputs and PUN baseline without changing Production
+        run: python scripts/audit_italy_v9_migration.py
+      - name: Test static-tile parity contract
+        run: python -m unittest discover -s tests -p test_italy_v9_runtime_parity.py -v
+      - name: Test PUN EVSE membership and non-rankable tariff policy
+        run: python -m unittest discover -s tests -p test_italy_pun_evse_integrity.py -v
+      - name: Inspect Italian direct CPO schemas before exact EVSE tariff joins
+        run: python scripts/audit_italy_cpo_offer_shapes.py
+      - name: Inventory direct-CPO overlay input schemas
+        run: python scripts/audit_italy_direct_overlay_inputs.py
+      - name: Inspect CPO direct feed identifier and tariff schema without joining
+        run: python scripts/audit_italy_cpo_join_discovery.py
+      - name: Save source-readiness report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: italy-v9-source-migration-readiness
+          path: |
+            reports/migration/italy-source-readiness-20261014.json
+            reports/migration/italy-cpo-offer-shape-20261014.json
+            reports/migration/italy-cpo-join-discovery.json
+          retention-days: 14
