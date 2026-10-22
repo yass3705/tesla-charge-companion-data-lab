@@ -1,0 +1,7 @@
+# Electroverse France: connector scope gate (13 October 2026)
+
+The currently pinned France EVSE overlay was compiled before the supported-plug filter proposed in historical PR #191. That PR's eight code and test commits have been replayed on current Data Lab `main` without overwriting later work. Its allowlist retains domestic E/F, Type 2 and CCS Combo 2 and excludes CHAdeMO, Type 1, CCS Combo 1 and unknown standards. Filtering occurs when the cache is collected and again before EVSE offer compilation; mixed EVSEs keep only supported connector prices. Tests and the postbuild audit reject unsupported labelled connector metadata.
+
+The code change alone does **not** alter the V9 development pin or the already compiled historical overlay. A fresh complete EVSE status census is required by `scripts/build_electroverse_france_evse_overlay.mjs` (72-hour limit) before rebuilding the national overlay and pinning its new Data Lab commit. On the inspected `main`, `data/electroverse/live_statuses/manifest.json` is absent; only partition checkpoints exist. The scheduled incremental status workflow must finish all partitions and produce the manifest, or the collector/support issue must be resolved. Until then the existing validated overlay remains the active pinned data, with the connector-scope limitation visible in this handoff.
+
+The France overlay rebuild workflow must continue to fail closed if the census is missing or stale. A successful unit test is not evidence of a refreshed source or V9 publication.
