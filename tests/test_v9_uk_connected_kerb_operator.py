@@ -19,7 +19,9 @@ from v9_rebuild.uk_connected_kerb_operator import AUDIT, LOCATIONS, REPORT, run,
 def location(number):
     return {"id": f"loc-{number}", "name": f"Fixture {number}", "publish": True,
             "country_code": "GB", "last_updated": "2026-10-10T00:00:00Z",
+            "coordinates": {"latitude": 51.5, "longitude": -0.1},
             "evses": [{"uid": f"evse-{number}", "evse_id": f"GB*CK0*E{number}",
+                       "physical_reference": str(1000 + number),
                        "connectors": [{"id": f"connector-{number}", "tariff_ids": ["tariff-1"]}]}]}
 
 

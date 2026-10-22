@@ -82,6 +82,14 @@ jobs:
           run-id: ${{ steps.prior.outputs.inventory_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/FR_waat_inventory
+      - name: Restore validated Connected Kerb operator snapshot for guest app
+        if: ${{ inputs.source == 'GB:connected_kerb_app' && steps.prior.outputs.operator_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-collection-GB_connected_kerb_operator
+          run-id: ${{ steps.prior.outputs.operator_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/GB_connected_kerb_operator
       - name: Collect migrated sources into isolated artifacts
         env:
           SOURCE_ID: ${{ inputs.source }}

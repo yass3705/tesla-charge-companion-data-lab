@@ -102,6 +102,17 @@ def main() -> None:
             handle.write(f"inventory_run_id={dependency['workflow_run']['id'] if dependency else ''}\n")
         print(json.dumps({"source": args.source, "inventory_run_id": dependency["workflow_run"]["id"] if dependency else None}))
         return
+    if args.source == "GB:connected_kerb_app":
+        rows = fetch(args.repo, "tcc-v9-collection-GB_connected_kerb_operator", token)
+        dependency = latest(rows, "tcc-v9-collection-GB_connected_kerb_operator", args.branch)
+        states = fetch(args.repo, f"tcc-v9-collection-{slug}", token)
+        state = latest(states, f"tcc-v9-collection-{slug}", args.branch)
+        with args.github_output.open("a", encoding="utf-8") as handle:
+            handle.write(f"slug={slug}\ncheckpoint_run_id=\n")
+            handle.write(f"state_run_id={state['workflow_run']['id'] if state else ''}\n")
+            handle.write(f"operator_run_id={dependency['workflow_run']['id'] if dependency else ''}\n")
+        print(json.dumps({"source": args.source, "operator_run_id": dependency["workflow_run"]["id"] if dependency else None}))
+        return
     checkpoints = fetch(args.repo, f"tcc-v9-checkpoints-{slug}", token)
     states = fetch(args.repo, f"tcc-v9-collection-{slug}", token)
     kind, run_id = choose(checkpoints, states, args.source, args.branch)

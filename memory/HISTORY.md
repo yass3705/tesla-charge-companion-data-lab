@@ -640,3 +640,7 @@ L'ancien contrôle global `validate_v9_source_guards.py` est classé obsolète :
 # 20 octobre 2026 — V9, Connected Kerb opérateur UK
 
 Le collecteur API opérateur et l'audit de snapshot sont isolés ; la pagination déclarée et les références exactes sont testées hors réseau. Le résultat reste non publié vers V9. G2 reste FAIL : 63 méthodes utiles, 68 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, Connected Kerb app UK
+
+La branche de reconstruction a été avancée sans conflit vers le cahier des charges permanent. Le collecteur invité et le rapprochement Connected Kerb utilisent désormais le snapshot opérateur signé ; les offres restent candidates et le cas sans prix demeure explicite. G2 reste FAIL : 62 méthodes utiles, 69 transferts GitHub non vérifiés. Actions désactivé.

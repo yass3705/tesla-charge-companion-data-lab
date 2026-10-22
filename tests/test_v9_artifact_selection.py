@@ -1,8 +1,11 @@
 """Read-only GitHub artifact handoff selection for the isolated collector."""
 
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from v9_rebuild.artifact_selection import choose, choose_overlay_dependencies, source_slug
+from v9_rebuild.artifact_selection import choose, choose_overlay_dependencies, main, source_slug
 
 
 def artifact(kind: str, run_id: int, created: str, *, branch: str = "rebuild/v9-20261020", expired: bool = False) -> dict:
@@ -39,6 +42,21 @@ class ArtifactSelectionTests(unittest.TestCase):
     def test_source_id_rejects_unsafe_name(self):
         with self.assertRaises(ValueError):
             source_slug("FR:evil/../../other")
+
+    def test_connected_kerb_app_selects_operator_collection_on_same_branch(self):
+        operator = {**artifact("collection", 31, "2026-10-22T00:00:00Z"),
+                    "name": "tcc-v9-collection-GB_connected_kerb_operator"}
+        wrong = {**operator, "id": 32, "created_at": "2026-10-22T01:00:00Z",
+                 "workflow_run": {"id": 32, "head_branch": "main"}}
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "github-output"
+            args = ["selector", "--repo", "owner/data-lab", "--branch", "rebuild/v9-20261020",
+                    "--source", "GB:connected_kerb_app", "--github-output", str(output)]
+            with patch("sys.argv", args), patch.dict("os.environ", {"GH_TOKEN": "fixture-token"}), \
+                 patch("v9_rebuild.artifact_selection.fetch", side_effect=[[operator, wrong], []]), \
+                 patch("builtins.print"):
+                main()
+            self.assertIn("operator_run_id=31", output.read_text())
 
 
 if __name__ == "__main__":

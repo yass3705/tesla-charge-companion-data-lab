@@ -239,8 +239,6 @@ def main():
             json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
     (ROOT / REPORT).write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({k: v for k, v in report.items() if k not in ("unresolved", "failedLocations")}, indent=2))
-    if not offers:
-        raise SystemExit("No verified app prices; outputs retained for diagnosis")
 
 
 if __name__ == "__main__":

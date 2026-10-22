@@ -137,6 +137,9 @@ def main():
         if doc['publishedToV9']:
             doc['status'] = 'partial_guest_app_pricing_active_v9'
             doc['next'] = 'Resolve remaining excluded connectors individually; keep their stations when other connectors are validated.'
+    else:
+        doc.pop('activeRuntime', None)
+        doc['publishedToV9'] = False
     write('docs/connected-kerb-uk-integration-2026-10-07.json', doc)
     print(json.dumps(doc['counts']))
 
