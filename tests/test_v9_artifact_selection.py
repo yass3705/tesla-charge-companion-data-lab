@@ -88,6 +88,21 @@ class ArtifactSelectionTests(unittest.TestCase):
                 main()
             self.assertIn("ecarup_coordinate_run_id=51", output.read_text())
 
+    def test_plenitude_closeout_selects_official_collection_on_same_branch(self):
+        official = {**artifact("collection", 61, "2026-10-22T00:00:00Z"),
+                    "name": "tcc-v9-collection-CH_plenitude_official"}
+        wrong = {**official, "id": 62, "created_at": "2026-10-22T01:00:00Z",
+                 "workflow_run": {"id": 62, "head_branch": "main"}}
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "github-output"
+            args = ["selector", "--repo", "owner/data-lab", "--branch", "rebuild/v9-20261020",
+                    "--source", "CH:plenitude_closeout", "--github-output", str(output)]
+            with patch("sys.argv", args), patch.dict("os.environ", {"GH_TOKEN": "fixture-token"}), \
+                 patch("v9_rebuild.artifact_selection.fetch", return_value=[official, wrong]), \
+                 patch("builtins.print"):
+                main()
+            self.assertIn("plenitude_run_id=61", output.read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

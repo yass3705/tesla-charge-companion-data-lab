@@ -676,3 +676,7 @@ Le constructeur final utilise l'état signé du rapprochement et compte séparé
 # 22 octobre 2026 — V9, MOVE Suisse CCI/SOC/MMN
 
 Les trois finaliseurs CPO réutilisent un adaptateur isolé commun et les sources CCI/SOC archivées. Les tests couvrent segments AC/DC, cas MMN AC et prises non résolues, sans nouvelle enquête tarifaire. G2 reste FAIL : 49 méthodes utiles, 78 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, clôtures Plenitude Suisse
+
+Les deux méthodes historiques de rapprochement résiduel et de classification restreinte utilisent un snapshot officiel immuable, sans nouvelle collecte ni enquête tarifaire. Les identifiants et tarifs déjà vérifiés sont conservés. G2 reste FAIL : 47 méthodes utiles, 79 transferts GitHub non vérifiés. Actions désactivé.
