@@ -378,6 +378,18 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Swiss CPI historical method or inputs missing")
             spec["output_file"] = "data/switzerland/cpi-current-direct-tariffs.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_cpi.py")
+        elif spec.get("module") == "swiss_powerup" and source_id == "CH:powerup_monta":
+            from v9_rebuild.swiss_powerup import SCRIPT
+            if spec["secret_names"] or not (root / SCRIPT).is_file():
+                raise ValueError("Swiss PowerUp/Monta historical collector missing")
+            spec["output_file"] = "data/switzerland/powerup-monta-direct-tariffs.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_powerup.py")
+        elif spec.get("module") == "swiss_powerup_closeout" and source_id == "CH:powerup_closeout":
+            from v9_rebuild.swiss_powerup_closeout import SCRIPT
+            if spec["secret_names"] or not (root / SCRIPT).is_file():
+                raise ValueError("Swiss PowerUp residual script missing")
+            spec["output_file"] = "data/switzerland/powerup-monta-direct-tariffs.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_powerup_closeout.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -521,6 +533,9 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     elif module == "morocco_inventory" and source_id == "MA:kilowatt_inventory":
         from v9_rebuild.morocco_inventory import validate_output
         validate_output(state, "kilowatt")
+    elif module == "swiss_powerup" and source_id == "CH:powerup_monta":
+        from v9_rebuild.swiss_powerup import validate_output
+        validate_output(state)
     elif module == "electroverse":
         validate_state(state)
     else:
@@ -631,6 +646,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     morocco_tariff_module = spec["module"] == "morocco_tariff_overlay"
     swiss_ebs_closeout_module = spec["module"] == "swiss_ebs_closeout"
     swiss_cpi_module = spec["module"] == "swiss_cpi"
+    swiss_powerup_module = spec["module"] == "swiss_powerup"
+    swiss_powerup_closeout_module = spec["module"] == "swiss_powerup_closeout"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -725,6 +742,14 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     ebs_state = validated_dependency(dependency, "CH:ebs_ecarup", "cwd_script")
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
+            if swiss_powerup_closeout_module:
+                dependency = out_root / "input_dependencies/CH_powerup_monta"
+                if not dependency.is_dir():
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_missing", "attempts": 0}
+                try:
+                    powerup_state = validated_dependency(dependency, "CH:powerup_monta", "swiss_powerup")
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
             command = ([sys.executable, str(root / safe_relative(spec["script"])), "--out", str(staged / spec["output_file"])]
                        if isolated_script else [sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
                        if operator_module else [sys.executable, str(root / "v9_rebuild/nl_dotnl.py"), "--out", str(staged)]
@@ -777,6 +802,10 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/swiss_ebs_closeout.py"), "--out", str(staged), "--source", str(ebs_state)]
             if swiss_cpi_module:
                 command = [sys.executable, str(root / "v9_rebuild/swiss_cpi.py"), "--out", str(staged)]
+            if swiss_powerup_module:
+                command = [sys.executable, str(root / "v9_rebuild/swiss_powerup.py"), "--out", str(staged)]
+            if swiss_powerup_closeout_module:
+                command = [sys.executable, str(root / "v9_rebuild/swiss_powerup_closeout.py"), "--out", str(staged), "--source", str(powerup_state)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1140,6 +1169,20 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif swiss_cpi_module:
                 from v9_rebuild.swiss_cpi import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif swiss_powerup_module:
+                from v9_rebuild.swiss_powerup import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif swiss_powerup_closeout_module:
+                from v9_rebuild.swiss_powerup_closeout import validate_output
                 try:
                     validate_output(staged)
                     valid = True

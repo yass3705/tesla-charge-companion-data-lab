@@ -13,7 +13,11 @@ UA={"User-Agent":"Mozilla/5.0","Accept":"text/html"}
 
 d=json.loads(DATA.read_text(encoding="utf-8"))
 by={x["evseId"]:x for x in d.get("evses",[])}
+missing_before=set(d.get("missingCurrentEvseIds",[]))
+resolved_direct=[]
 for eid,url in TARGETS.items():
+    if eid not in missing_before:
+        continue
     req=urllib.request.Request(url,headers=UA)
     with urllib.request.urlopen(req,timeout=30) as r:
         html=r.read().decode("utf-8","replace")
@@ -39,26 +43,28 @@ for eid,url in TARGETS.items():
       "sourceTitle":re.sub("<[^>]+>","",titlem.group(1)).strip()
     }
     by[eid]=rec
+    resolved_direct.append(eid)
 
 d["evses"]=sorted(by.values(),key=lambda x:x["evseId"])
 current=set(x["evseId"] for x in d["evses"])
-missing=[x for x in d.get("missingCurrentEvseIds",[]) if x not in TARGETS]
+missing=[x for x in d.get("missingCurrentEvseIds",[]) if x not in resolved_direct]
 d["missingCurrentEvseIds"]=missing
 c=d["counts"]
-c["currentMatchedEvseCount"]=235
-c["currentPricedEvseCount"]=235
-c["currentMissingInMontaCount"]=0
-d["resolvedByDirectPageEvidence"]=list(TARGETS)
+c["originalMontaMissingEvseCount"]=len(missing_before)
+c["currentMatchedEvseCount"]=len(d["evses"])
+c["currentPricedEvseCount"]=sum(any(x.get(key) is not None for key in ("pricePerKwh","pricePerMinute","startFee","idleFee")) for x in d["evses"])
+c["currentMissingInMontaCount"]=len(missing)
+d["resolvedByDirectPageEvidence"]=resolved_direct
 d["generatedAt"]=datetime.now(timezone.utc).isoformat()
 DATA.write_text(json.dumps(d,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
 f=json.loads(FINAL.read_text(encoding="utf-8"))
 f.update({
- "status":"complete",
+ "status":"complete" if not missing and c["currentPricedEvseCount"]==c["nationalEvseCount"] else "partial",
  "updatedAt":d["generatedAt"],
- "currentMatchedEvseCount":235,
- "currentPricedEvseCount":235,
- "currentMissingInMontaCount":0,
+ "currentMatchedEvseCount":c["currentMatchedEvseCount"],
+ "currentPricedEvseCount":c["currentPricedEvseCount"],
+ "currentMissingInMontaCount":c["currentMissingInMontaCount"],
  "method":"Swiss national OICP CH*POW scope reconciled against Monta public CPO pricing export, with two residual EVSEs closed by direct Monta public payment pages",
  "policy":"Current Swiss national CH*POW scope is canonical. Monta-only extras are not promoted. No tariff extrapolation."
 })

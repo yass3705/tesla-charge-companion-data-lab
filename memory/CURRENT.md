@@ -1,3 +1,11 @@
+# 22 October 2026 - V9 Swiss PowerUp residual closeout
+
+- The two documented exact EVSE pages are reached only for missing national IDs; same-snapshot counts replace historical constants. G2 FAIL: 39 useful methods and 87 unverified handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 22 October 2026 - V9 Swiss PowerUp/Monta collector
+
+- Exact national and Monta EVSE sets are preserved and checked on offline fixtures. G2 FAIL: 40 useful methods and 86 unverified GitHub handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 22 October 2026 - V9 Swiss CPI closeout
 
 - The archived ChargePoint closeout runs on isolated inputs and keeps exact priced and restricted EVSE separate. G2 FAIL: 41 useful methods and 85 unverified GitHub handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

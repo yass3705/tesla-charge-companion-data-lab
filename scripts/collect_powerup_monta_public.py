@@ -63,6 +63,7 @@ payload={
  "sources":{"national":NATIONAL,"monta":MONTA},
  "counts":{"nationalEvseCount":len(national_ids),"montaPowerUpRowCount":len(power),"montaUniqueEvseCount":len(monta_ids),"currentMatchedEvseCount":len(common),"currentPricedEvseCount":len(resolved),"currentMissingInMontaCount":len(missing),"montaExtraVsNationalCount":len(extra)},
  "policy":"Current Swiss national CH*POW scope is canonical. Monta-only extras are not promoted. No tariff extrapolation.",
+ "nationalSourceEvseIds":sorted(national_ids),"montaSourceEvseIds":sorted(monta_ids),
  "missingCurrentEvseIds":missing,"montaExtraEvseIds":extra,"evses":normalized
 }
 final={
