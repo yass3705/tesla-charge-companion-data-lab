@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from v9_rebuild.electroverse import ROOT
-from v9_rebuild.uk_connected_kerb_operator import LOCATIONS, OUTPUTS, TARIFFS, validate_output as validate_operator
+from v9_rebuild.uk_connected_kerb_operator import LOCATIONS, OUTPUTS, PROGRESS, TARIFFS, validate_output as validate_operator
 
 DETAILS = Path("data/national/uk_connected_kerb_app_details.json.gz")
 OFFERS = Path("data/national/uk_connected_kerb_app_direct_offers.json.gz")
@@ -36,6 +36,8 @@ def validate_app_output(out: Path) -> dict:
     v9 = read_gzip(out / V9)
     candidate = json.loads((out / CANDIDATE).read_text(encoding="utf-8"))
     doc = json.loads((out / DOC).read_text(encoding="utf-8"))
+    progress = json.loads((out / PROGRESS).read_text(encoding="utf-8"))
+    progress_rows = [row for row in progress.get("cpos", []) if row.get("name") == "Connected Kerb"]
     stamp = baseline.get("collectedAt")
     public = {row["id"]: row for row in baseline.get("locations", []) if row.get("publish") is True}
     source_offers = offers.get("offers")
@@ -69,7 +71,12 @@ def validate_app_output(out: Path) -> dict:
             or candidate.get("activationStatus") != "pending_runtime_timezone_and_station_loader"
             or len(candidate.get("directOffers", [])) != len(source_offers)
             or doc.get("publishedToV9") is not False
-            or doc.get("activeRuntime") is not None):
+            or doc.get("activeRuntime") is not None
+            or len(progress_rows) != 1
+            or progress_rows[0].get("status") != "partial_guest_app_validated_snapshot"
+            or progress_rows[0].get("validatedConnectors") != len(source_offers)
+            or progress_rows[0].get("unresolvedConnectors") != len(unresolved)
+            or progress_rows[0].get("latestSnapshotPublishedToV9") is not False):
         raise ValueError("Connected Kerb guest provenance or publication contract invalid")
     runtime = v9.get("sources", [{}])[0]
     if runtime.get("pricingScope") != "cpo_direct_standard_guest":
@@ -80,6 +87,23 @@ def validate_app_output(out: Path) -> dict:
     if assigned != exact:
         raise ValueError("Connected Kerb exact connector assignment mismatch")
     return report
+
+
+def update_progress(out: Path) -> None:
+    """Preserve the old daily workflow's derived progress row, without Git writes."""
+    doc = json.loads((out / DOC).read_text(encoding="utf-8"))
+    path = out / PROGRESS
+    progress = json.loads(path.read_text(encoding="utf-8"))
+    row = next(row for row in progress["cpos"] if row["name"] == "Connected Kerb")
+    row.update(status="partial_guest_app_validated_snapshot",
+               validatedConnectors=doc["counts"]["validatedConnectors"],
+               unresolvedConnectors=doc["counts"]["unresolvedConnectors"],
+               retainedStations=doc["counts"]["retainedStations"],
+               latestSnapshotPublishedToV9=doc["publishedToV9"],
+               refreshCadence="daily", dailyWorkflow=".github/workflows/uk-connected-kerb-daily.yml",
+               evidence="Daily operator inventory and exact guest-detail price reconciliation; unresolved connectors excluded individually.",
+               next="Publish the validated data snapshot to the runtime and resolve remaining excluded connectors.")
+    path.write_text(json.dumps(progress, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def run(out: Path, operator_state: Path, *, runner=subprocess.run) -> None:
@@ -104,6 +128,7 @@ def run(out: Path, operator_state: Path, *, runner=subprocess.run) -> None:
                         text=True, timeout=1800, check=False)
         if result.returncode:
             raise RuntimeError(f"Historical Connected Kerb {name} failed")
+    update_progress(out)
     validate_app_output(out)
 
 

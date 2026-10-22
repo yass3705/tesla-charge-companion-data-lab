@@ -19,7 +19,8 @@ REPORT = Path("reports/uk/connected-kerb-latest.json")
 AUDIT = Path("reports/uk/connected-kerb-snapshot-audit-latest.json")
 EXCLUSIONS = Path("reports/uk/connected-kerb-price-exclusions-latest.json")
 ELIGIBLE = Path("data/national/uk_connected_kerb_price_unambiguous_locations.json.gz")
-OUTPUTS = (LOCATIONS, TARIFFS, REPORT, AUDIT, EXCLUSIONS, ELIGIBLE)
+PROGRESS = Path("docs/uk-cpo-progress-2026-09.json")
+OUTPUTS = (LOCATIONS, TARIFFS, REPORT, AUDIT, EXCLUSIONS, ELIGIBLE, PROGRESS)
 
 
 def read_gzip(path: Path) -> dict:
@@ -34,6 +35,8 @@ def validate_output(out: Path) -> dict:
     report = json.loads((out / REPORT).read_text(encoding="utf-8"))
     audit = json.loads((out / AUDIT).read_text(encoding="utf-8"))
     exclusions = json.loads((out / EXCLUSIONS).read_text(encoding="utf-8"))
+    progress = json.loads((out / PROGRESS).read_text(encoding="utf-8"))
+    progress_rows = [row for row in progress.get("cpos", []) if row.get("name") == "Connected Kerb"]
     rows = locations.get("locations")
     tariff_rows = tariffs.get("tariffs")
     if not isinstance(rows, list) or not isinstance(tariff_rows, list):
@@ -53,7 +56,11 @@ def validate_output(out: Path) -> dict:
             or audit.get("substantiveConflictingLocationIds")
             or exclusions.get("snapshotCollectedAt") != stamp
             or eligible.get("collectedAt") != stamp
-            or len(eligible.get("locations", [])) != exclusions.get("priceUnambiguousStationCount")):
+            or len(eligible.get("locations", [])) != exclusions.get("priceUnambiguousStationCount")
+            or len(progress_rows) != 1
+            or progress_rows[0].get("datasetLocations") != str(LOCATIONS)
+            or progress_rows[0].get("datasetTariffs") != str(TARIFFS)
+            or progress_rows[0].get("report") != str(REPORT)):
         raise ValueError("Connected Kerb operator snapshot or audit contract invalid")
     for key, values in (("locations", rows), ("tariffs", tariff_rows)):
         pagination = page.get(key) or {}
@@ -74,6 +81,9 @@ def run(out: Path, *, runner=subprocess.run) -> None:
         raise ValueError("Connected Kerb operator snapshot must run outside checkout")
     script_dir = out / "scripts"
     script_dir.mkdir(parents=True, exist_ok=True)
+    progress = out / PROGRESS
+    progress.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / PROGRESS, progress)
     for name in ("uk_connected_kerb_collect.py", "uk_connected_kerb_snapshot_audit.py"):
         shutil.copy2(ROOT / "scripts" / name, script_dir / name)
     for name in ("uk_connected_kerb_collect.py", "uk_connected_kerb_snapshot_audit.py"):
@@ -81,6 +91,10 @@ def run(out: Path, *, runner=subprocess.run) -> None:
                         capture_output=True, text=True, timeout=1200, check=False)
         if result.returncode:
             raise RuntimeError(f"Historical Connected Kerb {name} failed")
+    result = runner([sys.executable, str(script_dir / "uk_connected_kerb_collect.py"), "--update-progress"],
+                    cwd=out, capture_output=True, text=True, timeout=300, check=False)
+    if result.returncode:
+        raise RuntimeError("Historical Connected Kerb progress update failed")
     validate_output(out)
 
 

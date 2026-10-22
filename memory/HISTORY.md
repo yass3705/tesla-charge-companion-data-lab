@@ -644,3 +644,7 @@ Le collecteur API opérateur et l'audit de snapshot sont isolés ; la pagination
 # 22 octobre 2026 — V9, Connected Kerb app UK
 
 La branche de reconstruction a été avancée sans conflit vers le cahier des charges permanent. Le collecteur invité et le rapprochement Connected Kerb utilisent désormais le snapshot opérateur signé ; les offres restent candidates et le cas sans prix demeure explicite. G2 reste FAIL : 62 méthodes utiles, 69 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, Connected Kerb daily
+
+La chaîne historique complète opérateur → audit → app → rapprochement et son état documentaire sont exécutés sur fixtures avec dépendance signée. Aucun push main n'est reproduit. G2 reste FAIL : 61 méthodes utiles, 69 transferts GitHub non vérifiés. Actions désactivé.
