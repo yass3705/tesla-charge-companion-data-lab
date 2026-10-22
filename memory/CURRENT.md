@@ -1073,3 +1073,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 TotalEnergies officiel : methode historique isolee, absence de garde de volume, faux prix promotionnel corrige, 16 tests cibles PASS. G2 FAIL (13 methodes, 111 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 MobiSDEC officiel : methode historique isolee, garde de volume retire, fixture CSV reduite et erreurs techniques verifiees ; 16 tests cibles PASS. G2 FAIL (12 methodes, 112 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 IZIVIA officiel : FAST/Express/Grand Lyon/Pass executes hors checkout sur fixtures archivees ; 16 tests PASS. G2 FAIL (11 methodes, 113 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
