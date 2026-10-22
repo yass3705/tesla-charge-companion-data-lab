@@ -750,3 +750,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 2026-10-22 — V9 G2 Electroverse probe cible : investigation ponctuelle de deux stations classee historique inactive ; scripts, rapport, mapping et cache conserves. Test de la disposition 1 PASS. G2 reste FAIL (21 methodes, 103 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 IZIVIA FAST : scripts historiques executes hors checkout sur fixture Dole archivee, quatre sorties, prix manquant explicite et erreurs techniques bloquees ; 17 tests cibles PASS. G2 reste FAIL (20 methodes, 104 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 audit France traite : methode historique rejouee hors checkout sur entrees archivees ; rapport et empreintes conserves, 2 tests reels PASS. G2 reste FAIL (19 methodes, 105 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

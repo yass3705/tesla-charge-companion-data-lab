@@ -493,6 +493,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("IZIVIA FAST historical method or input missing")
             spec["output_file"] = OFFERS.as_posix()
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/izivia_fast.py")
+        elif spec.get("module") == "france_treated_audit" and source_id == "FR:treated_reliability":
+            from v9_rebuild.france_treated_audit import SCRIPT, CANON, REGISTRY, REPORT
+            if spec["secret_names"] or any(not (root / path).is_file() for path in (SCRIPT, CANON, REGISTRY)):
+                raise ValueError("France treated audit historical method or inputs missing")
+            spec["output_file"] = REPORT.as_posix()
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/france_treated_audit.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -768,6 +774,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     atlante_fr_it_module = spec["module"] == "atlante_fr_it"
     belgium_gap_archive_module = spec["module"] == "belgium_gap_archive"
     izivia_fast_module = spec["module"] == "izivia_fast"
+    france_treated_audit_module = spec["module"] == "france_treated_audit"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -963,6 +970,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/belgium_gap_archive.py"), "--out", str(staged)]
             if izivia_fast_module:
                 command = [sys.executable, str(root / "v9_rebuild/izivia_fast.py"), "--out", str(staged)]
+            if france_treated_audit_module:
+                command = [sys.executable, str(root / "v9_rebuild/france_treated_audit.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1469,6 +1478,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif france_treated_audit_module:
+                from v9_rebuild.france_treated_audit import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)
