@@ -179,8 +179,8 @@ def main() -> None:
 
     current_prices = [x["eurPerKwh"] for x in station_results]
     current_fees = [x["sessionFeeEur"] for x in station_results if x["sessionFeeEur"] is not None]
-    if len(current_prices) < 3:
-        raise RuntimeError(f"Shell: insufficient current rendered tariff samples: {len(current_prices)}; errors={station_errors}")
+    if station_errors or len(station_results) != len(REPRESENTATIVE_RENDERED_SAMPLES):
+        raise RuntimeError(f"Shell: configured representative station pages incomplete; errors={station_errors}")
     if len(set(round(v, 4) for v in current_prices)) != 1:
         raise RuntimeError(f"Shell: representative station tariffs diverged: {current_prices}")
 

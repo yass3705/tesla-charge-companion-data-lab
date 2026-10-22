@@ -1067,3 +1067,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 e-Vadea : decouverte image/OCR et grille historique executees hors checkout sur fixture archivee ; prix/frais changes et image absente rejetes, 16 tests cibles PASS. G2 reste FAIL (16 methodes, 108 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 Powerdot : methode officielle hors checkout, CSV vide permis avec schema valide, Direct et abonnement Electroverse separes ; 9 tests cibles PASS. G2 reste FAIL (15 methodes, 109 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 Shell Recharge : cinq pages configurees requises en fixture, ancien etat partiel conserve, nouvelle sortie rejetee si page/HTTP/prix change ; 2 tests PASS. G2 reste FAIL (14 methodes, 110 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

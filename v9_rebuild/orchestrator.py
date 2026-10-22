@@ -523,6 +523,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Powerdot official preserved method or tariff archive missing")
             spec["output_file"] = OUTPUT.as_posix()
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/powerdot_official.py")
+        elif spec.get("module") == "shell_official" and source_id == "FR:shell_recharge_official":
+            from v9_rebuild.shell_official import SCRIPT, OUTPUT
+            if spec["secret_names"] or not (root / SCRIPT).is_file() or not (root / OUTPUT).is_file():
+                raise ValueError("Shell official preserved method or tariff archive missing")
+            spec["output_file"] = OUTPUT.as_posix()
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/shell_official.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -803,6 +809,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     electra_residual_audit_module = spec["module"] == "electra_residual_audit"
     evadea_official_module = spec["module"] == "evadea_official"
     powerdot_official_module = spec["module"] == "powerdot_official"
+    shell_official_module = spec["module"] == "shell_official"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -1008,6 +1015,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/evadea_official.py"), "--out", str(staged)]
             if powerdot_official_module:
                 command = [sys.executable, str(root / "v9_rebuild/powerdot_official.py"), "--out", str(staged)]
+            if shell_official_module:
+                command = [sys.executable, str(root / "v9_rebuild/shell_official.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1545,6 +1554,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif powerdot_official_module:
                 from v9_rebuild.powerdot_official import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif shell_official_module:
+                from v9_rebuild.shell_official import validate_output
                 try:
                     validate_output(staged)
                     valid = True
