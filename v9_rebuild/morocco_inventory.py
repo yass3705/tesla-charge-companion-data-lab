@@ -18,6 +18,8 @@ METHODS = {
     "kilowatt": ("scripts/morocco/kilowatt_public_station_inventory.py",
                   "reports/morocco/kilowatt/latest-public-station-inventory.json"),
 }
+RECONCILIATION = ("scripts/morocco/kilowatt_location_reconciliation.py",
+                  "artifacts/morocco-kilowatt-location-reconciliation/summary.json")
 
 
 def validate_output(out: Path, method: str) -> dict:
@@ -82,12 +84,57 @@ def run(out: Path, method: str, *, runner=subprocess.run) -> None:
     validate_output(out, method)
 
 
+def validate_reconciliation(out: Path) -> dict:
+    source = validate_output(out, "kilowatt")
+    report = json.loads((out / RECONCILIATION[1]).read_text(encoding="utf-8"))
+    eligible = [row for row in source["stations"] if row.get("production_candidate") is True
+                and isinstance(row.get("latitude"), (int, float))
+                and isinstance(row.get("longitude"), (int, float))]
+    summary = report.get("summary") or {}
+    policy = report.get("policy") or {}
+    rows = report.get("threshold_results")
+    if (report.get("schema_version") != 1 or policy.get("offline_only") is not True
+            or policy.get("no_production_merges_applied") is not True
+            or summary.get("production_station_records") != len(eligible)
+            or not isinstance(rows, list)
+            or [row.get("threshold_m") for row in rows] != summary.get("thresholds_tested_m")
+            or any(not isinstance(row.get("cluster_count"), int)
+                   or row.get("records_absorbed_by_clustering") != len(eligible) - row["cluster_count"]
+                   for row in rows)):
+        raise ValueError("Kilowatt diagnostic reconciliation contract invalid")
+    return report
+
+
+def reconcile(out: Path, source: Path, *, runner=subprocess.run) -> None:
+    out, source = out.resolve(), source.resolve()
+    if out == ROOT or ROOT in out.parents or source == ROOT or ROOT in source.parents:
+        raise ValueError("Kilowatt reconciliation must run outside checkout")
+    validate_output(source, "kilowatt")
+    input_path = out / METHODS["kilowatt"][1]
+    input_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source / METHODS["kilowatt"][1], input_path)
+    script = out / RECONCILIATION[0]
+    script.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / RECONCILIATION[0], script)
+    result = runner([sys.executable, str(script)], cwd=out, capture_output=True,
+                    text=True, timeout=300, check=False)
+    if result.returncode:
+        raise RuntimeError("Historical Kilowatt reconciliation failed")
+    validate_reconciliation(out)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=sorted(METHODS), required=True)
+    parser.add_argument("--method", choices=sorted(METHODS) + ["kilowatt_reconcile"], required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--source", type=Path)
     args = parser.parse_args()
-    run(args.out, args.method)
+    if args.method == "kilowatt_reconcile" and args.source:
+        reconcile(args.out, args.source)
+    elif args.method == "kilowatt_reconcile" or args.source:
+        parser.error("--source is required only for Kilowatt reconciliation")
+    else:
+        run(args.out, args.method)
 
 
 if __name__ == "__main__":

@@ -684,3 +684,7 @@ Les deux méthodes historiques de rapprochement résiduel et de classification r
 # 22 octobre 2026 — V9, inventaires Maroc FastVolt/Kilowatt
 
 Deux inventaires publics historiques sont migrés sans collecte live ; leurs candidats, exclusions et provenance sont testés sur fixtures. G2 reste FAIL : 45 méthodes utiles et 81 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, diagnostic Kilowatt
+
+Le rapport historique de regroupement géographique consomme le dernier inventaire signé, sans modification de Production ni promotion de correspondance. G2 reste FAIL : 44 méthodes utiles et 82 transferts GitHub non vérifiés.

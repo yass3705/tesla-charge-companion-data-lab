@@ -352,6 +352,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Morocco public-map historical method changed")
             spec["output_file"] = METHODS[method][1]
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/morocco_inventory.py")
+        elif spec.get("module") == "morocco_reconcile" and source_id == "MA:kilowatt_reconcile":
+            from v9_rebuild.morocco_inventory import RECONCILIATION
+            if spec["secret_names"] or not (root / RECONCILIATION[0]).is_file():
+                raise ValueError("Kilowatt historical reconciliation missing")
+            spec["output_file"] = RECONCILIATION[1]
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/morocco_inventory.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -489,6 +495,9 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     elif module == "uk_connected_kerb_operator" and source_id == "GB:connected_kerb_operator":
         from v9_rebuild.uk_connected_kerb_operator import validate_output
         validate_output(state)
+    elif module == "morocco_inventory" and source_id == "MA:kilowatt_inventory":
+        from v9_rebuild.morocco_inventory import validate_output
+        validate_output(state, "kilowatt")
     elif module == "electroverse":
         validate_state(state)
     else:
@@ -595,6 +604,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     swiss_move_module = spec["module"] == "swiss_move"
     swiss_plenitude_closeout_module = spec["module"] == "swiss_plenitude_closeout"
     morocco_inventory_module = spec["module"] == "morocco_inventory"
+    morocco_reconcile_module = spec["module"] == "morocco_reconcile"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -673,6 +683,14 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     plenitude_state = validated_dependency(dependency, "CH:plenitude_official", "cwd_script")
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
+            if morocco_reconcile_module:
+                dependency = out_root / "input_dependencies/MA_kilowatt_inventory"
+                if not dependency.is_dir():
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_missing", "attempts": 0}
+                try:
+                    kilowatt_state = validated_dependency(dependency, "MA:kilowatt_inventory", "morocco_inventory")
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
             command = ([sys.executable, str(root / safe_relative(spec["script"])), "--out", str(staged / spec["output_file"])]
                        if isolated_script else [sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
                        if operator_module else [sys.executable, str(root / "v9_rebuild/nl_dotnl.py"), "--out", str(staged)]
@@ -717,6 +735,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if swiss_move_module else [sys.executable, str(root / "v9_rebuild/swiss_plenitude_closeout.py"), "--out", str(staged), "--source", str(plenitude_state)]
                        if swiss_plenitude_closeout_module else [sys.executable, str(root / "v9_rebuild/morocco_inventory.py"), "--method", spec["method"], "--out", str(staged)]
                        if morocco_inventory_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+            if morocco_reconcile_module:
+                command = [sys.executable, str(root / "v9_rebuild/morocco_inventory.py"), "--method", "kilowatt_reconcile", "--out", str(staged), "--source", str(kilowatt_state)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1054,6 +1074,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 from v9_rebuild.morocco_inventory import validate_output
                 try:
                     validate_output(staged, spec["method"])
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif morocco_reconcile_module:
+                from v9_rebuild.morocco_inventory import validate_reconciliation
+                try:
+                    validate_reconciliation(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False

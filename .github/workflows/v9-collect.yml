@@ -117,6 +117,14 @@ jobs:
           run-id: ${{ steps.prior.outputs.plenitude_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/CH_plenitude_official
+      - name: Restore validated Kilowatt public inventory for diagnostics
+        if: ${{ inputs.source == 'MA:kilowatt_reconcile' && steps.prior.outputs.kilowatt_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-collection-MA_kilowatt_inventory
+          run-id: ${{ steps.prior.outputs.kilowatt_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/MA_kilowatt_inventory
       - name: Collect migrated sources into isolated artifacts
         env:
           SOURCE_ID: ${{ inputs.source }}

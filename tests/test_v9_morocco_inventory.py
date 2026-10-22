@@ -7,12 +7,13 @@ import runpy
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from v9_rebuild import morocco_inventory
-from v9_rebuild.orchestrator import read_sources, run_source
+from v9_rebuild.orchestrator import artifact_digest, read_sources, run_source, sha256
 
 
 FASTVOLT = {"carte": {"components": [{"chargers": [
@@ -89,6 +90,55 @@ class MoroccoInventoryTests(unittest.TestCase):
             path.write_text(json.dumps(report))
             with self.assertRaises(ValueError):
                 morocco_inventory.validate_output(out, "fastvolt")
+
+    def test_signed_kilowatt_reconciliation_is_diagnostic(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            stage = base / "inventory-stage"
+            morocco_inventory.run(stage, "kilowatt", runner=offline_runner)
+            digest, files = artifact_digest(stage)
+            bundle = base / "bundle"
+            state = bundle / "objects/MA_kilowatt_inventory" / digest
+            state.parent.mkdir(parents=True)
+            shutil.copytree(stage, state)
+            artifact = state / morocco_inventory.METHODS["kilowatt"][1]
+            (bundle / "manifest.json").write_text(json.dumps({"schema_version": 1,
+                "status": "complete", "sources": [{"source": "MA:kilowatt_inventory",
+                "module": "morocco_inventory", "status": "ok",
+                "artifact": str(artifact.relative_to(bundle)), "sha256": sha256(artifact),
+                "artifact_set_sha256": digest, "files": files}]}))
+
+            # The historical diagnostic script does not access the network.
+            def diagnostic_runner(command, **kwargs):
+                old = Path.cwd()
+                try:
+                    os.chdir(kwargs["cwd"])
+                    with redirect_stdout(io.StringIO()):
+                        runpy.run_path(command[1], run_name="__main__")
+                finally:
+                    os.chdir(old)
+                return SimpleNamespace(returncode=0, stdout="")
+
+            def process(command, **_):
+                morocco_inventory.reconcile(Path(command[command.index("--out") + 1]),
+                                             Path(command[command.index("--source") + 1]),
+                                             runner=diagnostic_runner)
+                return SimpleNamespace(returncode=0)
+
+            spec = next(x for x in read_sources() if x["id"] == "MA:kilowatt_reconcile")
+            artifacts = base / "artifacts"
+            shutil.copytree(bundle, artifacts / "input_dependencies/MA_kilowatt_inventory")
+            result = run_source(spec, artifacts, runner=process)
+            self.assertEqual(result["status"], "ok", result)
+            report = morocco_inventory.validate_reconciliation(
+                next((artifacts / "objects/MA_kilowatt_reconcile").iterdir()))
+            self.assertTrue(report["policy"]["no_production_merges_applied"])
+            self.assertEqual(report["summary"]["production_station_records"], 1)
+            self.assertEqual(run_source(spec, base / "missing")["reason"], "validated_dependency_missing")
+            bad = base / "bad/input_dependencies/MA_kilowatt_inventory"
+            shutil.copytree(bundle, bad)
+            (bad / json.loads((bad / "manifest.json").read_text())["sources"][0]["artifact"]).write_bytes(b"bad")
+            self.assertEqual(run_source(spec, base / "bad")["reason"], "validated_dependency_invalid")
 
 
 if __name__ == "__main__":

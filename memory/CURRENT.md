@@ -1,3 +1,7 @@
+# 22 octobre 2026 — V9, diagnostic Kilowatt Maroc
+
+- Le rapprochement géographique Kilowatt est isolé et ne fusionne aucune station ; il consomme un inventaire immuable vérifié. G2 FAIL : 44 méthodes utiles et 82 transferts GitHub non vérifiés. Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 22 octobre 2026 — V9, inventaires publics Maroc
 
 - FastVolt et Kilowatt : méthodes historiques isolées, fixtures hors ligne et contrats de sortie vérifiés. G2 reste FAIL avec 45 méthodes utiles ; Actions désactivé, transferts GitHub non vérifiés. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
