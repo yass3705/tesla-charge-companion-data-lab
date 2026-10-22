@@ -668,3 +668,7 @@ Le script historique de rapprochement se déroule hors checkout avec états arch
 # 22 octobre 2026 — V9, eCarUp Suisse propriétaire exact
 
 Le rapprochement par Hubject ID exact et la sélection de son artefact immuable sont raccordés à la chaîne eCarUp. L'adaptateur géographique exige maintenant cet état validé et rejette absence ou SHA incorrect. Les tests restent hors réseau. G2 reste FAIL : 53 méthodes utiles, 74 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, finalisation eCarUp Suisse
+
+Le constructeur final utilise l'état signé du rapprochement et compte séparément bornes tarifées, accès restreints et cas non résolus. La constante historique de 6 764 EVSE a été retirée ; les identités et les SHA restent contrôlés. G2 reste FAIL : 52 méthodes utiles, 75 transferts GitHub non vérifiés. Actions désactivé.

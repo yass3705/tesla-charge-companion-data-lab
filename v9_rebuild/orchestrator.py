@@ -323,6 +323,11 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("EnergyVision archived methods, NAP or authentication missing")
             spec["output_file"] = "data/belgium/energyvision-official-2026-10-13.json.gz"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/energyvision.py")
+        elif spec.get("module") == "swiss_ecarup_finalizer" and source_id == "CH:ecarup_finalization":
+            if spec["secret_names"] or not (root / "scripts/finalize_swiss_ecarup_owner.py").is_file():
+                raise ValueError("Swiss eCarUp finalization historical method changed")
+            spec["output_file"] = "docs/switzerland-ecarup-finalization-2026-09-28.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_ecarup_finalizer.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -451,6 +456,9 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     elif module == "cwd_script" and source_id == "CH:ecarup_owner":
         from v9_rebuild.cwd_script import validate_output
         validate_output(state, "swiss_ecarup_owner")
+    elif module == "cwd_script" and source_id == "CH:ecarup_coordinate":
+        from v9_rebuild.cwd_script import validate_output
+        validate_output(state, "swiss_ecarup_coordinate")
     elif module == "uk_connected_kerb_operator" and source_id == "GB:connected_kerb_operator":
         from v9_rebuild.uk_connected_kerb_operator import validate_output
         validate_output(state)
@@ -556,6 +564,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     uk_eco_movement_module = spec["module"] == "uk_eco_movement"
     electra_france_module = spec["module"] == "electra_france"
     energyvision_module = spec["module"] == "energyvision"
+    swiss_ecarup_finalizer_module = spec["module"] == "swiss_ecarup_finalizer"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -618,6 +627,14 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     owner_state = validated_dependency(dependency, "CH:ecarup_owner", "cwd_script")
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
+            if swiss_ecarup_finalizer_module:
+                dependency = out_root / "input_dependencies/CH_ecarup_coordinate"
+                if not dependency.is_dir():
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_missing", "attempts": 0}
+                try:
+                    coordinate_state = validated_dependency(dependency, "CH:ecarup_coordinate", "cwd_script")
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
             command = ([sys.executable, str(root / safe_relative(spec["script"])), "--out", str(staged / spec["output_file"])]
                        if isolated_script else [sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
                        if operator_module else [sys.executable, str(root / "v9_rebuild/nl_dotnl.py"), "--out", str(staged)]
@@ -657,7 +674,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if uk_connected_kerb_app_module else [sys.executable, str(root / "v9_rebuild/uk_eco_movement.py"), "--out", str(staged)]
                        if uk_eco_movement_module else [sys.executable, str(root / "v9_rebuild/electra_france.py"), "--out", str(staged)]
                        if electra_france_module else [sys.executable, str(root / "v9_rebuild/energyvision.py"), "--out", str(staged)]
-                       if energyvision_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if energyvision_module else [sys.executable, str(root / "v9_rebuild/swiss_ecarup_finalizer.py"), "--out", str(staged), "--source", str(coordinate_state)]
+                       if swiss_ecarup_finalizer_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -965,6 +983,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif energyvision_module:
                 from v9_rebuild.energyvision import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif swiss_ecarup_finalizer_module:
+                from v9_rebuild.swiss_ecarup_finalizer import validate_output
                 try:
                     validate_output(staged)
                     valid = True

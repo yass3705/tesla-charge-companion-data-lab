@@ -101,6 +101,14 @@ jobs:
           run-id: ${{ steps.prior.outputs.ecarup_owner_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/CH_ecarup_owner
+      - name: Restore validated Swiss eCarUp coordinate overlay
+        if: ${{ inputs.source == 'CH:ecarup_finalization' && steps.prior.outputs.ecarup_coordinate_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-collection-CH_ecarup_coordinate
+          run-id: ${{ steps.prior.outputs.ecarup_coordinate_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/CH_ecarup_coordinate
       - name: Collect migrated sources into isolated artifacts
         env:
           SOURCE_ID: ${{ inputs.source }}
