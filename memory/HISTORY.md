@@ -724,3 +724,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 2026-10-22 — V9 G2 REVE national v2 : chaine historique isolee, fixture compilee, controles SHA/pagination et suppression des seuils de volume ; 11 tests PASS. G2 reste FAIL (34 methodes, 91 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 Delmonicos : surveillance historique executee hors checkout sur fixture source, valeurs archivees preservees, contexte change et prix modifie rejetes ; 2 tests PASS. G2 reste FAIL (33 methodes, 92 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 France fixed watch : trois sources historiques executees hors checkout, tarif archive et contextes preserves ; 2 tests PASS. G2 reste FAIL (32 methodes, 93 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
