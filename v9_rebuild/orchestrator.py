@@ -396,6 +396,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Swisscharge preserved sharded collector missing")
             spec["output_file"] = "data/swisscharge/swisscharge-tariffs.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/swisscharge.py")
+        elif spec.get("module") == "greenspot" and source_id == "FR:greenspot":
+            from v9_rebuild.greenspot import SCRIPT
+            if spec["secret_names"] or not (root / SCRIPT).is_file():
+                raise ValueError("Greenspot historical collector missing")
+            spec["output_file"] = "data/greenspot/france/greenspot-france-current.json.gz"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/greenspot.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -655,6 +661,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     swiss_powerup_module = spec["module"] == "swiss_powerup"
     swiss_powerup_closeout_module = spec["module"] == "swiss_powerup_closeout"
     swisscharge_module = spec["module"] == "swisscharge"
+    greenspot_module = spec["module"] == "greenspot"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -816,6 +823,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
             if swisscharge_module:
                 command = [sys.executable, str(root / "v9_rebuild/swisscharge.py"), "--out", str(staged),
                            "--checkpoint", str(checkpoint)]
+            if greenspot_module:
+                command = [sys.executable, str(root / "v9_rebuild/greenspot.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -850,7 +859,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or energyvision_module or freshmile_inventory_module or waat_monta_dependency) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or energyvision_module or freshmile_inventory_module or waat_monta_dependency or greenspot_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -1200,6 +1209,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif swisscharge_module:
                 from v9_rebuild.swisscharge import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif greenspot_module:
+                from v9_rebuild.greenspot import validate_output
                 try:
                     validate_output(staged)
                     valid = True

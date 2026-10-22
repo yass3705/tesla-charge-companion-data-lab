@@ -716,3 +716,5 @@ The preserved four-shard collector has isolated retry state and immutable merge 
 # 22 October 2026 - V9 legacy audit retirement
 
 The fixed-tariff refresh audit was archived because it infers management from workflows removed by V9. A fixture demonstrates the dependence, while the historical code remains restorable. G2 FAIL: 37 useful methods, 88 unverified handoffs.
+
+2026-10-22 — V9 G2 Greenspot France : methode historique executee hors checkout, fixture et tests cibles PASS ; G2 reste FAIL (36 methodes utiles, 89 transferts GitHub non verifies). Actions Data Lab inactif ; aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.

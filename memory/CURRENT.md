@@ -1023,3 +1023,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 22 octobre 2026 — MOVE Suisse CCI/SOC/MMN : trois finaliseurs historiques isolés et testés sur sources archivées, avec portée AC/DC conservée ; les cas sans preuve de segment restent non résolus. G2 reste FAIL : 49 méthodes requises et 78 transferts GitHub non vérifiés. Actions désactivé.
 
 22 octobre 2026 — Plenitude Suisse : deux clôtures de résidus exécutées sur le dernier snapshot officiel signé ; les accès restreints restent hors tarifs. G2 reste FAIL : 47 méthodes requises et 79 transferts GitHub non vérifiés. Actions désactivé.
+
+2026-10-22 — V9 G2 Greenspot France : methode historique executee hors checkout, fixture et tests cibles PASS ; G2 reste FAIL (36 methodes utiles, 89 transferts GitHub non verifies). Actions Data Lab inactif ; aucune publication. Voir `memory/V9_REBUILD_PROGRESS.md`.
