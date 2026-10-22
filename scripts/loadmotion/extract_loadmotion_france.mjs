@@ -129,7 +129,7 @@ async function inventory(){
     for(const s of batch){if(cfg.accept(s)&&!seen.has(s.id)){seen.add(s.id);rows.push(s);added++;}}
     console.log(`inventory ${tenant} page=${page+1} received=${batch.length} acceptedTotal=${rows.length} new=${added}`);
     if(!batch.length||batch.length<limit) break;
-    if(added===0&&cfg.inventory==='issuer') break;
+    if(page===199) throw new Error(`inventory pagination limit reached tenant=${tenant}`);
   }
   return rows;
 }

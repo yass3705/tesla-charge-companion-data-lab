@@ -2,7 +2,7 @@
 """Derive a sanitized EVGO status overlay from the freshly hydrated public snapshot.
 
 Offline transformer only: reads the output of morocco_evgo_pin_hydration_probe.py,
-selects the API version that exposes the complete 17-station / 43-EVSE inventory,
+selects a technically complete API version with all declared locations,
 and persists only native fields required for V9 operational status classification.
 No network requests, credentials, sessions or mutations are performed here.
 """
@@ -44,9 +44,20 @@ def extract_version(name, entry):
 def main():
     src = json.loads(SRC.read_text())
     candidates = [extract_version(name, entry) for name, entry in (src.get('versions') or {}).items() if isinstance(entry, dict)]
-    complete = [c for c in candidates if c['station_count'] == 17 and c['evse_count'] == 43]
+    complete = []
+    for candidate in candidates:
+        entry = src['versions'][candidate['version']]
+        declared = entry.get('location_ids') or []
+        fetched = entry.get('locations') or []
+        if (entry.get('pins_status') == 200
+                and len(declared) == len(set(declared))
+                and len(fetched) == len(declared)
+                and {item.get('id') for item in fetched} == set(declared)
+                and all(item.get('status') == 200 and isinstance(item.get('location'), dict) for item in fetched)
+                and candidate['station_count'] == len(declared)):
+            complete.append(candidate)
     if not complete:
-        raise SystemExit('No EVGO public API version yielded the required 17 stations / 43 EVSE: ' + json.dumps(candidates))
+        raise SystemExit('No EVGO public API version has complete location hydration: ' + json.dumps(candidates))
 
     # Prefer the highest API version among complete snapshots, but never combine versions.
     chosen = sorted(complete, key=lambda c: c['version'])[-1]

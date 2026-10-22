@@ -770,3 +770,10 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 2026-10-22 — V9 G2 IZIVIA officiel : FAST/Express/Grand Lyon/Pass executes hors checkout sur fixtures archivees ; 16 tests PASS. G2 FAIL (11 methodes, 113 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 flux ouverts UK : douze sources historiques isolees, pagination incomplete et PoGo partiel bloques ; 17 tests cibles PASS. G2 FAIL (10 methodes, 114 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+- 2026-10-22 : bundle suisse et intégration publique V9 testés hors ligne sur instantané signé ; gardes de volumes retirés ; G2 toujours FAIL (8 méthodes utiles).
+- 2026-10-22 : AVIA guest Suisse migre hors checkout, reconstitution nationale et erreurs techniques testées ; G2 FAIL (7 méthodes utiles).
+- 2026-10-22 : closeouts suisses AGR/Atlas/SOC migres hors checkout sur archives et fixtures ; G2 FAIL (6 méthodes utiles).
+- 2026-10-22 : EVGO Maroc migre sur fixtures archivée et réduite ; versions complètes et champs statut vérifiés ; G2 FAIL (5 méthodes).
+- 2026-10-22 : Load Motion France (quatre tenants et compilation) migre sur fixtures archivées ; G2 FAIL (4 méthodes).
+- 2026-10-22 : quatre audits/orchestrations historiques sortis nominativement de G2 actif, avec preuves et destination G5/G6 ou remplacement ; G2 FAIL sur 120 transferts GitHub.

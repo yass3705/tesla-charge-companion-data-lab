@@ -328,6 +328,43 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Swiss eCarUp finalization historical method changed")
             spec["output_file"] = "docs/switzerland-ecarup-finalization-2026-09-28.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_ecarup_finalizer.py")
+        elif spec.get("module") == "swiss_bundle" and source_id == "CH:swiss_bundle":
+            if spec["secret_names"] or any(not (root / path).is_file() for path in
+                    ("scripts/build_swiss_tcc_v9_bundle.py", "scripts/guard_swiss_bundle_refresh.py")):
+                raise ValueError("Swiss bundle historical methods missing or unexpected secret")
+            spec["output_file"] = "data/tcc_v9/switzerland.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_bundle.py")
+        elif spec.get("module") == "swiss_integration" and source_id == "CH:swiss_integration":
+            if spec["secret_names"] or not (root / "scripts/build_switzerland_v9_dataset.py").is_file():
+                raise ValueError("Swiss integration historical method missing or unexpected secret")
+            spec["output_file"] = "data/national/switzerland_public_charging_v9.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_integration.py")
+        elif spec.get("module") == "swiss_avia_guest" and source_id == "CH:avia_guest":
+            if (spec["secret_names"] != ["AVIA_APIM_SUBSCRIPTION_KEY"]
+                    or any(not (root / path).is_file() for path in
+                           ("scripts/collect_avia_switzerland_guest.py", "scripts/reconcile_avia_switzerland_guest.py", "data/national/switzerland_oicp_source.json.gz"))):
+                raise ValueError("Swiss AVIA historical method, national source or secret changed")
+            spec["output_file"] = "data/switzerland/avia-guest-direct-tariffs.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_avia_guest.py")
+        elif spec.get("module") == "swiss_easy_closeouts" and source_id == "CH:easy_closeouts":
+            from v9_rebuild.swiss_easy_closeouts import SCRIPTS, INPUTS
+            if spec["secret_names"] or any(not (root / path).is_file() for path in (*SCRIPTS, *INPUTS)):
+                raise ValueError("Swiss easy closeout historical methods or inputs missing")
+            spec["output_file"] = "data/switzerland/soc-direct-tariffs-second-pass.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/swiss_easy_closeouts.py")
+        elif spec.get("module") == "morocco_evgo" and source_id == "MA:evgo":
+            from v9_rebuild.morocco_evgo import SCRIPTS
+            if spec["secret_names"] or any(not (root / path).is_file() for path in SCRIPTS):
+                raise ValueError("Morocco EVGO historical methods missing or unexpected secret")
+            spec["output_file"] = "reports/morocco/evgo/latest-production-stations.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/morocco_evgo.py")
+        elif spec.get("module") == "loadmotion_france" and source_id == "FR:loadmotion":
+            from v9_rebuild.loadmotion_france import COLLECT, COMPILE, SECRETS
+            if (spec["secret_names"] != ["LOADMOTION_ID", *SECRETS.values()]
+                    or not (root / COLLECT).is_file() or not (root / COMPILE).is_file()):
+                raise ValueError("Load Motion preserved methods or credentials changed")
+            spec["output_file"] = "v9-production-runtime/data/v9/france-loadmotion-offers.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/loadmotion_france.py")
         elif spec.get("module") == "swiss_move" and source_id in {"CH:cci_move", "CH:soc_move", "CH:mmn_move"}:
             from v9_rebuild.swiss_move import INPUTS, METHODS
             method = spec.get("method")
@@ -699,6 +736,9 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     elif module == "swiss_powerup" and source_id == "CH:powerup_monta":
         from v9_rebuild.swiss_powerup import validate_output
         validate_output(state)
+    elif module == "swiss_bundle" and source_id == "CH:swiss_bundle":
+        from v9_rebuild.swiss_bundle import validate_output
+        validate_output(state)
     elif module == "electroverse":
         validate_state(state)
     else:
@@ -802,6 +842,12 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     electra_france_module = spec["module"] == "electra_france"
     energyvision_module = spec["module"] == "energyvision"
     swiss_ecarup_finalizer_module = spec["module"] == "swiss_ecarup_finalizer"
+    swiss_bundle_module = spec["module"] == "swiss_bundle"
+    swiss_integration_module = spec["module"] == "swiss_integration"
+    swiss_avia_guest_module = spec["module"] == "swiss_avia_guest"
+    swiss_easy_closeouts_module = spec["module"] == "swiss_easy_closeouts"
+    morocco_evgo_module = spec["module"] == "morocco_evgo"
+    loadmotion_france_module = spec["module"] == "loadmotion_france"
     swiss_move_module = spec["module"] == "swiss_move"
     swiss_plenitude_closeout_module = spec["module"] == "swiss_plenitude_closeout"
     morocco_inventory_module = spec["module"] == "morocco_inventory"
@@ -908,6 +954,23 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     coordinate_state = validated_dependency(dependency, "CH:ecarup_coordinate", "cwd_script")
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
+            if swiss_bundle_module:
+                from v9_rebuild.swiss_bundle import prepare_archived_inputs, verify_inputs
+                swiss_inputs = out_root / "input_dependencies/CH_swiss_bundle_inputs"
+                try:
+                    if not swiss_inputs.is_dir():
+                        prepare_archived_inputs(swiss_inputs, root)
+                    verify_inputs(swiss_inputs)
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
+            if swiss_integration_module:
+                dependency = out_root / "input_dependencies/CH_swiss_bundle"
+                if not dependency.is_dir():
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_missing", "attempts": 0}
+                try:
+                    swiss_bundle_state = validated_dependency(dependency, "CH:swiss_bundle", "swiss_bundle")
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
             if swiss_plenitude_closeout_module:
                 dependency = out_root / "input_dependencies/CH_plenitude_official"
                 if not dependency.is_dir():
@@ -984,6 +1047,18 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if swiss_move_module else [sys.executable, str(root / "v9_rebuild/swiss_plenitude_closeout.py"), "--out", str(staged), "--source", str(plenitude_state)]
                        if swiss_plenitude_closeout_module else [sys.executable, str(root / "v9_rebuild/morocco_inventory.py"), "--method", spec["method"], "--out", str(staged)]
                        if morocco_inventory_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+            if swiss_bundle_module:
+                command = [sys.executable, str(root / "v9_rebuild/swiss_bundle.py"), "--out", str(staged), "--source", str(swiss_inputs)]
+            if swiss_integration_module:
+                command = [sys.executable, str(root / "v9_rebuild/swiss_integration.py"), "--out", str(staged), "--source", str(swiss_bundle_state)]
+            if swiss_avia_guest_module:
+                command = [sys.executable, str(root / "v9_rebuild/swiss_avia_guest.py"), "--out", str(staged), "--national", str(root / "data/national/switzerland_oicp_source.json.gz")]
+            if swiss_easy_closeouts_module:
+                command = [sys.executable, str(root / "v9_rebuild/swiss_easy_closeouts.py"), "--out", str(staged)]
+            if morocco_evgo_module:
+                command = [sys.executable, str(root / "v9_rebuild/morocco_evgo.py"), "--out", str(staged)]
+            if loadmotion_france_module:
+                command = [sys.executable, str(root / "v9_rebuild/loadmotion_france.py"), "--out", str(staged)]
             if morocco_reconcile_module:
                 command = [sys.executable, str(root / "v9_rebuild/morocco_inventory.py"), "--method", "kilowatt_reconcile", "--out", str(staged), "--source", str(kilowatt_state)]
             if morocco_tariff_module:
@@ -1373,6 +1448,48 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif swiss_ecarup_finalizer_module:
                 from v9_rebuild.swiss_ecarup_finalizer import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif swiss_bundle_module:
+                from v9_rebuild.swiss_bundle import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif swiss_integration_module:
+                from v9_rebuild.swiss_integration import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif swiss_avia_guest_module:
+                from v9_rebuild.swiss_avia_guest import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif swiss_easy_closeouts_module:
+                from v9_rebuild.swiss_easy_closeouts import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif morocco_evgo_module:
+                from v9_rebuild.morocco_evgo import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif loadmotion_france_module:
+                from v9_rebuild.loadmotion_france import validate_output
                 try:
                     validate_output(staged)
                     valid = True

@@ -129,8 +129,28 @@ def main() -> None:
                   else "scripts/collect_powerup_monta_public.py" if spec["module"] == "swiss_powerup"
                   else "scripts/close_powerup_residuals.py" if spec["module"] == "swiss_powerup_closeout"
                   else "scripts/collect_swisscharge_cloud.py" if spec["module"] == "swisscharge"
+                  else "scripts/build_swiss_tcc_v9_bundle.py" if spec["module"] == "swiss_bundle"
+                  else "scripts/build_switzerland_v9_dataset.py" if spec["module"] == "swiss_integration"
+                  else "scripts/collect_avia_switzerland_guest.py" if spec["module"] == "swiss_avia_guest"
+                  else "scripts/collect_swiss_atlas_cpo.py" if spec["module"] == "swiss_easy_closeouts"
+                  else "scripts/morocco_evgo_pin_hydration_probe.py" if spec["module"] == "morocco_evgo"
+                  else "scripts/loadmotion/extract_loadmotion_france.mjs" if spec["module"] == "loadmotion_france"
                   else spec["script"])
+        if spec["module"] == "swiss_bundle":
+            method = "scripts/build_swiss_tcc_v9_bundle.py"
         source_code = ROOT / ("v9_rebuild/uk_open_feeds.py" if spec["module"] == "uk_open_feeds" else "v9_rebuild/izivia_official.py" if spec["module"] == "izivia_official" else "v9_rebuild/mobisdec_official.py" if spec["module"] == "mobisdec_official" else "v9_rebuild/totalenergies_official.py" if spec["module"] == "totalenergies_official" else "v9_rebuild/shell_official.py" if spec["module"] == "shell_official" else "v9_rebuild/powerdot_official.py" if spec["module"] == "powerdot_official" else "v9_rebuild/evadea_official.py" if spec["module"] == "evadea_official" else "v9_rebuild/electra_residual_audit.py" if spec["module"] == "electra_residual_audit" else "v9_rebuild/soregies_official.py" if spec["module"] == "soregies_official" else "v9_rebuild/france_treated_audit.py" if spec["module"] == "france_treated_audit" else "v9_rebuild/izivia_fast.py" if spec["module"] == "izivia_fast" else "v9_rebuild/belgium_gap_archive.py" if spec["module"] == "belgium_gap_archive" else "v9_rebuild/atlante_fr_it.py" if spec["module"] == "atlante_fr_it" else "v9_rebuild/zewatt.py" if spec["module"] == "zewatt" else "v9_rebuild/zephyre.py" if spec["module"] == "zephyre" else "v9_rebuild/ozecar.py" if spec["module"] == "ozecar" else "v9_rebuild/france_fixed_secondary.py" if spec["module"] == "france_fixed_secondary" else "v9_rebuild/france_fixed_core.py" if spec["module"] == "france_fixed_core" else "v9_rebuild/bfc_fixed_watch.py" if spec["module"] == "bfc_fixed_watch" else "v9_rebuild/spain_fixed_core.py" if spec["module"] == "spain_fixed_core" else "v9_rebuild/spain_fixed_secondary.py" if spec["module"] == "spain_fixed_secondary" else "v9_rebuild/france_fixed_watch.py" if spec["module"] == "france_fixed_watch" else "v9_rebuild/delmonicos_watch.py" if spec["module"] == "delmonicos_watch" else "v9_rebuild/reve_national.py" if spec["module"] == "reve_national" else "v9_rebuild/reve_stream.py" if spec["module"] == "reve_stream" else "v9_rebuild/greenspot.py" if spec["module"] == "greenspot" else "v9_rebuild/swisscharge.py" if spec["module"] == "swisscharge" else "v9_rebuild/swiss_powerup_closeout.py" if spec["module"] == "swiss_powerup_closeout" else "v9_rebuild/swiss_powerup.py" if spec["module"] == "swiss_powerup" else "v9_rebuild/swiss_cpi.py" if spec["module"] == "swiss_cpi" else "v9_rebuild/swiss_ebs_closeout.py" if spec["module"] == "swiss_ebs_closeout" else "v9_rebuild/morocco_inventory.py" if spec["module"] in {"morocco_inventory", "morocco_reconcile", "morocco_tariff_overlay"} else spec["manifest"] if spec["module"] == "operator_manifest" else "v9_rebuild/belib.py" if spec["module"] == "belib_chain" else "v9_rebuild/ionity.py" if spec["module"] == "ionity_family" else "v9_rebuild/fastned.py" if spec["module"] == "fastned_family" else "v9_rebuild/bump_inventory.py" if spec["module"] == "bump_inventory_family" else "v9_rebuild/bump_tariffs.py" if spec["module"] == "bump_tariffs" else "v9_rebuild/bump_official.py" if spec["module"] == "bump_official" else "v9_rebuild/allego_stations.py" if spec["module"] == "allego_stations" else "v9_rebuild/allego_official.py" if spec["module"] == "allego_official" else "v9_rebuild/official_rules.py" if spec["module"] == "official_rules" else "v9_rebuild/fx.py" if spec["module"] == "fx" else "v9_rebuild/suc_tracker.py" if spec["module"] == "suc_tracker" else "v9_rebuild/tesla_mac.py" if spec["module"] == "tesla_mac" else "v9_rebuild/cwd_script.py" if spec["module"] == "cwd_script" else "v9_rebuild/france_irve.py" if spec["module"] == "france_irve" else "v9_rebuild/france_canonical.py" if spec["module"] == "france_canonical" else "v9_rebuild/uk_blink.py" if spec["module"] == "uk_blink" else "v9_rebuild/uk_pcpr.py" if spec["module"] == "uk_pcpr" else "v9_rebuild/uk_evyve.py" if spec["module"] == "uk_evyve" else "v9_rebuild/uk_gridserve.py" if spec["module"] == "uk_gridserve" else "v9_rebuild/uk_ubitricity.py" if spec["module"] == "uk_ubitricity" else "v9_rebuild/avia_picoty_extract.py" if spec["module"] == "avia_picoty_extract" else "v9_rebuild/electric55_chain.py" if spec["module"] == "electric55_chain" else "v9_rebuild/freshmile_inventory.py" if spec["module"] == "freshmile_inventory" else "v9_rebuild/waat_monta_sharded.py" if spec["module"] == "waat_monta_sharded" else "v9_rebuild/waat_monta_public.py" if spec["module"] == "waat_monta_public" else "v9_rebuild/driveco_evse.py" if spec["module"] == "driveco_evse" else "v9_rebuild/uk_midhope.py" if spec["module"] == "uk_midhope" else "v9_rebuild/chargezy_te63.py" if spec["module"] == "chargezy_te63" else "v9_rebuild/uk_connected_kerb_operator.py" if spec["module"] == "uk_connected_kerb_operator" else "v9_rebuild/uk_connected_kerb_app.py" if spec["module"] == "uk_connected_kerb_app" else "v9_rebuild/uk_eco_movement.py" if spec["module"] == "uk_eco_movement" else "v9_rebuild/electra_france.py" if spec["module"] == "electra_france" else "v9_rebuild/energyvision.py" if spec["module"] == "energyvision" else "v9_rebuild/swiss_ecarup_finalizer.py" if spec["module"] == "swiss_ecarup_finalizer" else "v9_rebuild/swiss_move.py" if spec["module"] == "swiss_move" else "v9_rebuild/swiss_plenitude_closeout.py" if spec["module"] == "swiss_plenitude_closeout" else method)
+        if spec["module"] == "swiss_bundle":
+            source_code = ROOT / "v9_rebuild/swiss_bundle.py"
+        if spec["module"] == "swiss_integration":
+            source_code = ROOT / "v9_rebuild/swiss_integration.py"
+        if spec["module"] == "swiss_avia_guest":
+            source_code = ROOT / "v9_rebuild/swiss_avia_guest.py"
+        if spec["module"] == "swiss_easy_closeouts":
+            source_code = ROOT / "v9_rebuild/swiss_easy_closeouts.py"
+        if spec["module"] == "morocco_evgo":
+            source_code = ROOT / "v9_rebuild/morocco_evgo.py"
+        if spec["module"] == "loadmotion_france":
+            source_code = ROOT / "v9_rebuild/loadmotion_france.py"
         if not source_code.is_file():
             errors.append(f"source method/config missing: {spec['id']}")
         for workflow in spec.get("legacy_workflows", []):
@@ -172,7 +192,11 @@ def main() -> None:
     retired_workflows = set()
     approved_retirements = {".github/workflows/validate-v9-source-guards.yml",
                             ".github/workflows/audit-fixed-tariff-refresh.yml",
-                            ".github/workflows/electroverse-targeted-station-probe.yml"}
+                            ".github/workflows/electroverse-targeted-station-probe.yml",
+                            ".github/workflows/electroverse-actionable-gaps.yml",
+                            ".github/workflows/france-irve-tariff-coverage-archive.yml",
+                            ".github/workflows/tesla-dataset-provenance-20261010.yml",
+                            ".github/workflows/uk-zero-cost-tcc-autopilot.yml"}
     if (retired.get("schema_version") != 1
             or {row.get("workflow") for row in retired.get("retired", [])} != approved_retirements
             or len(retired.get("retired", [])) != len(approved_retirements)):
@@ -217,9 +241,41 @@ def main() -> None:
                                       "data/electroverse/tariff_cache/shard-093.json"))
                                   and {"FR:electroverse_daily", "FR:electroverse_full", "FR:electroverse_overlay"}
                                       <= {item["id"] for item in sources}) if legacy else False
+        actionable_research = (workflow == ".github/workflows/electroverse-actionable-gaps.yml"
+                               and row.get("classification") == "historical_match_investigation"
+                               and legacy["source_scripts"] == ["scripts/analyze_electroverse_actionable_gaps.mjs",
+                                                                "scripts/analyze_electroverse_fingerprint_candidates.mjs",
+                                                                "scripts/build_electroverse_irve_fingerprint_index.py"]
+                               and set(legacy["literal_production_references"]) == {"data/national/france_public_charging_canonical.json"}
+                               and all((ROOT / path).is_file() for path in legacy["published_paths_in_git_add"])) if legacy else False
+        france_g5_audit = (workflow == ".github/workflows/france-irve-tariff-coverage-archive.yml"
+                           and row.get("classification") == "deferred_g5_join_audit"
+                           and len(legacy["source_scripts"]) == 5
+                           and "scripts/france/archive_irve_tariff_coverage.py" in legacy["source_scripts"]
+                           and set(legacy["literal_production_references"]) == {
+                               "data/electroverse/irve_location_mapping.json",
+                               "data/national/france-irve-dynamic-status-v9.json.gz"}
+                           and (ROOT / "reports/france/tariff-coverage").is_dir()
+                           and all((ROOT / path).is_file() for path in legacy["source_scripts"])) if legacy else False
+        tesla_audit = (workflow == ".github/workflows/tesla-dataset-provenance-20261010.yml"
+                       and row.get("classification") == "historical_one_time_provenance_audit"
+                       and len(legacy["source_scripts"]) == 4
+                       and not legacy["literal_production_references"]
+                       and (ROOT / "reports/tesla/history").is_dir()
+                       and "len(data)<100" in body
+                       and "GL:tesla_mac" in {item["id"] for item in sources}
+                       and all((ROOT / path).is_file() for path in legacy["source_scripts"])) if legacy else False
+        uk_autopilot = (workflow == ".github/workflows/uk-zero-cost-tcc-autopilot.yml"
+                        and row.get("classification") == "superseded_legacy_orchestration"
+                        and legacy["source_scripts"] == [script]
+                        and not legacy["published_paths_in_git_add"]
+                        and set(legacy["literal_production_references"]) == {"data/national/uk_validated_open_feeds.json.gz"}
+                        and "UK:validated_open_feeds" in {item["id"] for item in sources}
+                        and "scripts/collect_uk_validated_open_feeds.py" in body
+                        and "scripts/reconcile_uk_canonical.py" in body) if legacy else False
         if (not row.get("reason") or workflow not in required or workflow in migrated
-                or not legacy or (legacy["source_scripts"] != [script] and not targeted_investigation)
-                or not (volume_guard or workflow_audit or targeted_investigation)
+                or not legacy or (script not in legacy["source_scripts"] and not volume_guard and not workflow_audit)
+                or not (volume_guard or workflow_audit or targeted_investigation or actionable_research or france_g5_audit or tesla_audit or uk_autopilot)
                 or workflow in retired_workflows):
             errors.append(f"invalid explicit G2 retirement: {workflow}")
         else:

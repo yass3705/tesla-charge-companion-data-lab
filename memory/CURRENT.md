@@ -1077,3 +1077,27 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 IZIVIA officiel : FAST/Express/Grand Lyon/Pass executes hors checkout sur fixtures archivees ; 16 tests PASS. G2 FAIL (11 methodes, 113 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 flux ouverts UK : douze sources historiques isolees, pagination incomplete et PoGo partiel bloques ; 17 tests cibles PASS. G2 FAIL (10 methodes, 114 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+# 22 octobre 2026 — V9, bundle et intégration suisses
+
+Les deux constructeurs historiques suisses fonctionnent hors checkout avec 53 entrées archivées signées et un artefact bundle signé. Les gardes de variation EVSE sont retirés ; intégrité interne et portée conservées. G2 reste FAIL : 8 méthodes utiles et 116 transferts GitHub non vérifiés. Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 22 octobre 2026 — V9, AVIA guest Suisse
+
+Les deux scripts historiques fonctionnent hors checkout sur fixture archivée avec identifiants connecteur exacts et entrée nationale SHA. G2 FAIL : 7 méthodes utiles et 117 transferts GitHub non vérifiés. Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 22 octobre 2026 — V9, closeouts suisses AGR/Atlas/SOC
+
+Trois méthodes historiques, huit sorties, SHA et erreurs HTTP sont vérifiés hors ligne. G2 FAIL : 6 méthodes utiles et 118 transferts GitHub non vérifiés. Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 22 octobre 2026 — V9, EVGO Maroc
+
+Quatre scripts historiques exécutés hors checkout avec intégrité de la pagination des locations, provenance et identités ; gardes fixes 17/43 retirés. G2 FAIL : 5 méthodes utiles et 119 transferts GitHub non vérifiés. Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 22 octobre 2026 — V9, Load Motion France
+
+Quatre tenants et compilation directe testés hors réseau sur définitions archivées ; pagination et composantes tarifaires techniques vérifiées. G2 FAIL : 4 méthodes utiles, 120 transferts GitHub non vérifiés. Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 22 octobre 2026 — V9, méthodes G2 locales couvertes
+
+Les quatre anciens audits/orchestrations restants ont une disposition nominative contrôlée ; tous les scripts et rapports restent archivés. Le registre a zéro méthode utile sans destination, mais G2 reste FAIL à cause de 120 transferts GitHub non vérifiés et des Actions désactivées. Préparation G3–G8 hors ligne ensuite. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

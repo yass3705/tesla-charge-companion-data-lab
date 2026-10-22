@@ -47,6 +47,8 @@ def safe_evse(e):
     if not isinstance(e,dict): return None
     out={k:e.get(k) for k in SAFE_EVSE if k in e and k!='connectors'}
     conns=e.get('connectors')
+    if isinstance(conns,list) and len(conns)>12:
+        raise ValueError('EVGO connector response exceeds the preserved sanitization bound')
     if isinstance(conns,list): out['connectors']=[safe_connector(c) for c in conns[:12]]
     return out
 
@@ -54,8 +56,12 @@ def safe_location(loc):
     if not isinstance(loc,dict): return None
     out={k:loc.get(k) for k in SAFE_LOCATION if k in loc and k!='zones'}
     zones=[]
+    if len(loc.get('zones') or [])>20:
+        raise ValueError('EVGO zone response exceeds the preserved sanitization bound')
     for z in (loc.get('zones') or [])[:20]:
         if not isinstance(z,dict): continue
+        if len(z.get('evses') or [])>40:
+            raise ValueError('EVGO EVSE response exceeds the preserved sanitization bound')
         zones.append({'id':z.get('id'),'evses':[safe_evse(e) for e in (z.get('evses') or [])[:40]]})
     out['zones']=zones
     return out
@@ -106,6 +112,8 @@ def main():
         ps,pc,pobj=req_json(pin_path)
         raw_pins=pobj.get('pins') if isinstance(pobj,dict) and isinstance(pobj.get('pins'),list) else []
         ids=collect_ids(pobj)
+        if len(raw_pins)>100 or len(ids)>100:
+            raise ValueError('EVGO map response exceeds the preserved hydration bound')
         entry={'pins_status':ps,'pins_content_type':pc,'pin_count':len(raw_pins) if raw_pins else (0 if isinstance(raw_pins,list) else None),'pins':[safe_pin(p) for p in raw_pins[:100]],'location_ids':ids,'locations':[],'station_summaries':[]}
         for lid in ids[:100]:
             status,ctype,obj=req_json(f'/api/{version}/app/locations/{lid}')

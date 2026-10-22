@@ -303,7 +303,7 @@ def main():
         print("First map errors:",json.dumps(map_errors[:3],ensure_ascii=False,indent=2))
     if failures:
         print("First connector failures:",json.dumps(failures[:3],ensure_ascii=False,indent=2))
-    return 1 if not locations or not out else 0
+    return 1 if map_errors or failures else 0
 
 if __name__=="__main__":
     raise SystemExit(main())

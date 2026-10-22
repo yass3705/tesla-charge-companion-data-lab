@@ -19,6 +19,7 @@ import json
 from pathlib import Path
 
 SRC = Path('reports/morocco/evgo/latest-pin-hydration.json')
+STATUS_SOURCE = Path('reports/morocco/evgo/latest-status-overlay.json')
 OUT = Path('reports/morocco/evgo/latest-normalized-stations.json')
 
 ACTIVE_OCCUPIED = {'charging', 'suspendedev', 'finishing', 'preparing'}
@@ -68,9 +69,10 @@ def station_brand(name):
 
 def main():
     src = json.loads(SRC.read_text())
-    # v1 and v2 are currently equivalent. Prefer v1 deterministically and retain
-    # source version metadata so a future divergence can be detected explicitly.
-    data = src['versions']['v1']
+    # Use the same complete public API version as the status overlay when present.
+    selected_version = (json.loads(STATUS_SOURCE.read_text()).get('source_api_version')
+                        if STATUS_SOURCE.exists() else 'v1')
+    data = src['versions'][selected_version]
     pins = {}
     for p in data.get('pins') or []:
         ids = p.get('underlyingLocationIds') or []
@@ -163,7 +165,7 @@ def main():
         'source_generated_at': src.get('generated_at'),
         'source_report': str(SRC),
         'source_host': src.get('host'),
-        'source_api_version': 'v1',
+        'source_api_version': selected_version,
         'policy': {
             'derived_from_sanitized_public_report_only': True,
             'backend_requests_made': False,

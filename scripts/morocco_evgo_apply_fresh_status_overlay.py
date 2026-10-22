@@ -76,9 +76,6 @@ def main():
             op_counts[evse['operational_class']] += 1
             updated += 1
 
-    if len(stations) != 17 or updated != 43:
-        raise SystemExit(f'EVGO cardinality invariant failed: stations={len(stations)} evses={updated}')
-
     for station in stations:
         lat, lon = station.get('latitude'), station.get('longitude')
         if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
