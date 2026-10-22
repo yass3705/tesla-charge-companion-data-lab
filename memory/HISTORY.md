@@ -660,3 +660,7 @@ Le constructeur historique national a été isolé avec ses données d'identité
 # 22 octobre 2026 — V9, EnergyVision Belgique
 
 Les méthodes DATEX, CPO indépendante et rapprochement NAP s'enchaînent hors checkout sur tous les fichiers NAP référencés. Un tarif de station reste hors EVSE et hors classement. Les anciens rejets de volume ont été retirés ; tests hors réseau sur un PDC et échecs techniques réussis. G2 reste FAIL : 55 méthodes utiles, 72 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, eCarUp Suisse par coordonnées
+
+Le script historique de rapprochement se déroule hors checkout avec états archivés. Les fixtures distinguent correspondance sûre, prix ambigu et absence de candidat ; seuls les prix identiques des connecteurs publics dans la tolérance historique sont retenus. G2 reste FAIL : 54 méthodes utiles, 73 transferts GitHub non vérifiés. Actions désactivé.

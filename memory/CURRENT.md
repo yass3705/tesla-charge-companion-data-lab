@@ -977,3 +977,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 22 octobre 2026 — Electra plateforme France : constructeur historique exécuté hors checkout sur base nationale et preuves archivées, avec vérification de pagination, manifeste, tuiles et portée EVSE exacte. G2 reste FAIL : 58 méthodes requises et 71 transferts GitHub non vérifiés. Actions désactivé, aucune collecte live ni publication.
 
 22 octobre 2026 — EnergyVision Belgique : stage DATEX, source CPO indépendante et audit exact NAP exécutés hors checkout sur fixture. Les tarifs station restent non attribués aux PDC et non publiables. G2 reste FAIL : 55 méthodes requises et 72 transferts GitHub non vérifiés. Actions désactivé.
+
+22 octobre 2026 — eCarUp Suisse : rapprochement par coordonnées avec prix de connecteurs publics cohérents testé hors checkout ; ambiguïtés et absences restent non tarifées. G2 reste FAIL : 54 méthodes requises et 73 transferts GitHub non vérifiés. Actions désactivé.

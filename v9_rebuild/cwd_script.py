@@ -35,12 +35,49 @@ METHODS = {
     "swiss_iwb": ("scripts/finalize_swiss_iwb_official_basel.py", "data/switzerland/iwb-official-basel-overlay.json"),
     "swiss_tae": ("scripts/finalize_swiss_tae.py", "data/switzerland/tae-matterhorn-terminal-direct-tariffs.json"),
     "swiss_ewo": ("scripts/finalize_swiss_ewo_ecarup.py", "data/switzerland/ewo-ecarup-direct-tariffs.json"),
+    "swiss_ecarup_coordinate": ("scripts/reconcile_swiss_ecarup_coordinate_safe.py", "data/switzerland/ecarup-owner-coordinate-safe-overlay.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method == "swiss_ecarup_coordinate":
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / "docs/switzerland-ecarup-owner-coordinate-safe-overlay-2026-09-28.json").read_text(encoding="utf-8"))
+        exact = json.loads((out / "data/switzerland/ecarup-owner-direct-tariffs.json").read_text(encoding="utf-8"))
+        rows = payload.get("evses")
+        ambiguous = payload.get("ambiguous")
+        missing = payload.get("noCandidate")
+        if not all(isinstance(item, list) for item in (rows, ambiguous, missing)):
+            raise ValueError("Swiss eCarUp coordinate result lists missing")
+        ids = [row.get("evseId") for group in (rows, ambiguous, missing) for row in group]
+        already = {row.get("evseId") for row in exact.get("evses", [])}
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("operatorId") != "CH*ECU"
+                or any(not value or not value.startswith("CH*ECU*E") for value in ids)
+                or len(ids) != len(set(ids)) or any(value in already for value in ids)
+                or payload.get("alreadyExactPricedCount") != len(already)
+                or payload.get("safeCoordinateOverlayCount") != len(rows)
+                or payload.get("ambiguousCount") != len(ambiguous)
+                or payload.get("noCandidateCount") != len(missing)
+                or not isinstance(payload.get("nationalEvseCount"), int)
+                or payload["nationalEvseCount"] < len(ids)
+                or report != {key: value for key, value in payload.items()
+                              if key not in ("evses", "ambiguous", "noCandidate")}
+                or any(not row.get("connectors") or not isinstance(row.get("priceTuple"), list)
+                       or len(row["priceTuple"]) != 6
+                       or any(point.get("distanceMeters", 1000) > 3
+                              or point.get("price") is None
+                              or [point["price"].get("EnergyPrice"), point["price"].get("ParkingPrice"),
+                                  point["price"].get("PenaltyGracePeriodMinutes"),
+                                  point["price"].get("PenaltyPricePerMinute"),
+                                  point["price"].get("PenaltyMaxFee"),
+                                  str(point["price"].get("Currency") or "").upper()] != row["priceTuple"]
+                              for point in row["connectors"])
+                       for row in rows)):
+            raise ValueError("Swiss eCarUp coordinate evidence invalid")
+        return payload
     if method == "swiss_ewo":
         archive = "data/switzerland/ecarup-public-stations.json"
         source = json.loads((out / archive).read_text(encoding="utf-8"))
@@ -479,6 +516,12 @@ def run(out: Path, method: str, *, runner=subprocess.run) -> None:
         destination = out / "docs" / archive_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / "docs" / archive_name, destination)
+    if method == "swiss_ecarup_coordinate":
+        for archive_name in ("ecarup-public-stations.json", "ecarup-owner-direct-tariffs.json"):
+            destination = out / "data/switzerland" / archive_name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / "data/switzerland" / archive_name, destination)
+        (out / "docs").mkdir(parents=True, exist_ok=True)
     if method == "swiss_ewo":
         archive_name = "ecarup-public-stations.json"
         destination = out / "data/switzerland" / archive_name
