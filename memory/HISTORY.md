@@ -648,3 +648,7 @@ La branche de reconstruction a été avancée sans conflit vers le cahier des ch
 # 22 octobre 2026 — V9, Connected Kerb daily
 
 La chaîne historique complète opérateur → audit → app → rapprochement et son état documentaire sont exécutés sur fixtures avec dépendance signée. Aucun push main n'est reproduit. G2 reste FAIL : 61 méthodes utiles, 69 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, Eco-Movement PCPR UK
+
+Le collecteur inline archivé est extrait et exécuté hors checkout avec son audit sur deux pages de fixture. Les tarifs UK restent au stade candidat, sans classement Direct tant que les conditions historiques manquent. G2 reste FAIL : 59 méthodes utiles, 70 transferts GitHub non vérifiés. Actions désactivé.

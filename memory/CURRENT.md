@@ -971,3 +971,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 22 octobre 2026 — branche de reconstruction synchronisée par fast-forward à `610757924` pour intégrer le cahier des charges G0–G9 permanent. Connected Kerb app et rapprochement migrés sur état opérateur signé ; 62 méthodes requises restent, 69 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
 
 22 octobre 2026 — chaîne Connected Kerb daily couverte localement par les deux modules signés et la mise à jour du document de progrès. G2 reste FAIL : 61 méthodes requises et 69 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+22 octobre 2026 — Eco-Movement PCPR UK : méthode inline archivée exécutée hors checkout avec pagination et audit ; prix conservés en staging non classable. G2 reste FAIL : 59 méthodes requises et 70 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
