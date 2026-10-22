@@ -44,6 +44,11 @@ jobs:
       - name: Install preserved WAAT browser dependency
         if: ${{ inputs.source == 'FR:waat_monta_sharded' }}
         run: npm install --no-save playwright-core@1.55.0
+      - name: Resolve preserved Atlante technical app header
+        if: ${{ inputs.source == 'FR:atlante_fr_it' }}
+        env:
+          ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY }}
+        run: bash scripts/atlante/bootstrap_subscription_key.sh
       - name: Find the latest state for this source and branch
         id: prior
         env:

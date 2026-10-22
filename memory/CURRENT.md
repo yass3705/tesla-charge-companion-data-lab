@@ -1049,3 +1049,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 Zephyre : extracteur/compilateur historiques executes hors checkout sur fixture archivee, EVSE exact et erreurs techniques controles, zero offre Direct permis ; 2 tests PASS. G2 reste FAIL (25 methodes, 100 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 Ze-Watt : extraction/compilation historiques hors checkout, deux EVSE archives exacts, pagination et erreurs controlees, zero offre Direct permis ; 2 tests PASS. G2 reste FAIL (24 methodes, 101 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 Atlante FR/IT : collecteur historique hors checkout, deux sorties et reprise par cache SHA sur fixture ; 2 tests PASS. G2 reste FAIL (23 methodes, 102 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

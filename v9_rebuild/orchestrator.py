@@ -475,6 +475,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Ze-Watt historical methods missing")
             spec["output_file"] = str(OFFERS)
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/zewatt.py")
+        elif spec.get("module") == "atlante_fr_it" and source_id == "FR:atlante_fr_it":
+            from v9_rebuild.atlante_fr_it import OUTPUTS, SCRIPT
+            if spec["secret_names"] != ["ATLANTE_API_SUBSCRIPTION_KEY"] or not (root / SCRIPT).is_file():
+                raise ValueError("Atlante FR/IT historical method or authentication contract changed")
+            spec["output_file"] = OUTPUTS["FR"].as_posix()
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/atlante_fr_it.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -747,6 +753,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     ozecar_module = spec["module"] == "ozecar"
     zephyre_module = spec["module"] == "zephyre"
     zewatt_module = spec["module"] == "zewatt"
+    atlante_fr_it_module = spec["module"] == "atlante_fr_it"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -935,6 +942,9 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/zephyre.py"), "--out", str(staged)]
             if zewatt_module:
                 command = [sys.executable, str(root / "v9_rebuild/zewatt.py"), "--out", str(staged)]
+            if atlante_fr_it_module:
+                command = [sys.executable, str(root / "v9_rebuild/atlante_fr_it.py"), "--out", str(staged),
+                           "--checkpoint", str(checkpoint)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -969,7 +979,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_missing"
                 continue
             try:
-                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or energyvision_module or freshmile_inventory_module or waat_monta_dependency or greenspot_module or ozecar_module) and output.suffix == ".gz":
+                if (isolated_script or ionity_module or fastned_module or bump_inventory_module or bump_tariffs_module or allego_stations_module or cwd_script_module or uk_blink_module or uk_pcpr_module or uk_evyve_module or uk_gridserve_module or uk_ubitricity_module or uk_midhope_module or uk_connected_kerb_operator_module or uk_connected_kerb_app_module or uk_eco_movement_module or energyvision_module or freshmile_inventory_module or waat_monta_dependency or greenspot_module or ozecar_module or atlante_fr_it_module) and output.suffix == ".gz":
                     with gzip.open(output, "rt", encoding="utf-8") as handle:
                         payload = json.load(handle)
                 else:
@@ -1410,6 +1420,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif zewatt_module:
                 from v9_rebuild.zewatt import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif atlante_fr_it_module:
+                from v9_rebuild.atlante_fr_it import validate_output
                 try:
                     validate_output(staged)
                     valid = True
