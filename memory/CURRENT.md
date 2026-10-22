@@ -1059,3 +1059,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 IZIVIA FAST : scripts historiques executes hors checkout sur fixture Dole archivee, quatre sorties, prix manquant explicite et erreurs techniques bloquees ; 17 tests cibles PASS. G2 reste FAIL (20 methodes, 104 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 audit France traite : methode historique rejouee hors checkout sur entrees archivees ; rapport et empreintes conserves, 2 tests reels PASS. G2 reste FAIL (19 methodes, 105 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 Soregies Mobilites : collecteur officiel hors checkout, planchers de lignes retires, erreur HTTP 503 correctement rejetee, montants marketing archives non generalises ; 3 tests PASS. G2 reste FAIL (18 methodes, 106 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

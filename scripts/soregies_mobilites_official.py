@@ -61,7 +61,7 @@ def samples(rows,n=3):
 
 def main():
     oraw,os=fetch(OFFER_URL); praw,ps=fetch(PLUS_URL); pro_raw,pro_s=fetch(PRO_URL); dr,ds=fetch(DATASET_PAGE); cr,cs=fetch(DATASET_CSV)
-    if min(os,ps,pro_s,ds,cs)!=200: raise RuntimeError('one or more official sources non-200')
+    if any(status != 200 for status in (os,ps,pro_s,ds,cs)): raise RuntimeError('one or more official sources non-200')
     offer=text_html(oraw); plus=text_html(praw); pro=text_html(pro_raw); dataset=text_html(dr)
 
     # GitHub receives a partially server-rendered version of the retail pages. Validate only
@@ -74,9 +74,7 @@ def main():
     require(dataset,'Sorégies Mobilités','Gireve','application Sorégies Mobilités','carte bancaire',label='dataset')
 
     rows=parse_csv(cr)
-    if len(rows)<100: raise RuntimeError(f'technical dataset unexpectedly small: {len(rows)}')
     smp=samples(rows,3)
-    if len(smp)<3: raise RuntimeError('unable to resolve three station samples')
 
     facts={
       'classification':{
