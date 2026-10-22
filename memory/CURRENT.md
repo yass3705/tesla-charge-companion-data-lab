@@ -1035,3 +1035,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 France fixed watch : trois sources historiques executees hors checkout, tarif archive et contextes preserves ; 2 tests PASS. G2 reste FAIL (32 methodes, 93 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 tarifs Espagne secondaires : methodes EMT/Endesa/Plenergy executees hors checkout sur fixtures archivees ; changement de contexte/PDF/prix refuse, 2 tests PASS. G2 reste FAIL (31 methodes, 94 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 Espagne core : cinq parseurs historiques executes hors checkout, fixture issue des valeurs archivees, mutation tarifaire rejetee ; 2 tests PASS. G2 reste FAIL (30 methodes, 95 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

@@ -433,6 +433,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Spain secondary historical method missing")
             spec["output_file"] = "reports/fixed-tariff-refresh-spain-secondary-latest.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/spain_fixed_secondary.py")
+        elif spec.get("module") == "spain_fixed_core" and source_id == "ES:fixed_tariff_core":
+            from v9_rebuild.spain_fixed_core import DATA, SCRIPT
+            if spec["secret_names"] or any(not (root / path).is_file() for path in (*DATA, SCRIPT)):
+                raise ValueError("Spain core historical files missing")
+            spec["output_file"] = "reports/fixed-tariff-refresh-spain-latest.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/spain_fixed_core.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -698,6 +704,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     delmonicos_module = spec["module"] == "delmonicos_watch"
     france_fixed_watch_module = spec["module"] == "france_fixed_watch"
     spain_fixed_secondary_module = spec["module"] == "spain_fixed_secondary"
+    spain_fixed_core_module = spec["module"] == "spain_fixed_core"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -872,6 +879,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command = [sys.executable, str(root / "v9_rebuild/france_fixed_watch.py"), "--out", str(staged)]
             if spain_fixed_secondary_module:
                 command = [sys.executable, str(root / "v9_rebuild/spain_fixed_secondary.py"), "--out", str(staged)]
+            if spain_fixed_core_module:
+                command = [sys.executable, str(root / "v9_rebuild/spain_fixed_core.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1298,6 +1307,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif spain_fixed_secondary_module:
                 from v9_rebuild.spain_fixed_secondary import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
+                    valid = False
+            elif spain_fixed_core_module:
+                from v9_rebuild.spain_fixed_core import validate_output
                 try:
                     validate_output(staged)
                     valid = True
