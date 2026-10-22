@@ -217,12 +217,17 @@ function matchPowerdotAcDcFamily(loc,tariffs,compiled,associatedIds,identityMode
 }
 
 const first=await page(0);if(!first.data)throw new Error('first Electra page failed '+JSON.stringify(first.error));
-const total=first.data.totalCount,totalPages=Math.ceil(total/PAGE_SIZE),locations=[];
+const total=first.data.totalCount;
+if(!Number.isSafeInteger(total)||total<0)throw new Error('Invalid Electra pagination total');
+const totalPages=Math.ceil(total/PAGE_SIZE),locations=[];
 const failures=[];
-function acceptItems(items){for(const x of items||[])if(x?.country==='FR'&&compatible(x))locations.push(x);}
-acceptItems(first.data.items);
+function acceptItems(items,offset){
+  if(!Array.isArray(items)||items.length!==Math.min(PAGE_SIZE,total-offset))throw new Error(`Incomplete Electra page at ${offset}`);
+  for(const x of items)if(x?.country==='FR'&&compatible(x))locations.push(x);
+}
+acceptItems(first.data.items,0);
 let next=1;
-async function worker(){while(true){const i=next++;if(i>=totalPages)return;const r=await page(i*PAGE_SIZE);if(!r.data)failures.push({page:i,...r});else acceptItems(r.data.items);if(i%250===0)console.log(`Electra ${i}/${totalPages}, FR=${locations.length}, failures=${failures.length}`);}}
+async function worker(){while(true){const i=next++;if(i>=totalPages)return;const r=await page(i*PAGE_SIZE);if(!r.data||r.data.totalCount!==total)failures.push({page:i,...r});else acceptItems(r.data.items,i*PAGE_SIZE);if(i%250===0)console.log(`Electra ${i}/${totalPages}, FR=${locations.length}, failures=${failures.length}`);}}
 await Promise.all(Array.from({length:CONCURRENCY},worker));
 if(failures.length)throw new Error(`Electra extraction has ${failures.length} failed pages; refusing snapshot`);
 
@@ -396,4 +401,3 @@ await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2
 const residualGz=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,country:'FR',generatedAt:manifest.generatedAt,locations:residualLocations})),{level:9});
 await fs.writeFile(path.join(OUT,'residuals.json.gz'),residualGz);
 console.log(JSON.stringify(manifest,null,2));
-if(stats.publishedOffers<1000)throw new Error(`too few safe Electra platform offers: ${stats.publishedOffers}`);

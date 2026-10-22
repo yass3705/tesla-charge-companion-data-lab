@@ -973,3 +973,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 22 octobre 2026 — chaîne Connected Kerb daily couverte localement par les deux modules signés et la mise à jour du document de progrès. G2 reste FAIL : 61 méthodes requises et 69 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
 
 22 octobre 2026 — Eco-Movement PCPR UK : méthode inline archivée exécutée hors checkout avec pagination et audit ; prix conservés en staging non classable. G2 reste FAIL : 59 méthodes requises et 70 transferts GitHub non vérifiés. Actions désactivé, aucune publication.
+
+22 octobre 2026 — Electra plateforme France : constructeur historique exécuté hors checkout sur base nationale et preuves archivées, avec vérification de pagination, manifeste, tuiles et portée EVSE exacte. G2 reste FAIL : 58 méthodes requises et 71 transferts GitHub non vérifiés. Actions désactivé, aucune collecte live ni publication.

@@ -652,3 +652,7 @@ La chaîne historique complète opérateur → audit → app → rapprochement e
 # 22 octobre 2026 — V9, Eco-Movement PCPR UK
 
 Le collecteur inline archivé est extrait et exécuté hors checkout avec son audit sur deux pages de fixture. Les tarifs UK restent au stade candidat, sans classement Direct tant que les conditions historiques manquent. G2 reste FAIL : 59 méthodes utiles, 70 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, Electra plateforme France
+
+Le constructeur historique national a été isolé avec ses données d'identité et d'association archivées. Pagination et SHA des sorties sont vérifiés ; le seuil arbitraire de 1 000 offres a été retiré. Les tests hors réseau couvrent EVSE exact, échec de page, interruption et corruption. G2 reste FAIL : 58 méthodes utiles, 71 transferts GitHub non vérifiés. Actions désactivé.

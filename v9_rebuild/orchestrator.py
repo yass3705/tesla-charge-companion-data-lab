@@ -306,6 +306,15 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Eco-Movement historical PCPR method changed")
             spec["output_file"] = "data/national/uk_eco_movement_pcpr_v9.json.gz"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/uk_eco_movement.py")
+        elif spec.get("module") == "electra_france" and source_id == "FR:electra_platform":
+            from v9_rebuild.electra_france import ASSOCIATIONS, ASSOCIATION_DIR, NATIONAL, SCRIPT, VERIFIED
+            if spec["secret_names"] or any(not (root / path).is_file() for path in
+                                            (ASSOCIATIONS, NATIONAL, SCRIPT, VERIFIED)):
+                raise ValueError("Electra France preserved inputs missing")
+            if not (root / ASSOCIATION_DIR).is_dir():
+                raise ValueError("Electra France curated association batches missing")
+            spec["output_file"] = "data/platforms/electra/france/manifest.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/electra_france.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -534,6 +543,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     uk_connected_kerb_operator_module = spec["module"] == "uk_connected_kerb_operator"
     uk_connected_kerb_app_module = spec["module"] == "uk_connected_kerb_app"
     uk_eco_movement_module = spec["module"] == "uk_eco_movement"
+    electra_france_module = spec["module"] == "electra_france"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -625,7 +635,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if chargezy_te63_module else [sys.executable, str(root / "v9_rebuild/uk_connected_kerb_operator.py"), "--out", str(staged)]
                        if uk_connected_kerb_operator_module else [sys.executable, str(root / "v9_rebuild/uk_connected_kerb_app.py"), "--out", str(staged), "--operator-state", str(operator_state)]
                        if uk_connected_kerb_app_module else [sys.executable, str(root / "v9_rebuild/uk_eco_movement.py"), "--out", str(staged)]
-                       if uk_eco_movement_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
+                       if uk_eco_movement_module else [sys.executable, str(root / "v9_rebuild/electra_france.py"), "--out", str(staged)]
+                       if electra_france_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -917,6 +928,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif uk_eco_movement_module:
                 from v9_rebuild.uk_eco_movement import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif electra_france_module:
+                from v9_rebuild.electra_france import validate_output
                 try:
                     validate_output(staged)
                     valid = True
