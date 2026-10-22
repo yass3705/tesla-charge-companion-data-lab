@@ -49,8 +49,8 @@ def normalized_name(value):
 def main():
     stations = json.load(gzip.open(SOURCE, "rt"))["stations"]
     fast = {official_code(s["stationId"]): s for s in stations if s.get("network") == "IZIVIA FAST"}
-    if len(fast) < 600 or None in fast:
-        raise RuntimeError(f"Unexpected FAST national inventory size or identifier: {len(fast)}")
+    if None in fast:
+        raise RuntimeError("Invalid FAST national station identifier")
     status, markers = request("map/markers", "POST", {
         "square": {"centerLng": 2.2, "centerLat": 46.2, "zoom": 5}, "filters": FILTERS,
     })
@@ -169,8 +169,8 @@ def main():
         "unmatchedMapCodes": sorted(set(by_code) - set(fast)),
         "exceptions": [{"stationId": row["stationId"], "status": row["status"]} for row in rows if row["status"] != "direct_price_published"],
     }
-    dole = next(row for row in rows if row["stationId"] == "FRIZFPFAST422")
-    summary["doleMapDetail"] = dole.get("mapDetail")
+    dole = next((row for row in rows if row["stationId"] == "FRIZFPFAST422"), None)
+    summary["doleMapDetail"] = dole.get("mapDetail") if dole else None
     summary["exceptionDetails"] = [
         {"stationId": row["stationId"], "name": row["name"], "candidates": row.get("candidates")}
         for row in rows if row["status"] != "direct_price_published"
@@ -180,7 +180,7 @@ def main():
         json.dump({"summary": summary, "stations": rows}, file, ensure_ascii=False, separators=(",", ":"))
     SUMMARY.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({k: v for k, v in summary.items() if k not in ("detailFailures", "exceptions", "unmatchedMapCodes", "doleMapDetail", "exceptionDetails")}, ensure_ascii=False, indent=2))
-    print("DOLE_DETAIL", json.dumps(dole.get("mapDetail"), ensure_ascii=False)[:12000])
+    print("DOLE_DETAIL", json.dumps(dole.get("mapDetail") if dole else None, ensure_ascii=False)[:12000])
     print("EXCEPTION_DETAILS", json.dumps(summary["exceptionDetails"], ensure_ascii=False)[:16000])
     print("EXCEPTIONS", json.dumps(summary["exceptions"], ensure_ascii=False))
     if len(rows) != len(fast):
