@@ -1,0 +1,13 @@
+# Limites V1 : faits, hypothèses et priorité
+
+| Priorité | Constat mesuré ou lu dans le code | Conséquence | Hypothèse à vérifier |
+|---|---|---|---|
+| P0 | Le refresh écrit les shards, `checked-at` et manifeste **en fin de processus** ; le full dure ~8 h 50 sur 4 jobs. | Une interruption au milieu d'un bloc peut redemander les stations déjà interrogées depuis son dernier commit. | Un checkpoint local atomique par petit groupe réduira les requêtes de reprise ; le transfert Git entre jobs reste à concevoir. |
+| P0 | Le batch applique une `chargingLocation` non nulle sans preuve explicite de pagination complète ; les alias GraphQL peuvent être partiels. | Une réponse tronquée pourrait remplacer une station valide. | Valider cardinalité/cursors et préserver le dernier état avant écriture. Aucune perte réelle n'est affirmée ici. |
+| P1 | Le dernier bloc hebdomadaire a utilisé 1 185 fallbacks pour 4 818 lieux (2 148 requêtes totales). | Le chemin difficile domine le coût requête/temps. | Isoler les alias partiels plus tôt ; sans test API autorisé, aucun lot >5 ni concurrence >2 n'est justifié. |
+| P1 | Delta du 15/10 : 3 057 nouveaux IDs, tous non mappés ; 0 sélectionné. | La découverte géographique et l'actualisation tarifaire sont découplées ; le delta ne collecte pas de prix pour ces nouveaux emplacements. | Un pipeline de preuve de mapping séparé pourrait débloquer les nouvelles stations, sans rapprochement automatique GPS. |
+| P1 | 568 tuiles à zoom 9 chaque jour, même avec sélection tarifaire nulle ; 3 587 IDs ont disparu de l'inventaire du jour sans tuile en échec. | Coût fixe de découverte et risque de fausse disparition si la source évolue. | Un inventaire différentiel conditionnel exigerait un marqueur source fiable ; aucun n'est prouvé. Ne pas réduire le scan aujourd'hui. |
+| P2 | 128 shards = ~346 MB dans le manifeste, `checked-at` ~0,84 MB, inventaire ~5,7 MB ; `manifest` et `checked-at` sont réécrits même si les tarifs ne changent pas. | I/O et commits potentiellement inutiles. | Journal de fraîcheur compact/segments immuables ; mesurer d'abord sur un grand échantillon. |
+| P2 | Statuts EVSE incomplets : 348/1 426 dans la partition 5 du 15/10 après 48 erreurs persistantes. | L'overlay national filtré ne peut être promu. | Incident source/API ou complexité ; ne pas conclure à une faille du collecteur tarifaire. |
+
+La taille des réponses PBF, le CPU/RAM Actions et la distribution nationale des codes HTTP ne sont pas instrumentés dans les rapports retenus. La réduction de requêtes par suppression du full hebdomadaire serait risquée : les IDs de tuiles ne prouvent pas qu'un tarif est inchangé.
