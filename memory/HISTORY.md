@@ -692,3 +692,7 @@ Le rapport historique de regroupement géographique consomme le dernier inventai
 # 22 October 2026 - V9 Kilowatt tariff overlay
 
 The archived constructor consumes a signed inventory and preserves existing evidence. Only the fixed station-count gate was removed. G2 FAIL: 43 useful methods and 83 unverified handoffs.
+
+# 22 October 2026 - V9 Swiss EBS closeout
+
+The archived exact-location method now consumes a signed first pass. Existing priced EVSE are preserved and the separately archived Sahli proof is retained. G2 FAIL: 42 useful methods and 84 unverified handoffs.

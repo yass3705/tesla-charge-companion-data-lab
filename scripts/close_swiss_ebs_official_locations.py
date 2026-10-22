@@ -22,13 +22,15 @@ for u in d.get("unresolved",[]):
 d["evses"]=sorted(existing.values(),key=lambda x:x["evseId"])
 d["unresolved"]=remaining
 d["counts"]["pricedEvseCount"]=len(d["evses"]);d["counts"]["unresolvedEvseCount"]=len(remaining)
-d["officialLocationWebsiteResolvedEvseIds"]=resolvedOfficial
+d["officialLocationWebsiteResolvedEvseIds"]=sorted(set(d.get("officialLocationWebsiteResolvedEvseIds") or []) | set(resolvedOfficial))
 d["generatedAt"]=datetime.now(timezone.utc).isoformat()
-d["policy"]="Exact eCarUp same-operator prices where available, plus exact official location-site tariffs for Hofmatt and MythenForum. Sahli remains unresolved because current public sources disagree on direct/ad-hoc payment availability; no extrapolation."
+if resolvedOfficial:
+ d["policy"]="Exact eCarUp same-operator prices where available, plus exact official location-site tariffs for Hofmatt and MythenForum. Sahli remains unresolved until separately proven; no extrapolation."
 DATA.write_text(json.dumps(d,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 f=json.loads(FINAL.read_text(encoding="utf-8"));f["updatedAt"]=d["generatedAt"];f["pricedEvseCount"]=len(d["evses"]);f["unresolvedEvseCount"]=len(remaining)
 f["status"]="complete" if not remaining and len(d["evses"])==f["nationalEvseCount"] else "partial"
-f["method"]="Current national CH*EBS scope + exact eCarUp same-operator pricing + current official Hofmatt/MythenForum location tariffs"
+if resolvedOfficial:
+ f["method"]="Current national CH*EBS scope + exact eCarUp same-operator pricing + current official Hofmatt/MythenForum location tariffs"
 f["policy"]=d["policy"]
 FINAL.write_text(json.dumps(f,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps(f,ensure_ascii=False,indent=2));print(json.dumps({"resolvedOfficial":resolvedOfficial,"remaining":remaining},ensure_ascii=False,indent=2))

@@ -125,6 +125,14 @@ jobs:
           run-id: ${{ steps.prior.outputs.kilowatt_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/MA_kilowatt_inventory
+      - name: Restore validated Swiss EBS first pass
+        if: ${{ inputs.source == 'CH:ebs_closeout' && steps.prior.outputs.ebs_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-collection-CH_ebs_ecarup
+          run-id: ${{ steps.prior.outputs.ebs_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/CH_ebs_ecarup
       - name: Collect migrated sources into isolated artifacts
         env:
           SOURCE_ID: ${{ inputs.source }}

@@ -14,6 +14,21 @@ def artifact(kind: str, run_id: int, created: str, *, branch: str = "rebuild/v9-
 
 
 class ArtifactSelectionTests(unittest.TestCase):
+    def test_swiss_ebs_closeout_selects_same_branch_first_pass(self):
+        first = {**artifact("collection", 81, "2026-10-22T00:00:00Z"),
+                 "name": "tcc-v9-collection-CH_ebs_ecarup"}
+        wrong = {**first, "id": 82, "created_at": "2026-10-22T01:00:00Z",
+                 "workflow_run": {"id": 82, "head_branch": "main"}}
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "github-output"
+            args = ["selector", "--repo", "owner/data-lab", "--branch", "rebuild/v9-20261020",
+                    "--source", "CH:ebs_closeout", "--github-output", str(output)]
+            with patch("sys.argv", args), patch.dict("os.environ", {"GH_TOKEN": "fixture-token"}), \
+                 patch("v9_rebuild.artifact_selection.fetch", return_value=[first, wrong]), \
+                 patch("builtins.print"):
+                main()
+            self.assertIn("ebs_run_id=81", output.read_text())
+
     def test_kilowatt_reconciliation_uses_only_same_branch_inventory(self):
         inventory = {**artifact("collection", 71, "2026-10-22T00:00:00Z"),
                      "name": "tcc-v9-collection-MA_kilowatt_inventory"}
