@@ -408,6 +408,13 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("REVE historical stream collector or secret changed")
             spec["output_file"] = "data/spain_reve/full_20261018/tariff_status_stream_state.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/reve_stream.py")
+        elif spec.get("module") == "reve_national" and source_id == "ES:reve_national":
+            from v9_rebuild.reve_national import BASELINE, SCRIPTS, VALIDATOR
+            if (spec["secret_names"] or any(not (root / path).is_file() for path in (*SCRIPTS, VALIDATOR))
+                    or not (root / BASELINE / "spain-static/manifest.json").is_file()):
+                raise ValueError("REVE national methods or last-good baseline missing")
+            spec["output_file"] = "data/reve_v2/validated_runtime/spain-static/manifest.json"
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/reve_national.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -669,6 +676,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     swisscharge_module = spec["module"] == "swisscharge"
     greenspot_module = spec["module"] == "greenspot"
     reve_stream_module = spec["module"] == "reve_stream"
+    reve_national_module = spec["module"] == "reve_national"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -835,6 +843,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
             if reve_stream_module:
                 command = [sys.executable, str(root / "v9_rebuild/reve_stream.py"), "--out", str(staged),
                            "--checkpoint", str(checkpoint)]
+            if reve_national_module:
+                command = [sys.executable, str(root / "v9_rebuild/reve_national.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1233,6 +1243,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     valid = False
             elif reve_stream_module:
                 from v9_rebuild.reve_stream import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif reve_national_module:
+                from v9_rebuild.reve_national import validate_output
                 try:
                     validate_output(staged)
                     valid = True

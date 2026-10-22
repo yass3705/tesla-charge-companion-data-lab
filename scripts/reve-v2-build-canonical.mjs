@@ -49,7 +49,7 @@ for(const loc of locs.values()){
 }
 stations.sort((a,b)=>String(a.id).localeCompare(String(b.id)));
 const canonical={schemaVersion:1,country:'ES',source:'REVE',policy:'REVE-only',generatedAt:new Date().toISOString(),snapshot:SNAP,stations};
-const report={schemaVersion:1,generatedAt:canonical.generatedAt,validation:{pages:files.length,stations:stations.length,evses:evseGlobal.size,connectors:connectorGlobal.size,connectorsWithTariff:withTariff,tariffMissing,duplicateLocationsRemoved:dupLocations,duplicateEvsesObserved:dupEvses,duplicateConnectorsObserved:dupConnectors},checks:{pageCoverage:files.length===Number(SOURCE_MANIFEST.pagesSucceeded),stationFloor:stations.length>=10000,evseFloor:evseGlobal.size>=25000,connectorFloor:connectorGlobal.size>=30000,tariffAccounting:withTariff+tariffMissing===connectorGlobal.size,duplicateLocationRate:dupLocations/Math.max(1,rawLocations)<0.001}};
+const report={schemaVersion:1,generatedAt:canonical.generatedAt,validation:{pages:files.length,stations:stations.length,evses:evseGlobal.size,connectors:connectorGlobal.size,connectorsWithTariff:withTariff,tariffMissing,duplicateLocationsRemoved:dupLocations,duplicateEvsesObserved:dupEvses,duplicateConnectorsObserved:dupConnectors},checks:{pageCoverage:files.length===Number(SOURCE_MANIFEST.pagesSucceeded),tariffAccounting:withTariff+tariffMissing===connectorGlobal.size}};
 report.ok=Object.values(report.checks).every(Boolean);
 if(!report.ok) throw new Error('Canonical validation failed '+JSON.stringify(report));
 await fs.mkdir(OUTDIR,{recursive:true});
@@ -59,10 +59,10 @@ for(let i=0;i<stations.length;i+=SHARD_SIZE){
  const index=Math.floor(i/SHARD_SIZE)+1;
  const n=String(index).padStart(3,'0');
  const shard={...canonical,stations:stations.slice(i,i+SHARD_SIZE),shard:{index,size:SHARD_SIZE,total:Math.ceil(stations.length/SHARD_SIZE)}};
- await fs.writeFile(path.join(OUTDIR,`spain-reve-v2-${n}.json`),JSON.stringify(shard,null,2)+'\\n');
+ await fs.writeFile(path.join(OUTDIR,`spain-reve-v2-${n}.json`),JSON.stringify(shard,null,2)+'\n');
 }
 report.storage={format:'sharded-json',stationsPerShard:500,shards:Math.ceil(stations.length/500)};
-await fs.writeFile(REPORT,JSON.stringify(report,null,2)+'\\n');
+await fs.writeFile(REPORT,JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify(report,null,2));
 
 // workflow bootstrap

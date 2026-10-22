@@ -75,10 +75,15 @@ for(let page=1;page<=MAX_PAGES;page++){
     await fs.writeFile(path.join(out,'manifest.checkpoint.json'),JSON.stringify(manifest,null,2)+'\n');
   }
   console.log(`page ${page}: ${data.length} records; total=${manifest.records}`);
-  if(data.length===0 || data.length<PER_PAGE || (totalPages && page>=totalPages)) break;
+  if(data.length===0 || data.length<PER_PAGE || (totalPages && page>=totalPages)){
+    manifest.endedByShortPage=data.length<PER_PAGE;
+    break;
+  }
   await new Promise(r=>setTimeout(r,100));
 }
-manifest.status=manifest.pagesSucceeded>0?'captured':'failed';
+manifest.paginationComplete=manifest.failures.length===0&&manifest.pagesSucceeded>0&&
+  (totalPages?manifest.pagesSucceeded===totalPages:manifest.endedByShortPage===true);
+manifest.status=manifest.paginationComplete?'captured':'failed';
 manifest.completedAt=new Date().toISOString();
 await fs.writeFile(path.join(out,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log(JSON.stringify(manifest,null,2));
