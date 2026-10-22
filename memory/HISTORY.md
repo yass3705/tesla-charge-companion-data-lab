@@ -664,3 +664,7 @@ Les méthodes DATEX, CPO indépendante et rapprochement NAP s'enchaînent hors c
 # 22 octobre 2026 — V9, eCarUp Suisse par coordonnées
 
 Le script historique de rapprochement se déroule hors checkout avec états archivés. Les fixtures distinguent correspondance sûre, prix ambigu et absence de candidat ; seuls les prix identiques des connecteurs publics dans la tolérance historique sont retenus. G2 reste FAIL : 54 méthodes utiles, 73 transferts GitHub non vérifiés. Actions désactivé.
+
+# 22 octobre 2026 — V9, eCarUp Suisse propriétaire exact
+
+Le rapprochement par Hubject ID exact et la sélection de son artefact immuable sont raccordés à la chaîne eCarUp. L'adaptateur géographique exige maintenant cet état validé et rejette absence ou SHA incorrect. Les tests restent hors réseau. G2 reste FAIL : 53 méthodes utiles, 74 transferts GitHub non vérifiés. Actions désactivé.

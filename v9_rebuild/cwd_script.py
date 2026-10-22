@@ -36,12 +36,41 @@ METHODS = {
     "swiss_tae": ("scripts/finalize_swiss_tae.py", "data/switzerland/tae-matterhorn-terminal-direct-tariffs.json"),
     "swiss_ewo": ("scripts/finalize_swiss_ewo_ecarup.py", "data/switzerland/ewo-ecarup-direct-tariffs.json"),
     "swiss_ecarup_coordinate": ("scripts/reconcile_swiss_ecarup_coordinate_safe.py", "data/switzerland/ecarup-owner-coordinate-safe-overlay.json"),
+    "swiss_ecarup_owner": ("scripts/reconcile_swiss_ecarup_owner.py", "data/switzerland/ecarup-owner-direct-tariffs.json"),
 }
 
 
 def validate_output(out: Path, method: str) -> dict:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
+    if method == "swiss_ecarup_owner":
+        payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
+        report = json.loads((out / "docs/switzerland-ecarup-owner-reconciliation-2026-09-28.json").read_text(encoding="utf-8"))
+        rows, unresolved = payload.get("evses"), payload.get("unresolved")
+        if not isinstance(rows, list) or not isinstance(unresolved, list):
+            raise ValueError("Swiss eCarUp exact owner lists missing")
+        ids = [row.get("evseId") for row in rows + unresolved]
+        counts = payload.get("counts") or {}
+        priced = [row for row in rows if row.get("classification") == "priced_public_direct"]
+        restricted = [row for row in rows if row.get("classification") in
+                      {"restricted_or_nonpublic_connector", "restricted_no_public_direct_tariff"}]
+        if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
+                or payload.get("operatorId") != "CH*ECU"
+                or any(not value or not value.startswith("CH*ECU*E") for value in ids)
+                or len(ids) != len(set(ids))
+                or counts.get("nationalEvseCount") != len(ids)
+                or counts.get("pricedEvseCount") != len(priced)
+                or counts.get("classifiedNoPublicDirectTariffCount") != len(restricted)
+                or counts.get("unresolvedEvseCount") != len(unresolved)
+                or len(rows) != len(priced) + len(restricted)
+                or report.get("status") != ("complete" if not unresolved else "partial")
+                or report.get("productionSource") != str(METHODS[method][1])
+                or any(report.get(key) != value for key, value in counts.items())
+                or any(row.get("ecarup", {}).get("accessType") != 0
+                       or not isinstance(row.get("ecarup", {}).get("price"), dict)
+                       or not row["ecarup"].get("hubjectId") for row in priced)):
+            raise ValueError("Swiss eCarUp exact owner contract invalid")
+        return payload
     if method == "swiss_ecarup_coordinate":
         payload = json.loads((out / METHODS[method][1]).read_text(encoding="utf-8"))
         report = json.loads((out / "docs/switzerland-ecarup-owner-coordinate-safe-overlay-2026-09-28.json").read_text(encoding="utf-8"))
@@ -496,7 +525,7 @@ def validate_output(out: Path, method: str) -> dict:
     return payload
 
 
-def run(out: Path, method: str, *, runner=subprocess.run) -> None:
+def run(out: Path, method: str, *, runner=subprocess.run, source: Path | None = None) -> None:
     if method not in METHODS:
         raise ValueError("Unsupported relative-output method")
     out = out.resolve()
@@ -516,11 +545,16 @@ def run(out: Path, method: str, *, runner=subprocess.run) -> None:
         destination = out / "docs" / archive_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / "docs" / archive_name, destination)
-    if method == "swiss_ecarup_coordinate":
-        for archive_name in ("ecarup-public-stations.json", "ecarup-owner-direct-tariffs.json"):
+    if method in {"swiss_ecarup_owner", "swiss_ecarup_coordinate"}:
+        archives = (("ecarup-public-stations.json",) if method == "swiss_ecarup_owner" else
+                    ("ecarup-public-stations.json", "ecarup-owner-direct-tariffs.json"))
+        for archive_name in archives:
             destination = out / "data/switzerland" / archive_name
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / "data/switzerland" / archive_name, destination)
+            original = (source / "data/switzerland" / archive_name
+                        if method == "swiss_ecarup_coordinate" and archive_name == "ecarup-owner-direct-tariffs.json" and source
+                        else ROOT / "data/switzerland" / archive_name)
+            shutil.copy2(original, destination)
         (out / "docs").mkdir(parents=True, exist_ok=True)
     if method == "swiss_ewo":
         archive_name = "ecarup-public-stations.json"
@@ -561,8 +595,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", choices=sorted(METHODS), required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--source", type=Path)
     args = parser.parse_args()
-    run(args.out, args.method)
+    run(args.out, args.method, source=args.source)
 
 
 if __name__ == "__main__":

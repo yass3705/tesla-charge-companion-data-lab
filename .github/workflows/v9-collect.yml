@@ -93,6 +93,14 @@ jobs:
           run-id: ${{ steps.prior.outputs.operator_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/GB_connected_kerb_operator
+      - name: Restore validated Swiss eCarUp exact owner snapshot
+        if: ${{ inputs.source == 'CH:ecarup_coordinate' && steps.prior.outputs.ecarup_owner_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tcc-v9-collection-CH_ecarup_owner
+          run-id: ${{ steps.prior.outputs.ecarup_owner_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/input_dependencies/CH_ecarup_owner
       - name: Collect migrated sources into isolated artifacts
         env:
           SOURCE_ID: ${{ inputs.source }}

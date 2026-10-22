@@ -199,10 +199,10 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Tesla/Mac historical ingress method or authentication contract changed")
             spec["output_file"] = "data/tesla/mac/last-good.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/tesla_mac.py")
-        elif spec.get("module") == "cwd_script" and source_id in {"FR:etotem_inventory", "FR:qwello_saone_et_loire", "FR:reveo_official", "FR:avia_picoty_inventory", "FR:waat_inventory", "CH:fastned_official", "CH:lidl_official", "CH:ionity_national", "CH:plenitude_official", "CH:ail_emoti", "CH:ebs_ecarup", "CH:ewd_official", "CH:migrol_official", "CH:autosense_amag", "CH:chevp_evpass", "CH:shell_evpass", "CH:saascharge_official", "CH:partino_restricted", "CH:iwb_basel", "CH:tae_matterhorn", "CH:ewo_ecarup", "CH:ecarup_coordinate"}:
+        elif spec.get("module") == "cwd_script" and source_id in {"FR:etotem_inventory", "FR:qwello_saone_et_loire", "FR:reveo_official", "FR:avia_picoty_inventory", "FR:waat_inventory", "CH:fastned_official", "CH:lidl_official", "CH:ionity_national", "CH:plenitude_official", "CH:ail_emoti", "CH:ebs_ecarup", "CH:ewd_official", "CH:migrol_official", "CH:autosense_amag", "CH:chevp_evpass", "CH:shell_evpass", "CH:saascharge_official", "CH:partino_restricted", "CH:iwb_basel", "CH:tae_matterhorn", "CH:ewo_ecarup", "CH:ecarup_coordinate", "CH:ecarup_owner"}:
             from v9_rebuild.cwd_script import METHODS
             method = spec.get("method")
-            if ((source_id, method) not in {("FR:etotem_inventory", "etotem_inventory"), ("FR:qwello_saone_et_loire", "qwello_saone_et_loire"), ("FR:reveo_official", "reveo_official"), ("FR:avia_picoty_inventory", "avia_picoty_inventory"), ("FR:waat_inventory", "waat_inventory"), ("CH:fastned_official", "swiss_fastned"), ("CH:lidl_official", "swiss_lidl"), ("CH:ionity_national", "swiss_ionity"), ("CH:plenitude_official", "swiss_plenitude"), ("CH:ail_emoti", "swiss_ail"), ("CH:ebs_ecarup", "swiss_ebs"), ("CH:ewd_official", "swiss_ewd"), ("CH:migrol_official", "swiss_migrol"), ("CH:autosense_amag", "swiss_autosense"), ("CH:chevp_evpass", "swiss_chevp"), ("CH:shell_evpass", "swiss_shell_evpass"), ("CH:saascharge_official", "swiss_saascharge"), ("CH:partino_restricted", "swiss_partino"), ("CH:iwb_basel", "swiss_iwb"), ("CH:tae_matterhorn", "swiss_tae"), ("CH:ewo_ecarup", "swiss_ewo"), ("CH:ecarup_coordinate", "swiss_ecarup_coordinate")}
+            if ((source_id, method) not in {("FR:etotem_inventory", "etotem_inventory"), ("FR:qwello_saone_et_loire", "qwello_saone_et_loire"), ("FR:reveo_official", "reveo_official"), ("FR:avia_picoty_inventory", "avia_picoty_inventory"), ("FR:waat_inventory", "waat_inventory"), ("CH:fastned_official", "swiss_fastned"), ("CH:lidl_official", "swiss_lidl"), ("CH:ionity_national", "swiss_ionity"), ("CH:plenitude_official", "swiss_plenitude"), ("CH:ail_emoti", "swiss_ail"), ("CH:ebs_ecarup", "swiss_ebs"), ("CH:ewd_official", "swiss_ewd"), ("CH:migrol_official", "swiss_migrol"), ("CH:autosense_amag", "swiss_autosense"), ("CH:chevp_evpass", "swiss_chevp"), ("CH:shell_evpass", "swiss_shell_evpass"), ("CH:saascharge_official", "swiss_saascharge"), ("CH:partino_restricted", "swiss_partino"), ("CH:iwb_basel", "swiss_iwb"), ("CH:tae_matterhorn", "swiss_tae"), ("CH:ewo_ecarup", "swiss_ewo"), ("CH:ecarup_coordinate", "swiss_ecarup_coordinate"), ("CH:ecarup_owner", "swiss_ecarup_owner")}
                     or spec["secret_names"] or not (root / METHODS[method][0]).is_file()):
                 raise ValueError("Relative-output historical method or authentication contract changed")
             spec["output_file"] = METHODS[method][1]
@@ -448,6 +448,9 @@ def validated_dependency(bundle: Path, source_id: str, module: str) -> Path:
     elif module == "cwd_script" and source_id == "FR:waat_inventory":
         from v9_rebuild.cwd_script import validate_output
         validate_output(state, "waat_inventory")
+    elif module == "cwd_script" and source_id == "CH:ecarup_owner":
+        from v9_rebuild.cwd_script import validate_output
+        validate_output(state, "swiss_ecarup_owner")
     elif module == "uk_connected_kerb_operator" and source_id == "GB:connected_kerb_operator":
         from v9_rebuild.uk_connected_kerb_operator import validate_output
         validate_output(state)
@@ -607,6 +610,14 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     operator_state = validated_dependency(dependency, "GB:connected_kerb_operator", "uk_connected_kerb_operator")
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
+            if source_id == "CH:ecarup_coordinate":
+                dependency = out_root / "input_dependencies/CH_ecarup_owner"
+                if not dependency.is_dir():
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_missing", "attempts": 0}
+                try:
+                    owner_state = validated_dependency(dependency, "CH:ecarup_owner", "cwd_script")
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
             command = ([sys.executable, str(root / safe_relative(spec["script"])), "--out", str(staged / spec["output_file"])]
                        if isolated_script else [sys.executable, str(root / "scripts/operator_manifest_runner.py"), "--operator", spec["operator"], "--out", str(staged)]
                        if operator_module else [sys.executable, str(root / "v9_rebuild/nl_dotnl.py"), "--out", str(staged)]
@@ -653,6 +664,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command.extend(["--source", str(belib_prior)])
             if waat_monta_dependency:
                 command.extend(["--inventory", str(inventory_state)])
+            if source_id == "CH:ecarup_coordinate":
+                command.extend(["--source", str(owner_state)])
             if electroverse_module and spec["mode"] == "full":
                 command.extend(["--max-chunks", "1"])
             completed = runner(command, cwd=staged if spec["module"] == "belgium_nap" else root,

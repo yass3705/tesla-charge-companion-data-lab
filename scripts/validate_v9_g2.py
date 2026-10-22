@@ -83,6 +83,7 @@ def main() -> None:
                   else "scripts/finalize_swiss_tae.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_tae"
                   else "scripts/finalize_swiss_ewo_ecarup.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_ewo"
                   else "scripts/reconcile_swiss_ecarup_coordinate_safe.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_ecarup_coordinate"
+                  else "scripts/reconcile_swiss_ecarup_owner.py" if spec["module"] == "cwd_script" and spec["method"] == "swiss_ecarup_owner"
                   else "scripts/etotem_direct_station_inventory.py" if spec["module"] == "cwd_script"
                   else "scripts/france/build_france_irve_static_v9.py" if spec["module"] == "france_irve"
                   else "scripts/build_france_canonical_dataset.py" if spec["module"] == "france_canonical"

@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from v9_rebuild import cwd_script
-from v9_rebuild.orchestrator import read_sources, run_source
+from v9_rebuild.orchestrator import read_sources, run_batch, run_source
 
 METHOD = 'swiss_ecarup_coordinate'
 NATIONAL = [
@@ -32,6 +32,8 @@ def fixture_root(root: Path):
     (root / 'scripts').mkdir(parents=True)
     shutil.copy2(cwd_script.ROOT / cwd_script.METHODS[METHOD][0],
                  root / cwd_script.METHODS[METHOD][0])
+    shutil.copy2(cwd_script.ROOT / cwd_script.METHODS['swiss_ecarup_owner'][0],
+                 root / cwd_script.METHODS['swiss_ecarup_owner'][0])
     data = root / 'data/switzerland'
     data.mkdir(parents=True)
     (data / 'ecarup-public-stations.json').write_text(json.dumps({'stations':[
@@ -65,11 +67,30 @@ class SwissEcarupCoordinateMigrationTests(unittest.TestCase):
             self.assertEqual([row['evseId'] for row in result['ambiguous']], ['CH*ECU*E2'])
             self.assertEqual([row['evseId'] for row in result['noCandidate']], ['CH*ECU*E3'])
             spec = next(row for row in read_sources() if row['id'] == 'CH:ecarup_coordinate')
+            owner_spec = next(row for row in read_sources() if row['id'] == 'CH:ecarup_owner')
+            def owner_process(command, **_):
+                with patch.object(cwd_script, 'ROOT', base / 'source'):
+                    cwd_script.run(Path(command[command.index('--out') + 1]),
+                                   'swiss_ecarup_owner', runner=offline_runner)
+                return SimpleNamespace(returncode=0)
+            bundle = base / 'owner-bundle'
+            self.assertEqual(run_batch([owner_spec], bundle, runner=owner_process)['status'], 'complete')
+            dependency = base / 'artifacts/input_dependencies/CH_ecarup_owner'
+            shutil.copytree(bundle, dependency)
             def process(command, **_):
                 with patch.object(cwd_script, 'ROOT', base / 'source'):
-                    cwd_script.run(Path(command[-1]), METHOD, runner=offline_runner)
+                    cwd_script.run(Path(command[command.index('--out') + 1]), METHOD,
+                                   source=Path(command[command.index('--source') + 1]),
+                                   runner=offline_runner)
                 return SimpleNamespace(returncode=0)
             self.assertEqual(run_source(spec, base / 'artifacts', runner=process)['status'], 'ok')
+            missing = run_source(spec, base / 'missing')
+            self.assertEqual(missing['reason'], 'validated_dependency_missing')
+            copied = base / 'bad/input_dependencies/CH_ecarup_owner'
+            shutil.copytree(bundle, copied)
+            row = json.loads((copied / 'manifest.json').read_text())['sources'][0]
+            (copied / row['artifact']).write_bytes(b'bad')
+            self.assertEqual(run_source(spec, base / 'bad')['reason'], 'validated_dependency_invalid')
 
     def test_failure_and_corruption(self):
         with tempfile.TemporaryDirectory() as temp:

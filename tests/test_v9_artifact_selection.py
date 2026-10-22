@@ -58,6 +58,21 @@ class ArtifactSelectionTests(unittest.TestCase):
                 main()
             self.assertIn("operator_run_id=31", output.read_text())
 
+    def test_ecarup_coordinate_selects_exact_owner_on_same_branch(self):
+        owner = {**artifact("collection", 41, "2026-10-22T00:00:00Z"),
+                 "name": "tcc-v9-collection-CH_ecarup_owner"}
+        wrong = {**owner, "id": 42, "created_at": "2026-10-22T01:00:00Z",
+                 "workflow_run": {"id": 42, "head_branch": "main"}}
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "github-output"
+            args = ["selector", "--repo", "owner/data-lab", "--branch", "rebuild/v9-20261020",
+                    "--source", "CH:ecarup_coordinate", "--github-output", str(output)]
+            with patch("sys.argv", args), patch.dict("os.environ", {"GH_TOKEN": "fixture-token"}), \
+                 patch("v9_rebuild.artifact_selection.fetch", return_value=[owner, wrong]), \
+                 patch("builtins.print"):
+                main()
+            self.assertIn("ecarup_owner_run_id=41", output.read_text())
+
 
 if __name__ == "__main__":
     unittest.main()
