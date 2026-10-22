@@ -19,15 +19,16 @@ class ArtifactSelectionTests(unittest.TestCase):
                      "name": "tcc-v9-collection-MA_kilowatt_inventory"}
         wrong = {**inventory, "id": 72, "created_at": "2026-10-22T01:00:00Z",
                  "workflow_run": {"id": 72, "head_branch": "main"}}
-        with tempfile.TemporaryDirectory() as temp:
-            output = Path(temp) / "github-output"
-            args = ["selector", "--repo", "owner/data-lab", "--branch", "rebuild/v9-20261020",
-                    "--source", "MA:kilowatt_reconcile", "--github-output", str(output)]
-            with patch("sys.argv", args), patch.dict("os.environ", {"GH_TOKEN": "fixture-token"}), \
-                 patch("v9_rebuild.artifact_selection.fetch", return_value=[inventory, wrong]), \
-                 patch("builtins.print"):
-                main()
-            self.assertIn("kilowatt_run_id=71", output.read_text())
+        for source in ("MA:kilowatt_reconcile", "MA:kilowatt_tariff_overlay"):
+            with self.subTest(source=source), tempfile.TemporaryDirectory() as temp:
+                output = Path(temp) / "github-output"
+                args = ["selector", "--repo", "owner/data-lab", "--branch", "rebuild/v9-20261020",
+                        "--source", source, "--github-output", str(output)]
+                with patch("sys.argv", args), patch.dict("os.environ", {"GH_TOKEN": "fixture-token"}), \
+                     patch("v9_rebuild.artifact_selection.fetch", return_value=[inventory, wrong]), \
+                     patch("builtins.print"):
+                    main()
+                self.assertIn("kilowatt_run_id=71", output.read_text())
 
     def test_overlay_uses_two_independent_validated_sources_on_same_branch(self):
         daily = {**artifact("collection", 21, "2026-10-20T01:00:00Z"), "name": "tcc-v9-collection-FR_electroverse_daily"}

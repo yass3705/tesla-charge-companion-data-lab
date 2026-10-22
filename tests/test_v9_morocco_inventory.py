@@ -140,6 +140,69 @@ class MoroccoInventoryTests(unittest.TestCase):
             (bad / json.loads((bad / "manifest.json").read_text())["sources"][0]["artifact"]).write_bytes(b"bad")
             self.assertEqual(run_source(spec, base / "bad")["reason"], "validated_dependency_invalid")
 
+    def test_kilowatt_tariff_overlay_preserves_free_evidence_and_unknown(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            stage = base / "inventory-stage"
+            morocco_inventory.run(stage, "kilowatt", runner=offline_runner)
+            input_path = stage / morocco_inventory.METHODS["kilowatt"][1]
+            source = json.loads(input_path.read_text())
+            source["stations"][0]["name"] = "Al Mazar Mall"
+            unknown = dict(source["stations"][0], id="KW-UNKNOWN", name="Unknown site")
+            source["stations"].append(unknown)
+            source["summary"].update(raw_station_records=3, production_candidates=2)
+            input_path.write_text(json.dumps(source))
+            morocco_inventory.validate_output(stage, "kilowatt")
+            digest, files = artifact_digest(stage)
+            bundle = base / "bundle"
+            state = bundle / "objects/MA_kilowatt_inventory" / digest
+            state.parent.mkdir(parents=True)
+            shutil.copytree(stage, state)
+            artifact = state / morocco_inventory.METHODS["kilowatt"][1]
+            (bundle / "manifest.json").write_text(json.dumps({"schema_version": 1,
+                "status": "complete", "sources": [{"source": "MA:kilowatt_inventory",
+                "module": "morocco_inventory", "status": "ok",
+                "artifact": str(artifact.relative_to(bundle)), "sha256": sha256(artifact),
+                "artifact_set_sha256": digest, "files": files}]}))
+
+            def historical_runner(command, **kwargs):
+                old = Path.cwd()
+                try:
+                    os.chdir(kwargs["cwd"])
+                    with redirect_stdout(io.StringIO()):
+                        runpy.run_path(command[1], run_name="__main__")
+                finally:
+                    os.chdir(old)
+                return SimpleNamespace(returncode=0, stdout="")
+
+            def process(command, **_):
+                morocco_inventory.build_tariff_overlay(
+                    Path(command[command.index("--out") + 1]),
+                    Path(command[command.index("--source") + 1]), runner=historical_runner)
+                return SimpleNamespace(returncode=0)
+
+            spec = next(x for x in read_sources() if x["id"] == "MA:kilowatt_tariff_overlay")
+            artifacts = base / "artifacts"
+            shutil.copytree(bundle, artifacts / "input_dependencies/MA_kilowatt_inventory")
+            result = run_source(spec, artifacts, runner=process)
+            self.assertEqual(result["status"], "ok", result)
+            output = next((artifacts / "objects/MA_kilowatt_tariff_overlay").iterdir())
+            report = morocco_inventory.validate_tariff_overlay(output)
+            rows = {row["station_id"]: row for row in report["stations"]}
+            self.assertEqual(rows["KW-1"]["tariff_mad"], 0)
+            self.assertTrue(rows["KW-1"]["tariff_evidence_rule"])
+            self.assertIsNone(rows["KW-UNKNOWN"]["tariff_mad"])
+            self.assertFalse(rows["KW-UNKNOWN"]["tariff_production_eligible"])
+            self.assertEqual(run_source(spec, base / "missing")["reason"], "validated_dependency_missing")
+            bad = base / "bad/input_dependencies/MA_kilowatt_inventory"
+            shutil.copytree(bundle, bad)
+            (bad / json.loads((bad / "manifest.json").read_text())["sources"][0]["artifact"]).write_bytes(b"bad")
+            self.assertEqual(run_source(spec, base / "bad")["reason"], "validated_dependency_invalid")
+            rows["KW-UNKNOWN"]["tariff_mad"] = 0
+            (output / morocco_inventory.TARIFF_OVERLAY[1]).write_text(json.dumps(report))
+            with self.assertRaisesRegex(ValueError, "unresolved tariff"):
+                morocco_inventory.validate_tariff_overlay(output)
+
 
 if __name__ == "__main__":
     unittest.main()

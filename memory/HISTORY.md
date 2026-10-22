@@ -688,3 +688,7 @@ Deux inventaires publics historiques sont migrés sans collecte live ; leurs can
 # 22 octobre 2026 — V9, diagnostic Kilowatt
 
 Le rapport historique de regroupement géographique consomme le dernier inventaire signé, sans modification de Production ni promotion de correspondance. G2 reste FAIL : 44 méthodes utiles et 82 transferts GitHub non vérifiés.
+
+# 22 October 2026 - V9 Kilowatt tariff overlay
+
+The archived constructor consumes a signed inventory and preserves existing evidence. Only the fixed station-count gate was removed. G2 FAIL: 43 useful methods and 83 unverified handoffs.

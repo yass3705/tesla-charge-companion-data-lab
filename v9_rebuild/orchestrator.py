@@ -358,6 +358,13 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("Kilowatt historical reconciliation missing")
             spec["output_file"] = RECONCILIATION[1]
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/morocco_inventory.py")
+        elif spec.get("module") == "morocco_tariff_overlay" and source_id == "MA:kilowatt_tariff_overlay":
+            from v9_rebuild.morocco_inventory import TARIFF_EVIDENCE, TARIFF_OVERLAY
+            if (spec["secret_names"] or not (root / TARIFF_OVERLAY[0]).is_file()
+                    or not (root / TARIFF_EVIDENCE).is_file()):
+                raise ValueError("Kilowatt historical overlay missing")
+            spec["output_file"] = TARIFF_OVERLAY[1]
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/morocco_inventory.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -605,6 +612,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     swiss_plenitude_closeout_module = spec["module"] == "swiss_plenitude_closeout"
     morocco_inventory_module = spec["module"] == "morocco_inventory"
     morocco_reconcile_module = spec["module"] == "morocco_reconcile"
+    morocco_tariff_module = spec["module"] == "morocco_tariff_overlay"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -683,7 +691,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     plenitude_state = validated_dependency(dependency, "CH:plenitude_official", "cwd_script")
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_invalid", "attempts": 0}
-            if morocco_reconcile_module:
+            if morocco_reconcile_module or morocco_tariff_module:
                 dependency = out_root / "input_dependencies/MA_kilowatt_inventory"
                 if not dependency.is_dir():
                     return {"source": source_id, "status": "failed", "reason": "validated_dependency_missing", "attempts": 0}
@@ -737,6 +745,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                        if morocco_inventory_module else [sys.executable, str(root / "scripts/belgium_nap_full_country.py")])
             if morocco_reconcile_module:
                 command = [sys.executable, str(root / "v9_rebuild/morocco_inventory.py"), "--method", "kilowatt_reconcile", "--out", str(staged), "--source", str(kilowatt_state)]
+            if morocco_tariff_module:
+                command = [sys.executable, str(root / "v9_rebuild/morocco_inventory.py"), "--method", "kilowatt_tariff_overlay", "--out", str(staged), "--source", str(kilowatt_state)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1081,6 +1091,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 from v9_rebuild.morocco_inventory import validate_reconciliation
                 try:
                     validate_reconciliation(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif morocco_tariff_module:
+                from v9_rebuild.morocco_inventory import validate_tariff_overlay
+                try:
+                    validate_tariff_overlay(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
                     valid = False

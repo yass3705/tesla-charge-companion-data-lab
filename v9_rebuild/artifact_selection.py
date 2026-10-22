@@ -137,7 +137,7 @@ def main() -> None:
             handle.write(f"plenitude_run_id={dependency['workflow_run']['id'] if dependency else ''}\n")
         print(json.dumps({"source": args.source, "plenitude_run_id": dependency["workflow_run"]["id"] if dependency else None}))
         return
-    if args.source == "MA:kilowatt_reconcile":
+    if args.source in {"MA:kilowatt_reconcile", "MA:kilowatt_tariff_overlay"}:
         rows = fetch(args.repo, "tcc-v9-collection-MA_kilowatt_inventory", token)
         dependency = latest(rows, "tcc-v9-collection-MA_kilowatt_inventory", args.branch)
         with args.github_output.open("a", encoding="utf-8") as handle:

@@ -127,8 +127,6 @@ def explicit_site_brand(station: dict, text: str) -> str | None:
 def main() -> None:
     src = json.loads(SRC.read_text())
     stations = [s for s in (src.get('stations') or []) if s.get('production_candidate') is True]
-    if len(stations) != 43:
-        raise SystemExit(f'expected 43 Kilowatt production candidates, got {len(stations)}')
 
     rows = []
     matched_rule_ids = set()

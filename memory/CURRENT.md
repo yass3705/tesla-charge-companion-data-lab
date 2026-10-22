@@ -1,3 +1,7 @@
+# 22 October 2026 - V9 Kilowatt tariff overlay
+
+- Historical station-specific free evidence is applied only to matching Kilowatt stations; unknown prices remain unavailable. G2 FAIL: 43 useful methods and 83 unverified GitHub handoffs. Actions disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 22 octobre 2026 — V9, diagnostic Kilowatt Maroc
 
 - Le rapprochement géographique Kilowatt est isolé et ne fusionne aucune station ; il consomme un inventaire immuable vérifié. G2 FAIL : 44 méthodes utiles et 82 transferts GitHub non vérifiés. Actions désactivé. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

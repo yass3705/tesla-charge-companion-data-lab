@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import subprocess
@@ -20,6 +21,9 @@ METHODS = {
 }
 RECONCILIATION = ("scripts/morocco/kilowatt_location_reconciliation.py",
                   "artifacts/morocco-kilowatt-location-reconciliation/summary.json")
+TARIFF_OVERLAY = ("scripts/morocco_kilowatt_build_v9_tariff_overlay.py",
+                  "reports/morocco/kilowatt/latest-v9-tariff-overlay.json")
+TARIFF_EVIDENCE = "reports/morocco/kilowatt/public-free-tariff-evidence-2026-08-24.json"
 
 
 def validate_output(out: Path, method: str) -> dict:
@@ -123,16 +127,83 @@ def reconcile(out: Path, source: Path, *, runner=subprocess.run) -> None:
     validate_reconciliation(out)
 
 
+def validate_tariff_overlay(out: Path) -> dict:
+    source = validate_output(out, "kilowatt")
+    report = json.loads((out / TARIFF_OVERLAY[1]).read_text(encoding="utf-8"))
+    expected = {str(row.get("id")): row for row in source["stations"]
+                if row.get("production_candidate") is True}
+    rows = report.get("stations")
+    summary = report.get("summary") or {}
+    policy = report.get("policy") or {}
+    evidence = out / TARIFF_EVIDENCE
+    if (report.get("evidence_reports") != [TARIFF_EVIDENCE] or not evidence.is_file()
+            or hashlib.sha256(evidence.read_bytes()).digest()
+            != hashlib.sha256((ROOT / TARIFF_EVIDENCE).read_bytes()).digest()):
+        raise ValueError("Kilowatt archived tariff evidence missing or changed")
+    if (report.get("schema_version") != 1 or report.get("country") != "MA"
+            or report.get("network") != "Kilowatt" or not isinstance(rows, list)
+            or len(expected) != sum(row.get("production_candidate") is True for row in source["stations"])
+            or policy.get("station_specific_free_only") is not True
+            or policy.get("missing_native_tariff_does_not_mean_free") is not True
+            or summary.get("production_station_count") != len(rows)
+            or summary.get("free_tariff_count") != sum(row.get("tariff_production_eligible") is True for row in rows)
+            or summary.get("unresolved_tariff_count") != sum(row.get("tariff_production_eligible") is False for row in rows)
+            or len({row.get("station_id") for row in rows}) != len(rows)
+            or {row.get("station_id") for row in rows} != set(expected)):
+        raise ValueError("Kilowatt station tariff overlay contract invalid")
+    for row in rows:
+        original = expected[row["station_id"]]
+        if (row.get("name") != original.get("name")
+                or row.get("latitude") != original.get("latitude")
+                or row.get("longitude") != original.get("longitude")
+                or row.get("cpo_operator") != "Kilowatt"
+                or row.get("tariff_currency") != "MAD"
+                or row.get("native_tariff_field_present") is not False):
+            raise ValueError("Kilowatt station identity changed")
+        if row["tariff_production_eligible"] is True:
+            if (row.get("tariff_state") != "free_station_specific_public_evidence"
+                    or row.get("tariff_mad") != 0 or not row.get("tariff_evidence_rule")
+                    or not row.get("tariff_source")):
+                raise ValueError("Kilowatt free tariff evidence missing")
+        elif (row.get("tariff_state") != "unresolved" or row.get("tariff_mad") is not None
+              or row.get("tariff_source") is not None or row.get("tariff_evidence_rule") is not None):
+            raise ValueError("Kilowatt unresolved tariff was promoted")
+    return report
+
+
+def build_tariff_overlay(out: Path, source: Path, *, runner=subprocess.run) -> None:
+    out, source = out.resolve(), source.resolve()
+    if out == ROOT or ROOT in out.parents or source == ROOT or ROOT in source.parents:
+        raise ValueError("Kilowatt overlay must run outside checkout")
+    validate_output(source, "kilowatt")
+    input_path = out / METHODS["kilowatt"][1]
+    input_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source / METHODS["kilowatt"][1], input_path)
+    evidence = out / TARIFF_EVIDENCE
+    evidence.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / TARIFF_EVIDENCE, evidence)
+    script = out / TARIFF_OVERLAY[0]
+    script.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / TARIFF_OVERLAY[0], script)
+    result = runner([sys.executable, str(script)], cwd=out, capture_output=True,
+                    text=True, timeout=300, check=False)
+    if result.returncode:
+        raise RuntimeError("Historical Kilowatt tariff overlay failed")
+    validate_tariff_overlay(out)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=sorted(METHODS) + ["kilowatt_reconcile"], required=True)
+    parser.add_argument("--method", choices=sorted(METHODS) + ["kilowatt_reconcile", "kilowatt_tariff_overlay"], required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--source", type=Path)
     args = parser.parse_args()
     if args.method == "kilowatt_reconcile" and args.source:
         reconcile(args.out, args.source)
-    elif args.method == "kilowatt_reconcile" or args.source:
-        parser.error("--source is required only for Kilowatt reconciliation")
+    elif args.method == "kilowatt_tariff_overlay" and args.source:
+        build_tariff_overlay(args.out, args.source)
+    elif args.method in {"kilowatt_reconcile", "kilowatt_tariff_overlay"} or args.source:
+        parser.error("--source is required only for Kilowatt derived methods")
     else:
         run(args.out, args.method)
 
