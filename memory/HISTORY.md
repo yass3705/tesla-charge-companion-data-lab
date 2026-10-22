@@ -762,3 +762,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 2026-10-22 — V9 G2 Powerdot : methode officielle hors checkout, CSV vide permis avec schema valide, Direct et abonnement Electroverse separes ; 9 tests cibles PASS. G2 reste FAIL (15 methodes, 109 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 Shell Recharge : cinq pages configurees requises en fixture, ancien etat partiel conserve, nouvelle sortie rejetee si page/HTTP/prix change ; 2 tests PASS. G2 reste FAIL (14 methodes, 110 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 TotalEnergies officiel : methode historique isolee, absence de garde de volume, faux prix promotionnel corrige, 16 tests cibles PASS. G2 FAIL (13 methodes, 111 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

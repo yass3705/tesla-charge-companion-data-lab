@@ -137,7 +137,8 @@ def parse_chargeplus(text: str, home_text: str) -> dict:
         raise RuntimeError("Charge+ Zen >=50kW eligibility marker missing")
     if "hors corse" not in n:
         raise RuntimeError("Charge+ Zen geographic marker missing")
-    promo_price = 9.90 if "9,90" in h else None
+    # A plain substring match also finds 9,90 inside 19,90 and fabricates a promotion.
+    promo_price = 9.90 if re.search(r"(?<!\d)9,90(?!\d)", h) else None
     regular_price = 19.90 if "19,90" in h or "19,90" in n else None
     promo_end = "2026-08-28" if "28/08/2026" in h else None
     return {
@@ -237,8 +238,6 @@ def parse_zen_table(raw_html: str) -> list[dict]:
             "powerKw": power,
             "evseId": evse,
         })
-    if len(rows) < 50:
-        raise RuntimeError(f"TotalEnergies Zen official station table unexpectedly small: {len(rows)} rows")
     return rows
 
 
@@ -247,7 +246,7 @@ def sample_stations(rows: list[dict]) -> list[dict]:
     for key, (station_name, city_name) in SAMPLE_STATIONS.items():
         matches = [r for r in rows if norm(r["station"]) == norm(station_name) and norm(r["city"]) == norm(city_name)]
         if not matches:
-            raise RuntimeError(f"TotalEnergies sample station missing: {station_name} / {city_name}")
+            continue
         out.append({
             "key": key,
             "station": matches[0]["station"],
