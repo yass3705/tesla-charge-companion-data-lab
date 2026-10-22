@@ -1029,3 +1029,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 REVE Espagne stream : collecte historique isolee, reprises par checkpoint SHA, aucun artefact partiel ; 22 tests PASS, G2 reste FAIL (35 methodes, 90 transferts GitHub non verifies). Actions inactif ; voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 REVE national v2 : chaine historique isolee, fixture compilee, controles SHA/pagination et suppression des seuils de volume ; 11 tests PASS. G2 reste FAIL (34 methodes, 91 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 Delmonicos : surveillance historique executee hors checkout sur fixture source, valeurs archivees preservees, contexte change et prix modifie rejetes ; 2 tests PASS. G2 reste FAIL (33 methodes, 92 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

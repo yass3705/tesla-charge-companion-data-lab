@@ -415,6 +415,12 @@ def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
                 raise ValueError("REVE national methods or last-good baseline missing")
             spec["output_file"] = "data/reve_v2/validated_runtime/spain-static/manifest.json"
             spec["manifest_sha256"] = sha256(root / "v9_rebuild/reve_national.py")
+        elif spec.get("module") == "delmonicos_watch" and source_id == "FR:delmonicos_watch":
+            from v9_rebuild.delmonicos_watch import DATA, SCRIPT
+            if spec["secret_names"] or not (root / SCRIPT).is_file() or not (root / DATA).is_file():
+                raise ValueError("Delmonicos historical method or baseline missing")
+            spec["output_file"] = str(DATA)
+            spec["manifest_sha256"] = sha256(root / "v9_rebuild/delmonicos_watch.py")
         else:
             raise ValueError(f"Unmigrated module cannot execute: {source_id}")
     return sources
@@ -677,6 +683,7 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     greenspot_module = spec["module"] == "greenspot"
     reve_stream_module = spec["module"] == "reve_stream"
     reve_national_module = spec["module"] == "reve_national"
+    delmonicos_module = spec["module"] == "delmonicos_watch"
     waat_monta_dependency = waat_monta_module or waat_monta_public_module
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
@@ -845,6 +852,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                            "--checkpoint", str(checkpoint)]
             if reve_national_module:
                 command = [sys.executable, str(root / "v9_rebuild/reve_national.py"), "--out", str(staged)]
+            if delmonicos_module:
+                command = [sys.executable, str(root / "v9_rebuild/delmonicos_watch.py"), "--out", str(staged)]
             if previous_state is not None:
                 command.extend(["--source" if status_module else "--resume", str(previous_state)])
             if belib_prior is not None:
@@ -1254,6 +1263,13 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     validate_output(staged)
                     valid = True
                 except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile):
+                    valid = False
+            elif delmonicos_module:
+                from v9_rebuild.delmonicos_watch import validate_output
+                try:
+                    validate_output(staged)
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError):
                     valid = False
             else:
                 valid = isinstance(payload, dict) and validate_belgium_output(staged, payload)
