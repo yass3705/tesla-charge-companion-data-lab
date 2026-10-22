@@ -1053,3 +1053,5 @@ V9 G2 : Connected Kerb opérateur UK migré avec pagination, audit et secret nom
 2026-10-22 — V9 G2 Atlante FR/IT : collecteur historique hors checkout, deux sorties et reprise par cache SHA sur fixture ; 2 tests PASS. G2 reste FAIL (23 methodes, 102 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-22 — V9 G2 Belgique gap archive : replay exact du constructeur et des sorties 2026-09-28, refus de toute mutation de prix ou d entree. Import Python des adaptateurs corrige et teste en sous-processus reel ; 19 tests cibles PASS. G2 reste FAIL (22 methodes, 103 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-22 — V9 G2 Electroverse probe cible : investigation ponctuelle de deux stations classee historique inactive ; scripts, rapport, mapping et cache conserves. Test de la disposition 1 PASS. G2 reste FAIL (21 methodes, 103 transferts GitHub non verifies). Voir `memory/V9_REBUILD_PROGRESS.md`.

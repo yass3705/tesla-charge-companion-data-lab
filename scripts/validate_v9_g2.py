@@ -171,11 +171,12 @@ def main() -> None:
     retired = json.loads((ROOT / "migration/v9/g2-retired-methods.json").read_text())
     retired_workflows = set()
     approved_retirements = {".github/workflows/validate-v9-source-guards.yml",
-                            ".github/workflows/audit-fixed-tariff-refresh.yml"}
+                            ".github/workflows/audit-fixed-tariff-refresh.yml",
+                            ".github/workflows/electroverse-targeted-station-probe.yml"}
     if (retired.get("schema_version") != 1
             or {row.get("workflow") for row in retired.get("retired", [])} != approved_retirements
             or len(retired.get("retired", [])) != len(approved_retirements)):
-        errors.append("G2 retirement registry differs from the two reviewed obsolete audits")
+        errors.append("G2 retirement registry differs from the reviewed inactive methods")
     for row in retired.get("retired", []):
         workflow = row.get("workflow")
         script = row.get("script")
@@ -197,9 +198,28 @@ def main() -> None:
                           and "managed=bool(refs)" in body
                           and not any("fixed-tariff-refresh-audit.json" in str(item)
                                       for item in sources)) if legacy else False
+        targeted_investigation = (workflow == ".github/workflows/electroverse-targeted-station-probe.yml"
+                                  and script == "scripts/electroverse_targeted_station_probe.mjs"
+                                  and row.get("classification") == "historical_targeted_tariff_investigation"
+                                  and legacy["source_scripts"] == ["scripts/electroverse_cache_audit.mjs",
+                                                                   script,
+                                                                   "scripts/integrate_electroverse_targeted_probe.py"]
+                                  and {"data/electroverse/irve_location_mapping.json",
+                                       "data/electroverse/tariff_cache/manifest.json"}
+                                      == set(legacy["literal_production_references"])
+                                  and "electra-bois-d-arcy" in body and "lidl-dole" in body
+                                  and "SINGLE_LOCATION_QUERY" in body
+                                  and all((ROOT / path).is_file() for path in (
+                                      "reports/electroverse/targeted-station-probe.json",
+                                      "data/electroverse/irve_location_mapping.json",
+                                      "data/electroverse/tariff_cache/manifest.json",
+                                      "data/electroverse/tariff_cache/shard-089.json",
+                                      "data/electroverse/tariff_cache/shard-093.json"))
+                                  and {"FR:electroverse_daily", "FR:electroverse_full", "FR:electroverse_overlay"}
+                                      <= {item["id"] for item in sources}) if legacy else False
         if (not row.get("reason") or workflow not in required or workflow in migrated
-                or not legacy or legacy["source_scripts"] != [script]
-                or not (volume_guard or workflow_audit)
+                or not legacy or (legacy["source_scripts"] != [script] and not targeted_investigation)
+                or not (volume_guard or workflow_audit or targeted_investigation)
                 or workflow in retired_workflows):
             errors.append(f"invalid explicit G2 retirement: {workflow}")
         else:

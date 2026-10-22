@@ -12,6 +12,12 @@
       "script": "scripts/audit_fixed_tariff_refresh.py",
       "classification": "obsolete_workflow_reference_audit",
       "reason": "The historical audit defines refresh-managed tariff sources by searching for their paths in the old per-CPO GitHub workflow YAML files. G1 archived those YAML files and G2 replaced them with a source registry and one common workflow, so rerunning this audit would misclassify preserved tariff files as unmanaged. Production references neither this script nor its report. The original script and last report remain restorable; source freshness and provenance must be checked against the new registry in a later technical gate."
+    },
+    {
+      "workflow": ".github/workflows/electroverse-targeted-station-probe.yml",
+      "script": "scripts/electroverse_targeted_station_probe.mjs",
+      "classification": "historical_targeted_tariff_investigation",
+      "reason": "The archived method probes exactly two reported station cases, Lidl Dole and Electra Bois-d Arcy, and writes tariff-cache shards/mapping as a one-off investigation. The current mission explicitly forbids new tariff investigations. Its report, mapping, manifest and affected shards remain restorable; the migrated daily/full cache and overlay modules preserve continuing technical collection. Production references the mapping and cache manifest, not the targeted probe report or executable. This workflow is intentionally inactive rather than falsely fixture-passed."
     }
   ]
 }
