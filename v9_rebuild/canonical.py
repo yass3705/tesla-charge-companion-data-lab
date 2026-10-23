@@ -317,6 +317,67 @@ def normalize_atlante_italy(payload: dict, *, artifact_sha256: str) -> dict:
     return result
 
 
+def normalize_zephyre_exact(payload: dict, *, artifact_sha256: str) -> dict:
+    """Represent archived ePowerDirect charge points without inferring a site or plug ID."""
+    if not isinstance(payload.get("records"), list) or not isinstance(payload.get("source"), dict):
+        raise ValueError("Zephyre exact archive schema invalid")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Pinned Zephyre artifact SHA missing")
+    source_id, country = "FR:zephyre_epowerdirect_exact", "FR"
+    cpo_key = key(country, source_id, "cpo", "FRZP1")
+    result = {"schemaVersion": SCHEMA_VERSION,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
+                         "generatedAt": payload.get("finalizedAt") or payload.get("observedAt"),
+                         "rawSource": payload["source"]},
+              "countries": [{"code": country}],
+              "cpos": [{"id": cpo_key, "country": country, "sourceOperatorId": "FRZP1", "name": "Zéphyre"}],
+              "stations": [], "evses": [], "connectors": [], "offers": []}
+    for row in payload["records"]:
+        source_evse, source_point = row.get("evseId"), row.get("name")
+        if not isinstance(source_evse, str) or not source_evse.startswith("FR*ZP1*") or not isinstance(source_point, str) or not source_point:
+            raise ValueError("Zephyre exact EVSE or charge point missing")
+        address = row.get("address")
+        if not isinstance(address, dict) or address.get("country") != country:
+            raise ValueError("Zephyre charge point country invalid")
+        try:
+            latitude, longitude = float(address["latitude"]), float(address["longitude"])
+        except (KeyError, TypeError, ValueError):
+            latitude, longitude = None, None
+        if latitude is not None and (abs(latitude) > 90 or abs(longitude) > 180):
+            raise ValueError("Zephyre charge point coordinates invalid")
+        station_key = key(country, source_id, "station", source_point)
+        evse_key = key(country, source_id, "evse", source_evse)
+        # The source identifies a charge point, not its physical parent station.
+        # Keep a technical one-point group; no physical station ID is asserted.
+        result["stations"].append({"id": station_key, "country": country, "cpoId": cpo_key,
+                                   "sourceStationId": None, "sourceChargePointName": source_point,
+                                   "name": source_point, "address": address.get("street"), "city": address.get("city"),
+                                   "latitude": latitude, "longitude": longitude,
+                                   "groupingGranularity": "source_charge_point", "rawSourceFields": row})
+        result["evses"].append({"id": evse_key, "country": country, "cpoId": cpo_key,
+                                "stationId": station_key, "sourceEvseId": source_evse,
+                                "officialEvseId": source_evse, "accessibility": row.get("accessibilityLabel"),
+                                "rawSourceFields": row})
+        # plugType describes the charge point; the source provides no connector ID.
+        connector_key = key(country, source_id, "connector", [source_evse, row.get("plugType")])
+        result["connectors"].append({"id": connector_key, "evseId": evse_key,
+                                     "sourceConnectorId": None, "officialConnectorId": None,
+                                     "plugType": row.get("plugType"), "powerKw": _power({"power": row.get("maxChargingPower")}),
+                                     "identityGranularity": "evse_plug_type"})
+        tariff = row.get("tariff")
+        if tariff is not None:
+            if not isinstance(tariff, dict):
+                raise ValueError("Zephyre tariff schema invalid")
+            result["offers"].append({"id": key(country, source_id, "offer", source_evse), "channel": "Direct",
+                                      "scope": {"evseId": evse_key, "connectorId": connector_key},
+                                      "sourceEvseId": source_evse, "rawOffer": tariff,
+                                      "calculationStatus": "not_evaluated"})
+    for section in ("stations", "evses", "connectors", "offers"):
+        result[section].sort(key=lambda row: row["id"])
+    validate(result)
+    return result
+
+
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")

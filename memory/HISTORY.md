@@ -782,3 +782,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-23 : Belib FR normalisé à partir de son archive, avec profils bruts et portée par prise, opérateur et enseigne séparés ; bundle préparé puis importé en préproduction locale. G3/G4/G7 restent FAIL.
 - 2026-10-23 : Atlante Italie normalisé depuis son archive nationale, EVSE/prise/offres exacts et tarifs bruts non évalués ; bundle préparé puis importé hors ligne. G3/G4 restent FAIL.
 - 2026-10-23 : replay navigateur réel de la carte TCC sur candidat isolé IONITY FR/GB, sources/date et offres non calculées vérifiées ; captures versionnées en Production. G7/G8 restent FAIL, aucune URL distante ni publication publique.
+
+- 2026-10-23 — Reconstruction V9 G3/G7 : normalisation de l'archive Zéphyre ePowerDirect à EVSE exact et connecteur technique sans ID physique inventé ; candidat isolé à cinq sources validé dans Firefox sur FR/GB/IT. Tarifs bruts non évalués, portes G3/G5/G6/G7/G8 encore FAIL. Voir `V9_REBUILD_PROGRESS.md`.

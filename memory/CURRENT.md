@@ -1105,3 +1105,7 @@ Les quatre anciens audits/orchestrations restants ont une disposition nominative
 # 23 octobre 2026 — V9, replay navigateur isolé
 
 G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Actions Data Lab désactivé. G3/G4 ont progressé hors ligne avec Belib FR et Atlante IT normalisés, bundles préparés et importés. Le shell TCC sur un candidat IONITY FR/GB réel a été testé dans Firefox headless : stations, EVSE, puissances, trois canaux, provenance/date, filtres et carte fonctionnent sans promotion des offres brutes en prix calculés. G3 à G8 restent FAIL faute de couverture complète, moteur tarifaire complet et préproduction distante ; site public et Updater Test inchangés. Détails, SHA, tests et prochaine opération dans [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 23 October 2026 — V9 Zephyre exact canonical preview
+
+- Branche `rebuild/v9-20261020` : normaliseur de l'archive Zéphyre ePowerDirect, 13 tests canoniques PASS ; candidat isolé à cinq sources `99b73eac4209b4919d9817e045aed161281f8d2930e185f46b18120d04963235` validé dans Firefox sur FR/GB/IT, dont Zéphyre Lattes. Aucun prix brut évalué ; aucune publication publique. G3/G5/G6/G7/G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md` pour preuves et prochaine opération.
