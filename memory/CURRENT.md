@@ -1135,3 +1135,7 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 2026-10-23 — Production V9 `de5453f` : deux familles Direct au kWh historiquement prouvées atteignent le moteur et la carte du candidat isolé ; offres complexes ou sans puissance restent incalculables. Firefox multi-pays et tests ciblés PASS. G2–G8 restent FAIL ; aucun déploiement ni activation Actions. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-23 — Rapport V9 des correspondances EVSE exactes enrichi par source et canal, SHA `679742a8de74ad6713172de8e1a1d43b9d2b7807b5e955b5be607f88c2d6d981`. G5 reste FAIL : autres règles historiquement prouvées à intégrer. Production `561eade`, aucune publication publique.
+
+2026-10-23 — Belgique NAP V9 normalisée depuis 18 pages archivées ; variantes de 64 identités de station répétées préservées, tarifs bruts sans prix simulé. Candidat isolé 13 sources testé dans Firefox, Production `5d1bcfd`. G3/G7/G8 restent FAIL ; détails dans `memory/V9_REBUILD_PROGRESS.md`.
+
+2026-10-23 — Le candidat V9 isolé à 13 sources calcule aussi les offres belges NAP énergie seule avec TVA explicite selon l'oracle historique ; les autres offres restent incalculables. Firefox Bruxelles/Milan et autres pays PASS. Production `0e945a2`, G6–G8 FAIL et aucun site public modifié.

@@ -638,6 +638,114 @@ def normalize_france_irve_compact(payload: list, *, artifact_sha256: str) -> dic
     return result
 
 
+def normalize_belgium_nap(payload: dict, *, artifact_sha256: str) -> dict:
+    """Preserve the archived DATEX national hierarchy and raw ad-hoc rates."""
+    source_id = "BE:nap_static"
+    if payload.get("country") != "BE" or not isinstance(payload.get("locations"), list):
+        raise ValueError("Belgium NAP archive schema invalid")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Pinned Belgium NAP artifact SHA missing")
+    cpos, stations, evses, connectors, offers = {}, [], [], [], []
+    station_rows, evse_rows, connector_ids, offer_ids = {}, {}, set(), set()
+    for location in payload["locations"]:
+        loc_id, operator = location.get("id"), location.get("operator")
+        if (location.get("countryCode") != "BE" or not isinstance(loc_id, str) or not loc_id or
+                not isinstance(operator, str) or not operator or not isinstance(location.get("stations"), list)):
+            raise ValueError("Belgium NAP location identity invalid")
+        cpo_id = key("BE", source_id, "cpo", operator)
+        cpos.setdefault(cpo_id, {"id": cpo_id, "country": "BE", "sourceOperatorId": operator, "name": operator})
+        for station in location["stations"]:
+            native_station = station.get("id")
+            if not isinstance(native_station, str) or not native_station or not isinstance(station.get("evses"), list):
+                raise ValueError("Belgium NAP station identity invalid")
+            station_id = key("BE", source_id, "station", [loc_id, native_station])
+            candidate_station = {"id": station_id, "country": "BE", "cpoId": cpo_id,
+                             "sourceStationId": native_station, "sourceLocationId": loc_id,
+                             "name": location.get("brand"), "latitude": location.get("latitude"),
+                             "longitude": location.get("longitude"), "address": location.get("addressLines"),
+                             "city": location.get("city"), "postalCode": location.get("postcode"),
+                             "timeZone": location.get("timeZone"),
+                             "rawSourceFields": {name: value for name, value in station.items() if name != "evses"},
+                             "archiveVariants": []}
+            previous_station = station_rows.get(station_id)
+            if previous_station:
+                if previous_station["cpoId"] != cpo_id:
+                    raise ValueError("Belgium NAP station ownership collision")
+                previous_station["archiveVariants"].append({"location": {name: value for name, value in location.items() if name != "stations"},
+                                                           "station": {name: value for name, value in station.items() if name != "evses"}})
+            else:
+                station_rows[station_id] = candidate_station
+                stations.append(candidate_station)
+            for evse in station["evses"]:
+                native_evse = evse.get("id")
+                external = evse.get("externalIdentifiers")
+                if not isinstance(native_evse, str) or not native_evse or not isinstance(external, list):
+                    raise ValueError("Belgium NAP EVSE identity invalid")
+                official = external[0] if len(external) == 1 and isinstance(external[0], str) and external[0] else None
+                evse_id = key("BE", source_id, "evse", [loc_id, native_station, native_evse])
+                candidate_evse = {"id": evse_id, "country": "BE", "cpoId": cpo_id,
+                              "stationId": station_id, "sourceEvseId": official, "officialEvseId": official,
+                              "nativeEvseId": native_evse, "externalIdentifiers": external,
+                              "rawSourceFields": {name: value for name, value in evse.items()
+                                                  if name not in {"connectors", "prices"}},
+                              "unclassifiedPrices": [],
+                              "archiveVariants": []}
+                previous_evse = evse_rows.get(evse_id)
+                if previous_evse:
+                    if previous_evse["stationId"] != station_id or previous_evse["cpoId"] != cpo_id:
+                        raise ValueError("Belgium NAP EVSE ownership collision")
+                    if previous_evse["officialEvseId"] != official:
+                        previous_evse["officialEvseId"] = previous_evse["sourceEvseId"] = None
+                    previous_evse["archiveVariants"].append(evse)
+                else:
+                    evse_rows[evse_id] = candidate_evse
+                    evses.append(candidate_evse)
+                plugs = evse.get("connectors") or []
+                prices = evse.get("prices") or []
+                if not isinstance(plugs, list) or not isinstance(prices, list):
+                    raise ValueError("Belgium NAP connector or price format invalid")
+                occurrences: Counter[str] = Counter()
+                for plug in sorted(plugs, key=digest):
+                    fingerprint = digest(plug)
+                    occurrences[fingerprint] += 1
+                    connector_id = key("BE", source_id, "connector", [evse_id, fingerprint, occurrences[fingerprint]])
+                    if connector_id in connector_ids:
+                        continue
+                    connector_ids.add(connector_id)
+                    watts = plug.get("maxPowerW")
+                    power = watts / 1000 if isinstance(watts, (int, float)) and watts > 0 else None
+                    connectors.append({"id": connector_id, "evseId": evse_id,
+                                       "sourceConnectorId": None, "officialConnectorId": None,
+                                       "plugType": plug.get("type"), "powerKw": power,
+                                       "rawSourceFields": plug})
+                occurrences.clear()
+                for price in sorted(prices, key=digest):
+                    if price.get("ratePolicy") != "adHoc":
+                        target_evse = previous_evse or candidate_evse
+                        if price not in target_evse["unclassifiedPrices"]:
+                            target_evse["unclassifiedPrices"].append(price)
+                        continue  # Preserved without assigning an unproven channel.
+                    fingerprint = digest(price)
+                    occurrences[fingerprint] += 1
+                    offer_id = key("BE", source_id, "offer", [evse_id, fingerprint, occurrences[fingerprint]])
+                    if offer_id in offer_ids:
+                        continue
+                    offer_ids.add(offer_id)
+                    offers.append({"id": offer_id, "channel": "Direct",
+                                   "scope": {"evseId": evse_id, "connectorId": None},
+                                   "rawOffer": price, "calculationStatus": "not_evaluated"})
+    result = {"schemaVersion": SCHEMA_VERSION,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
+                         "rawDataset": payload.get("source")}, "countries": [{"code": "BE"}],
+              "cpos": sorted(cpos.values(), key=lambda row: row["id"]),
+              "stations": sorted(stations, key=lambda row: row["id"]),
+              "evses": sorted(evses, key=lambda row: row["id"]),
+              "connectors": sorted(connectors, key=lambda row: row["id"]),
+              "offers": sorted(offers, key=lambda row: row["id"])}
+    validate(result)
+    return result
+
+
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")

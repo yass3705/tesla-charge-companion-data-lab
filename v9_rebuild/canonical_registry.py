@@ -11,6 +11,7 @@ from typing import Callable
 from v9_rebuild.canonical import (
     normalize_atlante_italy,
     normalize_belib,
+    normalize_belgium_nap,
     normalize_driveco_evse,
     normalize_france_irve_compact,
     normalize_ionity,
@@ -27,9 +28,12 @@ class CanonicalRoute:
     archive: str
     normalizer: Callable
     manifest: str | None = None
+    page_manifest: bool = False
 
 
 ROUTES = (
+    CanonicalRoute("BE:nap_static", "data/belgium/nap-belgium-manifest.json", normalize_belgium_nap,
+                   page_manifest=True),
     CanonicalRoute("CH:swiss_integration", "data/national/switzerland_public_charging_v9.json", normalize_swiss),
     CanonicalRoute("DE:ionity_direct", "data/national/ionity_direct_stations_germany.json.gz", normalize_ionity),
     CanonicalRoute("FR:belib_stations", "data/national/belib_stations_paris.json", normalize_belib),
