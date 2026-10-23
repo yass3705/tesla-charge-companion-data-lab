@@ -1117,3 +1117,11 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 # 23 October 2026 — V9 Driveco canonical archive
 
 - Archive Driveco et réseau partenaire normalisée sans interprétation des frais ni coordonnées inventées ; suite canonique 16 PASS, bundle six sources `b2b6341bdf4f590d103dbd671f22f9156862d5a84d8bc261ee661a5d88e49654` importé, navigateur FR/GB/IT PASS. G3/G5/G6/G7/G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 23 October 2026 — V9 OZECAR Corsica preview
+
+- Archive OZECAR IRVE/Monta normalisée, offres non résolues isolées ; 18 tests canoniques PASS. Bundle sept sources `7c080dab01c54045d4aaec12680bd0de4c36b6ab63a036d170fc6f5e50ffdc6b` importé et testé en navigateur sur Paris/Londres/Milan/Lattes/Corse, sans prix fictif. Production `63a14e3`, site public inchangé. G3/G5/G6/G7/G8 restent FAIL ; voir `V9_REBUILD_PROGRESS.md`.
+
+# 23 October 2026 — V9 unknown connector power display
+
+- Production `995b998` affiche désormais les EVSE et prises même sans puissance propre, sans en inventer une ; test Node et navigateur sur le candidat sept sources PASS. G7 reste FAIL pour le périmètre complet. Voir `V9_REBUILD_PROGRESS.md`.

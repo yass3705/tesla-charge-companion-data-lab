@@ -439,6 +439,73 @@ def normalize_driveco_evse(payload: dict, *, artifact_sha256: str) -> dict:
     return result
 
 
+def normalize_ozecar(payload: dict, *, artifact_sha256: str) -> dict:
+    """Preserve Corsican IRVE identity and Monta readings without live claims."""
+    if payload.get("schemaVersion") != 1 or payload.get("country") != "FR" or payload.get("cpo") != "OZECAR" or not isinstance(payload.get("records"), list):
+        raise ValueError("Ozecar archive schema invalid")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Pinned Ozecar artifact SHA missing")
+    source_id, country = "FR:ozecar_monta", "FR"
+    cpo_key = key(country, source_id, "cpo", "OZECAR")
+    result = {"schemaVersion": SCHEMA_VERSION,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
+                         "generatedAt": payload.get("generatedAt"), "rawSource": payload.get("source")},
+              "countries": [{"code": country}],
+              "cpos": [{"id": cpo_key, "country": country, "sourceOperatorId": "OZECAR", "name": "OZECAR"}],
+              "stations": [], "evses": [], "connectors": [], "offers": []}
+    plug_fields = {"prise_type_ef": "E/F", "prise_type_2": "Type 2",
+                   "prise_type_combo_ccs": "CCS", "prise_type_chademo": "CHAdeMO",
+                   "prise_type_autre": "Other"}
+    for record in payload["records"]:
+        irve, live = record.get("irve"), record.get("live")
+        if not isinstance(irve, dict) or not isinstance(live, dict):
+            raise ValueError("Ozecar IRVE or Monta record missing")
+        source_station, source_evse = irve.get("id_station_itinerance"), irve.get("id_pdc_itinerance")
+        if not all(isinstance(value, str) and value for value in (source_station, source_evse)) or record.get("evseKey") != source_evse:
+            raise ValueError("Ozecar exact IRVE identity invalid")
+        if irve.get("nom_operateur") != "OZECAR":
+            raise ValueError("Ozecar operator identity invalid")
+        try:
+            longitude, latitude = json.loads(irve["coordonneesXY"])
+            longitude, latitude = float(longitude), float(latitude)
+        except (KeyError, TypeError, ValueError):
+            raise ValueError("Ozecar coordinates invalid") from None
+        if abs(latitude) > 90 or abs(longitude) > 180:
+            raise ValueError("Ozecar coordinates invalid")
+        station_key = key(country, source_id, "station", source_station)
+        evse_key = key(country, source_id, "evse", source_evse)
+        result["stations"].append({"id": station_key, "country": country, "cpoId": cpo_key,
+                                   "sourceStationId": source_station, "name": irve.get("nom_station"),
+                                   "address": irve.get("adresse_station"), "latitude": latitude,
+                                   "longitude": longitude, "rawSourceFields": irve})
+        result["evses"].append({"id": evse_key, "country": country, "cpoId": cpo_key,
+                                "stationId": station_key, "sourceEvseId": source_evse,
+                                "officialEvseId": source_evse,
+                                "nominalPowerKw": _power({"power": irve.get("puissance_nominale")}),
+                                "accessCondition": irve.get("condition_acces"),
+                                "rawSourceFields": record})
+        for field, plug_type in plug_fields.items():
+            if irve.get(field) == "TRUE":
+                result["connectors"].append({"id": key(country, source_id, "connector", [source_evse, field]),
+                                             "evseId": evse_key, "sourceConnectorId": None,
+                                             "officialConnectorId": None, "plugType": plug_type,
+                                             "powerKw": None, "identityGranularity": "irve_plug_type_flag"})
+        tariffs = record.get("directTariff")
+        if not isinstance(tariffs, list):
+            raise ValueError("Ozecar direct tariff shape invalid")
+        if tariffs and (live.get("resolved") is not True or live.get("evse") != source_evse):
+            raise ValueError("Ozecar tariff exact EVSE scope invalid")
+        for index, tariff in enumerate(tariffs):
+            result["offers"].append({"id": key(country, source_id, "offer", [source_evse, index]),
+                                      "channel": "Direct", "scope": {"evseId": evse_key, "connectorId": None},
+                                      "sourceEvseId": source_evse, "rawOffer": tariff,
+                                      "calculationStatus": "not_evaluated"})
+    for section in ("stations", "evses", "connectors", "offers"):
+        result[section].sort(key=lambda row: row["id"])
+    validate(result)
+    return result
+
+
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")
