@@ -746,6 +746,84 @@ def normalize_belgium_nap(payload: dict, *, artifact_sha256: str) -> dict:
     return result
 
 
+def normalize_netherlands_dotnl(payload: dict, *, artifact_sha256: str) -> dict:
+    """Preserve DOT-NL's exact OCPI connector/tariff references without pricing."""
+    source_id = "NL:dotnl_static"
+    if (payload.get("schemaVersion") != "1.0.0" or
+            not isinstance(payload.get("stations"), list) or not isinstance(payload.get("tariffs"), dict)):
+        raise ValueError("DOT-NL archive schema invalid")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Pinned DOT-NL artifact SHA missing")
+    cpos, stations, evses, connectors, offers = {}, [], [], [], []
+    allowed_types = {None, "AD_HOC_PAYMENT", "REGULAR"}
+    for station in payload["stations"]:
+        source_station, party = station.get("stationId"), station.get("partyId")
+        if (station.get("countryCode") != "NL" or not isinstance(source_station, str) or not source_station or
+                not isinstance(party, str) or not party or not isinstance(station.get("evses"), list)):
+            raise ValueError("DOT-NL station identity invalid")
+        cpo_id = key("NL", source_id, "cpo", party)
+        station_id = key("NL", source_id, "station", source_station)
+        cpos.setdefault(cpo_id, {"id": cpo_id, "country": "NL", "sourceOperatorId": party,
+                                 "name": station.get("operatorName") or party})
+        coordinates = station.get("coordinates") or {}
+        stations.append({"id": station_id, "country": "NL", "cpoId": cpo_id,
+                         "sourceStationId": source_station, "name": station.get("name"),
+                         "latitude": coordinates.get("latitude"), "longitude": coordinates.get("longitude"),
+                         "address": station.get("address"), "city": station.get("city"),
+                         "postalCode": station.get("postalCode"), "timeZone": station.get("timeZone"),
+                         "rawSourceFields": {name: value for name, value in station.items() if name != "evses"}})
+        for evse in station["evses"]:
+            uid, official = evse.get("uid"), evse.get("evseId")
+            if (not isinstance(uid, str) or not uid or
+                    (official is not None and (not isinstance(official, str) or not official)) or
+                    not isinstance(evse.get("connectors"), list)):
+                raise ValueError("DOT-NL EVSE identity invalid")
+            evse_id = key("NL", source_id, "evse", [source_station, uid, official])
+            evses.append({"id": evse_id, "country": "NL", "cpoId": cpo_id,
+                          "stationId": station_id, "sourceEvseId": official,
+                          "officialEvseId": official, "sourceUid": uid,
+                          "rawSourceFields": {name: value for name, value in evse.items() if name != "connectors"}})
+            for connector in evse["connectors"]:
+                source_connector = connector.get("id")
+                if not isinstance(source_connector, str) or not source_connector:
+                    raise ValueError("DOT-NL connector identity invalid")
+                connector_id = key("NL", source_id, "connector", [source_station, uid, official, source_connector])
+                kind = str(connector.get("powerType") or "").split("_", 1)[0]
+                power = connector.get("powerKw")
+                connectors.append({"id": connector_id, "evseId": evse_id,
+                                   "sourceConnectorId": source_connector,
+                                   "officialConnectorId": source_connector,
+                                   "plugType": connector.get("standard"),
+                                   "kind": kind if kind in {"AC", "DC"} else None,
+                                   "powerKw": power if isinstance(power, (int, float)) and power > 0 else None,
+                                   "rawSourceFields": connector})
+                refs = connector.get("tariffKeys") or []
+                if not isinstance(refs, list):
+                    raise ValueError("DOT-NL tariff references invalid")
+                for tariff_key in sorted(set(refs)):
+                    tariff = payload["tariffs"].get(tariff_key)
+                    if tariff is None or tariff.get("type") not in allowed_types:
+                        continue  # Exact key remains in the connector's raw source fields.
+                    if tariff.get("countryCode") != "NL" or tariff.get("partyId") != party:
+                        raise ValueError("DOT-NL tariff owner inconsistent with connector")
+                    offer_id = key("NL", source_id, "offer", [connector_id, tariff_key])
+                    offers.append({"id": offer_id, "channel": "Direct",
+                                   "scope": {"evseId": evse_id, "connectorId": connector_id},
+                                   "sourceTariffKey": tariff_key, "rawOffer": tariff,
+                                   "calculationStatus": "not_evaluated"})
+    result = {"schemaVersion": SCHEMA_VERSION,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
+                         "generatedAt": payload.get("generatedAt"), "rawDataset": payload.get("dataset")},
+              "countries": [{"code": "NL"}],
+              "cpos": sorted(cpos.values(), key=lambda row: row["id"]),
+              "stations": sorted(stations, key=lambda row: row["id"]),
+              "evses": sorted(evses, key=lambda row: row["id"]),
+              "connectors": sorted(connectors, key=lambda row: row["id"]),
+              "offers": sorted(offers, key=lambda row: row["id"])}
+    validate(result)
+    return result
+
+
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")

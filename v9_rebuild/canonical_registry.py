@@ -16,6 +16,7 @@ from v9_rebuild.canonical import (
     normalize_france_irve_compact,
     normalize_ionity,
     normalize_midhope_verified,
+    normalize_netherlands_dotnl,
     normalize_ozecar,
     normalize_swiss,
     normalize_zephyre_exact,
@@ -47,6 +48,7 @@ ROUTES = (
     CanonicalRoute("GB:ionity_direct", "data/national/ionity_direct_stations_uk.json.gz", normalize_ionity),
     CanonicalRoute("IT:atlante_direct", "data/national/atlante_direct_stations_italy_latest.json.gz", normalize_atlante_italy),
     CanonicalRoute("IT:ionity_direct", "data/national/ionity_direct_stations_italy.json.gz", normalize_ionity),
+    CanonicalRoute("NL:dotnl_static", "data/national/netherlands_dotnl/normalized.json.gz", normalize_netherlands_dotnl),
 )
 
 BY_SOURCE = {route.source_id: route for route in ROUTES}

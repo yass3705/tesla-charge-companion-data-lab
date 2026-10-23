@@ -1139,3 +1139,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 2026-10-23 — Belgique NAP V9 normalisée depuis 18 pages archivées ; variantes de 64 identités de station répétées préservées, tarifs bruts sans prix simulé. Candidat isolé 13 sources testé dans Firefox, Production `5d1bcfd`. G3/G7/G8 restent FAIL ; détails dans `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-23 — Le candidat V9 isolé à 13 sources calcule aussi les offres belges NAP énergie seule avec TVA explicite selon l'oracle historique ; les autres offres restent incalculables. Firefox Bruxelles/Milan et autres pays PASS. Production `0e945a2`, G6–G8 FAIL et aucun site public modifié.
+
+2026-10-23 — DOT-NL national ajouté au canonique V9, bundle composite 14 sources `b9aad2dfc2717556b18060a9af38b838104dc233a17c276dea897fd290508541`. Import 14/14 et navigateur sept pays PASS, NL tarif brut hors calcul. Production `3f952cc`, G3/G6/G7/G8 FAIL ; aucune publication publique.
