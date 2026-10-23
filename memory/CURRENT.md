@@ -1169,3 +1169,7 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 2026-10-24 — Candidat V9 isolé 19 sources/huit pays après ajout de REVE Espagne ; import 19/19 et Firefox desktop/mobile PASS. Les identifiants source sans EVSE officiel restent distincts, aucun prix REVE créé. Production `6eb6484`; portes G2–G8 FAIL, Actions Data Lab désactivé et site public inchangé.
 
 2026-10-24 — Candidat V9 isolé 20 sources/neuf pays après EVGO Maroc ; import 20/20 et Firefox desktop/mobile PASS. Identifiants natifs conservés, puissance non publiée et prix indisponible, sans offre inventée. Production `330fe96`, portes G2–G8 FAIL ; Actions désactivé et site public inchangé.
+
+2026-10-24 — Production `7c3ed05` calcule les offres DOT-NL exactes à restriction valide de date, jour et horaire, selon les oracles OCPI/DST existants. Firefox sur candidat isolé 20 sources/neuf pays PASS ; G2–G8 toujours FAIL, aucun site public modifié.
+
+2026-10-24 — Production `f425cc8` applique les seuils OCPI historiques de durée et de puissance aux offres DOT-NL exactes ; oracles et Firefox sur le candidat isolé neuf pays PASS. G2–G8 restent FAIL ; aucun déploiement public.

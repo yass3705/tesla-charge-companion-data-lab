@@ -829,3 +829,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-24 : REVE Espagne ajouté au canonique depuis l’archive et le manifeste validés ; 19 sources/huit pays dans le candidat navigateur isolé, aucun EVSE officiel ni tarif inventé.
 
 - 2026-10-24 : archive EVGO Maroc ajoutée au canonique avec identités natives et puissance inconnue ; candidat isolé neuf pays validé au navigateur sans prix artificiel.
+
+- 2026-10-24 : restrictions OCPI date, jour et horaire raccordées au moteur pour les offres néerlandaises à prise exacte, avec refus indépendant des recettes mutées.
+
+- 2026-10-24 : seuils OCPI de durée et puissance vérifiés indépendamment dans le candidat DOT-NL ; sessions hors borne explicitement incalculables.
