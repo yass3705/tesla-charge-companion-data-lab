@@ -780,3 +780,4 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-23 : aperçu local de préproduction raccordé au candidat préparé Production ; carte physique, filtres et prix explicitement non calculés testés hors ligne. G7 reste FAIL, aucun déploiement.
 - 2026-10-23 : raccordement du candidat au shell TCC et packaging isolé vérifiés sur fixtures ; intégrité station/EVSE/prise/offre renforcée dans Data Lab et Production. G3/G4/G7 restent FAIL en attente des autres sources, du transfert GitHub et du navigateur complet.
 - 2026-10-23 : Belib FR normalisé à partir de son archive, avec profils bruts et portée par prise, opérateur et enseigne séparés ; bundle préparé puis importé en préproduction locale. G3/G4/G7 restent FAIL.
+- 2026-10-23 : Atlante Italie normalisé depuis son archive nationale, EVSE/prise/offres exacts et tarifs bruts non évalués ; bundle préparé puis importé hors ligne. G3/G4 restent FAIL.
