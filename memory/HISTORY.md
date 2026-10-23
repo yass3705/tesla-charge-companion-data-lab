@@ -823,3 +823,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-24 : trois archives PCPR UK normalisées par un module commun, avec offres brutes exactes et sans tarif inventé ; candidat isolé 18 sources testé sur navigateur.
 
 - 2026-10-24 : calcul Source EV PCPR UK limité aux prises à puissance et tarif exacts, à partir du convertisseur et des oracles historiques ; Blink/Allego restent bruts. Firefox multi-pays PASS.
+
+- 2026-10-24 : sélection multiple des opérateurs et frais temporels Electroverse contrôlés dans Firefox ; scénario PCPR avec date et frais fixes confirmé par oracle.
