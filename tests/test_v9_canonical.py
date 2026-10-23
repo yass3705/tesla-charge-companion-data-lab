@@ -64,6 +64,13 @@ class CanonicalSwissTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invented official"):
             validate(data)
 
+    def test_offer_connector_must_belong_to_scoped_evse(self):
+        data = normalize_swiss(source([row("CH*ABC*E1", priced=True), row("CH*ABC*E2")]), artifact_sha256=ARTIFACT_SHA)
+        other = next(connector for connector in data["connectors"] if connector["evseId"] != data["offers"][0]["scope"]["evseId"])
+        data["offers"][0]["scope"]["connectorId"] = other["id"]
+        with self.assertRaisesRegex(ValueError, "offer ownership"):
+            validate(data)
+
 
 if __name__ == "__main__":
     unittest.main()

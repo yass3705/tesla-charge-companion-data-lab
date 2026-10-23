@@ -186,9 +186,14 @@ def validate(data: dict) -> None:
     for station in data["stations"]:
         if station.get("cpoId") not in ids["cpos"]:
             raise ValueError("Canonical station CPO relation invalid")
+    stations_by_id = {row["id"]: row for row in data["stations"]}
+    connectors_by_id = {row["id"]: row for row in data["connectors"]}
     for evse in data["evses"]:
         if evse.get("stationId") not in ids["stations"] or evse.get("cpoId") not in ids["cpos"]:
             raise ValueError("Canonical EVSE relation invalid")
+        station = stations_by_id[evse["stationId"]]
+        if evse["cpoId"] != station["cpoId"] or evse.get("country") != station.get("country"):
+            raise ValueError("Canonical EVSE ownership invalid")
         if evse.get("officialEvseId") != evse.get("sourceEvseId"):
             raise ValueError("Canonical official EVSE identity altered")
     for connector in data["connectors"]:
@@ -202,6 +207,8 @@ def validate(data: dict) -> None:
             raise ValueError("Canonical offer scope invalid")
         if scope.get("connectorId") is not None and scope["connectorId"] not in ids["connectors"]:
             raise ValueError("Canonical connector offer scope invalid")
+        if scope.get("connectorId") is not None and connectors_by_id[scope["connectorId"]]["evseId"] != scope["evseId"]:
+            raise ValueError("Canonical connector offer ownership invalid")
         if offer.get("calculationStatus") != "not_evaluated":
             raise ValueError("Canonical normalization may not infer a price")
 
