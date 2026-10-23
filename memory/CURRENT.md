@@ -1,3 +1,7 @@
+# 24 October 2026 - V9 proved UK PCPR pricing
+
+- The isolated 18-source preview now evaluates exact Source EV PCPR offers using the historical OCPI converter; Blink and Allego remain raw because archived connector power is absent. Firefox seven-country and mobile tests pass. G2–G8 remain FAIL; no public deployment or Actions activation. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 24 October 2026 - V9 UK PCPR canonical batch
 
 - Blink UK, Allego UK and Source EV archived PCPR files now enter the isolated 18-source candidate with exact EVSE/connector scope; tariffs remain raw pending historical oracle integration. Browser tests pass across seven countries. G2–G8 remain FAIL; Data Lab Actions remain disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
