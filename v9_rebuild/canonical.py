@@ -572,6 +572,72 @@ def normalize_midhope_verified(payload: dict, *, artifact_sha256: str) -> dict:
     return result
 
 
+def normalize_france_irve_compact(payload: list, *, artifact_sha256: str) -> dict:
+    """Expand preserved national compact rows without assigning a tariff by site."""
+    if not isinstance(payload, list):
+        raise ValueError("France IRVE compact source schema invalid")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Pinned France IRVE artifact SHA missing")
+    country, source_id = "FR", "FR:irve_static"
+    result = {"schemaVersion": SCHEMA_VERSION,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
+                         "rawDataset": "france-irve-static-v9"},
+              "countries": [{"code": country}], "cpos": [], "stations": [],
+              "evses": [], "connectors": [], "offers": []}
+    cpos, evses, connector_ids = {}, {}, set()
+    for row in payload:
+        if not isinstance(row, list) or len(row) != 11:
+            raise ValueError("France IRVE compact station row invalid")
+        source_station, operator, groups = row[0], row[5], row[8]
+        if not all(isinstance(value, str) and value for value in (source_station, operator)) or not isinstance(groups, list):
+            raise ValueError("France IRVE station identity invalid")
+        if not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in (row[3], row[4])) or abs(row[3]) > 90 or abs(row[4]) > 180:
+            raise ValueError("France IRVE coordinates invalid")
+        cpo_key = key(country, source_id, "cpo", operator)
+        station_key = key(country, source_id, "station", source_station)
+        cpos.setdefault(cpo_key, {"id": cpo_key, "country": country,
+                                  "sourceOperatorId": operator, "name": operator})
+        result["stations"].append({"id": station_key, "country": country, "cpoId": cpo_key,
+                                   "sourceStationId": source_station, "name": row[1], "address": row[2],
+                                   "latitude": row[3], "longitude": row[4], "networkBrand": row[10],
+                                   "sourceUpdatedAt": row[9], "rawSourceFields": row})
+        station_evses = set()
+        for group in groups:
+            if (not isinstance(group, list) or len(group) != 7 or
+                    group[2] not in {"AC", "DC"} or not isinstance(group[6], list) or
+                    not isinstance(group[3], (int, float)) or isinstance(group[3], bool) or group[3] < 0):
+                raise ValueError("France IRVE compact connector group invalid")
+            for source_evse in group[6]:
+                if not isinstance(source_evse, str) or not source_evse:
+                    raise ValueError("France IRVE official EVSE missing")
+                evse_key = key(country, source_id, "evse", source_evse)
+                candidate = {"id": evse_key, "country": country, "cpoId": cpo_key,
+                             "stationId": station_key, "sourceEvseId": source_evse,
+                             "officialEvseId": source_evse}
+                previous = evses.setdefault(evse_key, candidate)
+                if previous != candidate:
+                    raise ValueError("France IRVE EVSE ownership collision")
+                station_evses.add(source_evse)
+                connector_key = key(country, source_id, "connector", [source_evse, group[0]])
+                if connector_key in connector_ids:
+                    raise ValueError("France IRVE connector group collision")
+                connector_ids.add(connector_key)
+                result["connectors"].append({"id": connector_key, "evseId": evse_key,
+                                             "sourceConnectorId": None, "officialConnectorId": None,
+                                             "plugType": group[1], "kind": group[2],
+                                             "powerKw": group[3] if group[3] > 0 else None,
+                                             "identityGranularity": "irve_compact_group",
+                                             "rawSourceFields": group[:6]})
+        if row[6] != len(station_evses):
+            raise ValueError("France IRVE internal station EVSE count mismatch")
+    result["cpos"] = sorted(cpos.values(), key=lambda item: item["id"])
+    result["evses"] = sorted(evses.values(), key=lambda item: item["id"])
+    for section in ("stations", "connectors"):
+        result[section].sort(key=lambda item: item["id"])
+    validate(result)
+    return result
+
+
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")

@@ -789,3 +789,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-23 — Reconstruction V9 G3/G7 : archive OZECAR Corse normalisée avec EVSE exacts et offres brutes ; candidat sept sources et navigateur Corse vérifiés sans prix ou statut live inventé. Portes non promues.
 - 2026-10-23 — Reconstruction V9 G7 : correction de la liste qui omettait les prises sans puissance propre ; fiches EVSE exactes désormais visibles et offres brutes limitées à leur portée. Tests Node et navigateur isolé PASS, G7 reste FAIL globalement.
 - 2026-10-23 — Reconstruction V9 G3/G6/G7 : Midhope UK normalisé à quatre EVSE/prises exacts ; oracle historique de calcul PASS, mais offre maintenue hors classement du candidat faute d'entrée de durée/puissance prouvée dans l'interface. Navigateur isolé à huit sources PASS, portes globales FAIL.
+
+- 2026-10-23 : construction canonique batch multi-pays et France IRVE statique, avec bundle immuable ; rapport de jointure exacte France intégré au candidat isolé Production. G3–G8 toujours FAIL.

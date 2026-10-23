@@ -1129,3 +1129,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 # 23 October 2026 — V9 Midhope exact archive
 
 - Production `0bd984c` et Data Lab branche de reconstruction : Midhope UK normalisé à portée EVSE/prise exacte ; 20 tests canoniques PASS, oracle tarifaire historique PASS pour durées explicites, navigateur huit sources PASS sur Woking et cinq autres origines. L'interface ne calcule aucun prix Midhope tant que son entrée durée/puissance n'est pas prouvée ; G3/G6/G7/G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+2026-10-23 — Lot V9 transversal : 12 sources archivées normalisées en bundle immuable hors checkout, dont France IRVE statique ; candidat Production isolé avec rapport de jointure EVSE exacte vérifié par SHA. Prix bruts non évalués. G3–G8 FAIL, Actions Data Lab désactivé, aucune publication publique. Détails et prochaine action dans `memory/V9_REBUILD_PROGRESS.md`.
