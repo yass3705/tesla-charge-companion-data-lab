@@ -801,3 +801,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-23 : raccordement des offres Belgique NAP énergie simple et TVA prouvées au moteur V9, sans prix pour les composantes non couvertes ; navigateur multi-pays PASS, G6–G8 ouverts.
 
 - 2026-10-23 : DOT-NL national rejoint le batch canonique et le candidat isolé sept pays ; identités et tarifs OCPI exacts préservés, prix NL encore non évalués. Import et navigateur PASS, portes aval ouvertes.
+
+- 2026-10-23 : catalogue tarifaire DOT-NL dédupliqué ; sous-ensemble énergie seule raccordé au moteur avec oracle du pas Wh et contrôle de prise exacte. Candidat sept pays testé, G6–G8 ouverts.

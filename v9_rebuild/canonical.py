@@ -809,7 +809,7 @@ def normalize_netherlands_dotnl(payload: dict, *, artifact_sha256: str) -> dict:
                     offer_id = key("NL", source_id, "offer", [connector_id, tariff_key])
                     offers.append({"id": offer_id, "channel": "Direct",
                                    "scope": {"evseId": evse_id, "connectorId": connector_id},
-                                   "sourceTariffKey": tariff_key, "rawOffer": tariff,
+                                   "sourceTariffKey": tariff_key, "rawOffer": {"tariffKey": tariff_key},
                                    "calculationStatus": "not_evaluated"})
     result = {"schemaVersion": SCHEMA_VERSION,
               "source": {"id": source_id, "artifactSha256": artifact_sha256,
@@ -819,7 +819,8 @@ def normalize_netherlands_dotnl(payload: dict, *, artifact_sha256: str) -> dict:
               "stations": sorted(stations, key=lambda row: row["id"]),
               "evses": sorted(evses, key=lambda row: row["id"]),
               "connectors": sorted(connectors, key=lambda row: row["id"]),
-              "offers": sorted(offers, key=lambda row: row["id"])}
+              "offers": sorted(offers, key=lambda row: row["id"]),
+              "tariffCatalog": payload["tariffs"]}
     validate(result)
     return result
 
