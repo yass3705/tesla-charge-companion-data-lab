@@ -825,3 +825,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-24 : calcul Source EV PCPR UK limité aux prises à puissance et tarif exacts, à partir du convertisseur et des oracles historiques ; Blink/Allego restent bruts. Firefox multi-pays PASS.
 
 - 2026-10-24 : sélection multiple des opérateurs et frais temporels Electroverse contrôlés dans Firefox ; scénario PCPR avec date et frais fixes confirmé par oracle.
+
+- 2026-10-24 : REVE Espagne ajouté au canonique depuis l’archive et le manifeste validés ; 19 sources/huit pays dans le candidat navigateur isolé, aucun EVSE officiel ni tarif inventé.

@@ -23,6 +23,7 @@ from v9_rebuild.canonical import (
     normalize_zephyre_exact,
 )
 from v9_rebuild.canonical_uk_pcpr import normalize_uk_pcpr
+from v9_rebuild.canonical_spain_reve import normalize_spain_reve
 
 
 @dataclass(frozen=True)
@@ -32,9 +33,13 @@ class CanonicalRoute:
     normalizer: Callable
     manifest: str | None = None
     page_manifest: bool = False
+    spain_reve_manifest: bool = False
 
 
 ROUTES = (
+    CanonicalRoute("ES:reve_static", "data/reve_v2/validated_runtime/spain-static/all.json.gz",
+                   normalize_spain_reve, "data/reve_v2/validated_runtime/spain-static/manifest.json",
+                   spain_reve_manifest=True),
     CanonicalRoute("GB:allego_pcpr_direct", "data/national/uk_allego_uk_pcpr_v9.json.gz",
                    partial(normalize_uk_pcpr, source_id="GB:allego_pcpr_direct")),
     CanonicalRoute("GB:blink_pcpr_direct", "data/national/uk_blink_pcpr_v9.json.gz",

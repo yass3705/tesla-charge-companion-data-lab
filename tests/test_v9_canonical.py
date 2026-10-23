@@ -73,6 +73,15 @@ class CanonicalSwissTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "official connector identity"):
             validate(data)
 
+    def test_source_evse_identifier_can_exist_without_official_identity(self):
+        data = normalize_swiss(source([row("CH*ABC*E1")]), artifact_sha256=ARTIFACT_SHA)
+        data["evses"][0]["sourceEvseId"] = "source-only-1"
+        data["evses"][0]["officialEvseId"] = None
+        validate(data)
+        data["evses"][0]["officialEvseId"] = "invented-official-id"
+        with self.assertRaisesRegex(ValueError, "official EVSE identity"):
+            validate(data)
+
     def test_offer_connector_must_belong_to_scoped_evse(self):
         data = normalize_swiss(source([row("CH*ABC*E1", priced=True), row("CH*ABC*E2")]), artifact_sha256=ARTIFACT_SHA)
         other = next(connector for connector in data["connectors"] if connector["evseId"] != data["offers"][0]["scope"]["evseId"])

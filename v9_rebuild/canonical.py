@@ -848,7 +848,7 @@ def validate(data: dict) -> None:
         station = stations_by_id[evse["stationId"]]
         if evse["cpoId"] != station["cpoId"] or evse.get("country") != station.get("country"):
             raise ValueError("Canonical EVSE ownership invalid")
-        if evse.get("officialEvseId") != evse.get("sourceEvseId"):
+        if evse.get("officialEvseId") is not None and evse.get("officialEvseId") != evse.get("sourceEvseId"):
             raise ValueError("Canonical official EVSE identity altered")
     for connector in data["connectors"]:
         if connector.get("evseId") not in ids["evses"]:

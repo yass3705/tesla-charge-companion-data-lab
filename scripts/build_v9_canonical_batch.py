@@ -24,6 +24,32 @@ from v9_rebuild.snapshot import prepare, verify
 def read_route(route, source_id: str) -> tuple[object, str, str | None]:
     archive = ROOT / route.archive
     raw = archive.read_bytes()
+    if route.spain_reve_manifest:
+        manifest_raw = (ROOT / route.manifest).read_bytes()
+        manifest = json.loads(manifest_raw)
+        rows = json.loads(gzip.decompress(raw))
+        if (source_id != "ES:reve_static" or manifest.get("schemaVersion") != 4 or
+                manifest.get("country") != "ES" or manifest.get("source") != "REVE" or
+                manifest.get("allFile") != archive.name or
+                manifest.get("allSha256") != hashlib.sha256(raw).hexdigest() or
+                not isinstance(rows, list) or manifest.get("stationCount") != len(rows) or
+                not isinstance(manifest.get("generatedAt"), str) or
+                not isinstance(manifest.get("tiles"), list)):
+            raise ValueError("REVE static manifest or archive invalid")
+        tile_count = 0
+        for tile in manifest["tiles"]:
+            name = tile.get("file")
+            if not isinstance(name, str) or Path(name).name != name or not name.endswith(".json.gz"):
+                raise ValueError("REVE tile path invalid")
+            page_raw = (archive.parent / name).read_bytes()
+            page = json.loads(gzip.decompress(page_raw))
+            if (hashlib.sha256(page_raw).hexdigest() != tile.get("sha256") or
+                    not isinstance(page, list) or len(page) != tile.get("count")):
+                raise ValueError("REVE tile integrity invalid")
+            tile_count += len(page)
+        if tile_count != len(rows):
+            raise ValueError("REVE tile set incomplete")
+        return {"rows": rows, "generatedAt": manifest["generatedAt"]}, hashlib.sha256(raw).hexdigest(), hashlib.sha256(manifest_raw).hexdigest()
     if route.page_manifest:
         manifest = json.loads(raw)
         pages = manifest.get("pages")

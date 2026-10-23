@@ -1165,3 +1165,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 2026-10-23 — Source canonique brute `FR:emsp_exact` ajoutée au bundle V9 isolé 15 sources `aa36145774cdf228b6e9f6e68ff55e2fbdbcc42a75d709ce685a30e593bbcba6`. Firefox sept pays PASS : offres Electroverse exactes visibles comme incalculables et topologie nationale intacte ; Electra sans correspondance exacte sur ce snapshot, aucune propagation. Production `6c2a806`, G2–G8 FAIL, aucun déploiement public.
 
 2026-10-23 — Production `a34db24` calcule les offres Electroverse archivées à EVSE exact et règle complète prouvée, sans attribuer un prix aux autres. Oracles historiques Electroverse riche et OCPI composants PASS sur le runtime construit ; Firefox 15 sources/sept pays PASS avec comparaison et coût/km eMSP. G2–G8 restent FAIL, site public et Actions Data Lab inchangés.
+
+2026-10-24 — Candidat V9 isolé 19 sources/huit pays après ajout de REVE Espagne ; import 19/19 et Firefox desktop/mobile PASS. Les identifiants source sans EVSE officiel restent distincts, aucun prix REVE créé. Production `6eb6484`; portes G2–G8 FAIL, Actions Data Lab désactivé et site public inchangé.
