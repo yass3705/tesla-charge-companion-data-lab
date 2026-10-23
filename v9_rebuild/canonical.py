@@ -506,6 +506,72 @@ def normalize_ozecar(payload: dict, *, artifact_sha256: str) -> dict:
     return result
 
 
+def normalize_midhope_verified(payload: dict, *, artifact_sha256: str) -> dict:
+    """Keep the four archived Midhope connector offers and exact OCPI identities."""
+    if payload.get("country") != "GB" or not isinstance(payload.get("sources"), list):
+        raise ValueError("Midhope archive schema invalid")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Pinned Midhope artifact SHA missing")
+    country, source_id = "GB", "GB:connected_kerb_midhope_verified"
+    cpo_key = key(country, source_id, "cpo", "CK0")
+    result = {"schemaVersion": SCHEMA_VERSION,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
+                         "generatedAt": payload.get("collectedAt"), "rawActivationPolicy": payload.get("activationPolicy")},
+              "countries": [{"code": country}],
+              "cpos": [{"id": cpo_key, "country": country, "sourceOperatorId": "CK0", "name": "Connected Kerb"}],
+              "stations": [], "evses": [], "connectors": [], "offers": []}
+    for source in payload["sources"]:
+        if source.get("pricingScope") != "cpo_direct_guest_exact_connector" or source.get("country") != country:
+            raise ValueError("Midhope source scope invalid")
+        for location in source.get("locations", []):
+            source_station = location.get("id")
+            if not source_station or location.get("party_id") != "CK0" or location.get("country_code") != country:
+                raise ValueError("Midhope station identity invalid")
+            coordinates = location.get("coordinates") or {}
+            station_key = key(country, source_id, "station", source_station)
+            result["stations"].append({"id": station_key, "country": country, "cpoId": cpo_key,
+                                       "sourceStationId": source_station, "name": location.get("name"),
+                                       "address": location.get("address"), "city": location.get("city"),
+                                       "postalCode": location.get("postal_code"),
+                                       "latitude": coordinates.get("latitude"), "longitude": coordinates.get("longitude"),
+                                       "timeZone": location.get("time_zone"), "rawSourceFields": location})
+            for evse in location.get("evses", []):
+                source_evse = evse.get("evse_id")
+                if not isinstance(source_evse, str) or not source_evse.startswith("GB*CK0*"):
+                    raise ValueError("Midhope official EVSE missing")
+                evse_key = key(country, source_id, "evse", source_evse)
+                result["evses"].append({"id": evse_key, "country": country, "cpoId": cpo_key,
+                                        "stationId": station_key, "sourceEvseId": source_evse,
+                                        "officialEvseId": source_evse, "sourceUid": evse.get("uid"),
+                                        "rawSourceFields": evse})
+                for connector in evse.get("connectors", []):
+                    source_connector = connector.get("id")
+                    if not isinstance(source_connector, str) or not source_connector:
+                        raise ValueError("Midhope source connector missing")
+                    connector_key = key(country, source_id, "connector", [source_evse, source_connector])
+                    result["connectors"].append({"id": connector_key, "evseId": evse_key,
+                                                 "sourceConnectorId": source_connector,
+                                                 "officialConnectorId": source_connector,
+                                                 "plugType": connector.get("standard"), "powerKw": None,
+                                                 "rawElectricalSpec": {"powerType": connector.get("power_type"),
+                                                                       "maxVoltage": connector.get("max_voltage"),
+                                                                       "maxAmperage": connector.get("max_amperage")}})
+                    offer = connector.get("validatedV9Offer")
+                    if offer is None:
+                        continue
+                    if (offer.get("stationIds") != [source_station] or offer.get("evseIds") != [source_evse] or
+                            offer.get("connectorIds") != [source_connector] or
+                            offer.get("pricing", {}).get("type") != "connected_kerb_midhope_guest_verified"):
+                        raise ValueError("Midhope verified offer exact scope invalid")
+                    result["offers"].append({"id": key(country, source_id, "offer", source_connector),
+                                              "channel": "Direct", "scope": {"evseId": evse_key, "connectorId": connector_key},
+                                              "rawOffer": offer, "calculationStatus": "not_evaluated"})
+    for section in ("stations", "evses", "connectors", "offers"):
+        result[section].sort(key=lambda row: row["id"])
+    validate(result)
+    return result
+
+
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")

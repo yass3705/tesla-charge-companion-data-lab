@@ -1125,3 +1125,7 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 # 23 October 2026 — V9 unknown connector power display
 
 - Production `995b998` affiche désormais les EVSE et prises même sans puissance propre, sans en inventer une ; test Node et navigateur sur le candidat sept sources PASS. G7 reste FAIL pour le périmètre complet. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 23 October 2026 — V9 Midhope exact archive
+
+- Production `0bd984c` et Data Lab branche de reconstruction : Midhope UK normalisé à portée EVSE/prise exacte ; 20 tests canoniques PASS, oracle tarifaire historique PASS pour durées explicites, navigateur huit sources PASS sur Woking et cinq autres origines. L'interface ne calcule aucun prix Midhope tant que son entrée durée/puissance n'est pas prouvée ; G3/G6/G7/G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
