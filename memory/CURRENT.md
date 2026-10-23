@@ -1143,3 +1143,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 2026-10-23 — DOT-NL national ajouté au canonique V9, bundle composite 14 sources `b9aad2dfc2717556b18060a9af38b838104dc233a17c276dea897fd290508541`. Import 14/14 et navigateur sept pays PASS, NL tarif brut hors calcul. Production `3f952cc`, G3/G6/G7/G8 FAIL ; aucune publication publique.
 
 2026-10-23 — DOT-NL V9 : catalogue OCPI canonique sans duplication des objets tarifaires ; moteur Production `081d2e2` calcule uniquement les offres énergie simple à prise exacte, pas Wh et coût TTC prouvés. Firefox sept pays PASS sur bundle `1626c9e82e363df19cb404a9f8d4e46ee278ee6583ec32d0cec2c1ba228f463f`. G6–G8 FAIL, pas de site public modifié.
+
+2026-10-23 — Préproduction V9 isolée : batterie utile, consommation et plafonds AC/DC saisissables, transmis au moteur ; Firefox 14 sources/sept pays PASS. Production `18c6d0e`, Data Lab `c1e105092` avant note finale. Portes G2–G8 toujours FAIL, Actions Data Lab désactivé et site public inchangé.
