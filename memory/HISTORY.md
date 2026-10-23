@@ -791,3 +791,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-23 — Reconstruction V9 G3/G6/G7 : Midhope UK normalisé à quatre EVSE/prises exacts ; oracle historique de calcul PASS, mais offre maintenue hors classement du candidat faute d'entrée de durée/puissance prouvée dans l'interface. Navigateur isolé à huit sources PASS, portes globales FAIL.
 
 - 2026-10-23 : construction canonique batch multi-pays et France IRVE statique, avec bundle immuable ; rapport de jointure exacte France intégré au candidat isolé Production. G3–G8 toujours FAIL.
+
+- 2026-10-23 : raccordement prudent des offres IONITY FR et Atlante IT ENERGY simple au moteur du candidat V9 ; garde navigateur sur identité, SHA et structure, autres offres exclues du classement. Firefox multi-pays PASS ; portes G6–G8 ouvertes.
+
+- 2026-10-23 : statistiques de couverture des jointures nationales exactes par source et canal, sans seuil ni propagation de prix ; G5 toujours ouvert.
