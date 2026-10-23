@@ -815,3 +815,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-23 : preuves eMSP exactes transformées en source brute canonique et importées dans le candidat isolé, sans calcul non prouvé ni remplacement des stations nationales. Navigateur multi-pays PASS ; G5/G7/G8 restent ouverts.
 
 - 2026-10-23 : calcul Electroverse eMSP limité aux EVSE exacts et aux règles compilées historiquement prouvées ; oracles complets et navigateur multi-pays PASS. Les autres offres restent incalculables.
+
+- 2026-10-23 : durée de charge estimée désormais visible avec les offres calculables dans le candidat isolé ; Firefox sept pays et mobile PASS, performance NL encore insuffisante pour G7/G8.
