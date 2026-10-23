@@ -807,3 +807,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-23 : paramètres véhicule modifiables dans le candidat V9 isolé ; vérification Node et navigateur multi-pays PASS. Aucune activation Actions ni publication publique.
 
 - 2026-10-23 : la simulation V9 préproduction refuse une saisie véhicule invalide au lieu de calculer avec une valeur implicite ; navigateur multi-pays PASS.
+
+- 2026-10-23 : sous-ensemble OCPI composé déjà prouvé raccordé au candidat isolé ; frais détaillés et offres incomplètes hors classement. Preuves eMSP exactes rejouées par canal sans propagation de prix. Portes G5–G8 ouvertes.
