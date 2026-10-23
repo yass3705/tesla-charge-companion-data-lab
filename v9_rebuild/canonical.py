@@ -246,6 +246,77 @@ def normalize_belib(payload: dict, *, artifact_sha256: str) -> dict:
     return result
 
 
+def normalize_atlante_italy(payload: dict, *, artifact_sha256: str) -> dict:
+    """Preserve Atlante's exact OCPI EVSE/connector tariff scope, unevaluated."""
+    if not isinstance(payload.get("locations"), list) or not isinstance(payload.get("metadata"), dict):
+        raise ValueError("Atlante Italy source schema invalid")
+    if payload["metadata"].get("country") != "IT":
+        raise ValueError("Atlante Italy country invalid")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Pinned Atlante Italy artifact SHA missing")
+    source_id = "IT:atlante_direct"
+    result = {"schemaVersion": SCHEMA_VERSION,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
+                         "generatedAt": payload["metadata"].get("completedAt"),
+                         "rawMetadata": payload["metadata"]},
+              "countries": [{"code": "IT"}], "cpos": [], "stations": [],
+              "evses": [], "connectors": [], "offers": []}
+    cpos, evses = {}, {}
+    for location in payload["locations"]:
+        source_station = location.get("locationId")
+        party = location.get("partyId")
+        if location.get("countryCode") != "IT" or not isinstance(source_station, str) or not source_station or not isinstance(party, str) or not party:
+            raise ValueError("Atlante Italy station identity invalid")
+        station_key = key("IT", source_id, "station", [party, source_station])
+        cpo_key = key("IT", source_id, "cpo", party)
+        cpos.setdefault(cpo_key, {"id": cpo_key, "country": "IT", "sourceOperatorId": party,
+                                   "name": location.get("operatorName", "").strip() or party})
+        coordinates = location.get("coordinates")
+        match = re.fullmatch(r"\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*", coordinates or "")
+        latitude, longitude = (float(match[1]), float(match[2])) if match else (None, None)
+        if latitude is not None and (abs(latitude) > 90 or abs(longitude) > 180):
+            raise ValueError("Atlante Italy coordinates invalid")
+        result["stations"].append({"id": station_key, "country": "IT", "cpoId": cpo_key,
+                                   "sourceStationId": source_station, "sourceLocationUuid": location.get("id"),
+                                   "name": location.get("name"), "address": location.get("address"),
+                                   "city": location.get("city"), "postalCode": location.get("postalCode"),
+                                   "latitude": latitude, "longitude": longitude,
+                                   "rawSourceFields": location})
+        if not isinstance(location.get("connectors"), list):
+            raise ValueError("Atlante Italy connector list missing")
+        for connector in location["connectors"]:
+            source_evse, source_connector = connector.get("evseId"), connector.get("connectorId")
+            if not isinstance(source_evse, str) or not source_evse or not isinstance(source_connector, str) or not source_connector:
+                raise ValueError("Atlante Italy EVSE or connector identity missing")
+            evse_key = key("IT", source_id, "evse", source_evse)
+            previous = evses.setdefault(evse_key, {"id": evse_key, "country": "IT", "cpoId": cpo_key,
+                                                   "stationId": station_key, "sourceEvseId": source_evse,
+                                                   "officialEvseId": source_evse})
+            if previous["stationId"] != station_key or previous["cpoId"] != cpo_key:
+                raise ValueError("Atlante Italy EVSE ownership collision")
+            connector_key = key("IT", source_id, "connector", [source_evse, source_connector])
+            result["connectors"].append({"id": connector_key, "evseId": evse_key,
+                                         "sourceConnectorId": source_connector, "officialConnectorId": None,
+                                         "plugType": connector.get("connectorType"), "powerKw": connector.get("powerKw"),
+                                         "rawSourceFields": connector})
+            tariffs = connector.get("tariffs") or []
+            if not isinstance(tariffs, list):
+                raise ValueError("Atlante Italy tariff list invalid")
+            for index, tariff in enumerate(tariffs):
+                identifiers = tariff.get("identifiers") or {}
+                if identifiers.get("evseId") != source_evse or identifiers.get("connectorId") != source_connector:
+                    raise ValueError("Atlante Italy tariff connector scope invalid")
+                result["offers"].append({"id": key("IT", source_id, "offer", [source_evse, source_connector, index]),
+                                          "channel": "Direct", "scope": {"evseId": evse_key, "connectorId": connector_key},
+                                          "rawOffer": tariff, "calculationStatus": "not_evaluated"})
+    result["cpos"] = sorted(cpos.values(), key=lambda row: row["id"])
+    result["evses"] = sorted(evses.values(), key=lambda row: row["id"])
+    for section in ("stations", "connectors", "offers"):
+        result[section].sort(key=lambda row: row["id"])
+    validate(result)
+    return result
+
+
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")
