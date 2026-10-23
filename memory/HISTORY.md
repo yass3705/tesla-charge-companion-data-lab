@@ -819,3 +819,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-23 : durée de charge estimée désormais visible avec les offres calculables dans le candidat isolé ; Firefox sept pays et mobile PASS, performance NL encore insuffisante pour G7/G8.
 
 - 2026-10-23 : présélection spatiale des fragments du candidat, avec fermeture transitive par identifiants exacts ; navigateur sept pays sans perte d’offres, performances améliorées mais G7/G8 ouverts.
+
+- 2026-10-24 : trois archives PCPR UK normalisées par un module commun, avec offres brutes exactes et sans tarif inventé ; candidat isolé 18 sources testé sur navigateur.

@@ -1,3 +1,7 @@
+# 24 October 2026 - V9 UK PCPR canonical batch
+
+- Blink UK, Allego UK and Source EV archived PCPR files now enter the isolated 18-source candidate with exact EVSE/connector scope; tariffs remain raw pending historical oracle integration. Browser tests pass across seven countries. G2–G8 remain FAIL; Data Lab Actions remain disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 23 October 2026 - V9 isolated preview spatial query
 
 - Seven-country, 15-source offline preview keeps exact station/EVSE joins and proved tariffs after a radius query optimization. The charging duration is visible when computed. G2–G8 remain FAIL; GitHub handoff and a remote preview URL are unverified. Data Lab Actions remain disabled. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

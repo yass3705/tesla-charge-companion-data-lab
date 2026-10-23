@@ -6,6 +6,7 @@ Adding a route requires a source contract and a focused normalizer test.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import partial
 from typing import Callable
 
 from v9_rebuild.canonical import (
@@ -21,6 +22,7 @@ from v9_rebuild.canonical import (
     normalize_swiss,
     normalize_zephyre_exact,
 )
+from v9_rebuild.canonical_uk_pcpr import normalize_uk_pcpr
 
 
 @dataclass(frozen=True)
@@ -33,6 +35,12 @@ class CanonicalRoute:
 
 
 ROUTES = (
+    CanonicalRoute("GB:allego_pcpr_direct", "data/national/uk_allego_uk_pcpr_v9.json.gz",
+                   partial(normalize_uk_pcpr, source_id="GB:allego_pcpr_direct")),
+    CanonicalRoute("GB:blink_pcpr_direct", "data/national/uk_blink_pcpr_v9.json.gz",
+                   partial(normalize_uk_pcpr, source_id="GB:blink_pcpr_direct")),
+    CanonicalRoute("GB:source_ev_pcpr_direct", "data/national/uk_source_ev_pcpr_v9.json.gz",
+                   partial(normalize_uk_pcpr, source_id="GB:source_ev_pcpr_direct")),
     CanonicalRoute("BE:nap_static", "data/belgium/nap-belgium-manifest.json", normalize_belgium_nap,
                    page_manifest=True),
     CanonicalRoute("CH:swiss_integration", "data/national/switzerland_public_charging_v9.json", normalize_swiss),
