@@ -785,3 +785,4 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 
 - 2026-10-23 — Reconstruction V9 G3/G7 : normalisation de l'archive Zéphyre ePowerDirect à EVSE exact et connecteur technique sans ID physique inventé ; candidat isolé à cinq sources validé dans Firefox sur FR/GB/IT. Tarifs bruts non évalués, portes G3/G5/G6/G7/G8 encore FAIL. Voir `V9_REBUILD_PROGRESS.md`.
 - 2026-10-23 — Reconstruction V9 G5 : replay exact du crosswalk Electra NL archivé avec station/EVSE/prise/tariffKey, 51 lignes vérifiées sans seuil ; validation des identifiants connecteurs officiels seulement lorsqu'ils sont fournis par la source. Portes G5/G6 toujours FAIL.
+- 2026-10-23 — Reconstruction V9 G3 : normaliseur Driveco/Partner de l'archive exacte, EVSE non tarifés conservés et frais complexes bruts, import six sources et navigateur isolé validés. Aucune coordonnée ou somme facturée inventée.

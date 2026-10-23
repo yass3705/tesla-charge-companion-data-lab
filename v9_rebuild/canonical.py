@@ -378,6 +378,67 @@ def normalize_zephyre_exact(payload: dict, *, artifact_sha256: str) -> dict:
     return result
 
 
+def normalize_driveco_evse(payload: dict, *, artifact_sha256: str) -> dict:
+    """Keep archived Driveco and partner EVSE; never turn partial fee data into a price."""
+    if payload.get("schemaVersion") != "1.0.0" or not isinstance(payload.get("resolved"), list) or not isinstance(payload.get("unresolved"), list):
+        raise ValueError("Driveco EVSE archive schema invalid")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Pinned Driveco artifact SHA missing")
+    country, source_id = "FR", "FR:driveco_evse_tariffs"
+    result = {"schemaVersion": SCHEMA_VERSION,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
+                         "generatedAt": payload.get("generatedAt"), "rawPolicy": payload.get("policy"),
+                         "rawSource": payload.get("source")},
+              "countries": [{"code": country}], "cpos": [], "stations": [],
+              "evses": [], "connectors": [], "offers": []}
+    cpos, stations = {}, {}
+    for priced, rows in ((True, payload["resolved"]), (False, payload["unresolved"])):
+        for row in rows:
+            source_evse, source_station, operator = row.get("evseId"), row.get("stationId"), row.get("operator")
+            if not all(isinstance(value, str) and value for value in (source_evse, source_station, operator)):
+                raise ValueError("Driveco physical identity missing")
+            network_class = row.get("networkClass")
+            if network_class not in {"driveco_network", "partner_network"}:
+                raise ValueError("Driveco network class invalid")
+            cpo_key = key(country, source_id, "cpo", operator)
+            station_key = key(country, source_id, "station", [operator, source_station])
+            evse_key = key(country, source_id, "evse", source_evse)
+            cpos.setdefault(cpo_key, {"id": cpo_key, "country": country,
+                                      "sourceOperatorId": operator, "name": operator})
+            candidate = {"id": station_key, "country": country, "cpoId": cpo_key,
+                         "sourceStationId": source_station, "name": row.get("stationName"),
+                         "address": row.get("address"), "city": row.get("city"),
+                         "postalCode": row.get("postalCode"), "networkClass": network_class,
+                         "groupingGranularity": "source_station"}
+            previous = stations.setdefault(station_key, candidate)
+            if previous["cpoId"] != cpo_key or previous["sourceStationId"] != source_station or previous["networkClass"] != network_class:
+                raise ValueError("Driveco station ownership collision")
+            result["evses"].append({"id": evse_key, "country": country, "cpoId": cpo_key,
+                                    "stationId": station_key, "sourceEvseId": source_evse,
+                                    "officialEvseId": source_evse, "rawSourceFields": row})
+            # The archive records power per EVSE, but no physical connector ID or type.
+            connector_key = key(country, source_id, "connector", source_evse)
+            result["connectors"].append({"id": connector_key, "evseId": evse_key,
+                                         "sourceConnectorId": None, "officialConnectorId": None,
+                                         "plugType": None, "powerKw": _power({"power": row.get("powerKw")}),
+                                         "identityGranularity": "evse_unspecified_connector"})
+            if priced:
+                tariff = row.get("tariff")
+                if not isinstance(tariff, dict) or not isinstance(row.get("feeSemantics"), dict):
+                    raise ValueError("Driveco resolved tariff or fee semantics missing")
+                result["offers"].append({"id": key(country, source_id, "offer", source_evse),
+                                          "channel": "Direct", "scope": {"evseId": evse_key, "connectorId": None},
+                                          "sourceEvseId": source_evse,
+                                          "rawOffer": {"tariff": tariff, "feeSemantics": row["feeSemantics"]},
+                                          "calculationStatus": "not_evaluated"})
+    result["cpos"] = sorted(cpos.values(), key=lambda row: row["id"])
+    result["stations"] = sorted(stations.values(), key=lambda row: row["id"])
+    for section in ("evses", "connectors", "offers"):
+        result[section].sort(key=lambda row: row["id"])
+    validate(result)
+    return result
+
+
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")

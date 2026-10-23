@@ -1113,3 +1113,7 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 # 23 October 2026 — V9 archived NL Electra exact join
 
 - Replay de la jointure Electra NL sur l'archive DOT-NL et l'overlay historique : 51 correspondances exactes, zéro anomalie technique ; tests fixture et garde d'identité canonique/import réussis. Ce nombre n'est pas un seuil. G5 reste FAIL jusqu'aux autres jointures prouvées. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 23 October 2026 — V9 Driveco canonical archive
+
+- Archive Driveco et réseau partenaire normalisée sans interprétation des frais ni coordonnées inventées ; suite canonique 16 PASS, bundle six sources `b2b6341bdf4f590d103dbd671f22f9156862d5a84d8bc261ee661a5d88e49654` importé, navigateur FR/GB/IT PASS. G3/G5/G6/G7/G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
