@@ -777,3 +777,4 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-22 : EVGO Maroc migre sur fixtures archivée et réduite ; versions complètes et champs statut vérifiés ; G2 FAIL (5 méthodes).
 - 2026-10-22 : Load Motion France (quatre tenants et compilation) migre sur fixtures archivées ; G2 FAIL (4 méthodes).
 - 2026-10-22 : quatre audits/orchestrations historiques sortis nominativement de G2 actif, avec preuves et destination G5/G6 ou remplacement ; G2 FAIL sur 120 transferts GitHub.
+- 2026-10-23 : aperçu local de préproduction raccordé au candidat préparé Production ; carte physique, filtres et prix explicitement non calculés testés hors ligne. G7 reste FAIL, aucun déploiement.
