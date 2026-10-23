@@ -1109,3 +1109,7 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 # 23 October 2026 — V9 Zephyre exact canonical preview
 
 - Branche `rebuild/v9-20261020` : normaliseur de l'archive Zéphyre ePowerDirect, 13 tests canoniques PASS ; candidat isolé à cinq sources `99b73eac4209b4919d9817e045aed161281f8d2930e185f46b18120d04963235` validé dans Firefox sur FR/GB/IT, dont Zéphyre Lattes. Aucun prix brut évalué ; aucune publication publique. G3/G5/G6/G7/G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md` pour preuves et prochaine opération.
+
+# 23 October 2026 — V9 archived NL Electra exact join
+
+- Replay de la jointure Electra NL sur l'archive DOT-NL et l'overlay historique : 51 correspondances exactes, zéro anomalie technique ; tests fixture et garde d'identité canonique/import réussis. Ce nombre n'est pas un seuil. G5 reste FAIL jusqu'aux autres jointures prouvées. Voir `V9_REBUILD_PROGRESS.md`.

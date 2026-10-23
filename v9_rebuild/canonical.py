@@ -406,8 +406,11 @@ def validate(data: dict) -> None:
     for connector in data["connectors"]:
         if connector.get("evseId") not in ids["evses"]:
             raise ValueError("Canonical connector relation invalid")
-        if connector.get("officialConnectorId") is not None:
-            raise ValueError("Canonical connector has invented official ID")
+        official_connector = connector.get("officialConnectorId")
+        if official_connector is not None and (not isinstance(official_connector, str) or
+                                               not official_connector or
+                                               official_connector != connector.get("sourceConnectorId")):
+            raise ValueError("Canonical official connector identity altered")
     for offer in data["offers"]:
         scope = offer.get("scope") or {}
         if offer.get("channel") not in CHANNELS or scope.get("evseId") not in ids["evses"]:

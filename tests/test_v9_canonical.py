@@ -61,7 +61,16 @@ class CanonicalSwissTest(unittest.TestCase):
             normalize_swiss(source([bad]), artifact_sha256=ARTIFACT_SHA)
         data = normalize_swiss(source([row("CH*ABC*E1")]), artifact_sha256=ARTIFACT_SHA)
         data["connectors"][0]["officialConnectorId"] = "invented"
-        with self.assertRaisesRegex(ValueError, "invented official"):
+        with self.assertRaisesRegex(ValueError, "official connector identity"):
+            validate(data)
+
+    def test_explicit_source_connector_identity_is_preserved(self):
+        data = normalize_swiss(source([row("CH*ABC*E1")]), artifact_sha256=ARTIFACT_SHA)
+        data["connectors"][0]["sourceConnectorId"] = "1"
+        data["connectors"][0]["officialConnectorId"] = "1"
+        validate(data)
+        data["connectors"][0]["officialConnectorId"] = "2"
+        with self.assertRaisesRegex(ValueError, "official connector identity"):
             validate(data)
 
     def test_offer_connector_must_belong_to_scoped_evse(self):
