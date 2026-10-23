@@ -171,6 +171,81 @@ def normalize_ionity(payload: dict, *, artifact_sha256: str) -> dict:
     return result
 
 
+def normalize_belib(payload: dict, *, artifact_sha256: str) -> dict:
+    """Keep Belib's physical connector and service-class scope without pricing it."""
+    if payload.get("schemaVersion") != "1.0.0" or payload.get("country") != "FR" or not isinstance(payload.get("stations"), list) or not isinstance(payload.get("directTariffProfiles"), list):
+        raise ValueError("Belib source schema invalid")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Pinned Belib artifact SHA missing")
+    source_id = "FR:belib_stations"
+    result = {"schemaVersion": SCHEMA_VERSION,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
+                         "generatedAt": payload.get("generatedAt"), "rawDataset": payload.get("dataset"),
+                         "rawDirectTariffProfiles": payload["directTariffProfiles"]},
+              "countries": [{"code": "FR"}], "cpos": [], "stations": [], "evses": [], "connectors": [], "offers": []}
+    cpos, evses, connectors = {}, {}, {}
+    profiles = {}
+    for profile in payload["directTariffProfiles"]:
+        if not isinstance(profile, dict) or not profile.get("profileId") or not profile.get("serviceClass"):
+            raise ValueError("Belib profile identity invalid")
+        if profile["profileId"] in profiles:
+            raise ValueError("Belib profile collision")
+        profiles[profile["profileId"]] = profile
+    for station in payload["stations"]:
+        source_station = station.get("stationId")
+        operator = station.get("operatorSourceValue")
+        if not isinstance(source_station, str) or not source_station or not isinstance(operator, str) or not operator:
+            raise ValueError("Belib station or CPO identity missing")
+        cpo_key = key("FR", source_id, "cpo", operator)
+        station_key = key("FR", source_id, "station", source_station)
+        cpos.setdefault(cpo_key, {"id": cpo_key, "country": "FR", "sourceOperatorId": operator, "name": operator})
+        coordinates = station.get("coordinates") or {}
+        result["stations"].append({"id": station_key, "country": "FR", "cpoId": cpo_key,
+                                   "sourceStationId": source_station, "name": station.get("name"),
+                                   "address": station.get("address"), "latitude": coordinates.get("latitude"),
+                                   "longitude": coordinates.get("longitude"),
+                                   "networkBrand": station.get("brandSourceValue"),
+                                   "sourceOperatorLabel": station.get("operator"), "rawSourceFields": station})
+        configurations = station.get("configurations")
+        if not isinstance(configurations, list):
+            raise ValueError("Belib configurations missing")
+        for config in configurations:
+            source_evses = config.get("evseIds")
+            plug_types = config.get("connectorTypes")
+            if not isinstance(source_evses, list) or not isinstance(plug_types, list) or not config.get("kind") or not config.get("serviceClass"):
+                raise ValueError("Belib configuration schema invalid")
+            for source_evse in source_evses:
+                if not isinstance(source_evse, str) or not source_evse:
+                    raise ValueError("Belib source EVSE missing")
+                evse_key = key("FR", source_id, "evse", source_evse)
+                previous = evses.setdefault(evse_key, {"id": evse_key, "country": "FR", "cpoId": cpo_key,
+                                                   "stationId": station_key, "sourceEvseId": source_evse,
+                                                   "officialEvseId": source_evse})
+                if previous["stationId"] != station_key or previous["cpoId"] != cpo_key:
+                    raise ValueError("Belib EVSE ownership collision")
+                for plug_type in plug_types:
+                    connector_key = key("FR", source_id, "connector", [source_evse, config["kind"], config.get("powerKw"), plug_type])
+                    connectors.setdefault(connector_key, {"id": connector_key, "evseId": evse_key,
+                                                         "sourceConnectorId": None, "officialConnectorId": None,
+                                                         "plugType": plug_type, "powerKw": config.get("powerKw"),
+                                                         "rawSourceFields": {"kind": config["kind"], "serviceClass": config["serviceClass"]}})
+                    for profile in profiles.values():
+                        if profile["serviceClass"] != config["serviceClass"]:
+                            continue
+                        offer_key = key("FR", source_id, "offer", [connector_key, profile["profileId"]])
+                        result["offers"].append({"id": offer_key, "channel": "Direct",
+                                                  "scope": {"evseId": evse_key, "connectorId": connector_key},
+                                                  "sourceProfileId": profile["profileId"], "rawOffer": profile,
+                                                  "calculationStatus": "not_evaluated"})
+    result["cpos"] = sorted(cpos.values(), key=lambda row: row["id"])
+    result["evses"] = sorted(evses.values(), key=lambda row: row["id"])
+    result["connectors"] = sorted(connectors.values(), key=lambda row: row["id"])
+    for section in ("stations", "offers"):
+        result[section].sort(key=lambda row: row["id"])
+    validate(result)
+    return result
+
+
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")
