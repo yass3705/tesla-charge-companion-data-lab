@@ -1167,3 +1167,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 2026-10-23 — Production `a34db24` calcule les offres Electroverse archivées à EVSE exact et règle complète prouvée, sans attribuer un prix aux autres. Oracles historiques Electroverse riche et OCPI composants PASS sur le runtime construit ; Firefox 15 sources/sept pays PASS avec comparaison et coût/km eMSP. G2–G8 restent FAIL, site public et Actions Data Lab inchangés.
 
 2026-10-24 — Candidat V9 isolé 19 sources/huit pays après ajout de REVE Espagne ; import 19/19 et Firefox desktop/mobile PASS. Les identifiants source sans EVSE officiel restent distincts, aucun prix REVE créé. Production `6eb6484`; portes G2–G8 FAIL, Actions Data Lab désactivé et site public inchangé.
+
+2026-10-24 — Candidat V9 isolé 20 sources/neuf pays après EVGO Maroc ; import 20/20 et Firefox desktop/mobile PASS. Identifiants natifs conservés, puissance non publiée et prix indisponible, sans offre inventée. Production `330fe96`, portes G2–G8 FAIL ; Actions désactivé et site public inchangé.

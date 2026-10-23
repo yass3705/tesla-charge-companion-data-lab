@@ -24,6 +24,7 @@ from v9_rebuild.canonical import (
 )
 from v9_rebuild.canonical_uk_pcpr import normalize_uk_pcpr
 from v9_rebuild.canonical_spain_reve import normalize_spain_reve
+from v9_rebuild.canonical_morocco_evgo import normalize_morocco_evgo
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,8 @@ class CanonicalRoute:
 
 
 ROUTES = (
+    CanonicalRoute("MA:evgo", "reports/morocco/evgo/latest-production-stations.json",
+                   normalize_morocco_evgo),
     CanonicalRoute("ES:reve_static", "data/reve_v2/validated_runtime/spain-static/all.json.gz",
                    normalize_spain_reve, "data/reve_v2/validated_runtime/spain-static/manifest.json",
                    spain_reve_manifest=True),

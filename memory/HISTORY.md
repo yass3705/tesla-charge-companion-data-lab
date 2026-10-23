@@ -827,3 +827,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-24 : sélection multiple des opérateurs et frais temporels Electroverse contrôlés dans Firefox ; scénario PCPR avec date et frais fixes confirmé par oracle.
 
 - 2026-10-24 : REVE Espagne ajouté au canonique depuis l’archive et le manifeste validés ; 19 sources/huit pays dans le candidat navigateur isolé, aucun EVSE officiel ni tarif inventé.
+
+- 2026-10-24 : archive EVGO Maroc ajoutée au canonique avec identités natives et puissance inconnue ; candidat isolé neuf pays validé au navigateur sans prix artificiel.
