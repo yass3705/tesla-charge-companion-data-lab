@@ -1173,3 +1173,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 2026-10-24 — Production `7c3ed05` calcule les offres DOT-NL exactes à restriction valide de date, jour et horaire, selon les oracles OCPI/DST existants. Firefox sur candidat isolé 20 sources/neuf pays PASS ; G2–G8 toujours FAIL, aucun site public modifié.
 
 2026-10-24 — Production `f425cc8` applique les seuils OCPI historiques de durée et de puissance aux offres DOT-NL exactes ; oracles et Firefox sur le candidat isolé neuf pays PASS. G2–G8 restent FAIL ; aucun déploiement public.
+
+2026-10-24 — Production `bfb4737` fournit une reconstruction locale déterministe du candidat V9 depuis les archives versionnées Data Lab ; bundle `b36c0eb45d75f14764dc82ab4ebd26c8726156b58659f9feabe9158f13abf9b2`, import 20/20 et Firefox neuf pays PASS. G2–G8 FAIL, aucune publication publique ni transfert GitHub validé.

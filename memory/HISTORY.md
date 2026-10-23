@@ -833,3 +833,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-24 : restrictions OCPI date, jour et horaire raccordées au moteur pour les offres néerlandaises à prise exacte, avec refus indépendant des recettes mutées.
 
 - 2026-10-24 : seuils OCPI de durée et puissance vérifiés indépendamment dans le candidat DOT-NL ; sessions hors borne explicitement incalculables.
+
+- 2026-10-24 : commande Production unique pour reconstruire bundle, jointures eMSP, import et paquet V9 isolé depuis les deux dépôts ; replay navigateur neuf pays réussi.
