@@ -1101,3 +1101,7 @@ Quatre tenants et compilation directe testés hors réseau sur définitions arch
 # 22 octobre 2026 — V9, méthodes G2 locales couvertes
 
 Les quatre anciens audits/orchestrations restants ont une disposition nominative contrôlée ; tous les scripts et rapports restent archivés. Le registre a zéro méthode utile sans destination, mais G2 reste FAIL à cause de 120 transferts GitHub non vérifiés et des Actions désactivées. Préparation G3–G8 hors ligne ensuite. Voir [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 23 octobre 2026 — V9, replay navigateur isolé
+
+G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Actions Data Lab désactivé. G3/G4 ont progressé hors ligne avec Belib FR et Atlante IT normalisés, bundles préparés et importés. Le shell TCC sur un candidat IONITY FR/GB réel a été testé dans Firefox headless : stations, EVSE, puissances, trois canaux, provenance/date, filtres et carte fonctionnent sans promotion des offres brutes en prix calculés. G3 à G8 restent FAIL faute de couverture complète, moteur tarifaire complet et préproduction distante ; site public et Updater Test inchangés. Détails, SHA, tests et prochaine opération dans [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
