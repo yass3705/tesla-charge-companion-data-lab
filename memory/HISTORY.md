@@ -837,3 +837,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-24 : commande Production unique pour reconstruire bundle, jointures eMSP, import et paquet V9 isolé depuis les deux dépôts ; replay navigateur neuf pays réussi.
 
 - 2026-10-24 : paquet de préproduction V9 spatial à index et fragments SHA, reconstruction complète locale et parité navigateur neuf pays ; aucun déploiement ni activation Actions.
+
+- 2026-10-24 : IONITY Direct FR/DE/IT/GB raccordé au calcul kWh sur prise et prix archivés exacts, avec GBP et conversion conditionnelle ; contrôle navigateur neuf pays.
