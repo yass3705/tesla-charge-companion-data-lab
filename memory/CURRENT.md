@@ -1175,3 +1175,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 2026-10-24 — Production `f425cc8` applique les seuils OCPI historiques de durée et de puissance aux offres DOT-NL exactes ; oracles et Firefox sur le candidat isolé neuf pays PASS. G2–G8 restent FAIL ; aucun déploiement public.
 
 2026-10-24 — Production `bfb4737` fournit une reconstruction locale déterministe du candidat V9 depuis les archives versionnées Data Lab ; bundle `b36c0eb45d75f14764dc82ab4ebd26c8726156b58659f9feabe9158f13abf9b2`, import 20/20 et Firefox neuf pays PASS. G2–G8 FAIL, aucune publication publique ni transfert GitHub validé.
+
+2026-10-24 — Production `ecded65` crée un candidat local V9 reproductible, découpé et signé : même bundle 20 sources/neuf pays, import 20/20, Firefox desktop/mobile et parité avec le candidat entier PASS. Résultats `/tmp/tcc-v9-reproducible-sharded-build-result.json` et `/tmp/tcc-v9-reproducible-sharded-browser.json`. G2–G8 FAIL, handoff GitHub et URL distante non validés ; Actions Data Lab désactivé, site public inchangé.

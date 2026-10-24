@@ -835,3 +835,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - 2026-10-24 : seuils OCPI de durée et puissance vérifiés indépendamment dans le candidat DOT-NL ; sessions hors borne explicitement incalculables.
 
 - 2026-10-24 : commande Production unique pour reconstruire bundle, jointures eMSP, import et paquet V9 isolé depuis les deux dépôts ; replay navigateur neuf pays réussi.
+
+- 2026-10-24 : paquet de préproduction V9 spatial à index et fragments SHA, reconstruction complète locale et parité navigateur neuf pays ; aucun déploiement ni activation Actions.
