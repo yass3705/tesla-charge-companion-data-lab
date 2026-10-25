@@ -1185,3 +1185,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : Production `3238f64` isole le catalogue d'abonnements et les anciens fichiers d'offres du paquet V9 candidat ; Firefox neuf pays/mobile PASS sur le paquet local final, contrôle SHA/hébergement local PASS. G2–G8 FAIL, aucune URL distante et aucune modification du site public. Voir `memory/V9_REBUILD_PROGRESS.md`.
 
 - 2026-10-25 : Production `84e59e9` affiche une erreur visible quand l'aperçu isolé ne peut pas démarrer, sans boucle de redirection. Firefox neuf pays/mobile et scénario HTTP 503 passent ; paquet local final `site-final4`, sans URL distante. G2–G8 FAIL, Actions Data Lab désactivé.
+
+- 2026-10-25 : Production `ebe7561` calcule dans le candidat les composantes britanniques PCPR prouvées énergie, temps, fixe et stationnement avec durée obligatoire pour les frais payants ; fixture de session complète, classement, oracles et Firefox neuf pays/mobile PASS. Paquet local `site-uk-compound`, aucune URL distante. G2–G8 FAIL ; Actions Data Lab désactivé, site public inchangé.

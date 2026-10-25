@@ -851,3 +851,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — aperçu V9 sans boucle de secours
 
 - Production `84e59e9` ferme l'échec de démarrage dans la copie isolée ; le parcours Firefox valide le cas HTTP 503 en plus des neuf pays/mobile. Aucun site public ou transfert GitHub activé. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — composantes PCPR britanniques dans le candidat
+
+- Production `ebe7561` raccorde les composantes OCPI historiquement prouvées (énergie, temps, fixe, stationnement) et empêche le classement si une durée facturée manque. Session complète, parité oracle, candidat neuf pays et navigateur desktop/mobile PASS ; G2–G8 restent FAIL, aperçu seulement local. Preuve dans `V9_REBUILD_PROGRESS.md` et Production `docs/v9-rebuild/evidence/uk-pcpr-compound-candidate-20261025.md`.
