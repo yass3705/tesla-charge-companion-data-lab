@@ -925,3 +925,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — sessions invalides et empaquetage isolé
 
 - Production `0b4b308` refuse les mesures de session négatives/non numériques et permet le renouvellement contrôlé d'un paquet V9 isolé. Tests tarifaires, intégrité et Firefox neuf pays/mobile PASS ; G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — archive Powerdot dans le candidat
+
+- Data Lab `47cbe3b78` conserve les identifiants source et les tarifs bruts Powerdot sans jointure PDC présumée. Production `4441afe` vérifie le candidat local 24 sources/neuf pays, ses prises exactes et l'absence de prix promu. Tests, import SHA et Firefox desktop/mobile PASS ; G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.

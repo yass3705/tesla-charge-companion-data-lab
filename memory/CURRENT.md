@@ -1,3 +1,7 @@
+# 25 October 2026 - V9 Powerdot raw archive in isolated candidate
+
+- A 24-source, nine-country local candidate now preserves the archived Powerdot station, EVSE source number, connector, power and raw tariff scope. No official EVSE ID or price was inferred. SHA import, integrity, Firefox desktop/mobile and tariff oracles pass. Public access absent from the archive is not inferred; G2–G8 remain FAIL and no remote URL exists. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 25 October 2026 - V9 isolated candidate and historical oracle
 
 - The 23-source, nine-country local candidate passes SHA integrity, Firefox desktop/mobile and exact station/connector scope checks. Production `e826898` replays 36 identical-input historical Midhope evaluations and rejects ambiguous session durations. The 120 GitHub handoffs, full tariff coverage and isolated remote URL remain unverified; G2–G8 remain FAIL. Data Lab Actions are disabled and the public site is unchanged. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
