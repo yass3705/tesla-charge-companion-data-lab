@@ -937,3 +937,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — frais conditionnels sans total partiel
 
 - Production `f0dd024` refuse les frais conditionnels ou après charge lorsque les mesures requises manquent ; tests tarifaires et Firefox du paquet local 25 sources PASS. G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — fuseau et fin de charge explicites
+
+- Production `c2f24b7` calcule une exonération horaire seulement avec l'heure locale tarifaire et une fin de charge connue ou déductible explicitement ; paquet local 25 sources, oracles et Firefox PASS. G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
