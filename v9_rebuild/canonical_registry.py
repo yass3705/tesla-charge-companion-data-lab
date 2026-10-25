@@ -26,6 +26,7 @@ from v9_rebuild.canonical_uk_pcpr import normalize_uk_pcpr
 from v9_rebuild.canonical_spain_reve import normalize_spain_reve
 from v9_rebuild.canonical_morocco_evgo import normalize_morocco_evgo
 from v9_rebuild.canonical_uk_ocpi_pair import normalize_uk_ocpi_pair
+from v9_rebuild.canonical_powerdot import normalize_powerdot
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,7 @@ ROUTES = (
                    normalize_france_irve_compact, "data/national/france-irve-static-v9/manifest.json"),
     CanonicalRoute("FR:ionity_direct", "data/national/ionity_direct_stations_france.json.gz", normalize_ionity),
     CanonicalRoute("FR:ozecar_monta", "data/ozecar/france/ozecar-france-current.json.gz", normalize_ozecar),
+    CanonicalRoute("FR:powerdot_direct", "data/national/powerdot_direct_france.json.gz", normalize_powerdot),
     CanonicalRoute("FR:zephyre_epowerdirect_exact", "data/operator_direct/zephyre_epowerdirect_exact_france_20260925.json", normalize_zephyre_exact),
     CanonicalRoute("GB:connected_kerb_midhope_verified", "data/national/uk_connected_kerb_midhope_verified_v9.json.gz", normalize_midhope_verified),
     CanonicalRoute("GB:ionity_direct", "data/national/ionity_direct_stations_uk.json.gz", normalize_ionity),
