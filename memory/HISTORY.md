@@ -921,3 +921,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — composants OCPI dans le moteur reconstruit
 
 - Production `9d89e55` rejoue l'oracle transversal OCPI en source et dans le paquet ; Production `2a43b44` retire une ancienne borne arbitraire Electroverse. L'ancien test Electroverse requiert encore son snapshot absent et n'est pas déclaré PASS. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — sessions invalides et empaquetage isolé
+
+- Production `0b4b308` refuse les mesures de session négatives/non numériques et permet le renouvellement contrôlé d'un paquet V9 isolé. Tests tarifaires, intégrité et Firefox neuf pays/mobile PASS ; G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
