@@ -828,6 +828,14 @@ def normalize_netherlands_dotnl(payload: dict, *, artifact_sha256: str) -> dict:
 def validate(data: dict) -> None:
     if data.get("schemaVersion") != SCHEMA_VERSION or not isinstance(data.get("source"), dict):
         raise ValueError("Canonical schema invalid")
+    source_id = data["source"].get("id")
+    if not isinstance(source_id, str) or not re.fullmatch(r"[A-Z]{2}:.+", source_id):
+        raise ValueError("Canonical source country identity invalid")
+    source_country = source_id[:2]
+    if (not isinstance(data.get("countries"), list) or
+            any(not isinstance(row, dict) or row.get("code") != source_country
+                for row in data["countries"])):
+        raise ValueError("Canonical source country scope invalid")
     ids = {}
     for collection in ("cpos", "stations", "evses", "connectors", "offers"):
         rows = data.get(collection)
@@ -837,6 +845,9 @@ def validate(data: dict) -> None:
         if any(not key for key in keys) or len(keys) != len(set(keys)):
             raise ValueError(f"Canonical {collection} identity collision")
         ids[collection] = set(keys)
+    for collection in ("cpos", "stations", "evses"):
+        if any(row.get("country") != source_country for row in data[collection]):
+            raise ValueError(f"Canonical {collection} country scope invalid")
     for station in data["stations"]:
         if station.get("cpoId") not in ids["cpos"]:
             raise ValueError("Canonical station CPO relation invalid")
