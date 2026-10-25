@@ -945,3 +945,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — fenêtres après charge mal formées
 
 - Production `ffac324`, `7571434`, `dd20df8` refuse les fenêtres tarifaires invalides, avec tests source, paquet isolé et Firefox neuf pays/mobile PASS. G2–G8 restent FAIL ; aucune publication distante. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — pays source vérifié à l'import Production
+
+- Production `cd50f96` rejette un bundle au SHA recalculé avec pays canonique incohérent ; sept tests d'import et les sources réelles Powerdot FR/BE PASS. G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
