@@ -855,3 +855,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — composantes PCPR britanniques dans le candidat
 
 - Production `ebe7561` raccorde les composantes OCPI historiquement prouvées (énergie, temps, fixe, stationnement) et empêche le classement si une durée facturée manque. Session complète, parité oracle, candidat neuf pays et navigateur desktop/mobile PASS ; G2–G8 restent FAIL, aperçu seulement local. Preuve dans `V9_REBUILD_PROGRESS.md` et Production `docs/v9-rebuild/evidence/uk-pcpr-compound-candidate-20261025.md`.
+
+# 25 octobre 2026 — correspondance Electra NL exacte, offres brutes conservées
+
+- Data Lab ajoute le replay technique de l'archive Electra NL sur prise DOT-NL exacte ; Production `1281cf5` ajoute la source au candidat et réunit les offres brutes de toutes les provenances. Replay 21 sources/neuf pays, tests d'intégrité et Firefox desktop/mobile PASS ; aucun prix Electra NL calculé faute de composantes complètes. G2–G8 FAIL, aperçu local seulement. Voir `V9_REBUILD_PROGRESS.md`.
