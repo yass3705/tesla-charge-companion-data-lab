@@ -1233,3 +1233,6 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : Production `52334cd` affiche distinctement EVSE officiel, identifiant source et clé interne ; Firefox 23 sources ordinateur/mobile PASS. G2–G8 FAIL, aucune URL distante.
 
 - 2026-10-25 : Production `e19377e` teste dans Firefox le bouton de position actuelle avec coordonnées simulées ; candidat 23 sources desktop/mobile PASS. G2–G8 FAIL.
+# 25 October 2026 — isolated V9 candidate with 26 sources
+
+The archived UK Eco-Movement PCPR source is preserved as connector-exact raw offers; its archived PAYG attribution and VAT remain unverified, so no offer is calculated or ranked. Data Lab `b68d96c0a` and Production `375c8de` produced an immutable 26-source/nine-country local candidate; SHA import, packaged tariff oracles and Firefox desktop/mobile pass. Bundle `d321378c5fb6283bdc523ead81f66465a260bd7fd99a18078e05bbba8776e2e8`; local site `.tcc-v9-cache/reproducible-26-eco-2026-10-25/site`. G2–G8 remain FAIL: 120 GitHub handoffs and a remote isolated URL are unverified, and full documented tariff/source coverage remains unfinished. Data Lab Actions stay disabled; public TCC and Tesla/Mac Updater Test are unchanged. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
