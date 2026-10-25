@@ -865,3 +865,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — oracle de session complète sur le paquet V9
 
 - Production `b3072de` valide sur le paquet isolé une session à frais combinés, trois canaux, abonnement, conversion explicite et classement. Données de test synthétiques, aucun prix fournisseur créé ; G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — fragments français proches
+
+- Production `ebbd9f4` filtre les fragments français dans l'aperçu V9 ; parité des zones contrôlées, Firefox neuf pays/mobile et intégrité PASS. Paquet local uniquement, G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.

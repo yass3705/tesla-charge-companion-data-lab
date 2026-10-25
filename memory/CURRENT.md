@@ -1193,3 +1193,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : Production `664cf3b` préserve aussi les champs de preuve et l'identifiant source de prise des offres brutes dans le navigateur. Tests et Firefox neuf pays/mobile PASS sur `site-provenance`, sans prix Electra NL inventé. G2–G8 FAIL, aperçu local seulement.
 
 - 2026-10-25 : Production `b3072de` ajoute un oracle de session complète sur le moteur du paquet isolé : frais combinés, trois canaux, abonnement, FX, classement et coût/km PASS ; entrée manquante exclue explicitement. G2–G8 FAIL, URL distante encore absente.
+
+- 2026-10-25 : Production `ebbd9f4` charge les fragments français proches sans perdre les correspondances exactes ni les offres brutes ; Firefox neuf pays/mobile et intégrité du paquet PASS. G2–G8 FAIL, préproduction seulement locale.
