@@ -905,3 +905,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — intégrité relationnelle des fragments V9
 
 - Production `87807c9` contrôle toutes les relations station/EVSE/prise/offre et les collisions entre fragments ; paquet 23 sources et test de mutation PASS. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — identités EVSE explicites dans la carte
+
+- Production `52334cd` sépare l'identifiant officiel, l'UID source et la clé technique ; tests et navigateur local PASS. Voir `V9_REBUILD_PROGRESS.md`.
