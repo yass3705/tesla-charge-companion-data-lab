@@ -25,6 +25,7 @@ from v9_rebuild.canonical import (
 from v9_rebuild.canonical_uk_pcpr import normalize_uk_pcpr
 from v9_rebuild.canonical_spain_reve import normalize_spain_reve
 from v9_rebuild.canonical_morocco_evgo import normalize_morocco_evgo
+from v9_rebuild.canonical_uk_ocpi_pair import normalize_uk_ocpi_pair
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,7 @@ class CanonicalRoute:
     manifest: str | None = None
     page_manifest: bool = False
     spain_reve_manifest: bool = False
+    tariff_archive: str | None = None
 
 
 ROUTES = (
@@ -49,6 +51,11 @@ ROUTES = (
                    partial(normalize_uk_pcpr, source_id="GB:blink_pcpr_direct")),
     CanonicalRoute("GB:source_ev_pcpr_direct", "data/national/uk_source_ev_pcpr_v9.json.gz",
                    partial(normalize_uk_pcpr, source_id="GB:source_ev_pcpr_direct")),
+    CanonicalRoute("GB:gridserve_pcpr_direct", "data/national/uk_gridserve_pcpr_locations.json.gz",
+                   partial(normalize_uk_ocpi_pair, source_id="GB:gridserve_pcpr_direct"),
+                   tariff_archive="data/national/uk_gridserve_pcpr_tariffs.json.gz"),
+    CanonicalRoute("GB:ubitricity_pcpr_direct", "data/national/uk_ubitricity_pcpr.json.gz",
+                   partial(normalize_uk_ocpi_pair, source_id="GB:ubitricity_pcpr_direct")),
     CanonicalRoute("BE:nap_static", "data/belgium/nap-belgium-manifest.json", normalize_belgium_nap,
                    page_manifest=True),
     CanonicalRoute("CH:swiss_integration", "data/national/switzerland_public_charging_v9.json", normalize_swiss),

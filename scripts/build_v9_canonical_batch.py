@@ -24,6 +24,14 @@ from v9_rebuild.snapshot import prepare, verify
 def read_route(route, source_id: str) -> tuple[object, str, str | None]:
     archive = ROOT / route.archive
     raw = archive.read_bytes()
+    if route.tariff_archive:
+        tariff_raw = (ROOT / route.tariff_archive).read_bytes()
+        locations = json.loads(gzip.decompress(raw) if archive.suffix == ".gz" else raw)
+        tariffs = json.loads(gzip.decompress(tariff_raw) if route.tariff_archive.endswith(".gz") else tariff_raw)
+        if not isinstance(locations, dict) or not isinstance(tariffs, dict):
+            raise ValueError(f"OCPI pair archive invalid: {source_id}")
+        return {"locations": locations, "tariffs": tariffs,
+                "tariffArtifactSha256": hashlib.sha256(tariff_raw).hexdigest()}, hashlib.sha256(raw).hexdigest(), None
     if route.spain_reve_manifest:
         manifest_raw = (ROOT / route.manifest).read_bytes()
         manifest = json.loads(manifest_raw)
