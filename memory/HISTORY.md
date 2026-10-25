@@ -847,3 +847,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — abonnements candidats isolés
 
 - Production `3238f64` interdit aux anciens catalogues et sélections Electra+ d'entrer dans l'aperçu V9 ; paquet local final et Firefox neuf pays/mobile validés, sans hébergement ni déploiement public. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — aperçu V9 sans boucle de secours
+
+- Production `84e59e9` ferme l'échec de démarrage dans la copie isolée ; le parcours Firefox valide le cas HTTP 503 en plus des neuf pays/mobile. Aucun site public ou transfert GitHub activé. Voir `V9_REBUILD_PROGRESS.md`.
