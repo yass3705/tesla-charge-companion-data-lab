@@ -115,7 +115,12 @@ def build(destination: Path, selected: list[str] | None = None) -> dict:
         for source_id in ids:
             route = BY_SOURCE[source_id]
             payload, archive_sha, manifest_sha = read_route(route, source_id)
-            normalized = route.normalizer(payload, artifact_sha256=archive_sha)
+            extra = {}
+            if source_id == "FR:irve_static":
+                ledger_raw = (ROOT / "reports/france/irve-public-access-validation-ledger.json").read_bytes()
+                extra = {"access_ledger": json.loads(ledger_raw),
+                         "access_ledger_sha256": hashlib.sha256(ledger_raw).hexdigest()}
+            normalized = route.normalizer(payload, artifact_sha256=archive_sha, **extra)
             if normalized["source"]["id"] != source_id:
                 raise ValueError(f"Canonical route identity mismatch: {source_id}")
             target = canonical_dir / (source_id.replace(":", "__") + ".json")
@@ -124,6 +129,7 @@ def build(destination: Path, selected: list[str] | None = None) -> dict:
             report.append({"source": source_id, "archive": route.archive,
                            "archiveSha256": archive_sha,
                            "sourceManifestSha256": manifest_sha,
+                           **({"accessLedgerSha256": extra["access_ledger_sha256"]} if extra else {}),
                            "canonicalSha256": hashlib.sha256(target.read_bytes()).hexdigest()})
         bundle = prepare(inputs, stage / "bundles")
         verify(bundle)

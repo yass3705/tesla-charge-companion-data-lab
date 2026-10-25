@@ -572,16 +572,36 @@ def normalize_midhope_verified(payload: dict, *, artifact_sha256: str) -> dict:
     return result
 
 
-def normalize_france_irve_compact(payload: list, *, artifact_sha256: str) -> dict:
+def normalize_france_irve_compact(payload: list, *, artifact_sha256: str,
+                                  access_ledger: dict | None = None,
+                                  access_ledger_sha256: str | None = None) -> dict:
     """Expand preserved national compact rows without assigning a tariff by site."""
     if not isinstance(payload, list):
         raise ValueError("France IRVE compact source schema invalid")
     if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
         raise ValueError("Pinned France IRVE artifact SHA missing")
     country, source_id = "FR", "FR:irve_static"
+    excluded: set[str] = set()
+    if access_ledger is not None:
+        if (access_ledger.get("dataset") != "france-irve-public-access-validation-ledger"
+                or access_ledger.get("schemaVersion") != "1.0.0"
+                or not re.fullmatch(r"[0-9a-f]{64}", access_ledger_sha256 or "")
+                or not isinstance(access_ledger.get("decisions"), list)):
+            raise ValueError("France public access ledger invalid")
+        decisions: dict[str, str] = {}
+        for entry in access_ledger["decisions"]:
+            decision, station_ids = entry.get("decision"), entry.get("stationIds")
+            if decision not in {"exclude_non_public", "keep_public", "needs_review"} or not isinstance(station_ids, list):
+                raise ValueError("France public access decision invalid")
+            for station_id in station_ids:
+                if not isinstance(station_id, str) or not station_id or station_id in decisions:
+                    raise ValueError("France public access station decision collision")
+                decisions[station_id] = decision
+        excluded = {station_id for station_id, decision in decisions.items() if decision == "exclude_non_public"}
     result = {"schemaVersion": SCHEMA_VERSION,
               "source": {"id": source_id, "artifactSha256": artifact_sha256,
-                         "rawDataset": "france-irve-static-v9"},
+                         "rawDataset": "france-irve-static-v9",
+                         **({"accessLedgerSha256": access_ledger_sha256} if access_ledger is not None else {})},
               "countries": [{"code": country}], "cpos": [], "stations": [],
               "evses": [], "connectors": [], "offers": []}
     cpos, evses, connector_ids = {}, {}, set()
@@ -600,7 +620,8 @@ def normalize_france_irve_compact(payload: list, *, artifact_sha256: str) -> dic
         result["stations"].append({"id": station_key, "country": country, "cpoId": cpo_key,
                                    "sourceStationId": source_station, "name": row[1], "address": row[2],
                                    "latitude": row[3], "longitude": row[4], "networkBrand": row[10],
-                                   "sourceUpdatedAt": row[9], "rawSourceFields": row})
+                                   "sourceUpdatedAt": row[9], "rawSourceFields": row,
+                                   **({"publicAccessDecision": "exclude_non_public"} if source_station in excluded else {})})
         station_evses = set()
         for group in groups:
             if (not isinstance(group, list) or len(group) != 7 or

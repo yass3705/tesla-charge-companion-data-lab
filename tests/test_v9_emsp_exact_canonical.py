@@ -41,6 +41,12 @@ class ExactEmspCanonicalTest(unittest.TestCase):
         self.assertEqual(result["offers"][0]["calculationStatus"], "not_evaluated")
         self.assertEqual(result["offers"][0]["rawOffer"]["pricing"]["pricePerKwh"], .45)
 
+    def test_public_access_exclusion_follows_exact_national_station(self):
+        self.national["stations"][0]["publicAccessDecision"] = "exclude_non_public"
+        result = self.build()
+        self.assertEqual(result["stations"][0]["publicAccessDecision"], "exclude_non_public")
+        self.assertEqual(result["offers"][0]["scope"]["evseId"], "evse")
+
     def test_bad_sha_or_scope_rejected(self):
         self.report["inputs"]["nationalSha256"] = "wrong"
         with self.assertRaisesRegex(ValueError, "SHA mismatch"):

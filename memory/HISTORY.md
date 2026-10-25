@@ -949,3 +949,4 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — pays source vérifié à l'import Production
 
 - Production `cd50f96` rejette un bundle au SHA recalculé avec pays canonique incohérent ; sept tests d'import et les sources réelles Powerdot FR/BE PASS. G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+- 2026-10-25 : source IRVE France V9 : décisions `exclude_non_public` du registre d'accès historique ajoutées au canonique avec SHA de provenance ; stations brutes conservées, exclusion réservée à la carte. Le dérivé eMSP exact hérite du champ national. Tests ciblés et construction FR réelle réussis ; replay multi-source en cours, aucune porte G2–G8 promue.

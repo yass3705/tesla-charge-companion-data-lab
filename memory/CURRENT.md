@@ -1,3 +1,7 @@
+# 25 October 2026 - V9 France public-access decisions in canonical data
+
+- The existing, externally validated France IRVE access ledger is now pinned by SHA during national normalization. Only its explicit `exclude_non_public` station IDs are marked for map exclusion; the raw station, EVSE and connector rows remain in the immutable canonical data. The derived exact eMSP source copies that decision from the national station. Focused tests and a real single-source FR build pass; full 25-source replay is in progress. G2–G8 remain FAIL, Actions disabled and the public site unchanged. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 25 October 2026 - V9 Powerdot raw archive in isolated candidate
 
 - A 25-source, nine-country local candidate preserves the archived Powerdot station, EVSE source number, connector, power and raw tariff scope through separate FR and BE routes. The prior 24-source candidate is superseded because it could not route the Belgian location. No official EVSE ID or price was inferred. SHA import, integrity, Firefox desktop/mobile and tariff oracles pass. Public access absent from the archive is not inferred; G2–G8 remain FAIL and no remote URL exists. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

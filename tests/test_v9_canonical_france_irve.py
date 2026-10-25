@@ -32,6 +32,22 @@ class FranceIrveCanonicalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ownership"):
             normalize_france_irve_compact([station(), duplicate], artifact_sha256="a" * 64)
 
+    def test_pinned_public_access_decision_preserves_raw_station(self):
+        ledger = {"schemaVersion": "1.0.0", "dataset": "france-irve-public-access-validation-ledger",
+                  "decisions": [{"stationIds": ["FRABCP1"], "decision": "exclude_non_public"},
+                                {"stationIds": ["FRABCP2"], "decision": "keep_public"}]}
+        result = normalize_france_irve_compact(
+            [station(), station("FRABCP2", "FRABCE2")], artifact_sha256="a" * 64,
+            access_ledger=ledger, access_ledger_sha256="b" * 64)
+        by_source = {row["sourceStationId"]: row for row in result["stations"]}
+        self.assertEqual(by_source["FRABCP1"]["publicAccessDecision"], "exclude_non_public")
+        self.assertNotIn("publicAccessDecision", by_source["FRABCP2"])
+        self.assertEqual(len(result["evses"]), 2)
+        self.assertEqual(result["source"]["accessLedgerSha256"], "b" * 64)
+        with self.assertRaisesRegex(ValueError, "collision"):
+            normalize_france_irve_compact([station()], artifact_sha256="a" * 64,
+                access_ledger={**ledger, "decisions": ledger["decisions"] * 2}, access_ledger_sha256="b" * 64)
+
 
 if __name__ == "__main__":
     unittest.main()
