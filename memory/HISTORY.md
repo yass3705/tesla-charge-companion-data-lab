@@ -843,3 +843,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — préproduction V9 compressée et inventaire Tesla épinglé
 
 - Production `a40faac`/`35d3008`/`4b93ea6` reconstruisent hors checkout le paquet neuf pays avec fragments gzip SHA, racine V9, directives noindex et import Tesla/Mac historique contrôlé par SHA sans tarif non prouvé. Firefox desktop/mobile PASS ; hébergement seulement local. G2–G8 FAIL, Actions Data Lab désactivé et site public inchangé. Preuves et prochaine opération dans `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — abonnements candidats isolés
+
+- Production `3238f64` interdit aux anciens catalogues et sélections Electra+ d'entrer dans l'aperçu V9 ; paquet local final et Firefox neuf pays/mobile validés, sans hébergement ni déploiement public. Voir `V9_REBUILD_PROGRESS.md`.
