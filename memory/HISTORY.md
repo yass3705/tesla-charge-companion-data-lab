@@ -897,3 +897,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — garde des paliers OCPI
 
 - Production `3b25f60` couvre les bandes énergie, durée de charge et stationnement dans le refus de sessions incomplètes ; tests et navigateur local PASS. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — jointure exacte UK dans le navigateur
+
+- Production `2e17948` vérifie la portée EVSE/prise Gridserve et Ubitricity dans le candidat 23 sources ; navigateur desktop/mobile PASS, aucun prix inventé. Voir `V9_REBUILD_PROGRESS.md`.
