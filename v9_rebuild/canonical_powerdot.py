@@ -14,13 +14,17 @@ from v9_rebuild.canonical import SCHEMA_VERSION, key, validate
 SOURCE_ID = "FR:powerdot_direct"
 
 
-def normalize_powerdot(payload: dict, *, artifact_sha256: str) -> dict:
+def normalize_powerdot(payload: dict, *, artifact_sha256: str,
+                       source_id: str = SOURCE_ID) -> dict:
+    if source_id not in {"FR:powerdot_direct", "BE:powerdot_direct"}:
+        raise ValueError("Powerdot canonical country route invalid")
+    route_country = source_id[:2]
     if (not isinstance(payload, dict) or not isinstance(payload.get("chargers"), list) or
             not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256) or
             payload.get("source", {}).get("sourceType") != "direct_cpo_public_adhoc_api"):
         raise ValueError("Powerdot archive envelope invalid")
     result = {"schemaVersion": SCHEMA_VERSION,
-              "source": {"id": SOURCE_ID, "artifactSha256": artifact_sha256,
+              "source": {"id": source_id, "artifactSha256": artifact_sha256,
                          "generatedAt": payload.get("generatedAt"),
                          "rawMetadata": {"source": payload.get("source"),
                                          "irveSource": payload.get("irveSource"),
@@ -48,9 +52,11 @@ def normalize_powerdot(payload: dict, *, artifact_sha256: str) -> dict:
                 not isinstance(longitude, (int, float)) or not math.isfinite(longitude) or abs(longitude) > 180 or
                 not isinstance(charger.get("connectors"), list)):
             raise ValueError("Powerdot station identity, coordinates or connectors invalid")
+        if country != route_country:
+            continue
         countries.add(country)
-        cpo_id = key(country, SOURCE_ID, "cpo", "Power Dot France")
-        station_id = key(country, SOURCE_ID, "station", station_source)
+        cpo_id = key(country, source_id, "cpo", "Power Dot France")
+        station_id = key(country, source_id, "station", station_source)
         cpos.setdefault(cpo_id, {"id": cpo_id, "country": country,
                                  "sourceOperatorId": "Power Dot France", "name": "Power Dot France"})
         station = {"id": station_id, "country": country, "cpoId": cpo_id,
@@ -68,7 +74,7 @@ def normalize_powerdot(payload: dict, *, artifact_sha256: str) -> dict:
                     not isinstance(source_evse, int) or source_evse < 1):
                 raise ValueError("Powerdot connector or EVSE source number missing")
             evse_source = f"{charger_source}:{source_evse}"
-            evse_id = key(country, SOURCE_ID, "evse", [station_source, evse_source])
+            evse_id = key(country, source_id, "evse", [station_source, evse_source])
             evses.setdefault(evse_id, {"id": evse_id, "country": country, "cpoId": cpo_id,
                                      "stationId": station_id, "sourceEvseId": evse_source,
                                      "officialEvseId": None,
@@ -76,7 +82,7 @@ def normalize_powerdot(payload: dict, *, artifact_sha256: str) -> dict:
                                      "rawSourceFields": {"chargerName": charger_source,
                                                          "evseNumber": source_evse,
                                                          "irvePdcIdsUnmapped": row.get("irvePdcIds")}})
-            connector_id = key(country, SOURCE_ID, "connector", [station_source, charger_source, source_number])
+            connector_id = key(country, source_id, "connector", [station_source, charger_source, source_number])
             power = connector.get("maxPowerKw")
             if power is not None and (not isinstance(power, (int, float)) or
                                       not math.isfinite(power) or power <= 0):
@@ -89,7 +95,7 @@ def normalize_powerdot(payload: dict, *, artifact_sha256: str) -> dict:
             if tariff is not None:
                 if not isinstance(tariff, dict):
                     raise ValueError("Powerdot raw connector tariff invalid")
-                result["offers"].append({"id": key(country, SOURCE_ID, "offer", [station_source, charger_source, source_number]),
+                result["offers"].append({"id": key(country, source_id, "offer", [station_source, charger_source, source_number]),
                                          "channel": "Direct", "scope": {"evseId": evse_id,
                                                                             "connectorId": connector_id},
                                          "sourceTariffKey": tariff.get("id"),

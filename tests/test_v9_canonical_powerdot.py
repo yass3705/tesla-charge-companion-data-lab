@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from v9_rebuild.canonical_powerdot import normalize_powerdot
+from v9_rebuild.canonical import validate
 
 
 ARCHIVE = Path(__file__).resolve().parents[1] / "data/national/powerdot_direct_france.json.gz"
@@ -61,6 +62,16 @@ class PowerdotCanonicalTests(unittest.TestCase):
         self.assertTrue(all(row["calculationStatus"] == "not_evaluated" for row in result["offers"]))
         connector_ids = {row["id"] for row in result["connectors"]}
         self.assertTrue(all(row["scope"]["connectorId"] in connector_ids for row in result["offers"]))
+        belgian = normalize_powerdot(payload, artifact_sha256=hashlib.sha256(raw).hexdigest(),
+                                     source_id="BE:powerdot_direct")
+        self.assertEqual(result["countries"], [{"code": "FR"}])
+        self.assertEqual(belgian["countries"], [{"code": "BE"}])
+        self.assertTrue(all(row["country"] == "BE" for row in belgian["stations"]))
+        self.assertFalse({row["id"] for row in result["stations"]} &
+                         {row["id"] for row in belgian["stations"]})
+        belgian["source"]["id"] = "FR:powerdot_direct"
+        with self.assertRaisesRegex(ValueError, "country scope"):
+            validate(belgian)
 
 
 if __name__ == "__main__":

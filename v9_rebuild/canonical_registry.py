@@ -59,6 +59,8 @@ ROUTES = (
                    partial(normalize_uk_ocpi_pair, source_id="GB:ubitricity_pcpr_direct")),
     CanonicalRoute("BE:nap_static", "data/belgium/nap-belgium-manifest.json", normalize_belgium_nap,
                    page_manifest=True),
+    CanonicalRoute("BE:powerdot_direct", "data/national/powerdot_direct_france.json.gz",
+                   partial(normalize_powerdot, source_id="BE:powerdot_direct")),
     CanonicalRoute("CH:swiss_integration", "data/national/switzerland_public_charging_v9.json", normalize_swiss),
     CanonicalRoute("DE:ionity_direct", "data/national/ionity_direct_stations_germany.json.gz", normalize_ionity),
     CanonicalRoute("FR:belib_stations", "data/national/belib_stations_paris.json", normalize_belib),
