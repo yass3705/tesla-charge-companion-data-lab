@@ -1191,3 +1191,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : candidat V9 local 21 sources/neuf pays avec jointure Electra NL Direct par EVSE/prise/tarif archivés exacts ; 51 offres conservées brutes et incalculables faute de composantes complètes. Production `1281cf5` conserve les offres brutes de plusieurs sources sur une même station. Import SHA, tests et Firefox desktop/mobile PASS ; G2–G8 FAIL, 120 transferts GitHub et URL distante non vérifiés, Actions Data Lab désactivé.
 
 - 2026-10-25 : Production `664cf3b` préserve aussi les champs de preuve et l'identifiant source de prise des offres brutes dans le navigateur. Tests et Firefox neuf pays/mobile PASS sur `site-provenance`, sans prix Electra NL inventé. G2–G8 FAIL, aperçu local seulement.
+
+- 2026-10-25 : Production `b3072de` ajoute un oracle de session complète sur le moteur du paquet isolé : frais combinés, trois canaux, abonnement, FX, classement et coût/km PASS ; entrée manquante exclue explicitement. G2–G8 FAIL, URL distante encore absente.

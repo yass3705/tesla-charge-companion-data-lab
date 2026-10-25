@@ -861,3 +861,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 - Data Lab ajoute le replay technique de l'archive Electra NL sur prise DOT-NL exacte ; Production `1281cf5` ajoute la source au candidat et réunit les offres brutes de toutes les provenances. Replay 21 sources/neuf pays, tests d'intégrité et Firefox desktop/mobile PASS ; aucun prix Electra NL calculé faute de composantes complètes. G2–G8 FAIL, aperçu local seulement. Voir `V9_REBUILD_PROGRESS.md`.
 
 - Production `664cf3b` conserve aussi la preuve et l'identifiant source de prise jusqu'à l'interface ; Firefox neuf pays/mobile et contrôle d'intégrité PASS sur le nouveau paquet isolé. Aucun tarif partiel promu. Détails dans `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — oracle de session complète sur le paquet V9
+
+- Production `b3072de` valide sur le paquet isolé une session à frais combinés, trois canaux, abonnement, conversion explicite et classement. Données de test synthétiques, aucun prix fournisseur créé ; G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.
