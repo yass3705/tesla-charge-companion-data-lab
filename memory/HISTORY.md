@@ -929,3 +929,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — archive Powerdot dans le candidat
 
 - Data Lab `47cbe3b78` conserve les identifiants source et les tarifs bruts Powerdot sans jointure PDC présumée. Production `4441afe` vérifie le candidat local 24 sources/neuf pays, ses prises exactes et l'absence de prix promu. Tests, import SHA et Firefox desktop/mobile PASS ; G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — routage pays Powerdot corrigé
+
+- Le candidat local précédent est supplanté : Data Lab `375e1c30f` sépare FR/BE et `02400ca4f` verrouille le pays du schéma canonique. Production `571e925` valide le candidat 25 sources, les parcours Firefox français et belge et l'absence de prix inventé. G2–G8 restent FAIL ; aucune URL distante. Voir `V9_REBUILD_PROGRESS.md`.

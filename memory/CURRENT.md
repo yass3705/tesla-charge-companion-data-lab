@@ -1,6 +1,6 @@
 # 25 October 2026 - V9 Powerdot raw archive in isolated candidate
 
-- A 24-source, nine-country local candidate now preserves the archived Powerdot station, EVSE source number, connector, power and raw tariff scope. No official EVSE ID or price was inferred. SHA import, integrity, Firefox desktop/mobile and tariff oracles pass. Public access absent from the archive is not inferred; G2–G8 remain FAIL and no remote URL exists. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+- A 25-source, nine-country local candidate preserves the archived Powerdot station, EVSE source number, connector, power and raw tariff scope through separate FR and BE routes. The prior 24-source candidate is superseded because it could not route the Belgian location. No official EVSE ID or price was inferred. SHA import, integrity, Firefox desktop/mobile and tariff oracles pass. Public access absent from the archive is not inferred; G2–G8 remain FAIL and no remote URL exists. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
 
 # 25 October 2026 - V9 isolated candidate and historical oracle
 
