@@ -893,3 +893,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — oracle belge sans seuil historique
 
 - Production `cefe1fe` conserve les vérifications tarifaires et techniques NAP sans égalité de volumes ; suite hors ligne PASS. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — garde des paliers OCPI
+
+- Production `3b25f60` couvre les bandes énergie, durée de charge et stationnement dans le refus de sessions incomplètes ; tests et navigateur local PASS. Voir `V9_REBUILD_PROGRESS.md`.

@@ -1207,3 +1207,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : Production `666e7e9` exige les durées réelles pour tous les frais temporels payants ; oracles et Firefox du candidat local 23 sources PASS. G2–G8 FAIL, aucune publication.
 
 - 2026-10-25 : Production `cefe1fe` retire un ancien blocage belge basé sur des volumes figés ; oracle NAP et suite locale intégration/jointures PASS. G2–G8 FAIL.
+
+- 2026-10-25 : Production `3b25f60` refuse les composantes OCPI à paliers lorsque kWh ou durées requis manquent ; oracle et Firefox 23 sources PASS, préproduction locale seule. G2–G8 FAIL.
