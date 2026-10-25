@@ -901,3 +901,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — jointure exacte UK dans le navigateur
 
 - Production `2e17948` vérifie la portée EVSE/prise Gridserve et Ubitricity dans le candidat 23 sources ; navigateur desktop/mobile PASS, aucun prix inventé. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — intégrité relationnelle des fragments V9
+
+- Production `87807c9` contrôle toutes les relations station/EVSE/prise/offre et les collisions entre fragments ; paquet 23 sources et test de mutation PASS. Voir `V9_REBUILD_PROGRESS.md`.

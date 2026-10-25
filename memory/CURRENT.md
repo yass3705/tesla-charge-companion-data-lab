@@ -1211,3 +1211,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : Production `3b25f60` refuse les composantes OCPI à paliers lorsque kWh ou durées requis manquent ; oracle et Firefox 23 sources PASS, préproduction locale seule. G2–G8 FAIL.
 
 - 2026-10-25 : Production `2e17948` confirme dans Firefox la portée exacte des offres brutes UK ajoutées et l’absence de prix promu. G2–G8 FAIL ; préproduction locale seule.
+
+- 2026-10-25 : Production `87807c9` vérifie les liens et identités de tous les fragments du candidat 23 sources avant empaquetage ; test de corruption rehashée et paquet réel PASS. G2–G8 FAIL.
