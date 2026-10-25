@@ -1,6 +1,10 @@
+# 25 October 2026 - V9 tariff fee detail in the isolated preview
+
+- Production now shows all billed components returned by the shared engine and labels an archived guest preauthorisation separately as non billed. Compound, historical and rendered HTML tests pass; the unchanged 25-source candidate passes packaged oracles and Firefox desktop/mobile. G2–G8 remain FAIL for remaining coverage and remote proof; no deployment occurred. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 25 October 2026 - V9 France public-access decisions in canonical data
 
-- The existing, externally validated France IRVE access ledger is now pinned by SHA during national normalization. Only its explicit `exclude_non_public` station IDs are marked for map exclusion; the raw station, EVSE and connector rows remain in the immutable canonical data. The derived exact eMSP source copies that decision from the national station. Focused tests and a real single-source FR build pass; full 25-source replay is in progress. G2–G8 remain FAIL, Actions disabled and the public site unchanged. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+- The existing France IRVE access ledger is now pinned by SHA during national normalization. Only its explicit `exclude_non_public` station IDs are marked for map exclusion; the raw station, EVSE and connector rows remain in the immutable canonical data. The derived exact eMSP source copies that decision from the national station. Focused tests and the full 25-source offline replay pass. G2–G8 remain FAIL, Actions disabled and the public site unchanged. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
 
 # 25 October 2026 - V9 Powerdot raw archive in isolated candidate
 

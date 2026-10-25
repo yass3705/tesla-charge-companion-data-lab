@@ -949,4 +949,5 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — pays source vérifié à l'import Production
 
 - Production `cd50f96` rejette un bundle au SHA recalculé avec pays canonique incohérent ; sept tests d'import et les sources réelles Powerdot FR/BE PASS. G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
-- 2026-10-25 : source IRVE France V9 : décisions `exclude_non_public` du registre d'accès historique ajoutées au canonique avec SHA de provenance ; stations brutes conservées, exclusion réservée à la carte. Le dérivé eMSP exact hérite du champ national. Tests ciblés et construction FR réelle réussis ; replay multi-source en cours, aucune porte G2–G8 promue.
+- 2026-10-25 : source IRVE France V9 : décisions `exclude_non_public` du registre d'accès historique ajoutées au canonique avec SHA de provenance ; stations brutes conservées, exclusion réservée à la carte. Le dérivé eMSP exact hérite du champ national. Tests ciblés et replay isolé 25 sources/neuf pays réussis ; aucune porte G2–G8 promue.
+- 2026-10-25 : Production `979e3fe` affiche désormais le détail des composantes facturées du moteur et la préautorisation non facturée séparément ; oracles empaquetés, scénario historique, Firefox neuf pays/mobile et contrôle SHA PASS sur le candidat isolé 25 sources, sans publication.
