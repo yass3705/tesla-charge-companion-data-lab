@@ -885,3 +885,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — archives OCPI UK Gridserve et Ubitricity
 
 - Data Lab `b330d126d` et Production `9a2aa0f` : normalisation commune des archives UK, références absentes signalées, offres hors calcul ; candidat 23 sources, import et navigateur local PASS. G2–G8 FAIL, Actions désactivé. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — refus des durées manquantes sur les frais temporels
+
+- Production `666e7e9` refuse les totaux partiels de connexion, charge ou stationnement sans durée ; tests et navigateur 23 sources PASS. G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.
