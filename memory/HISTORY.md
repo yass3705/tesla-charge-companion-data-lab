@@ -873,3 +873,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — prix incomplets refusés par le moteur
 
 - Production `750073c` rejette explicitement les bornes OCPI sans oracle et les offres marquées incomplètes. Calculs combinés prouvés inchangés ; tests et Firefox neuf pays/mobile PASS, paquet seulement local et G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — moteur unifié et oracle de session combinée
+
+- Production `f2b2f14`, `dddb961`, `bbbab11` : même moteur pour les tests source et le paquet ; oracle hors ligne des frais combinés, SOC et minimum PASS. Portes G2–G8 FAIL, Actions désactivé. Voir `V9_REBUILD_PROGRESS.md`.

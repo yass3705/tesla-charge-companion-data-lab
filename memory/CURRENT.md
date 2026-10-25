@@ -1197,3 +1197,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : Production `ebbd9f4` charge les fragments français proches sans perdre les correspondances exactes ni les offres brutes ; Firefox neuf pays/mobile et intégrité du paquet PASS. G2–G8 FAIL, préproduction seulement locale.
 
 - 2026-10-25 : Production `750073c` rend explicitement incalculables les offres signalées incomplètes et les bornes tarifaires OCPI non prouvées. Tests tarifaires, navigateur neuf pays/mobile et intégrité du paquet local PASS ; G2–G8 FAIL, aucune URL distante.
+
+- 2026-10-25 : Production `bbbab11` unifie la source du moteur tarifaire et ajoute un oracle de frais combinés sur le paquet V9 isolé. Tests ciblés PASS ; G2–G8 FAIL et préproduction distante absente. Voir `V9_REBUILD_PROGRESS.md`.
