@@ -1205,3 +1205,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : candidat V9 local 23 sources/neuf pays avec Gridserve et Ubitricity UK archivés : offres brutes à portée exacte, aucun tarif nouveau, aucun EVSE officiel fabriqué. Tests, import SHA et Firefox ordinateur/mobile PASS ; G2–G8 FAIL, aperçu distant absent. Voir `V9_REBUILD_PROGRESS.md`.
 
 - 2026-10-25 : Production `666e7e9` exige les durées réelles pour tous les frais temporels payants ; oracles et Firefox du candidat local 23 sources PASS. G2–G8 FAIL, aucune publication.
+
+- 2026-10-25 : Production `cefe1fe` retire un ancien blocage belge basé sur des volumes figés ; oracle NAP et suite locale intégration/jointures PASS. G2–G8 FAIL.

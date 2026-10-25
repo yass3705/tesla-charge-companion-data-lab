@@ -889,3 +889,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — refus des durées manquantes sur les frais temporels
 
 - Production `666e7e9` refuse les totaux partiels de connexion, charge ou stationnement sans durée ; tests et navigateur 23 sources PASS. G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — oracle belge sans seuil historique
+
+- Production `cefe1fe` conserve les vérifications tarifaires et techniques NAP sans égalité de volumes ; suite hors ligne PASS. Voir `V9_REBUILD_PROGRESS.md`.
