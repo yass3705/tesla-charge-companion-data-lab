@@ -1201,3 +1201,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : Production `bbbab11` unifie la source du moteur tarifaire et ajoute un oracle de frais combinés sur le paquet V9 isolé. Tests ciblés PASS ; G2–G8 FAIL et préproduction distante absente. Voir `V9_REBUILD_PROGRESS.md`.
 
 - 2026-10-25 : Production `507b726` refuse les calculs énergie sans kWh ; paquet local 21 sources, oracles et Firefox neuf pays/mobile PASS. G2–G8 FAIL, aucune URL distante.
+
+- 2026-10-25 : candidat V9 local 23 sources/neuf pays avec Gridserve et Ubitricity UK archivés : offres brutes à portée exacte, aucun tarif nouveau, aucun EVSE officiel fabriqué. Tests, import SHA et Firefox ordinateur/mobile PASS ; G2–G8 FAIL, aperçu distant absent. Voir `V9_REBUILD_PROGRESS.md`.

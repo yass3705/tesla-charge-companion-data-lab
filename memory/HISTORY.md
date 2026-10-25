@@ -881,3 +881,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — énergie manquante explicitement incalculable
 
 - Production `507b726` refuse un prix énergie calculé avec kWh absent ; tests et navigateur local neuf pays/mobile PASS. Bundle source inchangé, G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — archives OCPI UK Gridserve et Ubitricity
+
+- Data Lab `b330d126d` et Production `9a2aa0f` : normalisation commune des archives UK, références absentes signalées, offres hors calcul ; candidat 23 sources, import et navigateur local PASS. G2–G8 FAIL, Actions désactivé. Voir `V9_REBUILD_PROGRESS.md`.
