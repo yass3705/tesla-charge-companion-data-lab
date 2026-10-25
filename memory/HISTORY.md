@@ -869,3 +869,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — fragments français proches
 
 - Production `ebbd9f4` filtre les fragments français dans l'aperçu V9 ; parité des zones contrôlées, Firefox neuf pays/mobile et intégrité PASS. Paquet local uniquement, G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — prix incomplets refusés par le moteur
+
+- Production `750073c` rejette explicitement les bornes OCPI sans oracle et les offres marquées incomplètes. Calculs combinés prouvés inchangés ; tests et Firefox neuf pays/mobile PASS, paquet seulement local et G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.
