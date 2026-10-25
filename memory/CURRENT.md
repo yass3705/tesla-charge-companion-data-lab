@@ -1,3 +1,7 @@
+# 25 October 2026 - V9 isolated candidate and historical oracle
+
+- The 23-source, nine-country local candidate passes SHA integrity, Firefox desktop/mobile and exact station/connector scope checks. Production `e826898` replays 36 identical-input historical Midhope evaluations and rejects ambiguous session durations. The 120 GitHub handoffs, full tariff coverage and isolated remote URL remain unverified; G2–G8 remain FAIL. Data Lab Actions are disabled and the public site is unchanged. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 24 October 2026 - V9 proved UK PCPR pricing
 
 - The isolated 18-source preview now evaluates exact Source EV PCPR offers using the historical OCPI converter; Blink and Allego remain raw because archived connector power is absent. Firefox seven-country and mobile tests pass. G2–G8 remain FAIL; no public deployment or Actions activation. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

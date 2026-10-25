@@ -913,3 +913,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — position actuelle en préproduction
 
 - Production `e19377e` vérifie l'accès à la position via une fixture navigateur ; recette locale neuf pays/mobile PASS. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — oracle source historique
+
+- Production `e826898` rejoue les 36 évaluations Midhope à entrées archivées identiques et refuse les durées ambiguës ; paquet local, intégrité et navigateur neuf pays/mobile PASS. Les autres oracles historiques restent à vérifier et G2–G8 restent FAIL. Voir `V9_REBUILD_PROGRESS.md`.
