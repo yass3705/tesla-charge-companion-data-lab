@@ -877,3 +877,7 @@ The fixed-tariff refresh audit was archived because it infers management from wo
 # 25 octobre 2026 — moteur unifié et oracle de session combinée
 
 - Production `f2b2f14`, `dddb961`, `bbbab11` : même moteur pour les tests source et le paquet ; oracle hors ligne des frais combinés, SOC et minimum PASS. Portes G2–G8 FAIL, Actions désactivé. Voir `V9_REBUILD_PROGRESS.md`.
+
+# 25 octobre 2026 — énergie manquante explicitement incalculable
+
+- Production `507b726` refuse un prix énergie calculé avec kWh absent ; tests et navigateur local neuf pays/mobile PASS. Bundle source inchangé, G2–G8 FAIL. Voir `V9_REBUILD_PROGRESS.md`.
