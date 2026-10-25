@@ -57,6 +57,41 @@ class UkPcprCanonicalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "connector id"):
             normalize_uk_pcpr(payload, artifact_sha256=sha, source_id=IDS[0])
 
+    def test_eco_movement_keeps_unattributed_refs_out_of_offers(self):
+        source_id = "GB:eco_movement_pcpr_raw"
+        payload, sha, _ = read_route(BY_SOURCE[source_id], source_id)
+        payload = copy.deepcopy(payload)
+        source = payload["sources"][0]
+        location = next(row for row in source["locations"]
+                        if any(set(connector.get("sourceTariffIds") or []) - set(connector.get("tariff_ids") or [])
+                               for evse in row["evses"] for connector in evse["connectors"]))
+        source["locations"] = [location]
+        refs = {ref for evse in location["evses"] for connector in evse["connectors"]
+                for ref in connector.get("tariff_ids") or []}
+        source["tariffs"] = [row for row in source["tariffs"] if row["id"] in refs]
+        result = normalize_uk_pcpr(payload, artifact_sha256=sha, source_id=source_id)
+        connectors = {row["id"]: row for row in result["connectors"]}
+        self.assertEqual(len(result["stations"]), 1)
+        self.assertTrue(result["unresolvedTariffRefs"])
+        self.assertTrue(all(ref["sourceTariffKey"] in connectors[ref["connectorId"]]["rawSourceFields"]["sourceTariffIds"]
+                            for ref in result["unresolvedTariffRefs"]))
+        self.assertTrue(all(offer["sourceTariffKey"] in connectors[offer["scope"]["connectorId"]]["rawSourceFields"]["tariff_ids"]
+                            for offer in result["offers"]))
+        self.assertTrue(all(offer["calculationStatus"] == "not_evaluated" for offer in result["offers"]))
+        altered = copy.deepcopy(payload)
+        altered["sources"][0]["locations"][0]["evses"][0]["connectors"][0]["tariff_ids"] = ["missing"]
+        with self.assertRaisesRegex(ValueError, "tariff reference"):
+            normalize_uk_pcpr(altered, artifact_sha256=sha, source_id=source_id)
+        archived, _, _ = read_route(BY_SOURCE[source_id], source_id)
+        altered = copy.deepcopy(payload)
+        tariff = archived["sources"][0]["tariffs"][0]
+        altered["sources"][0]["tariffs"] = [tariff]
+        connector = altered["sources"][0]["locations"][0]["evses"][0]["connectors"][0]
+        connector["tariff_ids"] = [tariff["id"]]
+        connector["sourceTariffIds"] = []
+        with self.assertRaisesRegex(ValueError, "tariff reference"):
+            normalize_uk_pcpr(altered, artifact_sha256=sha, source_id=source_id)
+
 
 if __name__ == "__main__":
     unittest.main()

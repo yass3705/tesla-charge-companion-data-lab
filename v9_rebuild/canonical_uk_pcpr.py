@@ -1,4 +1,4 @@
-"""Canonical preservation of the three archived UK CPO direct PCPR feeds."""
+"""Canonical preservation of archived UK CPO PCPR feeds and raw scopes."""
 from __future__ import annotations
 
 import re
@@ -10,6 +10,7 @@ SOURCES = {
     "GB:blink_pcpr_direct": "blink-uk-pcpr-direct",
     "GB:allego_pcpr_direct": "allego-uk-pcpr-direct",
     "GB:source_ev_pcpr_direct": "source-ev-uk-pcpr-direct",
+    "GB:eco_movement_pcpr_raw": "eco-movement-pcpr-cpo-direct",
 }
 
 
@@ -34,13 +35,17 @@ def _coordinates(raw):
 def normalize_uk_pcpr(payload: dict, *, artifact_sha256: str, source_id: str) -> dict:
     if source_id not in SOURCES or not isinstance(artifact_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", artifact_sha256):
         raise ValueError("UK PCPR source or SHA invalid")
+    raw_unverified = source_id == "GB:eco_movement_pcpr_raw"
+    expected_status = ("pcpr_cpo_arithmetic_staging_payg_and_vat_not_verified" if raw_unverified
+                       else "cpo_direct_exact_connector_vat_inclusive_staged")
     if (payload.get("country") != "GB" or
-            payload.get("integrationStatus") != "cpo_direct_exact_connector_vat_inclusive_staged" or
+            payload.get("integrationStatus") != expected_status or
             not isinstance(payload.get("sources"), list) or len(payload["sources"]) != 1):
         raise ValueError("UK PCPR archive envelope invalid")
     source = payload["sources"][0]
+    expected_scope = "cpo_pcpr_adhoc_attribution_pending" if raw_unverified else "cpo_direct_pcpr"
     if (source.get("id") != SOURCES[source_id] or source.get("country") != "GB" or
-            source.get("pricingScope") != "cpo_direct_pcpr" or
+            source.get("pricingScope") != expected_scope or
             not isinstance(source.get("locations"), list) or not isinstance(source.get("tariffs"), list)):
         raise ValueError("UK PCPR archive source contract invalid")
     tariffs = {}
@@ -54,7 +59,8 @@ def normalize_uk_pcpr(payload: dict, *, artifact_sha256: str, source_id: str) ->
                          "generatedAt": payload.get("collectedAt"), "rawMetadata": {
                              "archiveSourceId": source["id"], "pricingScope": source["pricingScope"]}},
               "countries": [{"code": "GB"}], "cpos": [], "stations": [], "evses": [],
-              "connectors": [], "offers": [], "tariffCatalog": tariffs}
+              "connectors": [], "offers": [], "tariffCatalog": tariffs,
+              **({"unresolvedTariffRefs": []} if raw_unverified else {})}
     cpos = {}
     for location in source["locations"]:
         if location.get("country_code") != "GB" or not isinstance(location.get("evses"), list):
@@ -89,9 +95,18 @@ def normalize_uk_pcpr(payload: dict, *, artifact_sha256: str, source_id: str) ->
                 if watts is not None and (not isinstance(watts, (int, float)) or watts < 0):
                     raise ValueError("UK PCPR connector power invalid")
                 refs = connector.get("tariff_ids") or []
-                if (not isinstance(refs, list) or not all(isinstance(ref, str) and ref in tariffs for ref in refs) or
-                        sorted(refs) != sorted(connector.get("sourceTariffIds") or [])):
+                source_refs = connector.get("sourceTariffIds") or []
+                if (not isinstance(refs, list) or not isinstance(source_refs, list) or
+                        not all(isinstance(ref, str) and ref in tariffs for ref in refs) or
+                        not all(isinstance(ref, str) for ref in source_refs) or
+                        (not raw_unverified and sorted(refs) != sorted(source_refs)) or
+                        (raw_unverified and not set(refs).issubset(set(source_refs)))):
                     raise ValueError("UK PCPR tariff reference invalid")
+                if raw_unverified:
+                    for ref in source_refs:
+                        if ref not in refs:
+                            result["unresolvedTariffRefs"].append({"connectorId": connector_id,
+                                                                    "sourceTariffKey": ref})
                 result["connectors"].append({"id": connector_id, "evseId": evse_id,
                                              "sourceConnectorId": native, "officialConnectorId": None,
                                              "plugType": connector.get("standard"),
@@ -104,6 +119,8 @@ def normalize_uk_pcpr(payload: dict, *, artifact_sha256: str, source_id: str) ->
                                               "sourceTariffKey": tariff_id, "rawOffer": tariffs[tariff_id],
                                               "calculationStatus": "not_evaluated"})
     result["cpos"] = sorted(cpos.values(), key=lambda row: row["id"])
+    if raw_unverified:
+        result["unresolvedTariffRefs"].sort(key=lambda row: (row["connectorId"], row["sourceTariffKey"]))
     for section in ("stations", "evses", "connectors", "offers"):
         result[section].sort(key=lambda row: row["id"])
     validate(result)

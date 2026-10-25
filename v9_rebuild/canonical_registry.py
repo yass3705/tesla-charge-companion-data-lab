@@ -52,6 +52,8 @@ ROUTES = (
                    partial(normalize_uk_pcpr, source_id="GB:blink_pcpr_direct")),
     CanonicalRoute("GB:source_ev_pcpr_direct", "data/national/uk_source_ev_pcpr_v9.json.gz",
                    partial(normalize_uk_pcpr, source_id="GB:source_ev_pcpr_direct")),
+    CanonicalRoute("GB:eco_movement_pcpr_raw", "data/national/uk_eco_movement_pcpr_v9.json.gz",
+                   partial(normalize_uk_pcpr, source_id="GB:eco_movement_pcpr_raw")),
     CanonicalRoute("GB:gridserve_pcpr_direct", "data/national/uk_gridserve_pcpr_locations.json.gz",
                    partial(normalize_uk_ocpi_pair, source_id="GB:gridserve_pcpr_direct"),
                    tariff_archive="data/national/uk_gridserve_pcpr_tariffs.json.gz"),
