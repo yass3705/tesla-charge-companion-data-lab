@@ -1215,3 +1215,5 @@ G0/G1 restent PASS ; G2 reste FAIL sur les transferts GitHub non vérifiés, Act
 - 2026-10-25 : Production `87807c9` vérifie les liens et identités de tous les fragments du candidat 23 sources avant empaquetage ; test de corruption rehashée et paquet réel PASS. G2–G8 FAIL.
 
 - 2026-10-25 : Production `52334cd` affiche distinctement EVSE officiel, identifiant source et clé interne ; Firefox 23 sources ordinateur/mobile PASS. G2–G8 FAIL, aucune URL distante.
+
+- 2026-10-25 : Production `e19377e` teste dans Firefox le bouton de position actuelle avec coordonnées simulées ; candidat 23 sources desktop/mobile PASS. G2–G8 FAIL.
