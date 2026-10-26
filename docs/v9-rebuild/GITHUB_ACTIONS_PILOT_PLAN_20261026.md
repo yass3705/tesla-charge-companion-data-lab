@@ -23,7 +23,7 @@ Autorisation distincte pour neutraliser les anciens déclencheurs sur `main`, r�
 
 ## Pilote concret retenu et preuve locale
 
-Source unique proposée : `FR:ionity_direct_family`, module `ionity_family`, sans secret requis. Elle réutilise les scripts archivés FR/DE/IT/GB ; aucune recherche de prix ni nouvel endpoint. Le workflow commun existant est `.github/workflows/v9-collect.yml`, déclenchement manuel seulement. La branche cible est `rebuild/v9-20261020` ; ne jamais lancer le pilote sur `main`.
+Source unique proposée : `FR:ionity_direct_family`, module `ionity_family`, sans secret requis. Elle réutilise les scripts archivés FR/DE/IT/GB ; aucune recherche de prix ni nouvel endpoint. Le workflow dédié proposé est `v9-ionity-pilot.yml`, conservé uniquement comme copie inactive dans le dossier de revue. Le workflow commun existant `v9-collect.yml` n’est pas le pilote retenu. La branche cible est `rebuild/v9-20261020` ; ne jamais lancer le pilote sur `main`.
 
 Contrôles exécutés le 26 octobre : tests offline `tests.test_v9_ionity` (sortie vide techniquement valide, famille complète, échec sans publication partielle), `tests.test_v9_orchestrator`, normalisation canonique et jointures exactes : 31 tests PASS. Le dry-run ci-dessous retourne exactement `{"status":"dry_run","sources":["FR:ionity_direct_family"]}`. Il ne collecte rien et ne prouve pas le transfert GitHub.
 
@@ -36,9 +36,21 @@ Avant la future exécution autorisée, limiter le job pilote à cette source et 
 Commande de déclenchement proposée, **NON exécutée et à utiliser seulement après la neutralisation revue de main et autorisation explicite** :
 
 ```sh
-gh workflow run v9-collect.yml --repo yass3705/tesla-charge-companion-data-lab --ref rebuild/v9-20261020 -f source=FR:ionity_direct_family
+gh workflow run v9-ionity-pilot.yml --repo yass3705/tesla-charge-companion-data-lab --ref rebuild/v9-20261020 -f source=FR:ionity_direct_family
 ```
 
 Après ce run, télécharger l'artefact propre à la source hors checkout, vérifier tous ses SHA et le rapport de statut, tester l'import Production local isolé et conserver le run ID. En cas d'échec, ne pas promouvoir de sortie partielle ; conserver le dernier snapshot validé et remettre Actions dans son état désactivé selon le plan autorisé.
 
 Le contrôle administratif en lecture seule du 26 octobre confirme encore `enabled=false`. `origin/main` Data Lab est `def205b0de51dd55bd36a2e7fa672031364e6f75` au fetch de cette recette. Aucun workflow actif n'a été modifié, aucun run déclenché et aucun handoff n'est promu en PASS.
+
+## Proposition concrète inactive à examiner
+
+- [Workflow pilote](pilot/v9-ionity-pilot.yml.example) : source et branche verrouillées, 20 minutes, un worker, une tentative, aucune liaison de secret, permissions en lecture, actions épinglées par SHA vérifiés via API, artefacts succès/échec séparés et rétention de sept jours.
+- [Patch proposé pour main](pilot/MAIN_NEUTRALIZATION_PROPOSAL.patch) : déplace sans changer leur contenu les 1 207 anciens fichiers de workflow hors de `.github/workflows`, puis ajoute uniquement le pilote gardé. Ce fichier est une pièce de revue, jamais appliquée à main ni à l’index réel.
+- [Rapport de contrôle](pilot/REVIEW_20261026.json) : application et réversibilité vérifiées exclusivement dans un index Git temporaire basé sur `def205b0de51dd55bd36a2e7fa672031364e6f75`. Aucun ref ni fichier actif modifié.
+
+GitHub exige que la définition du workflow manuel existe sur la branche par défaut pour recevoir `workflow_dispatch` ([documentation officielle](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)). Après autorisation seulement, la même définition devra donc être installée sur main et sur la branche de reconstruction ; sa garde interdit l’exécution sur main.
+
+Avant activation, revérifier le SHA de main, les workflows enregistrés, les runs actifs et les autres branches susceptibles de déclencher un workflow ; cette proposition ne prouve pas leur neutralisation. Tout écart impose une nouvelle revue du patch. Pour un retour arrière, désactiver Actions **avant** de restaurer les anciens workflows, afin de ne pas relancer leurs programmations. Ce dossier n’autorise aucune de ces opérations.
+
+Rejouer la vérification offline depuis Data Lab : `python3 scripts/check_v9_inactive_pilot.py`. Le script vérifie les SHA revus, l’archive exacte de chaque workflow et le retour au tree initial dans un index temporaire ; il ne vérifie pas l’état GitHub distant, n’active rien et ne remplace pas l’autorisation.

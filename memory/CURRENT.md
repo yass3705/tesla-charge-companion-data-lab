@@ -1,3 +1,7 @@
+# 26 October 2026 — 28-source local preview saved; inactive Actions proposal
+
+Production `66a3b90` and Data Lab `9b2816792` are pushed on reconstruction branches. The local preview serves the 28-source German national candidate, with nine-country/mobile and same-session FR→DE→NL→FR checks passing. Unknown topology remains explicit; no invented prices or GPS-only tariff joins. Berlin 100 km 7.988 s; NL 20 km cold 13.030 s remains above the local budget. Integrity and public scans pass. The inactive pilot proposal includes a reviewed workflow and reversible main-neutralization patch, never installed. Actions remains disabled; main/public site unchanged. Remote preview and real Actions handoffs require separate authorization/access; G2–G8 not promoted. See [reprise](V9_REBUILD_PROGRESS.md) and [pilot plan](../docs/v9-rebuild/GITHUB_ACTIONS_PILOT_PLAN_20261026.md).
+
 # 26 October 2026 — G6 saved; German national G3 archive in progress
 
 - Production `5e4c3b7` is pushed and the isolated local preview serves `site-after-minutes`; packaged/browser checks pass. The German national archive has five normalizer tests, exact SHA import and full adapter validation. A 28-source candidate is being composed without changing the previous 27 canonical SHA values. No connector power or tariff is inferred from national site aggregates. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
