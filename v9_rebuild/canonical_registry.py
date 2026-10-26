@@ -28,6 +28,7 @@ from v9_rebuild.canonical_morocco_evgo import normalize_morocco_evgo
 from v9_rebuild.canonical_uk_ocpi_pair import normalize_uk_ocpi_pair
 from v9_rebuild.canonical_powerdot import normalize_powerdot
 from v9_rebuild.canonical_izivia_fast import normalize_izivia_fast_map
+from v9_rebuild.canonical_germany_catalog import normalize_germany_catalog
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,7 @@ class CanonicalRoute:
 
 
 ROUTES = (
+    CanonicalRoute("DE:bnetza_afir_archive", "data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz", normalize_germany_catalog),
     CanonicalRoute("MA:evgo", "reports/morocco/evgo/latest-production-stations.json",
                    normalize_morocco_evgo),
     CanonicalRoute("ES:reve_static", "data/reve_v2/validated_runtime/spain-static/all.json.gz",
