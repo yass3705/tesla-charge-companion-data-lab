@@ -27,6 +27,7 @@ from v9_rebuild.canonical_spain_reve import normalize_spain_reve
 from v9_rebuild.canonical_morocco_evgo import normalize_morocco_evgo
 from v9_rebuild.canonical_uk_ocpi_pair import normalize_uk_ocpi_pair
 from v9_rebuild.canonical_powerdot import normalize_powerdot
+from v9_rebuild.canonical_izivia_fast import normalize_izivia_fast_map
 
 
 @dataclass(frozen=True)
@@ -69,6 +70,7 @@ ROUTES = (
     CanonicalRoute("FR:driveco_evse_tariffs", "data/operator_direct/driveco_evse_tariffs.json", normalize_driveco_evse),
     CanonicalRoute("FR:irve_static", "data/national/france-irve-static-v9/all.json.gz",
                    normalize_france_irve_compact, "data/national/france-irve-static-v9/manifest.json"),
+    CanonicalRoute("FR:izivia_fast_map", "data/operator_direct/izivia_fast_inventory_france_2026_10_06.json", normalize_izivia_fast_map),
     CanonicalRoute("FR:ionity_direct", "data/national/ionity_direct_stations_france.json.gz", normalize_ionity),
     CanonicalRoute("FR:ozecar_monta", "data/ozecar/france/ozecar-france-current.json.gz", normalize_ozecar),
     CanonicalRoute("FR:powerdot_direct", "data/national/powerdot_direct_france.json.gz", normalize_powerdot),

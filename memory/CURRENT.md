@@ -1,3 +1,12 @@
+# 26 October 2026 - IZIVIA FAST exact national station candidate
+
+- The archived IZIVIA FAST map inventory has a canonical route on the V9 reconstruction branch. All archived station IDs were checked against the pinned France IRVE national inventory. Map socket groups remain raw; no physical EVSE ID, connector ID or price was inferred. Focused tests and a single-source immutable bundle/import pass. The complete 27-source rebuild and Firefox replay are in progress; G3/G5/G6 are not promoted. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
+# 26 October 2026 - V9 bounded map candidate and Actions pilot plan
+
+- Production reconstruction branch now has local bounded spatial pages, cached source/identity merge across pages, an all-matching-station map index, zoom/density grouping and an explicit 100 km user limit. The unchanged 26-source bundle passes the focused G3/G5/G6 oracles and a nine-country Firefox map smoke; Paris at 100 km measured 5.253 s first load and 0.869 s next page on the measured package. Final refreshed package and tests are recorded in V9_REBUILD_PROGRESS.md. G2–G8 remain FAIL pending full browser pricing journey, remaining families, live Actions handoffs and a remote isolated URL. No public deployment.
+- The user-approved performance/cartography rules are in PROJECT_SPEC_G0_G9.md. GITHUB_ACTIONS_PILOT_PLAN_20261026.md is a draft plan only. Actions is disabled; no pilot run or main change occurred.
+
 # 25 October 2026 - V9 tariff fee detail in the isolated preview
 
 - Production now shows all billed components returned by the shared engine and labels an archived guest preauthorisation separately as non billed. Compound, historical and rendered HTML tests pass; the unchanged 25-source candidate passes packaged oracles and Firefox desktop/mobile. G2–G8 remain FAIL for remaining coverage and remote proof; no deployment occurred. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).

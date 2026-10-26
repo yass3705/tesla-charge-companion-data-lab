@@ -110,6 +110,14 @@ Conserver la chaîne Electroverse daily/full (128 shards et checkpoints), status
 
 **Porte PASS :** tests unitaires/combinés, historiques et oracle indépendant ; aucun mécanisme documenté ignoré silencieusement, aucune conversion FX inventée ; traitement explicite des données manquantes, ambiguës et inéligibles. **100 % de couverture des règles documentées ne signifie PAS 100 % des offres chiffrables.** Réutiliser notamment les cas Midhope et les autres scénarios prouvés lorsque leurs entrées sont identiques.
 
+### Complément utilisateur du 26/10/2026 — performance et carte (G7/G8)
+
+Le rayon demandé dans l’interface est limité explicitement à **100 km**. Ne jamais le réduire silencieusement. La recette de performance commence à 100 km et, si nécessaire, répète les mesures par paliers de 10 km ; chaque rayon est mesuré, sans supposer qu’un rayon donné est fluide.
+
+La recherche spatiale, les calculs, la liste et la carte doivent traiter les résultats progressivement : toutes les stations correspondantes restent accessibles par pagination, zoom ou déplacement, sans charger simultanément des milliers de fiches ou marqueurs. Le regroupement dépend du zoom et de la densité ; les meilleures offres calculables ont priorité visuelle. Un plafond de 500 stations affichées est strictement transitoire et ne satisfait pas G7/G8.
+
+Les données sources, jointures EVSE et tarifs canoniques sont conservés intégralement. Aucune optimisation d’affichage ne supprime ces données ni ne confond offre calculable, offre brute et tarif incalculable. Ce travail s’inscrit dans la recette G7/G8 et ne retarde pas les priorités G0–G9.
+
 ### G7 — Interface TCC V9
 
 **Travail :** carte interactive avec position actuelle ; **une carte par station regroupant ses puissances** ; détail bornes/EVSE/prises, puissance et nombre de bornes ; lignes et tarifs correctement associés à chaque prise. Trois canaux affichés Direct/Electra/Electroverse, y compris « Prix non disponible ». Filtres multi-CPO, multi-abonnements, Tesla uniquement/tous réseaux, critères de puissance et conditions. Batterie, SoC, objectif, date/heure, coût total, temps et coût/km, décomposition des frais et tri sur les combinaisons valides. Sources, dates, devise locale et EUR quand conversion disponible. Vue mobile et ordinateur, carte réellement utilisable ; pas de statut de disponibilité live inventé.

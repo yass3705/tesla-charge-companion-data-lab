@@ -1,3 +1,11 @@
+## 2026-10-26 — IZIVIA FAST archived map topology
+
+A new canonical route preserves the pinned IZIVIA FAST map at exact national station identity while retaining socket groups only as raw source fields. No tariff or official EVSE is assigned from the map. Production has an exact-station merge regression protecting the national EVSE topology. The source remains a candidate until the full bundle and browser replay finish; details are in `memory/V9_REBUILD_PROGRESS.md`.
+
+## 2026-10-26 — V9 performance and map decision, pilot preparation
+
+The user limited search radius to 100 km and required progressive access to all matching stations, independent map grouping, preservation of canonical data and measured Firefox performance. The reconstruction branches contain a local bounded-page implementation and a safe GitHub Actions pilot plan; no activation, main change or public deployment occurred. Evidence and remaining gaps: `memory/V9_REBUILD_PROGRESS.md`.
+
 - 2026-10-20 : migration G2 de trois sources UK PCPR (Blink, Allego UK, Source EV) et de leurs audits ; flux vides visibles sans prix inventé, mauvaise identité CPO rejetée.
 - 2026-10-20 : migration G2 du constructeur canonique France dans un espace isolé ; entrées archivées et règles de priorité conservées, divergence du snapshot ancien identifiée sans réinterprétation de prix.
 - 2026-10-20 : migration G2 de la chaîne France IRVE statique/dynamique/audit ; retrait des minima historiques de lignes, stations et EVSE ; validations SHA, schémas et relations conservées.
