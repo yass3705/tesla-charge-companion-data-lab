@@ -1,3 +1,7 @@
+# 26 October 2026 — Exact offer scopes and global pagination
+
+- Production `ee6b2af` is saved on `rebuild/v9-20261020`: equal-price offers on distinct EVSE/connector scopes survive deduplication, raw offers remain visible alongside calculated offers. Eight exact tariff Firefox journeys, nine-country/mobile navigation, full-session/global-ranking oracles and six packaging tests pass. Candidate `site-exact-offer-scopes` retains the immutable 27-source bundle. Paris 100 km: 9.536 s; Amsterdam 100 km: 82.066 s, further 10 km steps ongoing. Dense-search latency remains open. Main and the public site are untouched; Actions remains disabled. Follow-up G5/G6 tests now cover EVSE-only eligibility and distinct validity windows; not yet packaged or committed. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
+
 # 26 October 2026 - IZIVIA FAST exact national station candidate
 
 - The archived IZIVIA FAST map inventory has a canonical route on the V9 reconstruction branch. All archived station IDs were checked against the pinned France IRVE national inventory. Map socket groups remain raw; no physical EVSE ID, connector ID or price was inferred. Focused tests and a single-source immutable bundle/import pass. The complete 27-source rebuild and Firefox replay are in progress; G3/G5/G6 are not promoted. See [V9_REBUILD_PROGRESS.md](V9_REBUILD_PROGRESS.md).
