@@ -990,3 +990,5 @@ Le normaliseur G3 `DE:bnetza_afir_archive` conserve l’archive nationale allema
 ## 2026-10-28 — V9 targeted historical tariff parity
 
 Tesla Morocco power-minute pricing was restored in the isolated Production candidate from the pinned archive, preserving MAD and exact configuration scope (`caec2b7`). Belib Flex exact EVSE and aligned connected-time blocks were restored without assigning parking fees (`dd365ba`); ambiguous cut blocks remain incalculable. Archived IZIVIA FAST and Dutch subscription offers without exact canonical connector proof remain unranked. Agadir and nine-country/mobile browser replays pass; evidence is committed through Production `6e92a5e`. Details and resume instruction: `memory/V9_REBUILD_PROGRESS.md`. No Actions activation or public deployment.
+
+The archived Allego France route now preserves exact source EVSE IDs and Direct raw offers in an immutable one-source bundle. It creates no connector or calculated tariff. Integration into the multi-country preview remains pending; see `memory/V9_REBUILD_PROGRESS.md`.

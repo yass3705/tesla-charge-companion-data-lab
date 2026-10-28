@@ -29,6 +29,7 @@ from v9_rebuild.canonical_uk_ocpi_pair import normalize_uk_ocpi_pair
 from v9_rebuild.canonical_powerdot import normalize_powerdot
 from v9_rebuild.canonical_izivia_fast import normalize_izivia_fast_map
 from v9_rebuild.canonical_germany_catalog import normalize_germany_catalog
+from v9_rebuild.canonical_allego_fr import normalize_allego_fr
 
 
 @dataclass(frozen=True)
@@ -69,6 +70,7 @@ ROUTES = (
     CanonicalRoute("CH:swiss_integration", "data/national/switzerland_public_charging_v9.json", normalize_swiss),
     CanonicalRoute("DE:ionity_direct", "data/national/ionity_direct_stations_germany.json.gz", normalize_ionity),
     CanonicalRoute("FR:belib_stations", "data/national/belib_stations_paris.json", normalize_belib),
+    CanonicalRoute("FR:allego_direct", "data/national/allego_direct_stations_france.json.gz", normalize_allego_fr),
     CanonicalRoute("FR:driveco_evse_tariffs", "data/operator_direct/driveco_evse_tariffs.json", normalize_driveco_evse),
     CanonicalRoute("FR:irve_static", "data/national/france-irve-static-v9/all.json.gz",
                    normalize_france_irve_compact, "data/national/france-irve-static-v9/manifest.json"),
