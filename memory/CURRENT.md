@@ -1,3 +1,7 @@
+# 28 October 2026 — dense ranking reused exact session work
+
+Production `fff5357` keeps the same 30-source immutable bundle and improves the isolated Amsterdam 100 km cold search from 70.2 to 50.0 seconds in the paired test. All 62,770 ranked station, map, offer and session result hashes match the reference. Five ranking modes, historical tariff oracles, nine-country/mobile browser checks and local hosting integrity pass. G2–G8 remain FAIL; remote preview and GitHub handoffs are unverified, Actions is disabled, and the public site is unchanged. See [reprise](V9_REBUILD_PROGRESS.md).
+
 # 28 October 2026 — remote preview preflight and dense performance evidence
 
 Production `69cd426` contains a read-only remote preview checker prepared for a separate HTTPS origin: critical asset SHA, one signed fragment and noindex. Local tests pass; no remote upload or browser validation has occurred. On the 30-source candidate, Amsterdam 100 km cold search takes about 70 seconds for 62,770 matching stations. Profiling identifies per-batch query and per-power evaluation as the main costs; the previous package remains untouched. Data Lab Actions remain disabled, no public deployment occurred, and G2–G8 remain FAIL. See [reprise](V9_REBUILD_PROGRESS.md).

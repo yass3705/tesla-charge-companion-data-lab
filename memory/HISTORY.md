@@ -1008,3 +1008,7 @@ The 29-source immutable bundle retains the prior 28 SHA values. Production SHA i
 ## 2026-10-28 — V9 remote preflight and dense search profile
 
 Production `69cd426` provides a read-only remote preview verifier for a separate HTTPS origin. Local integrity and negative tests pass; no remote project or URL exists yet. The 30-source Amsterdam 100 km cold query returned 62,770 matching stations in about 70 seconds; profiling showed per-power evaluations and per-batch queries dominate. The experimental batch-size change and profiling copy were discarded. G7/G8 remain FAIL on dense performance and missing remote proof; Actions and public site remain unchanged. See `memory/V9_REBUILD_PROGRESS.md`.
+
+## 2026-10-28 — V9 dense ranking work reused without tariff changes
+
+Production `fff5357` reduces the 30-source Amsterdam 100 km cold query from 70.2 to 50.0 seconds in the paired test. Hashes of 62,770 ranked stations, map pages, offers and evaluations match the baseline; nine-country/mobile and targeted tariff browser tests pass. Only identical charge-plan estimates, local clock readings, canonical station objects and stable all-day timeline decisions are reused. G7/G8 remain FAIL on dense latency and remote proof; Data Lab Actions and public site are unchanged. See `memory/V9_REBUILD_PROGRESS.md`.
