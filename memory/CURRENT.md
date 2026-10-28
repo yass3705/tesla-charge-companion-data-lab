@@ -1,3 +1,7 @@
+# 28 October 2026 — V9 simple tariff guard and gap matrix
+
+Production `38c654f` rejects unknown or additional simple tariff dimensions instead of displaying a partial price. The isolated 31-source package passes SHA/hosting, targeted tariff and nine-country/mobile Firefox checks. G3/G5/G6 capability matrix: Production `docs/v9-rebuild/evidence/g3-g5-g6-gap-matrix-20261028.md`. Data Lab was `e51357aec` before this memory update. G2–G8 remain FAIL; Actions disabled, no remote preview or public deployment. Next: mechanism-to-oracle coverage, then historically exact archived families, then G8. See `memory/V9_REBUILD_PROGRESS.md`.
+
 # 28 October 2026 — Bump exact rules connected in code
 
 Data Lab preserves the archived Bump source and exact national EVSE join; Production `1130c26` evaluates only the historically compiled rules on that exact identity. Targeted historical fee and merge oracles pass. The 30-source preview is unchanged; G2–G8 remain FAIL and Actions stays disabled. See [reprise](V9_REBUILD_PROGRESS.md).

@@ -1032,3 +1032,7 @@ Production `3bbf4a4` preserves absent `energyKwh` as null, preventing a positive
 ## 2026-10-28 — V9 Bump exact in isolated 31-source candidate
 
 Data Lab `541de5b72` and Production `7a4879d` preserve the archived Bump source and exact national EVSE/connector scope. The immutable 31-source bundle retains all 30 prior source hashes; SHA/hosting, ten targeted browser flows and nine-country/mobile browser tests pass. The preview remains local and undeployed. G2–G8 remain FAIL pending full coverage, GitHub handoffs and remote preview. See `memory/V9_REBUILD_PROGRESS.md`.
+
+## 2026-10-28 — V9 simple pricing guard and capability matrix
+
+Production `38c654f` rejects unsupported simple tariff components; exact historical simple prices remain unchanged. The immutable 31-source bundle is reused in an isolated package; SHA/hosting, combined-session oracle, ten tariff browser flows and nine-country/mobile Firefox pass. G3/G5/G6 coverage remains open and G2–G8 FAIL. See `memory/V9_REBUILD_PROGRESS.md`.
