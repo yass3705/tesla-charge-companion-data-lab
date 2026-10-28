@@ -49,6 +49,7 @@ Conserver les ID station, EVSE et connecteurs officiels ou fournisseur. Génére
 - Checkpoint incomplet distinct d'un artefact utilisable par Production. Une erreur doit rester visible ; pas de publication implicite d'une sortie partielle.
 - Les workflows PR/tests sont en lecture seule ; aucun push automatique sur main, aucun workflow_run en chaîne, aucune écriture inter-dépôts non maîtrisée, aucune exposition de secrets dans le dépôt public.
 - Actions Data Lab a été désactivé pendant G0 à cause des anciens workflows présents sur main ; **ne pas le réactiver sans neutralisation vérifiée des anciens déclencheurs, procédure de test sûre et autorisation explicite**. Des tests locaux ne prouvent pas un transfert GitHub Actions réel.
+- **Décision utilisateur du 28/10/2026 : Cloudflare Pages est abandonné pour la préproduction V9.** Aucun hébergeur de remplacement n'est choisi ni déployé sans validation appropriée. L'URL finale doit rester isolée du site public et satisfaire les contrôles SHA, noindex, navigateur et rollback de G8.
 - Pas de fusion, changement administratif GitHub, activation d'Actions, déploiement de Production/public, bascule de trafic ou opération irréversible sans autorisation appropriée.
 - Respecter le caractère public du dépôt et exécuter public_safety_check.py avant les publications de branche.
 

@@ -1328,3 +1328,7 @@ Production `caec2b7` restores the SHA pinned Tesla Morocco power-minute offer pa
 Data Lab now has a tested `FR:allego_direct` canonical route for its pinned Allego France archive: exact source EVSE IDs and raw Direct offers are preserved without inventing connector IDs or calculated prices. The one-source immutable bundle and Production SHA import pass; integration into the 29-source preview remains next. See `memory/V9_REBUILD_PROGRESS.md`.
 
 2026-10-28 — Le candidat isolé V9 à 31 sources inclut Bump Direct seulement sur les EVSE/prises nationaux exacts. Bundle immuable et site local vérifiés SHA ; dix parcours tarifaires et neuf pays/mobile PASS. Production `7a4879d`, Data Lab `541de5b72` avant cette mémoire. Aucun déploiement, Actions désactivé ; G2–G8 FAIL. Détails et prochaine action : `memory/V9_REBUILD_PROGRESS.md`.
+
+# 28 October 2026 — G2–G8 exit audit and hosting decision
+
+The inactive Actions pilot reversibility check passes offline for 1,207 archived workflows, with the real index and refs unchanged; 17 orchestration/IONITY tests pass. GitHub Actions remains disabled, all 120 handoffs unverified. Production now records the user's decision to abandon Cloudflare Pages; no replacement host or URL exists. The 31-source bundle and rollback candidates are preserved. G2–G8 remain FAIL. Next: finish public scans and save the audit, then close only demonstrable capability gaps before requesting separate pilot and hosting authorizations. See V9_REBUILD_PROGRESS.md.

@@ -1044,3 +1044,7 @@ Production `07a43cb` documents all named G6 mechanisms from historical PR #134�
 ## 2026-10-28 — V9 nested billing guard on final local candidate
 
 Production `47e45f6` rejects unknown billed keys at component-group scope while retaining the proven UK tax-conversion provenance. The derived 31-source package passes SHA/hosting, packaged historical oracles, ten tariff and nine-country/mobile Firefox journeys. No remote deployment; G2–G8 remain FAIL. See `memory/V9_REBUILD_PROGRESS.md`.
+
+## 2026-10-28 — Critical-path gate audit and hosting decision
+
+Documented G2–G8 proof gaps without promoting gates. Offline pilot patch restored the reviewed main tree; Actions stayed disabled. Cloudflare Pages was removed as the active preview proposal following the user's decision; the future isolated host remains undecided.
