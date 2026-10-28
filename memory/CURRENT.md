@@ -1,3 +1,7 @@
+# 28 October 2026 — currency guard verified in the 30-source candidate
+
+The shared V9 tariff engine no longer supplies EUR when an offer has no currency. Missing or conflicting currency leaves the offer incalculable; an explicit CHF rule remains CHF, including locked or segmented sessions. Targeted oracles, nine-source and nine-country/mobile Firefox and local SHA/hosting pass on `site-currency-guard-complete`. The candidate is still local only, with Actions disabled and G2–G8 FAIL. See [reprise](V9_REBUILD_PROGRESS.md).
+
 # 28 October 2026 — 30-source Atlante France local candidate prepared
 
 The immutable 30-source bundle retains all 29 previous source SHA values and adds the frozen Atlante France connector archive. The shared FR/IT canonical normalizer leaves Italy's prior output byte-identical. Production restores the exact AC three-phase Type 2 source pairing and evaluates only simple energy offers on their original connector; no tariff is copied to the French national inventory because no exact national EVSE match exists. Signed-fragment packaging, targeted nine-source Firefox, nine-country/mobile Firefox and local hosting integrity pass. The site remains unpublished, Data Lab Actions disabled, Tesla/Mac untouched, and G2–G8 FAIL. See [reprise](V9_REBUILD_PROGRESS.md).
