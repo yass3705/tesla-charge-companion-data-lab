@@ -993,6 +993,10 @@ Tesla Morocco power-minute pricing was restored in the isolated Production candi
 
 The archived Allego France route now preserves exact source EVSE IDs and Direct raw offers in an immutable one-source bundle. It creates no connector or calculated tariff. Integration into the multi-country preview remains pending; see `memory/V9_REBUILD_PROGRESS.md`.
 
+## 2026-10-28 — Atlante France canonical source and shared AC Type 2 parity
+
+The previously archived Atlante France source now uses the existing exact connector normalizer shared with Italy. The 30-source immutable candidate retains all 29 prior source SHA values. Production recognizes the preserved `AC_3_PHASE` plus `TYPE2` pair and evaluates only fully proved simple energy tariffs on each source connector. The exact national join report has no Atlante EVSE match and does not transfer prices. Targeted nine-source and nine-country/mobile Firefox, local hosting integrity, snapshot and pricing tests pass. Data Lab Actions and the public site remain unchanged; G2–G8 are not promoted. See `memory/V9_REBUILD_PROGRESS.md`.
+
 ## 2026-10-28 — Allego France added to isolated 29-source candidate
 
 The 29-source immutable bundle retains the prior 28 SHA values. Production SHA import, 2,333 signed fragments, local hosting integrity, nine-country/mobile Firefox, and targeted Allego Gaillac display pass. Its four raw offers remain unranked with no connector or price inferred. The exact national join report preserves EVSE matches, while station-level merging is withheld because one Allego station can map to multiple national stations. Data Lab Actions and the public site remain unchanged; G2–G8 are not promoted. See `memory/V9_REBUILD_PROGRESS.md`.

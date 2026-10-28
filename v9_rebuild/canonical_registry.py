@@ -10,6 +10,7 @@ from functools import partial
 from typing import Callable
 
 from v9_rebuild.canonical import (
+    normalize_atlante_france,
     normalize_atlante_italy,
     normalize_belib,
     normalize_belgium_nap,
@@ -70,6 +71,7 @@ ROUTES = (
     CanonicalRoute("CH:swiss_integration", "data/national/switzerland_public_charging_v9.json", normalize_swiss),
     CanonicalRoute("DE:ionity_direct", "data/national/ionity_direct_stations_germany.json.gz", normalize_ionity),
     CanonicalRoute("FR:belib_stations", "data/national/belib_stations_paris.json", normalize_belib),
+    CanonicalRoute("FR:atlante_direct", "data/national/atlante_direct_stations_france_latest.json.gz", normalize_atlante_france),
     CanonicalRoute("FR:allego_direct", "data/national/allego_direct_stations_france.json.gz", normalize_allego_fr),
     CanonicalRoute("FR:driveco_evse_tariffs", "data/operator_direct/driveco_evse_tariffs.json", normalize_driveco_evse),
     CanonicalRoute("FR:irve_static", "data/national/france-irve-static-v9/all.json.gz",

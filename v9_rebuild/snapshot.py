@@ -4,6 +4,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -38,7 +41,16 @@ def prepare(inputs: dict[str, Path], destination: Path) -> Path:
             artifact_hash = payload["source"].get("artifactSha256")
             if not isinstance(artifact_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_hash):
                 raise ValueError("Source artifact SHA invalid")
-            (stage / name).write_bytes(raw)
+            target = stage / name
+            # APFS clonefile keeps an independent immutable inode while a
+            # multi-source rebuild reuses unchanged canonical source bytes.
+            cloned = sys.platform == "darwin" and subprocess.run(
+                ["/bin/cp", "-c", str(path), str(target)],
+                capture_output=True, check=False).returncode == 0
+            if not cloned:
+                shutil.copyfile(path, target)
+            if _hash(target) != hashlib.sha256(raw).hexdigest():
+                raise ValueError("Snapshot copy SHA mismatch")
             entries.append({"source": source_id, "path": name, "sha256": hashlib.sha256(raw).hexdigest(),
                             "sourceArtifactSha256": artifact_hash, "canonicalSchemaVersion": SCHEMA_VERSION})
         manifest = {"schemaVersion": 1, "state": "prepared", "sources": entries}
