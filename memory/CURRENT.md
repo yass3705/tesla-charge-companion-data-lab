@@ -1,3 +1,7 @@
+# 28 October 2026 — compound group billing keys fail closed
+
+Production `47e45f6` rejects unknown billed fields on OCPI component groups. The final derived 31-source package passes SHA/hosting, 64 historical Midhope evaluations, combined-session oracle, ten targeted Firefox tariff flows and nine-country/mobile Firefox. The immutable bundle and previous packages remain intact. Data Lab was `50afe4356` before this memory update. G2–G8 remain FAIL, Actions disabled and no remote deployment. Next: prove archived Repower IT identity contract, classify historical cohorts, continue G8; see `memory/V9_REBUILD_PROGRESS.md`.
+
 # 28 October 2026 — G6 historical mechanism coverage and 64-case Midhope replay
 
 Production `07a43cb` records the mechanism-to-source-to-engine-to-oracle-to-browser matrix for PR #134–#146. The PR #144 Midhope source SHA matches the pinned fixture; all 64 historical identical-input cases pass in source and isolated package. Unknown billed keys in compound rules now fail closed. The 31-source derived package passes SHA/hosting, ten targeted tariff Firefox flows and nine-country/mobile Firefox. Data Lab was `8d4149de1` before this memory update. G2–G8 remain FAIL; Actions disabled, Pages not deployed, public site unchanged. The 721-row historical report lacks full per-row offer/session inputs and is not claimed as V9 parity. Next: classify pinned cohorts and exact G3/G5 contracts; see `memory/V9_REBUILD_PROGRESS.md`.
