@@ -20,11 +20,12 @@ class BumpExactNationalTest(unittest.TestCase):
             {"id": "source-evse", "officialEvseId": "FRBUMP1"}],
             "offers": [{"id": "raw-offer", "channel": "Direct", "sourceEvseId": "FRBUMP1",
                         "scope": {"evseId": "source-evse", "connectorId": None},
-                        "rawOffer": {"compiledOffer": {"pricing": {"type": "rules"}}}}]}
+                        "rawOffer": {"compiledOffer": {"id": "compiled-offer", "pricing": {"type": "rules"}}}}]}
 
     def test_exact_scope_and_no_price_promotion(self):
         result = normalize(self.national, self.bump, national_sha="a", bump_sha="b")
         self.assertEqual(result["offers"][0]["scope"], {"evseId": "evse", "connectorId": None})
+        self.assertEqual(result["offers"][0]["sourceOfferId"], "compiled-offer")
         self.assertEqual(result["offers"][0]["calculationStatus"], "not_evaluated")
         self.assertEqual(result["connectors"][0]["id"], "plug")
         self.assertNotIn("pricing", result["offers"][0])

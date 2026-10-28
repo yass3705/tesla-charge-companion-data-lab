@@ -61,7 +61,8 @@ def normalize(national: dict, bump: dict, *, national_sha: str, bump_sha: str) -
             used_connectors[connector["id"]] = connector
         offers.append({"id": key("FR", SOURCE_ID, "offer", [identity, offer["id"]]),
                        "channel": "Direct", "scope": {"evseId": evse["id"], "connectorId": None},
-                       "officialEvseId": identity, "sourceOfferId": offer["id"],
+                       "officialEvseId": identity,
+                       "sourceOfferId": offer["rawOffer"]["compiledOffer"]["id"],
                        "rawOffer": offer["rawOffer"], "calculationStatus": "not_evaluated"})
     result = {"schemaVersion": 1,
               "source": {"id": SOURCE_ID, "artifactSha256": sha((national_sha + ':' + bump_sha).encode()),

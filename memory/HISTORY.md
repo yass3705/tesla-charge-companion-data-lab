@@ -1,3 +1,7 @@
+## 28 October 2026 — Bump exact rules connected in code
+
+Data Lab preserves the archived Bump source and exact national EVSE join; Production `1130c26` evaluates only the historically compiled rules on that exact identity. Targeted historical fee and merge oracles pass. The 30-source preview is unchanged; G2–G8 remain FAIL and Actions stays disabled. See [reprise](V9_REBUILD_PROGRESS.md).
+
 ## 28 October 2026 — archived Bump exact EVSE candidate
 
 A frozen Bump source and its previously compiled offers now have a canonical normalizer and a national join restricted to equal official EVSE IDs and operator BUMP. Thirteen targeted tests pass; 1,353 exact Direct offers remain raw and unranked in the isolated candidate. The 30-source preview is unchanged. G2–G8 remain FAIL, Actions disabled. See [reprise](V9_REBUILD_PROGRESS.md).
