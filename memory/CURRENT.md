@@ -1,3 +1,7 @@
+# 28 October 2026 — remote preview preflight and dense performance evidence
+
+Production `69cd426` contains a read-only remote preview checker prepared for a separate HTTPS origin: critical asset SHA, one signed fragment and noindex. Local tests pass; no remote upload or browser validation has occurred. On the 30-source candidate, Amsterdam 100 km cold search takes about 70 seconds for 62,770 matching stations. Profiling identifies per-batch query and per-power evaluation as the main costs; the previous package remains untouched. Data Lab Actions remain disabled, no public deployment occurred, and G2–G8 remain FAIL. See [reprise](V9_REBUILD_PROGRESS.md).
+
 # 28 October 2026 — currency guard verified in the 30-source candidate
 
 The shared V9 tariff engine no longer supplies EUR when an offer has no currency. Missing or conflicting currency leaves the offer incalculable; an explicit CHF rule remains CHF, including locked or segmented sessions. Targeted oracles, nine-source and nine-country/mobile Firefox and local SHA/hosting pass on `site-currency-guard-complete`. The candidate is still local only, with Actions disabled and G2–G8 FAIL. See [reprise](V9_REBUILD_PROGRESS.md).

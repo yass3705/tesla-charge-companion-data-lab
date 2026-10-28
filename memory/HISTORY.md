@@ -1004,3 +1004,7 @@ The previously archived Atlante France source now uses the existing exact connec
 ## 2026-10-28 — Allego France added to isolated 29-source candidate
 
 The 29-source immutable bundle retains the prior 28 SHA values. Production SHA import, 2,333 signed fragments, local hosting integrity, nine-country/mobile Firefox, and targeted Allego Gaillac display pass. Its four raw offers remain unranked with no connector or price inferred. The exact national join report preserves EVSE matches, while station-level merging is withheld because one Allego station can map to multiple national stations. Data Lab Actions and the public site remain unchanged; G2–G8 are not promoted. See `memory/V9_REBUILD_PROGRESS.md`.
+
+## 2026-10-28 — V9 remote preflight and dense search profile
+
+Production `69cd426` provides a read-only remote preview verifier for a separate HTTPS origin. Local integrity and negative tests pass; no remote project or URL exists yet. The 30-source Amsterdam 100 km cold query returned 62,770 matching stations in about 70 seconds; profiling showed per-power evaluations and per-batch queries dominate. The experimental batch-size change and profiling copy were discarded. G7/G8 remain FAIL on dense performance and missing remote proof; Actions and public site remain unchanged. See `memory/V9_REBUILD_PROGRESS.md`.
