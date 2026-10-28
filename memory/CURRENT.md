@@ -1,3 +1,7 @@
+# 28 October 2026 — G6 historical mechanism coverage and 64-case Midhope replay
+
+Production `07a43cb` records the mechanism-to-source-to-engine-to-oracle-to-browser matrix for PR #134–#146. The PR #144 Midhope source SHA matches the pinned fixture; all 64 historical identical-input cases pass in source and isolated package. Unknown billed keys in compound rules now fail closed. The 31-source derived package passes SHA/hosting, ten targeted tariff Firefox flows and nine-country/mobile Firefox. Data Lab was `8d4149de1` before this memory update. G2–G8 remain FAIL; Actions disabled, Pages not deployed, public site unchanged. The 721-row historical report lacks full per-row offer/session inputs and is not claimed as V9 parity. Next: classify pinned cohorts and exact G3/G5 contracts; see `memory/V9_REBUILD_PROGRESS.md`.
+
 # 28 October 2026 — V9 simple tariff guard and gap matrix
 
 Production `38c654f` rejects unknown or additional simple tariff dimensions instead of displaying a partial price. The isolated 31-source package passes SHA/hosting, targeted tariff and nine-country/mobile Firefox checks. G3/G5/G6 capability matrix: Production `docs/v9-rebuild/evidence/g3-g5-g6-gap-matrix-20261028.md`. Data Lab was `e51357aec` before this memory update. G2–G8 remain FAIL; Actions disabled, no remote preview or public deployment. Next: mechanism-to-oracle coverage, then historically exact archived families, then G8. See `memory/V9_REBUILD_PROGRESS.md`.

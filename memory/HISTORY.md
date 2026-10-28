@@ -1036,3 +1036,7 @@ Data Lab `541de5b72` and Production `7a4879d` preserve the archived Bump source 
 ## 2026-10-28 — V9 simple pricing guard and capability matrix
 
 Production `38c654f` rejects unsupported simple tariff components; exact historical simple prices remain unchanged. The immutable 31-source bundle is reused in an isolated package; SHA/hosting, combined-session oracle, ten tariff browser flows and nine-country/mobile Firefox pass. G3/G5/G6 coverage remains open and G2–G8 FAIL. See `memory/V9_REBUILD_PROGRESS.md`.
+
+## 2026-10-28 — G6 historical 64-case replay and compound-rule guard
+
+Production `07a43cb` documents all named G6 mechanisms from historical PR #134–#146. The exact PR #144 source and golden yield 64/64 Midhope evaluations in source and isolated package. Unknown billed keys in rules fail closed; ten targeted tariff and nine-country/mobile Firefox flows, SHA/hosting, and representative packaged oracles pass. The PR #141 721-row report lacks full per-row inputs, so no identical-input V9 parity is claimed. G2–G8 remain FAIL. See `memory/V9_REBUILD_PROGRESS.md`.
