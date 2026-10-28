@@ -1048,3 +1048,7 @@ Production `47e45f6` rejects unknown billed keys at component-group scope while 
 ## 2026-10-28 — Critical-path gate audit and hosting decision
 
 Documented G2–G8 proof gaps without promoting gates. Offline pilot patch restored the reviewed main tree; Actions stayed disabled. Cloudflare Pages was removed as the active preview proposal following the user's decision; the future isolated host remains undecided.
+
+## 2026-10-28 — Offline handoff replay
+
+Replayed 39 Data Lab and 13 Production tests against the current contracts; corrected only a stale CPO-country fixture. Kept GitHub handoffs and remote hosting as unverified gates.

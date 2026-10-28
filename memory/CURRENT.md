@@ -1332,3 +1332,7 @@ Data Lab now has a tested `FR:allego_direct` canonical route for its pinned Alle
 # 28 October 2026 — G2–G8 exit audit and hosting decision
 
 The inactive Actions pilot reversibility check passes offline for 1,207 archived workflows, with the real index and refs unchanged; 17 orchestration/IONITY tests pass. GitHub Actions remains disabled, all 120 handoffs unverified. Production now records the user's decision to abandon Cloudflare Pages; no replacement host or URL exists. The 31-source bundle and rollback candidates are preserved. G2–G8 remain FAIL. Next: finish public scans and save the audit, then close only demonstrable capability gaps before requesting separate pilot and hosting authorizations. See V9_REBUILD_PROGRESS.md.
+
+# 28 October 2026 — offline handoff replay
+
+The targeted Data Lab orchestration, artifact-selection and Electroverse suites pass 39 tests. Production import, exact-join and package tests pass 13 cases after correcting an outdated fixture's missing CPO country; the validator was not weakened. Real GitHub transfers and remote hosting remain unverified. See V9_REBUILD_PROGRESS.md.
