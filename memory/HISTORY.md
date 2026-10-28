@@ -1,3 +1,7 @@
+## 28 October 2026 — planner preserves missing charge energy
+
+Production `26a353e` retains unknown energy through station planning. Source, global ranking, 30-source bundle integrity and nine-country/mobile Firefox pass; Amsterdam 100 km keeps 62,770 matching stations and identical ranking/map/evaluation hashes. G2–G8 remain FAIL, Actions disabled, remote preview unverified. See [reprise](V9_REBUILD_PROGRESS.md).
+
 ## 2026-10-26 — IZIVIA FAST archived map topology
 
 A new canonical route preserves the pinned IZIVIA FAST map at exact national station identity while retaining socket groups only as raw source fields. No tariff or official EVSE is assigned from the map. Production has an exact-station merge regression protecting the national EVSE topology. The source remains a candidate until the full bundle and browser replay finish; details are in `memory/V9_REBUILD_PROGRESS.md`.

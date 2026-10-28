@@ -1,3 +1,7 @@
+# 28 October 2026 — planner preserves missing charge energy
+
+Production `26a353e` retains unknown energy through station planning. Source, global ranking, 30-source bundle integrity and nine-country/mobile Firefox pass; Amsterdam 100 km keeps 62,770 matching stations and identical ranking/map/evaluation hashes. G2–G8 remain FAIL, Actions disabled, remote preview unverified. See [reprise](V9_REBUILD_PROGRESS.md).
+
 # 28 October 2026 — missing charge energy stays incalculable
 
 Production `3bbf4a4` fixes a V9 session regression where missing charge energy could become 0 kWh and create a zero-cost quote. The engine now returns `energy_required`; known inputs retain their prices. The isolated 30-source `site-missing-energy` passes source/package tests, nine-country/mobile Firefox and SHA/hosting. Dense ranking hashes match the earlier candidate. G2–G8 remain FAIL; Actions and public site are unchanged. See [reprise](V9_REBUILD_PROGRESS.md).
