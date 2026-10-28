@@ -24,6 +24,14 @@ from v9_rebuild.snapshot import prepare, verify
 def read_route(route, source_id: str) -> tuple[object, str, str | None]:
     archive = ROOT / route.archive
     raw = archive.read_bytes()
+    if route.compiled_offers_archive:
+        compiled_raw = (ROOT / route.compiled_offers_archive).read_bytes()
+        source = json.loads(gzip.decompress(raw) if archive.suffix == ".gz" else raw)
+        compiled = json.loads(compiled_raw)
+        source_sha, compiled_sha = hashlib.sha256(raw).hexdigest(), hashlib.sha256(compiled_raw).hexdigest()
+        combined_sha = hashlib.sha256((source_sha + ":" + compiled_sha).encode()).hexdigest()
+        return {"source": source, "compiled": compiled,
+                "sourceArtifactSha256": source_sha, "compiledArtifactSha256": compiled_sha}, combined_sha, None
     if route.tariff_archive:
         tariff_raw = (ROOT / route.tariff_archive).read_bytes()
         locations = json.loads(gzip.decompress(raw) if archive.suffix == ".gz" else raw)

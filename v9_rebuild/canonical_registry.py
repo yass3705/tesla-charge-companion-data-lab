@@ -31,6 +31,7 @@ from v9_rebuild.canonical_powerdot import normalize_powerdot
 from v9_rebuild.canonical_izivia_fast import normalize_izivia_fast_map
 from v9_rebuild.canonical_germany_catalog import normalize_germany_catalog
 from v9_rebuild.canonical_allego_fr import normalize_allego_fr
+from v9_rebuild.canonical_bump import normalize_bump_exact
 
 
 @dataclass(frozen=True)
@@ -42,9 +43,13 @@ class CanonicalRoute:
     page_manifest: bool = False
     spain_reve_manifest: bool = False
     tariff_archive: str | None = None
+    compiled_offers_archive: str | None = None
 
 
 ROUTES = (
+    CanonicalRoute("FR:bump_direct_exact", "data/national/bump_direct_tariffs_tcc_france.json.gz",
+                   normalize_bump_exact,
+                   compiled_offers_archive="v9-production-runtime/data/v9/france-bump-offers.json"),
     CanonicalRoute("DE:bnetza_afir_archive", "data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz", normalize_germany_catalog),
     CanonicalRoute("MA:evgo", "reports/morocco/evgo/latest-production-stations.json",
                    normalize_morocco_evgo),

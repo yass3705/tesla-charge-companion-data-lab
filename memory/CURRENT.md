@@ -1,3 +1,7 @@
+# 28 October 2026 — archived Bump exact EVSE candidate
+
+A frozen Bump source and its previously compiled offers now have a canonical normalizer and a national join restricted to equal official EVSE IDs and operator BUMP. Thirteen targeted tests pass; 1,353 exact Direct offers remain raw and unranked in the isolated candidate. The 30-source preview is unchanged. G2–G8 remain FAIL, Actions disabled. See [reprise](V9_REBUILD_PROGRESS.md).
+
 # 28 October 2026 — planner preserves missing charge energy
 
 Production `26a353e` retains unknown energy through station planning. Source, global ranking, 30-source bundle integrity and nine-country/mobile Firefox pass; Amsterdam 100 km keeps 62,770 matching stations and identical ranking/map/evaluation hashes. G2–G8 remain FAIL, Actions disabled, remote preview unverified. See [reprise](V9_REBUILD_PROGRESS.md).
