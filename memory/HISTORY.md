@@ -1028,3 +1028,7 @@ Production `fff5357` reduces the 30-source Amsterdam 100 km cold query from 70.2
 ## 2026-10-28 — V9 missing energy fail-closed
 
 Production `3bbf4a4` preserves absent `energyKwh` as null, preventing a positive energy tariff from appearing as a free session. Historical priced inputs stay unchanged; the 30-source package retains exact dense ranking hashes and passes Firefox nine-country/mobile and SHA/hosting tests. G2–G8 remain FAIL and the public site is unchanged. See `memory/V9_REBUILD_PROGRESS.md`.
+
+## 2026-10-28 — V9 Bump exact in isolated 31-source candidate
+
+Data Lab `541de5b72` and Production `7a4879d` preserve the archived Bump source and exact national EVSE/connector scope. The immutable 31-source bundle retains all 30 prior source hashes; SHA/hosting, ten targeted browser flows and nine-country/mobile browser tests pass. The preview remains local and undeployed. G2–G8 remain FAIL pending full coverage, GitHub handoffs and remote preview. See `memory/V9_REBUILD_PROGRESS.md`.
