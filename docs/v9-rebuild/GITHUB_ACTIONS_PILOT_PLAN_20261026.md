@@ -1,6 +1,6 @@
 # Pilote GitHub Actions V9 — dossier de préparation (26 octobre 2026)
 
-État : **préparé localement, non autorisé, non exécuté**. Actions Data Lab reste désactivé ; `main` et le site public sont inchangés. Les 120 handoffs du journal restent `github_handoff_unverified`.
+État au 28 octobre : **pilote unique autorisé, exécuté et terminé**. [Preuve du run 40753241945](evidence/github-ionity-pilot-20261028.json). Les 1 207 anciens YAML sont archivés octet pour octet sur `main` ; le workflow pilote a ensuite été retiré de `main` et de la branche de reconstruction. Actions Data Lab est de nouveau désactivé, aucun workflow enregistré ne reste actif. Un handoff IONITY est vérifié ; **119 restent `github_handoff_unverified`**. Le site public est inchangé. Les étapes ci-dessous décrivent la proposition historique et ne constituent pas une autorisation de nouvel essai.
 
 ## Préconditions à vérifier avant toute activation
 
@@ -17,9 +17,9 @@
 4. Confirmer qu'aucune écriture n'a eu lieu sur `main`, Production, Stable ou Updater Test. Désactiver le pilote si une garde échoue ; conserver les preuves et restaurer l'état initial.
 5. Étendre par famille seulement après revue du premier run. Les autres handoffs restent non vérifiés jusqu'à leur propre preuve.
 
-## Décision attendue ultérieurement
+## Décision future distincte
 
-Autorisation distincte pour neutraliser les anciens déclencheurs sur `main`, réactiver Actions Data Lab et lancer le pilote borné. Aucune de ces opérations n'est entreprise dans ce dossier.
+Le pilote décrit ici est terminé. Toute extension aux 119 autres handoffs ou réactivation permanente d'Actions demande une nouvelle autorisation. Le contrôle actuel de restauration du `main` neutralisé se rejoue par `python3 scripts/check_v9_neutralized_main.py` après `git fetch origin main`.
 
 ## Pilote concret retenu et preuve locale
 

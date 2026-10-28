@@ -1052,3 +1052,11 @@ Documented G2–G8 proof gaps without promoting gates. Offline pilot patch resto
 ## 2026-10-28 — Offline handoff replay
 
 Replayed 39 Data Lab and 13 Production tests against the current contracts; corrected only a stale CPO-country fixture. Kept GitHub handoffs and remote hosting as unverified gates.
+
+## 2026-10-28 — Authorized IONITY pilot and main neutralization
+
+Archived 1,207 historic workflows on Data Lab main, disabled stale registered workflows, ran one reviewed read-only IONITY pilot, validated its immutable artifact and four-country Production import, then disabled Actions and removed the pilot definition. Other handoffs and Netlify deployment remain open.
+
+## 2026-10-28 — Netlify preview preflight
+
+Confirmed local package integrity, noindex header and public safety before any upload. Recorded Free-plan hard cap, large-file transfer risk and the missing dedicated Netlify access; deployment remains pending.

@@ -33,6 +33,27 @@ def main() -> None:
     if archived.returncode != 0 or archived.stdout.strip() != "commit":
         errors.append("G1 workflow archive commit unavailable")
     sources = json.loads((ROOT / "v9_rebuild/sources.json").read_text())["sources"]
+    for spec in sources:
+        claim = spec.get("github_handoff", "")
+        if not claim.startswith("verified_pilot_"):
+            continue
+        relative = Path(spec.get("evidence", ""))
+        if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+            errors.append(f"verified handoff evidence path invalid: {spec['id']}")
+            continue
+        try:
+            evidence = json.loads((ROOT / relative).read_text())
+        except (OSError, ValueError, TypeError):
+            errors.append(f"verified handoff evidence unavailable: {spec['id']}")
+            continue
+        if (claim != f"verified_pilot_{evidence.get('runId')}"
+                or spec.get("live") != claim
+                or evidence.get("sourceId") != spec["id"]
+                or evidence.get("runConclusion") != "success"
+                or evidence.get("actionsEnabledAfter") is not False
+                or not isinstance(evidence.get("artifactZipSha256"), str)
+                or len(evidence["artifactZipSha256"]) != 64):
+            errors.append(f"verified handoff evidence mismatch: {spec['id']}")
     handoff_pending = sorted(spec["id"] for spec in sources
                              if spec.get("github_handoff") == "unverified"
                              or "github_handoff_unverified" in spec.get("status", ""))

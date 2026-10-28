@@ -1336,3 +1336,11 @@ The inactive Actions pilot reversibility check passes offline for 1,207 archived
 # 28 October 2026 — offline handoff replay
 
 The targeted Data Lab orchestration, artifact-selection and Electroverse suites pass 39 tests. Production import, exact-join and package tests pass 13 cases after correcting an outdated fixture's missing CPO country; the validator was not weakened. Real GitHub transfers and remote hosting remain unverified. See V9_REBUILD_PROGRESS.md.
+
+# 28 October 2026 — authorized single GitHub pilot completed
+
+The reviewed main neutralization archived 1,207 legacy workflows byte for byte. One IONITY workflow_dispatch run `40753241945` succeeded on the reviewed rebuild SHA; its ZIP, manifest, four files, canonical bundle and isolated Production import pass integrity checks. Actions is disabled again; the pilot workflow was removed, and no other run started during the window. One handoff is verified, 119 remain unverified. Netlify has no configured dedicated access, so no remote preview exists. See V9_REBUILD_PROGRESS.md and the public pilot evidence.
+
+# 28 October 2026 — Netlify access pending
+
+The 31-source autonomous package passes local SHA/hosting and public safety scans. Netlify Free has a hard credit cap, but its documented >10 MB file warning applies to one 11.7 MB package asset. No Netlify authentication is configured; a dedicated Free account/space is needed for the user's project-only access condition. No project, upload or URL exists. Production `30b72da` records the preflight.
