@@ -1,3 +1,7 @@
+# 28 October 2026 — missing charge energy stays incalculable
+
+Production `3bbf4a4` fixes a V9 session regression where missing charge energy could become 0 kWh and create a zero-cost quote. The engine now returns `energy_required`; known inputs retain their prices. The isolated 30-source `site-missing-energy` passes source/package tests, nine-country/mobile Firefox and SHA/hosting. Dense ranking hashes match the earlier candidate. G2–G8 remain FAIL; Actions and public site are unchanged. See [reprise](V9_REBUILD_PROGRESS.md).
+
 # 28 October 2026 — dense ranking reused exact session work
 
 Production `fff5357` keeps the same 30-source immutable bundle and improves the isolated Amsterdam 100 km cold search from 70.2 to 50.0 seconds in the paired test. All 62,770 ranked station, map, offer and session result hashes match the reference. Five ranking modes, historical tariff oracles, nine-country/mobile browser checks and local hosting integrity pass. G2–G8 remain FAIL; remote preview and GitHub handoffs are unverified, Actions is disabled, and the public site is unchanged. See [reprise](V9_REBUILD_PROGRESS.md).

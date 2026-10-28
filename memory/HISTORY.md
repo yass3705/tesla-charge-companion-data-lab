@@ -1012,3 +1012,7 @@ Production `69cd426` provides a read-only remote preview verifier for a separate
 ## 2026-10-28 — V9 dense ranking work reused without tariff changes
 
 Production `fff5357` reduces the 30-source Amsterdam 100 km cold query from 70.2 to 50.0 seconds in the paired test. Hashes of 62,770 ranked stations, map pages, offers and evaluations match the baseline; nine-country/mobile and targeted tariff browser tests pass. Only identical charge-plan estimates, local clock readings, canonical station objects and stable all-day timeline decisions are reused. G7/G8 remain FAIL on dense latency and remote proof; Data Lab Actions and public site are unchanged. See `memory/V9_REBUILD_PROGRESS.md`.
+
+## 2026-10-28 — V9 missing energy fail-closed
+
+Production `3bbf4a4` preserves absent `energyKwh` as null, preventing a positive energy tariff from appearing as a free session. Historical priced inputs stay unchanged; the 30-source package retains exact dense ranking hashes and passes Firefox nine-country/mobile and SHA/hosting tests. G2–G8 remain FAIL and the public site is unchanged. See `memory/V9_REBUILD_PROGRESS.md`.
