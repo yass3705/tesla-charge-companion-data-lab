@@ -1,3 +1,7 @@
+## 5 novembre 2026 — préproduction Netlify V9 accessible et vérifiée
+
+Le brouillon immuable 31 sources `6ae257f7d0d52c2b2ba9636b` est accessible sur HTTPS après ouverture des seules préversions du projet dédié. SHA des ressources et des 2 521 fragments, fichier de 11,7 Mo, dix parcours tarifaires et neuf pays/mobile Firefox passent sur l'URL distante. G9 peut commencer dans l'interface ; G8 global reste FAIL à cause des 119 handoffs GitHub et des écarts formels G3/G5/G6. Actions reste désactivé, site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
+
 ## 5 novembre 2026 — brouillon Netlify V9 prêt, accès de préversion privé
 
 Le transfert manuel du paquet immuable 31 sources vers le projet Netlify isolé est terminé (`ready`, déploiement `6ae257f7d0d52c2b2ba9636b`). L'URL du brouillon répond 401 à une requête anonyme en raison de la visibilité privée des préversions ; les SHA et parcours Firefox distants ne sont pas encore validés. Le réglage de visibilité des préversions dans le seul projet V9 précède la recette distante. G2–G8 restent FAIL, Actions désactivé et site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
