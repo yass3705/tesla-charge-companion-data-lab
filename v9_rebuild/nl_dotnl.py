@@ -8,6 +8,7 @@ Fixture paths allow technical validation without contacting a supplier.
 from __future__ import annotations
 
 import argparse
+from functools import partial
 import gzip
 import hashlib
 import json
@@ -23,9 +24,9 @@ LOCATIONS_URL = "https://opendata.ndw.nu/charging_point_locations_ocpi.json.gz"
 TARIFFS_URL = "https://opendata.ndw.nu/charging_point_tariffs_ocpi.json.gz"
 
 
-def invoke(script: str, *args: object) -> None:
+def invoke(script: str, *args: object, cwd: Path) -> None:
     subprocess.run([sys.executable, str(ROOT / "scripts" / script), *(str(arg) for arg in args)],
-                   cwd=ROOT, check=True, capture_output=True, text=True)
+                   cwd=cwd, check=True, capture_output=True, text=True)
 
 
 def download_or_copy(url: str, fixture: Path | None, target: Path) -> None:
@@ -74,6 +75,7 @@ def run(out: Path, locations: Path | None = None, tariffs: Path | None = None, *
     out = out.resolve()
     if out == ROOT or ROOT in out.parents:
         raise ValueError("Output must be outside the checkout")
+    run_script = partial(invoke, cwd=out)
     raw = out / "raw"
     loc = raw / "locations.json.gz"
     tariff = raw / "tariffs.json.gz"
@@ -81,24 +83,24 @@ def run(out: Path, locations: Path | None = None, tariffs: Path | None = None, *
     download_or_copy(TARIFFS_URL, tariffs, tariff)
     base = out / "data/national/netherlands_dotnl"
     normalized = base / "normalized.json.gz"
-    invoke("dotnl_netherlands_build.py", loc, tariff, normalized, out / "docs/netherlands-dotnl-build-report.json")
+    run_script("dotnl_netherlands_build.py", loc, tariff, normalized, out / "docs/netherlands-dotnl-build-report.json")
     national = raw / "normalized-national.json.gz"
     shutil.copyfile(normalized, national)
     candidate = ROOT / "data/operator_direct/ubitricity_nl_payg_exact_overlay_candidate.json.gz.b64"
     if not candidate.is_file():
         raise FileNotFoundError(candidate)
-    invoke("integrate_ubitricity_nl_payg.py", "--normalized", normalized, "--candidate", candidate,
+    run_script("integrate_ubitricity_nl_payg.py", "--normalized", normalized, "--candidate", candidate,
            "--overlay", out / "data/operator_direct/ubitricity_nl_payg_exact_overlay.json",
            "--report", out / "reports/netherlands/ubitricity-direct-payg-integration-latest.json")
     if electra:
-        invoke("integrate_electra_nl_graphql.py", "--normalized", normalized,
+        run_script("integrate_electra_nl_graphql.py", "--normalized", normalized,
                "--overlay", out / "data/operator_direct/electra_nl_graphql_exact_overlay.json",
                "--report", out / "reports/netherlands/electra-direct-payg-integration-latest.json")
-    invoke("dotnl_national_tariff_guard.py", national, normalized,
+    run_script("dotnl_national_tariff_guard.py", national, normalized,
            out / "reports/netherlands/dotnl-national-tariff-preservation-latest.json")
     runtime = base / "runtime"
-    invoke("dotnl_netherlands_runtime.py", normalized, runtime, out / "docs/netherlands-dotnl-runtime-report.json")
-    invoke("dotnl_netherlands_access_patch.py", normalized, runtime,
+    run_script("dotnl_netherlands_runtime.py", normalized, runtime, out / "docs/netherlands-dotnl-access-report.json")
+    run_script("dotnl_netherlands_access_patch.py", normalized, runtime,
            out / "docs/netherlands-dotnl-access-report.json")
     validate_output(out)
 

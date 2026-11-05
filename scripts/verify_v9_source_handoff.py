@@ -4,7 +4,7 @@
 A different matrix job may fail. Its artifacts are never accepted here and the
 whole run's actual conclusion is retained. No collection or settings mutation.
 """
-import argparse, hashlib, json, stat, subprocess, sys, zipfile
+import argparse, hashlib, json, stat, subprocess, sys, tempfile, zipfile
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from v9_rebuild.orchestrator import artifact_digest, safe_relative, sha256
@@ -42,9 +42,10 @@ def verify_files(folder,source):
     VALIDATORS[source](state)
     return state,digest,files
 
-def verify(run_id,source,artifact_name,head,out):
+def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
     root=Path(__file__).resolve().parents[1]
-    if out.exists() or root==out.resolve() or root in out.resolve().parents:raise ValueError('New isolated output required')
+    if (out.exists() and not reuse_archive) or root==out.resolve() or root in out.resolve().parents:raise ValueError('New isolated output required')
+    if reuse_archive and (not (out/'artifact.zip').is_file() or (out/'receipt.json').exists()):raise ValueError('Only a previously downloaded unverified ZIP can be reused')
     def api(p):return json.loads(subprocess.check_output(['gh','api',f'repos/{REPO}/{p}']))
     if api('actions/permissions')['enabled'] is not False:raise ValueError('Close controlled activation before recording handoff')
     run=api(f'actions/runs/{run_id}');jobs=api(f'actions/runs/{run_id}/jobs?per_page=100')['jobs']
@@ -52,10 +53,14 @@ def verify(run_id,source,artifact_name,head,out):
     selected=[a for a in artifacts if a['name']==artifact_name]
     if len(selected)!=1:raise ValueError('Unique expected artifact missing')
     artifact=selected[0];job=check_execution(run,jobs,artifact,source,head)
-    raw=subprocess.check_output(['gh','api',f'repos/{REPO}/actions/artifacts/{artifact["id"]}/zip'])
+    raw=(out/'artifact.zip').read_bytes() if reuse_archive else subprocess.check_output(['gh','api',f'repos/{REPO}/actions/artifacts/{artifact["id"]}/zip'])
     digest=hashlib.sha256(raw).hexdigest()
     if artifact['digest']!='sha256:'+digest or artifact['size_in_bytes']!=len(raw):raise ValueError('Downloaded ZIP integrity mismatch')
-    out.mkdir(parents=True);archive=out/'artifact.zip';archive.write_bytes(raw);folder=out/'extracted';folder.mkdir()
+    archive=out/'artifact.zip'
+    if reuse_archive:
+        folder=Path(tempfile.mkdtemp(prefix='extracted-recheck-',dir=out))
+    else:
+        out.mkdir(parents=True);archive=out/'artifact.zip';archive.write_bytes(raw);folder=out/'extracted';folder.mkdir()
     with zipfile.ZipFile(archive) as z:
         names=set()
         for entry in z.infolist():
@@ -74,5 +79,5 @@ def verify(run_id,source,artifact_name,head,out):
     (out/'state-path.txt').write_text(str(state.resolve())+'\n')
     return report
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--run',type=int,required=True);p.add_argument('--source',choices=VALIDATORS,required=True);p.add_argument('--artifact-name',required=True);p.add_argument('--expected-head',required=True);p.add_argument('--out',type=Path,required=True);a=p.parse_args()
-    print(json.dumps(verify(a.run,a.source,a.artifact_name,a.expected_head,a.out)))
+    p=argparse.ArgumentParser();p.add_argument('--run',type=int,required=True);p.add_argument('--source',choices=VALIDATORS,required=True);p.add_argument('--artifact-name',required=True);p.add_argument('--expected-head',required=True);p.add_argument('--out',type=Path,required=True);p.add_argument('--reuse-archive',action='store_true');a=p.parse_args()
+    print(json.dumps(verify(a.run,a.source,a.artifact_name,a.expected_head,a.out,reuse_archive=a.reuse_archive)))

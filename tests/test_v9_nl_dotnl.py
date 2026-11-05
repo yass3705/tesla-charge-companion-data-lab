@@ -4,6 +4,8 @@ import gzip
 import json
 import tempfile
 import unittest
+import subprocess
+from unittest.mock import patch
 from pathlib import Path
 
 from v9_rebuild.nl_dotnl import run, validate_output
@@ -19,7 +21,10 @@ class NetherlandsModuleTests(unittest.TestCase):
                 with gzip.open(path, "wt", encoding="utf-8") as handle:
                     json.dump([], handle)
             out = root / "artifacts"
-            run(out, locations, tariffs, electra=False)
+            with patch('v9_rebuild.nl_dotnl.subprocess.run', wraps=subprocess.run) as invoked:
+                run(out, locations, tariffs, electra=False)
+            self.assertTrue(invoked.call_args_list)
+            self.assertTrue(all(call.kwargs['cwd'] == out.resolve() for call in invoked.call_args_list))
             validate_output(out)
             manifest_path = out / "data/national/netherlands_dotnl/runtime/manifest.json"
             manifest = json.loads(manifest_path.read_text())

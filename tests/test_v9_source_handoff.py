@@ -1,7 +1,8 @@
-import copy,sys,unittest
+import copy,json,sys,tempfile,unittest
+from unittest.mock import patch
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from verify_v9_source_handoff import check_execution,REPO
+from verify_v9_source_handoff import check_execution,verify,REPO
 class SourceHandoff(unittest.TestCase):
  def setUp(self):
   self.h='a'*40;self.r={'id':1,'status':'completed','conclusion':'failure','head_branch':'rebuild/v9-20261020','head_sha':self.h,'repository':{'full_name':REPO},'path':'.github/workflows/v9-tariff-restoration-pilot.yml'}
@@ -27,3 +28,27 @@ class SourceHandoff(unittest.TestCase):
   with self.assertRaises(ValueError):self.check()
   self.a['expired']=False;self.j*=2
   with self.assertRaises(ValueError):self.check()
+ def test_cached_zip_still_requires_current_github_digest(self):
+  with tempfile.TemporaryDirectory() as t:
+   out=Path(t);(out/'artifact.zip').write_bytes(b'bad')
+   self.a.update(id=12,name='fixture',size_in_bytes=3)
+   replies=[{'enabled':False},self.r,{'jobs':self.j},{'artifacts':[self.a]}]
+   with patch('verify_v9_source_handoff.subprocess.check_output',side_effect=[json.dumps(x).encode() for x in replies]) as calls:
+    with self.assertRaisesRegex(ValueError,'ZIP integrity'):
+     verify(1,'FR:belib','fixture',self.h,out,reuse_archive=True)
+   self.assertEqual(calls.call_count,4)
+   self.assertFalse((out/'receipt.json').exists())
+ def test_cached_valid_zip_is_rechecked_and_extracted_without_redownload(self):
+  import hashlib,io,zipfile
+  body=io.BytesIO()
+  with zipfile.ZipFile(body,'w') as z:z.writestr('manifest.json','{}')
+  raw=body.getvalue()
+  with tempfile.TemporaryDirectory() as t:
+   out=Path(t);(out/'artifact.zip').write_bytes(raw);self.j[0]['id']=17
+   self.a.update(id=12,name='fixture',size_in_bytes=len(raw),digest='sha256:'+hashlib.sha256(raw).hexdigest())
+   replies=[{'enabled':False},self.r,{'jobs':self.j},{'artifacts':[self.a]}]
+   with patch('verify_v9_source_handoff.subprocess.check_output',side_effect=[json.dumps(x).encode() for x in replies]) as calls,patch('verify_v9_source_handoff.verify_files',side_effect=lambda folder,source:(folder,'c'*64,[])):
+    report=verify(1,'FR:belib','fixture',self.h,out,reuse_archive=True)
+   self.assertEqual(calls.call_count,4);self.assertEqual(report['technicalValidation'],'PASS')
+   self.assertTrue((Path((out/'state-path.txt').read_text().strip())/'manifest.json').is_file())
+   self.assertEqual((out/'artifact.zip').read_bytes(),raw)

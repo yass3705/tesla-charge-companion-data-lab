@@ -34,6 +34,16 @@ class SwissBundleTest(unittest.TestCase):
             bundle = json.loads((out / "data/tcc_v9/switzerland.json").read_text())
             self.assertEqual(bundle["evses"][0]["evseId"], "CH*ABC*E1")
             self.assertEqual(bundle["evses"][0]["directTariffStatus"], "unresolved")
+            path = out / NATIONAL
+            raw = bytearray(path.read_bytes())
+            raw[9] = 3 if raw[9] == 255 else 255
+            path.write_bytes(raw)
+            self.assertEqual(validate_output(out)["counts"]["nationalEvseCount"], 1,
+                             "gzip OS header differs legitimately across GitHub Linux and local macOS")
+            raw[4] = 1
+            path.write_bytes(raw)
+            with self.assertRaisesRegex(ValueError, "differs from verified input"):
+                validate_output(out)
 
     def test_bad_sha_and_branch(self):
         with tempfile.TemporaryDirectory() as tmp:

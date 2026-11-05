@@ -99,7 +99,12 @@ def validate_output(out: Path) -> dict:
     snapshot = report.get("nationalSourceSnapshot") or {}
     if snapshot.get("rawSha256") != hashlib.sha256(raw).hexdigest() or snapshot.get("rawBytes") != len(raw):
         raise ValueError("Swiss national output SHA mismatch")
-    if (out / NATIONAL).read_bytes() != gzip.compress(raw, compresslevel=9, mtime=0):
+    # Python 3.11/Linux writes gzip OS=3, Python 3.9/macOS OS=255. The
+    # artifact manifest pins the compressed bytes; compare the complete input
+    # content here rather than re-encoding it with the verifier's platform.
+    encoded = (out / NATIONAL).read_bytes()
+    original = gzip.decompress((out / "input_snapshot" / NATIONAL).read_bytes())
+    if raw != original or encoded[4:8] != b"\0\0\0\0":
         raise ValueError("Swiss national output differs from verified input")
     if not files:
         raise ValueError("Swiss inputs missing")
