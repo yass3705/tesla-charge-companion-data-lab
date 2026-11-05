@@ -48,7 +48,7 @@ jobs:
         if: ${{ inputs.source == 'FR:waat_monta_sharded' }}
         run: npm install --no-save playwright-core@1.55.0
       - name: Resolve preserved Atlante technical app header
-        if: ${{ inputs.source == 'FR:atlante_fr_it' }}
+        if: ${{ inputs.source == 'FR:atlante_fr_it' || inputs.source == 'FR:atlante_direct' }}
         env:
           ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY }}
         run: bash scripts/atlante/bootstrap_subscription_key.sh
@@ -167,7 +167,7 @@ jobs:
           SOURCE_ID: ${{ inputs.source }}
           ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
           BELGIUM_NAP_TOKEN: ${{ secrets.BELGIUM_NAP_TOKEN }}
-          ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY }}
+          ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY || env.ATLANTE_API_SUBSCRIPTION_KEY }}
           BLINK_PCPR_TOKEN: ${{ secrets.BLINK_PCPR_TOKEN }}
           ALLEGO_UK_PCPR_TOKEN: ${{ secrets.ALLEGO_UK_PCPR_TOKEN }}
           SOURCE_EV_PCPR_TOKEN: ${{ secrets.SOURCE_EV_PCPR_TOKEN }}
