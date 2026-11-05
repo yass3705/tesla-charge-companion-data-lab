@@ -17,7 +17,7 @@ CONTRACTS={
 
 def read_archive(folder,channel):
  raw=(folder/'manifest.json').read_bytes();m=json.loads(raw)
- if m.get('dataset')!=CONTRACTS[channel][1] or m.get('country')!='FR':raise ValueError('Archive identity mismatch')
+ if m.get('schemaVersion')!=1 or m.get('dataset')!=CONTRACTS[channel][1] or m.get('country')!='FR':raise ValueError('Archive identity mismatch')
  offers=[];seen=set()
  for tile in m.get('tiles',[]):
   name=tile.get('file')
@@ -25,7 +25,7 @@ def read_archive(folder,channel):
   seen.add(name);data=(folder/name).read_bytes()
   if sha(data)!=tile.get('sha256') or len(data)!=tile.get('bytes'):raise ValueError('Tile integrity mismatch')
   payload=json.loads(gzip.decompress(data));rows=payload.get('emspOffers')
-  if payload.get('country')!='FR' or not isinstance(rows,list) or len(rows)!=tile.get('count'):raise ValueError('Tile internal count/schema mismatch')
+  if payload.get('schemaVersion')!=1 or payload.get('country')!='FR' or not isinstance(rows,list) or len(rows)!=tile.get('count'):raise ValueError('Tile internal count/schema mismatch')
   offers.extend(rows)
  if len(seen)!=m.get('tileCount'):raise ValueError('Incomplete tile set')
  locations={}
@@ -33,7 +33,7 @@ def read_archive(folder,channel):
   archive=(folder/'source-locations.json.gz').read_bytes()
   if sha(archive)!=m.get('sourceArchive',{}).get('sha256'):raise ValueError('Source archive SHA mismatch')
   payload=json.loads(gzip.decompress(archive));rows=payload.get('locations')
-  if not isinstance(rows,list) or len(rows)!=m['sourceArchive'].get('locationCount'):raise ValueError('Source archive internal count mismatch')
+  if payload.get('country')!='FR' or not isinstance(rows,list) or len(rows)!=m['sourceArchive'].get('locationCount'):raise ValueError('Source archive internal count mismatch')
   for row in rows:
    for tariff in row.get('chargeTariffs',[]):
     if tariff.get('currency')!='EUR' or not tariff.get('elements') or not any(e.get('priceComponents') for e in tariff['elements']):raise ValueError('Source currency/components missing')
@@ -97,6 +97,16 @@ def normalize(national,channel,offers,provenance,locations=None):
      if restrictions.get('minDuration') and not kinds.issubset({'TIME','PARKING_TIME','CONGESTION_TIME'}):unknown.append('minDuration_non_time_component')
    if unknown:row['calculationHold']='unpreserved_source_restrictions';row['sourceRestrictionFields']=sorted(set(unknown));holds[row['calculationHold']]+=1
   accepted.append(row)
+ # A provider can repeat one national EVSE in different locations. Conflicting
+ # complete tariffs for that same channel/EVSE must never compete by low price.
+ by_target=collections.defaultdict(list)
+ for row in accepted:by_target[row['scope']['evseId']].append(row)
+ for rows in by_target.values():
+  signatures={json.dumps(row['rawOffer'].get('pricing'),sort_keys=True) for row in rows}
+  if len(signatures)>1:
+   for row in rows:
+    if row.get('calculationHold'):holds[row['calculationHold']]-=1
+    row['calculationHold']='conflicting_tariffs_for_same_evse';holds[row['calculationHold']]+=1
  station_ids={e['stationId'] for e in used.values()};cpo_ids={stations[s]['cpoId'] for s in station_ids}
  result={'schemaVersion':1,'source':{'id':source,'artifactSha256':sha(json.dumps(provenance,sort_keys=True).encode()),**provenance},
   'countries':[{'code':'FR'}],'cpos':[cpos[c] for c in sorted(cpo_ids)],'stations':[stations[s] for s in sorted(station_ids)],

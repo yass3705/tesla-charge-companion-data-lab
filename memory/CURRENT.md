@@ -1,3 +1,13 @@
+## 5 novembre — restauration eMSP, premiers renouvellements et correction du chargeur
+
+Production `295d5fb` et Data Lab `5eef8ea28` sauvegardés. Bundle archivé gardé `5ea2991914043b462505b5b7b40490df37213cc9a469703057582320bed64f8f` : 31 022 offres Electroverse / 95 417 Electra attribuées par identité nationale exacte, jamais par GPS. Oracle complet : 160+5 anciennes offres calculables préservées ; 30 907 Electroverse / 64 435 Electra calculables au scénario fixe, autres explicitement non calculées. 50 offres Electra contradictoires sur 25 EVSE mises en réserve, restrictions source non préservées également ; ces nombres sont diagnostiques.
+
+Le navigateur a trouvé un verrou supplémentaire du chargeur : règles eMSP complètes refusées malgré l’adaptateur correct. Correction Production et test du chargeur signé en cours, faux prix injecté rejeté. Ne pas déployer `site` ni `site-guarded` de ce lot avant nouvel empaquetage avec ce correctif.
+
+Run réel `42089328886` : jobs Belib et Driveco success, ZIP SHA GitHub et fichiers/manifestes/validateurs source PASS. Electra annulé par limite job20min, alors que le module préexistant autorise3000s : aucune nouvelle donnée Electra validée. Actions désactivé après essai. 115 handoffs restent non vérifiés ; succès des deux jobs indépendants enregistré sans prétendre que le run entier a réussi. Bundle renouvelé Belib/Driveco `ffac88c083736457df45c7105a7e9a8f725f7cbb787f90ca057b5e4302f67b3a`, préparation en cours ; Driveco conserve ses frais OSF non interprétés et ne devient pas artificiellement calculable.
+
+Suite : achever paquet renouvelé et correction du chargeur, relancer les recherches ordinaires/neuf pays et parcours tarifaires ; retenter uniquement Electra dans une fenêtre bornée60min cohérente avec le timeout du module, puis désactiver Actions. Aucun main/site public/Updater/Stable modifié. G2–G8 FAIL global ; dernier Netlify inchangé.
+
 ## 5 novembre — restauration tarifaire en cours (aucun nouveau déploiement)
 
 Perte de raccordement eMSP confirmée. Constructeur `scripts/build_v9_archived_emsp.py` rétablit les identités normalisées exactes historiquement prouvées, sans station CPO autonome. Canonique local31022Electroverse/95417Electra,8769réserves de restrictions source ; les chiffres ne sont pas des prix calculables navigateur. Six tests de normalisation/erreurs et trois suites moteur/adapter PASS. Bundle85aef37658277fccae722a6f767be22a518de36e529ad3182fd1edded03bfa56, préparation isolée en cours. Cache128shards validé ;13partitions/16, pas de fusion nationale fraîche revendiquée. Preuves `docs/v9-rebuild/evidence/emsp-restoration-20261105/`.

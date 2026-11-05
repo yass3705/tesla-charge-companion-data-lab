@@ -28,6 +28,10 @@ class ArchivedEmspTest(unittest.TestCase):
   d,r=self.build([self.raw,copy.deepcopy(self.raw)]);self.assertEqual(len(d['offers']),1);self.assertEqual(r['identicalDuplicateRows'],1)
   other=copy.deepcopy(self.raw);other['pricing']['rules'][0]['pricePerKwh']=.9
   d,r=self.build([self.raw,other]);self.assertEqual(d['offers'],[]);self.assertEqual(r['rejections'][0]['reason'],'conflicting_duplicate_source_offer')
+ def test_different_source_ids_conflicting_at_same_evse_are_visible_but_held(self):
+  other=copy.deepcopy(self.raw);other['id']='second';other['pricing']['rules'][0]['pricePerKwh']=.9
+  d,r=self.build([self.raw,other]);self.assertEqual(len(d['offers']),2)
+  self.assertTrue(all(o['calculationHold']=='conflicting_tariffs_for_same_evse' for o in d['offers']))
  def test_electra_requires_source_evse_and_keeps_restrictions_out_of_calculation(self):
   raw=copy.deepcopy(self.raw);raw.update(provider='Electra');raw['metadata']={'verified':True,'verifiedScope':'exact_evse','identityMode':'exact_national_irve_evse','electraLocationId':'loc'}
   loc={'evses':[{'evseId':'FR*ABC*E1'}],'chargeTariffs':[{'elements':[{'restrictions':{'minKwh':10}}]}]}
@@ -36,8 +40,8 @@ class ArchivedEmspTest(unittest.TestCase):
   loc['evses']=[];d,r=normalize(self.n,'Electra',[raw],self.proof,{'loc':loc});self.assertEqual(d['offers'],[])
  def test_archive_hash_and_internal_count_not_historical_volume(self):
   with tempfile.TemporaryDirectory() as t:
-   p=Path(t);raw=gzip.compress(json.dumps({'country':'FR','emspOffers':[self.raw]}).encode());(p/'t_1_2.json.gz').write_bytes(raw)
-   m={'country':'FR','dataset':'electroverse-france-evse-national-overlay','tileCount':1,'tiles':[{'file':'t_1_2.json.gz','sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw),'count':1}]}
+   p=Path(t);raw=gzip.compress(json.dumps({'schemaVersion':1,'country':'FR','emspOffers':[self.raw]}).encode());(p/'t_1_2.json.gz').write_bytes(raw)
+   m={'schemaVersion':1,'country':'FR','dataset':'electroverse-france-evse-national-overlay','tileCount':1,'tiles':[{'file':'t_1_2.json.gz','sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw),'count':1}]}
    (p/'manifest.json').write_text(json.dumps(m));self.assertEqual(len(read_archive(p,'Electroverse')[2]),1)
    m['tiles'][0]['count']=2;(p/'manifest.json').write_text(json.dumps(m))
    with self.assertRaisesRegex(ValueError,'internal count'):read_archive(p,'Electroverse')

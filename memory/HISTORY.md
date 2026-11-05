@@ -1,3 +1,13 @@
+## 5 novembre — restauration eMSP, premiers renouvellements et correction du chargeur
+
+Production `295d5fb` et Data Lab `5eef8ea28` sauvegardés. Bundle archivé gardé `5ea2991914043b462505b5b7b40490df37213cc9a469703057582320bed64f8f` : 31 022 offres Electroverse / 95 417 Electra attribuées par identité nationale exacte, jamais par GPS. Oracle complet : 160+5 anciennes offres calculables préservées ; 30 907 Electroverse / 64 435 Electra calculables au scénario fixe, autres explicitement non calculées. 50 offres Electra contradictoires sur 25 EVSE mises en réserve, restrictions source non préservées également ; ces nombres sont diagnostiques.
+
+Le navigateur a trouvé un verrou supplémentaire du chargeur : règles eMSP complètes refusées malgré l’adaptateur correct. Correction Production et test du chargeur signé en cours, faux prix injecté rejeté. Ne pas déployer `site` ni `site-guarded` de ce lot avant nouvel empaquetage avec ce correctif.
+
+Run réel `42089328886` : jobs Belib et Driveco success, ZIP SHA GitHub et fichiers/manifestes/validateurs source PASS. Electra annulé par limite job20min, alors que le module préexistant autorise3000s : aucune nouvelle donnée Electra validée. Actions désactivé après essai. 115 handoffs restent non vérifiés ; succès des deux jobs indépendants enregistré sans prétendre que le run entier a réussi. Bundle renouvelé Belib/Driveco `ffac88c083736457df45c7105a7e9a8f725f7cbb787f90ca057b5e4302f67b3a`, préparation en cours ; Driveco conserve ses frais OSF non interprétés et ne devient pas artificiellement calculable.
+
+Suite : achever paquet renouvelé et correction du chargeur, relancer les recherches ordinaires/neuf pays et parcours tarifaires ; retenter uniquement Electra dans une fenêtre bornée60min cohérente avec le timeout du module, puis désactiver Actions. Aucun main/site public/Updater/Stable modifié. G2–G8 FAIL global ; dernier Netlify inchangé.
+
 ## 5 novembre 2026 — second brouillon de recette G9
 
 Un brouillon Netlify isolé `6aec9f2fb223d58706efe5b5` a été déployé sans `--prod`. Le contrôle SHA de 2 521 fragments et du crosswalk 11,7 Mo, dix tarifs, onze recherches ordinaires et neuf pays/mobile passent sur l’URL distante. Les quatre demandes suivantes sont préparées sans changement de code. Le site public, l’ancien brouillon et Actions restent inchangés. Voir `memory/V9_REBUILD_PROGRESS.md`.

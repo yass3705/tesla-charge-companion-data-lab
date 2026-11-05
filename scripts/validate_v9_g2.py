@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -35,7 +36,7 @@ def main() -> None:
     sources = json.loads((ROOT / "v9_rebuild/sources.json").read_text())["sources"]
     for spec in sources:
         claim = spec.get("github_handoff", "")
-        if not claim.startswith("verified_pilot_"):
+        if not claim.startswith(("verified_pilot_", "verified_source_job_")):
             continue
         relative = Path(spec.get("evidence", ""))
         if relative.is_absolute() or ".." in relative.parts or not relative.parts:
@@ -45,6 +46,19 @@ def main() -> None:
             evidence = json.loads((ROOT / relative).read_text())
         except (OSError, ValueError, TypeError):
             errors.append(f"verified handoff evidence unavailable: {spec['id']}")
+            continue
+        if claim.startswith("verified_source_job_"):
+            if (claim != f"verified_source_job_{evidence.get('runId')}_{evidence.get('jobId')}"
+                    or spec.get("live") != claim or evidence.get("sourceId") != spec["id"]
+                    or evidence.get("jobStatus") != "completed" or evidence.get("jobConclusion") != "success"
+                    or evidence.get("runConclusion") not in {"success", "failure", "cancelled"}
+                    or evidence.get("runBranch") != "rebuild/v9-20261020"
+                    or evidence.get("actionsEnabledAfter") is not False
+                    or evidence.get("technicalValidation") != "PASS"
+                    or not re.fullmatch(r"[0-9a-f]{40}", str(evidence.get("runHeadSha", "")))
+                    or any(not re.fullmatch(r"[0-9a-f]{64}", str(evidence.get(k, "")))
+                           for k in ("artifactZipSha256", "artifactSetSha256"))):
+                errors.append(f"verified source job evidence mismatch: {spec['id']}")
             continue
         if (claim != f"verified_pilot_{evidence.get('runId')}"
                 or spec.get("live") != claim
