@@ -7,6 +7,7 @@ import argparse
 import gzip
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -32,6 +33,8 @@ def validate_output(out: Path) -> dict:
             or manifest.get("dataset") != "electra-france-platform-national-evse-overlay"
             or manifest.get("country") != "FR"):
         raise ValueError("Electra France manifest contract invalid")
+    from v9_rebuild.electra_quarantine import verify
+    verify(folder, manifest)
     source = manifest.get("source") or {}
     total = source.get("globalTotalCount")
     pages = source.get("totalPages")
@@ -97,9 +100,31 @@ def run(out: Path, *, runner=subprocess.run) -> None:
     result = runner(["node", str(out / SCRIPT), str(out / OUTPUT), str(out / NATIONAL),
                      str(out / ASSOCIATIONS), str(out / ASSOCIATION_DIR), str(out / VERIFIED)],
                     cwd=out, capture_output=True, text=True, timeout=3000, check=False)
+    diagnostic = {"source": "FR:electra_platform", "returncode": result.returncode,
+                  "status": "unvalidated", "phase": "historical_builder"}
+    # Only known numeric diagnostics leave the subprocess. Never serialize a
+    # response body, URL query, environment or arbitrary provider error text.
+    stderr = getattr(result, "stderr", "") or ""
+    for label, pattern in [("failedPages", r"Electra extraction has (\d+) failed pages"),
+                           ("incompletePageOffset", r"Incomplete Electra page at (\d+)")]:
+        found = re.search(pattern, stderr)
+        if found: diagnostic[label] = int(found.group(1))
+    progress = re.findall(r"Electra (\d+)/(\d+), FR=(\d+), failures=(\d+)", getattr(result, "stdout", "") or "")
+    if progress: diagnostic["lastProgress"] = list(map(int, progress[-1]))
+    target = out / "electra-diagnostic.json"
+    target.write_text(json.dumps(diagnostic) + "\n")
     if result.returncode:
-        raise RuntimeError("Historical Electra France builder failed")
-    validate_output(out)
+        raise RuntimeError("Historical Electra France builder failed; sanitized diagnostic retained")
+    from v9_rebuild.electra_quarantine import isolate
+    try:
+        isolate(out / OUTPUT)
+        validate_output(out)
+    except (ValueError, OSError, KeyError, TypeError):
+        diagnostic.update(phase="technical_validation", status="failed")
+        target.write_text(json.dumps(diagnostic) + "\n")
+        raise
+    diagnostic.update(phase="technical_validation", status="validated")
+    target.write_text(json.dumps(diagnostic) + "\n")
 
 
 def main() -> None:

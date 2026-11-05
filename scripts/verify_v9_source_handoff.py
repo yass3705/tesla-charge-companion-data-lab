@@ -11,8 +11,10 @@ from v9_rebuild.orchestrator import artifact_digest, safe_relative, sha256
 from v9_rebuild.belib import validate_output as belib
 from v9_rebuild.driveco_evse import validate_output as driveco
 from v9_rebuild.electra_france import validate_output as electra
+from v9_rebuild.swiss_bundle import validate_output as swiss_bundle
+from v9_rebuild.swiss_integration import validate_output as swiss_integration
 REPO='yass3705/tesla-charge-companion-data-lab'
-VALIDATORS={'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra}
+VALIDATORS={'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra,'CH:swiss_bundle':swiss_bundle,'CH:swiss_integration':swiss_integration}
 def check_execution(run,jobs,artifact,source,head):
     if (run.get('status')!='completed' or run.get('head_branch')!='rebuild/v9-20261020'
         or run.get('head_sha')!=head or len(head)!=40

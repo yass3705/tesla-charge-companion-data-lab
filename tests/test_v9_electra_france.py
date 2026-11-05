@@ -81,6 +81,27 @@ class ElectraFranceMigrationTests(unittest.TestCase):
             result = run_source(spec, base / 'artifacts', runner=process)
             self.assertEqual(result['status'], 'ok')
 
+    def test_safe_diagnostic_survives_orchestrator_failure(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp); fixture_root(base / 'source')
+            spec = next(row for row in read_sources() if row['id'] == 'FR:electra_platform')
+            def fail_node(*args, **kwargs):
+                return SimpleNamespace(returncode=1, stdout='Electra 250/300, FR=120, failures=2',
+                    stderr='Error: Electra extraction has 2 failed pages; refusing snapshot SECRET=never-copy')
+            def process(command, **kwargs):
+                try:
+                    with patch.object(electra_france, 'ROOT', base / 'source'):
+                        electra_france.run(Path(command[-1]), runner=fail_node)
+                except RuntimeError:
+                    pass
+                return SimpleNamespace(returncode=1)
+            result = run_source(spec, base / 'artifacts', runner=process, attempts=1)
+            self.assertEqual(result['status'], 'failed')
+            diagnostic = base / 'artifacts/failures/FR_electra_platform/attempt-1/diagnostic.json'
+            self.assertEqual(json.loads(diagnostic.read_text())['failedPages'], 2)
+            self.assertNotIn('SECRET', diagnostic.read_text())
+            self.assertEqual(list((base/'artifacts/objects/FR_electra_platform').iterdir()), [])
+
     def test_incomplete_page_and_bad_digest_fail_closed(self):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp)

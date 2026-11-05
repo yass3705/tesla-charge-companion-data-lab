@@ -1786,6 +1786,16 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                     diagnostic = out_root / "failures" / source_id.replace(":", "_") / "latest_diagnostic.json"
                     diagnostic.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(staged / "reports/belib/latest_diagnostic.json", diagnostic)
+                if electra_france_module:
+                    failure = out_root / "failures" / source_id.replace(":", "_") / f"attempt-{attempt}"
+                    failure.mkdir(parents=True, exist_ok=True)
+                    if (staged / "electra-diagnostic.json").is_file():
+                        shutil.copy2(staged / "electra-diagnostic.json", failure / "diagnostic.json")
+                    # Preserve completed-but-invalid public outputs for technical
+                    # diagnosis, never in objects/ or as a last-good snapshot.
+                    raw_output = staged / "data/platforms/electra/france"
+                    if (raw_output / "manifest.json").is_file():
+                        shutil.copytree(raw_output, failure / "unvalidated-output", dirs_exist_ok=True)
                 shutil.rmtree(staged)
     return {"source": source_id, "status": "failed", "reason": reason, "attempts": attempts}
 

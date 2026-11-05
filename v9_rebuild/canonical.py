@@ -217,11 +217,19 @@ def normalize_belib(payload: dict, *, artifact_sha256: str) -> dict:
             for source_evse in source_evses:
                 if not isinstance(source_evse, str) or not source_evse:
                     raise ValueError("Belib source EVSE missing")
+                # id_pdc_local and id_pdc_itinerance are different source fields.
+                # The historical station builder keeps the latter in roamingEvseIds.
+                # Select only a unique explicitly supplied format-equivalent value;
+                # never manufacture an official ID from the local identifier.
+                roaming = {value for value in config.get("roamingEvseIds", [])
+                           if isinstance(value, str) and value
+                           and value.replace("*", "") == source_evse.replace("*", "")}
+                official = next(iter(roaming)) if len(roaming) == 1 else None
                 evse_key = key("FR", source_id, "evse", source_evse)
                 previous = evses.setdefault(evse_key, {"id": evse_key, "country": "FR", "cpoId": cpo_key,
-                                                   "stationId": station_key, "sourceEvseId": source_evse,
-                                                   "officialEvseId": source_evse})
-                if previous["stationId"] != station_key or previous["cpoId"] != cpo_key:
+                                                   "stationId": station_key, "sourceEvseId": official or source_evse,
+                                                   "sourceLocalEvseId": source_evse, "officialEvseId": official})
+                if previous["stationId"] != station_key or previous["cpoId"] != cpo_key or previous["officialEvseId"] != official:
                     raise ValueError("Belib EVSE ownership collision")
                 for plug_type in plug_types:
                     connector_key = key("FR", source_id, "connector", [source_evse, config["kind"], config.get("powerKw"), plug_type])

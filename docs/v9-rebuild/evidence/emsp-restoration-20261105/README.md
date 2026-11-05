@@ -9,3 +9,11 @@ Résultat canonique local :31 022offres Electroverse et95 417Electra attribuées
 Cache Electroverse :128shards techniquement cohérents,13partitions de statut archivées sur16, aucune fusion nationale complète disponible et dates historiques distinctes. Ne pas présenter ce cache comme une collecte fraîche ni contourner la fraîcheur du constructeur. L’overlay signé du10octobre reste la référence restaurée.
 
 Bundle isolé85aef37658277fccae722a6f767be22a518de36e529ad3182fd1edded03bfa56 :32sources, seules deux eMSP remplacées. Préparation et recette navigateur en cours sous `.tcc-v9-cache/emsp-restoration-20261105/`. Aucun nouveau déploiement Netlify. Le pilote borné préparé teste Electra platform, Driveco EVSE et Belib selon le mandat utilisateur ; exécution non revendiquée avant preuve réelle. G2–G8 restent FAIL.
+
+## Raccordement Belib et troisième essai borné préparé
+
+Correction démontrée G3 : `id_pdc_local` Belib était pris à tort pour `id_pdc_itinerance`. Les deux champs sont conservés ; identifiant officiel sélectionné seulement dans `roamingEvseIds` fourni, par égalité unique du format historique. Aucun ID officiel fabriqué. Bundle `aa6c9ea41bb1340f3f313ba742d64e4406e6374edb6fa4b5aff557612fb72cc0`, préparation `prepared-belib-identity` en cours. Le parcours Belib précédent validait une exclusion, pas un prix affiché : la recette d'affichage doit maintenant être rejouée sur cette correction.
+
+Electra : archive historique reproduite hors checkout. 13 identités générées en collision, 26 lignes intégralement conservées en quarantaine ; les 103 976 autres lignes sont inchangées, source brute et tuiles originales conservées par SHA. Le validateur reste strict sur l'unicité des sorties exploitables et vérifie la reconstruction exacte avant/après. Cela ne prouve pas la cause du dernier échec distant. Diagnostic numérique sûr et sorties non validées désormais conservés séparément lors d'un échec. Tests d'absence de prix choisi, corruption, diagnostic et last-good PASS.
+
+Essai borné préparé : Electra avec ces contrôles, constructeur suisse à partir d'archives signées, puis transfert GitHub de ce seul artefact et intégration suisse. Ne pas appeler cette reconstruction suisse un renouvellement fournisseur. Préflight requis, un seul workflow, aucune écriture main/Production, désactivation garantie à la fin.

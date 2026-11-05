@@ -21,13 +21,28 @@ class CanonicalBelibTest(unittest.TestCase):
         for section in ("cpos", "stations", "evses", "connectors", "offers"):
             self.assertEqual([row["id"] for row in first[section]], [row["id"] for row in second[section]])
         original_evses = {evse for station in source["stations"] for config in station["configurations"] for evse in config["evseIds"]}
-        self.assertEqual({row["officialEvseId"] for row in first["evses"]}, original_evses)
+        self.assertEqual({row["sourceLocalEvseId"] for row in first["evses"]}, original_evses)
+        supplied = {evse for station in source["stations"] for config in station["configurations"] for evse in config.get("roamingEvseIds", [])}
+        self.assertTrue(all(row["officialEvseId"] is None or row["officialEvseId"] in supplied for row in first["evses"]))
         self.assertTrue(all(row["officialConnectorId"] is None for row in first["connectors"]))
         connector_owner = {row["id"]: row["evseId"] for row in first["connectors"]}
         self.assertTrue(all(connector_owner[offer["scope"]["connectorId"]] == offer["scope"]["evseId"] for offer in first["offers"]))
         self.assertTrue(all(offer["calculationStatus"] == "not_evaluated" for offer in first["offers"]))
         self.assertEqual(first["stations"][0]["networkBrand"], "Belib'")
         self.assertEqual(first["cpos"][0]["sourceOperatorId"], "TOTALENERGIES")
+
+    def test_local_id_is_not_an_official_id_without_source_mapping(self):
+        source = json.loads(ARCHIVE.read_bytes())
+        for station in source["stations"]:
+            for config in station["configurations"]:
+                config["roamingEvseIds"] = []
+        result = normalize_belib(source, artifact_sha256="a" * 64)
+        self.assertTrue(all(row["officialEvseId"] is None for row in result["evses"]))
+        for station in source["stations"]:
+            for config in station["configurations"]:
+                config["roamingEvseIds"] = ["UNRELATED"]
+        result = normalize_belib(source, artifact_sha256="a" * 64)
+        self.assertTrue(all(row["officialEvseId"] is None for row in result["evses"]))
 
     def test_missing_configuration_and_foreign_offer_rejected(self):
         source = json.loads(ARCHIVE.read_bytes())

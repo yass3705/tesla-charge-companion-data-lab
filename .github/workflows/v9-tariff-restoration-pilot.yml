@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        source: ['FR:electra_platform']
+        source: ['FR:electra_platform', 'CH:swiss_bundle']
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -59,3 +59,33 @@ jobs:
             ${{ runner.temp }}/tcc-v9-tariff-renewal/checkpoints
           if-no-files-found: ignore
           retention-days: 7
+
+  integrate_swiss:
+    name: collect (CH:swiss_integration)
+    needs: collect
+    if: always() && github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Retrieve only the Swiss artifact from this exact workflow run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: tcc-v9-tariff-renewal-1
+          path: ${{ runner.temp }}/tcc-v9-swiss-integration/input_dependencies/CH_swiss_bundle
+      - name: Validate dependency SHA and run historical Swiss integration
+        run: python -m v9_rebuild.orchestrator --source CH:swiss_integration --out "$RUNNER_TEMP/tcc-v9-swiss-integration" --workers 1 --attempts 1
+      - name: Preserve only validated integration output
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-swiss-integration
+          path: |
+            ${{ runner.temp }}/tcc-v9-swiss-integration/manifest.json
+            ${{ runner.temp }}/tcc-v9-swiss-integration/objects
+          if-no-files-found: error
+          retention-days: 30
