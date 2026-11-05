@@ -1,3 +1,17 @@
+## 5 novembre — transfert Netlify33 en cours, ne pas dupliquer
+
+Candidat `site-renewal-complete` bundle8ad8e081 prêt : intégrité4502fichiers, scan public4352gzip décodés PASS, NL ciblé +11recherches/neufpays +Buc/Milan/Chesnay/filtres/20-40-60/mobile PASS local. Amsterdam100km nouvelles entrées64019résultats,52.7s local sous charge scan, aucune promotion performance. Transfert manuel isolé lancé sans --prod, session15257 ; `/private/tmp/tcc-emsp-netlify-deploy.json` et `.log`. Examiner résultat et état distant avant toute reprise, ne jamais dupliquer aveuglément. Aucun nouveau succès distant encore affirmé. Actions toujoursdésactivé,126handoffs ouverts.
+
+Prochaine opération : attendre ce déploiement, récupérer identifiant/URL ready, vérifier tous SHA/fragments/ledger/crosswalk puis19parcours navigateur,11recherches,contrôles G9mobile, équivalence dense avec `tcc-emsp-dense-final-local.json`, rollback/public. Préserver toutes les anciennes URL et candidats.
+
+## 5 novembre — candidat33 renouvelé assemblé, recette locale finale en cours
+
+DataLab HEAD d5773a065, Production6862de2 (CI42114686946 success). Bundle immuable `8ad8e0811e8ae0ecdb879affc1a38e0fa299f1b4d93c33c2ae920fa745941fc2`,33sources ; DOT-NL réel renouvelé remplace uniquement sa source,32sources réutilisées. Préparation `prepared-renewal-complete`, paquet autonome `site-renewal-complete` sous `.tcc-v9-cache/emsp-restoration-20261105/`. Extension des ledgers compressés conserve les SHA transport/brut ; jointures réutilisées seulement si toutes les entrées du pays sont inchangées,2tests PASS.
+
+Actions enabled=false recontrôlé après DOT-NL ; aucun nouveau pilote.126handoffs non vérifiés, G2–G8 toujoursFAIL global. Recette locale en cours session11889 (NL ciblé puis onze recherches/neuf pays puis contrôles G9/mobile), sorties `/private/tmp/tcc-emsp-{targeted-nl,ordinary,controls}-final.json`. Intégrité/hébergement et scan public décodant gzip session26777, sorties `tcc-emsp-{hosting,public-scan}-final.json`. Ne pas dupliquer ces processus.
+
+Prochaine opération exacte : constater leurs résultats, corriger tout échec, transférer manuellement seulement ce paquet à Netlify dédié sans --prod ; vérifier nouveau draft ready puis SHA de tous fragments/ledger/crosswalk,19parcours ciblés, recherches ordinaires et contrôles G9/mobile sur URL réelle. Vérifier rollback et sitepublic inchangés. Aucun nouveau déploiement à ce point ; les anciennes URL/bundles restent intacts. Les sources historiques ne sont pas devenues des collectes fraîches par l'empaquetage.
+
 ## 5 novembre — pilote DOT-NL terminé, Actions fermé, candidat33 en recette
 
 Run42112592017 success, HEAD1bf60eb8deaa188e1af0c04df39dcc5222c5e5e7. Actions enabled=false vérifié par le driver, workflowpilote archivé. Artefact DOT-NL téléchargé et validé (ZIP/manifeste/fichiers/contrat) ; preuve `docs/v9-rebuild/evidence/emsp-restoration-20261105/dotnl-handoff.json`. Acquisition nationale et Electra Direct NL renouvelées par leurs méthodes existantes ; overlay Ubitricity NL reste le last-good archivé, aucune enquête ni méthode recréée.126handoffs réellement non vérifiés après correction exhaustive du registre (le112précédent omettait15sources). G2resteFAIL.
