@@ -1075,3 +1075,7 @@ L'URL immuable du brouillon 31 sources répond en HTTPS ; gros fichier et 2 521 
 ## 2026-11-05 — Brouillon Netlify V9 transféré, accès privé à corriger
 
 Le déploiement brouillon CLI du paquet 31 sources est `ready` sur le nouveau projet Netlify isolé, sans GitHub ni publication de production. L'URL anonyme répond 401 à cause de la visibilité privée des préversions ; les SHA et parcours Firefox distants restent donc non vérifiés. La prochaine action est le réglage de visibilité des préversions dans l'interface Netlify du seul projet V9, puis la recette distante. Voir `memory/V9_REBUILD_PROGRESS.md` et la preuve Production `docs/v9-rebuild/evidence/netlify-draft-20261105.md`. G2–G8 restent FAIL.
+
+## 5 novembre 2026 — mandat finalisation
+
+Les quatre corrections utilisateur sont maintenant autorisées. Les preuves Electra archivées retrouvent leur comparaison historique de format EVSE ; aucune enquête fournisseur. Production consolide le catalogue national et prépare un nouveau brouillon. Actions Data Lab demeure désactivé ; portes globales non promues. Voir le journal et le contrat `docs/v9-rebuild/ELECTRA_EMSP_EXACT_REPLAY_20261105.md`.

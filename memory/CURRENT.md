@@ -1,3 +1,7 @@
+## 5 novembre 2026 — finalisation G9 autorisée et en cours
+
+Consolidation nationale, quatre correctifs utilisateur et restauration Electra eMSP sur preuves historiques en cours de recette locale. Bundle précédent conservé ; nouveau bundle 32 à SHA dérivé. Aucune validation globale G2–G8 ni nouvelle URL revendiquée. Voir `memory/V9_REBUILD_PROGRESS.md` et le contrat Electra du 5 novembre.
+
 ## 5 novembre 2026 — second brouillon G9 distant vérifié
 
 Le nouveau brouillon Netlify immuable `6aec9f2fb223d58706efe5b5` affiche 20 fiches initiales puis 20 supplémentaires par clic. HTTPS/noindex, SHA du shell et du fichier 11,7 Mo, 2 521 fragments, dix parcours tarifaires, onze recherches ordinaires et neuf pays/mobile Firefox passent sur l’URL distante. Ancien brouillon et site public inchangés ; le prochain lot utilisateur est documenté mais non implémenté avant validation. G2–G8 restent FAIL, G9 attend la recette visuelle. Voir `memory/V9_REBUILD_PROGRESS.md`.

@@ -17,7 +17,7 @@ Point d'entrée versionné pour reprendre le travail depuis Codex Mac ou ChatGPT
 | [Stable](https://github.com/yass3705/tesla-charge-companion-stable) | Référence V7/V8, prévisualisation et base de retour arrière pendant la migration. | [README](https://github.com/yass3705/tesla-charge-companion-stable/blob/main/README.md), [historique](https://github.com/yass3705/tesla-charge-companion-stable/blob/main/CHANGELOG.md) |
 | Updater Test (`tesla-stations-updater-test`, privé) | Prototype et sources héritées non encore migrées par pays. | Consulter sa documentation localement avec accès autorisé ; aucun contenu privé n'est recopié ici. |
 
-Le flux cible est : preuve et collecte dans Data Lab → validation et épinglage par commit/artefact → compilation du snapshot dans Production → tests et promotion explicite. Le dépôt Stable sert de référence et de retour arrière. Voir l'architecture Production pour les détails Cloudflare et les règles de publication.
+Le flux cible est : preuve et collecte dans Data Lab → validation et épinglage par commit/artefact → compilation du snapshot dans Production → tests et promotion explicite. Le dépôt Stable sert de référence et de retour arrière. Voir l’architecture Production pour les règles de publication. Cloudflare est abandonné ; la préproduction Netlify est isolée, manuelle et sans liaison Git.
 
 ## Décisions et règles métier : sources de vérité
 
