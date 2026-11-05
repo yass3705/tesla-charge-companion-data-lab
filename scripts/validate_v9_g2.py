@@ -69,7 +69,7 @@ def main() -> None:
                 or len(evidence["artifactZipSha256"]) != 64):
             errors.append(f"verified handoff evidence mismatch: {spec['id']}")
     handoff_pending = sorted(spec["id"] for spec in sources
-                             if spec.get("github_handoff") == "unverified"
+                             if not str(spec.get("github_handoff", "")).startswith(("verified_pilot_", "verified_source_job_"))
                              or "github_handoff_unverified" in spec.get("status", ""))
     if handoff_pending:
         errors.append(f"GitHub artifact handoffs remain unverified: {len(handoff_pending)}")
