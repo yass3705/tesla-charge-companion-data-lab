@@ -1,3 +1,7 @@
+## 5 novembre 2026 — brouillon Netlify V9 prêt, accès de préversion privé
+
+Le transfert manuel du paquet immuable 31 sources vers le projet Netlify isolé est terminé (`ready`, déploiement `6ae257f7d0d52c2b2ba9636b`). L'URL du brouillon répond 401 à une requête anonyme en raison de la visibilité privée des préversions ; les SHA et parcours Firefox distants ne sont pas encore validés. Le réglage de visibilité des préversions dans le seul projet V9 précède la recette distante. G2–G8 restent FAIL, Actions désactivé et site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
+
 # 28 October 2026 — compound group billing keys fail closed
 
 Production `47e45f6` rejects unknown billed fields on OCPI component groups. The final derived 31-source package passes SHA/hosting, 64 historical Midhope evaluations, combined-session oracle, ten targeted Firefox tariff flows and nine-country/mobile Firefox. The immutable bundle and previous packages remain intact. Data Lab was `50afe4356` before this memory update. G2–G8 remain FAIL, Actions disabled and no remote deployment. Next: prove archived Repower IT identity contract, classify historical cohorts, continue G8; see `memory/V9_REBUILD_PROGRESS.md`.

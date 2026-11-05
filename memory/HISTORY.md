@@ -1060,3 +1060,6 @@ Archived 1,207 historic workflows on Data Lab main, disabled stale registered wo
 ## 2026-10-28 — Netlify preview preflight
 
 Confirmed local package integrity, noindex header and public safety before any upload. Recorded Free-plan hard cap, large-file transfer risk and the missing dedicated Netlify access; deployment remains pending.
+## 2026-11-05 — Brouillon Netlify V9 transféré, accès privé à corriger
+
+Le déploiement brouillon CLI du paquet 31 sources est `ready` sur le nouveau projet Netlify isolé, sans GitHub ni publication de production. L'URL anonyme répond 401 à cause de la visibilité privée des préversions ; les SHA et parcours Firefox distants restent donc non vérifiés. La prochaine action est le réglage de visibilité des préversions dans l'interface Netlify du seul projet V9, puis la recette distante. Voir `memory/V9_REBUILD_PROGRESS.md` et la preuve Production `docs/v9-rebuild/evidence/netlify-draft-20261105.md`. G2–G8 restent FAIL.
