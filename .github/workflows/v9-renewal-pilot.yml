@@ -1,0 +1,58 @@
+name: V9 bounded renewal pilot
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/renewal-pilot-request.json]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-bounded-renewal
+  cancel-in-progress: false
+jobs:
+  collect:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        source: ['FR:ionity_direct_family', 'GL:fx', 'MA:kilowatt_inventory']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Exercise failure, retry, artifact and last-good contracts offline
+        run: |
+          python -m unittest discover -s tests -p test_v9_orchestrator.py
+          python -m unittest discover -s tests -p test_v9_artifact_selection.py
+      - name: Renew the existing method outside checkout
+        env:
+          SOURCE_ID: ${{ matrix.source }}
+        run: python -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/tcc-v9-renewal" --workers 1 --attempts 1
+      - name: Preserve validated immutable output
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-renewal-${{ strategy.job-index }}
+          path: |
+            ${{ runner.temp }}/tcc-v9-renewal/manifest.json
+            ${{ runner.temp }}/tcc-v9-renewal/objects
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve failures separately
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-renewal-failure-${{ strategy.job-index }}
+          path: |
+            ${{ runner.temp }}/tcc-v9-renewal/manifest.json
+            ${{ runner.temp }}/tcc-v9-renewal/failures
+            ${{ runner.temp }}/tcc-v9-renewal/checkpoints
+          if-no-files-found: ignore
+          retention-days: 7

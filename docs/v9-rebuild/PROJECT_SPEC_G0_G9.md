@@ -43,6 +43,12 @@ Une augmentation, baisse, disparition ou apparition est admise si l'exécution t
 
 Conserver les ID station, EVSE et connecteurs officiels ou fournisseur. Générer une **clé technique interne** stable et unique, différente d'un EVSE_ID physique. Ne jamais fabriquer un EVSE_ID officiel absent. Préserver la distinction entre source, CPO, exploitant, station, EVSE, connecteur, puissance, offre, canal, portée, justificatif et date d'extraction. Conserver les entrées brutes lorsque nécessaire, sans effacer une donnée source à cause d'un manque de tarif.
 
+### Tesla/Mac : catalogue autonome (decision utilisateur du 5 novembre 2026)
+
+Tesla est une exception prioritaire a la consolidation nationale/CPO dans les neuf pays. Seul le catalogue Tesla/Mac cree ses Superchargeurs et configurations ; aucun EVSE_ID national n'est requis pour afficher ou tarifer ces configurations. Les identifiants Tesla restent des identifiants source, jamais des EVSE_ID officiels inventes. Les tarifs ne quittent jamais leur portee de configuration prouvee. Les entrees nationales explicitement identifiees Tesla sont exclues de l'affichage et conservees brutes pour audit, sans jointure ni transfert de prix. Les autres reseaux restent exclusivement nationaux lorsqu'une base nationale qualifiee existe. Tester Le Chesnay, Milan, MAD et les neuf pays, y compris absence de correspondance nationale et erreur d'une source nationale lors d'une recherche Tesla uniquement. L'acquisition Tesla/Mac dans Updater Test reste inchangee.
+
+La nouvelle mission autorise les tests de remise en service Actions Data Lab dans une fenetre bornee et reversible, apres preuve que main et les anciens workflows enregistres ne peuvent rien declencher. Cette autorisation ne vaut ni fusion main, ni activation permanente, ni publication publique.
+
 ### Sécurité, états et artefacts
 
 - Collecteurs exécutés **hors du checkout** Git dans des répertoires isolés ; sorties validées en artefacts immuables avec manifestes et empreintes SHA ; reprise par source et branche seulement sur état compatible.
