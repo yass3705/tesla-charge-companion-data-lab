@@ -1,0 +1,11 @@
+# Restauration de la couverture eMSP — 5 novembre 2026
+
+Régression confirmée : le dérivé Electroverse avait conservé seulement160offres par égalité littérale, alors que le constructeur historique normalise les identifiants (`norm`, ligne59). Le dérivé Electra avait limité le raccordement aux cinq captures, omettant les overlays exacts déjà construits par la méthode historique. Aucune nouvelle enquête fournisseur.
+
+Le nouveau constructeur valide tous les SHA/tuiles/compteurs internes, réutilise l’identité normalisée historique, exige unicité nationale globale et conserve les deux identifiants. Il ne crée aucune station/PDC. Seuls les modes exact_unique_national_irve_pdc (Electroverse) et exact_national_irve_evse (Electra) sont ici raccordés. Les autres méthodes historiques restent à qualifier, pas N/A. Les prix de site, GPS et correspondances approximatives ne sont pas acceptés. Doublons identiques dédupliqués ; doublons contradictoires isolés. Chaque refus possède un identifiant et un motif dans le ledger généré hors checkout, reproductible depuis les SHA archivés.
+
+Résultat canonique local :31 022offres Electroverse et95 417Electra attribuées exactement ;8 769offres Electra conservent une réserve de restrictions source non préservées par le compilateur historique, donc restent brutes. Ce ne sont PAS des nombres de prix calculables dans le navigateur. Toutes les portées des160+5offres du candidat précédent sont présentes. Le moteur reçoit les règles complètes non modifiées ; inconnues/manquantes entraînent un résultat incomplet, jamais un total partiel classable.
+
+Cache Electroverse :128shards techniquement cohérents,13partitions de statut archivées sur16, aucune fusion nationale complète disponible et dates historiques distinctes. Ne pas présenter ce cache comme une collecte fraîche ni contourner la fraîcheur du constructeur. L’overlay signé du10octobre reste la référence restaurée.
+
+Bundle isolé85aef37658277fccae722a6f767be22a518de36e529ad3182fd1edded03bfa56 :32sources, seules deux eMSP remplacées. Préparation et recette navigateur en cours sous `.tcc-v9-cache/emsp-restoration-20261105/`. Aucun nouveau déploiement Netlify. Le pilote borné préparé teste Electra platform, Driveco EVSE et Belib selon le mandat utilisateur ; exécution non revendiquée avant preuve réelle. G2–G8 restent FAIL.

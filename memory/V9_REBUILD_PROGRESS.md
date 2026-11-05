@@ -1,3 +1,9 @@
+## 5 novembre — restauration tarifaire en cours (aucun nouveau déploiement)
+
+Perte de raccordement eMSP confirmée. Constructeur `scripts/build_v9_archived_emsp.py` rétablit les identités normalisées exactes historiquement prouvées, sans station CPO autonome. Canonique local31022Electroverse/95417Electra,8769réserves de restrictions source ; les chiffres ne sont pas des prix calculables navigateur. Six tests de normalisation/erreurs et trois suites moteur/adapter PASS. Bundle85aef37658277fccae722a6f767be22a518de36e529ad3182fd1edded03bfa56, préparation isolée en cours. Cache128shards validé ;13partitions/16, pas de fusion nationale fraîche revendiquée. Preuves `docs/v9-rebuild/evidence/emsp-restoration-20261105/`.
+
+Prochaine opération : finir l’extension préparée, empaqueter hors checkout depuis le site renouvelé existant, vérifier les calculs sur toutes les offres restaurées puis recherches ordinaires et cas G9 ; ne pas déployer avant recette globale significative. Pilote borné Electra/Driveco/Belib préparé, activation uniquement après préflight main et workflows désactivés ; désactivation garantie en fin d’essai. G2–G8 restent FAIL, aucun main/site public/Updater/Stable modifié.
+
 ## 5 novembre 2026 — nouvelle URL vérifiée, conformité globale encore partielle
 
 **URL : https://6aecc65c572ac7778d850e91--tcc-v9-preproduction-20261028.netlify.app**. Déploiement ready/deploy-preview, published_at=null, aucune liaison Git. Code empaqueté Production `cd0a5a4282f4299ea9b386e253fe3be92570ce7a`, Data Lab `6900df609c0dd3baf131da56e574b74b03311740` (preuves du pilote au SHA `fb2efece1`). Bundle `a81e1defb94b88629e06bc09880bb1623aaeeea7de930987fa439cc5a3575a5c`, paquet `.tcc-v9-cache/renewal-20261105/site`. Ancien brouillon `6aecb7777c40e2f98d53a4fb` et tous les bundles last-good conservés.
