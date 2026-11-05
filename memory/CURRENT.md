@@ -1,3 +1,19 @@
+## 5 novembre — Atlante renouvelé réellement, REVE reprise bornée préparée
+
+Run42122453243/HEAD45475b3c8 success ; bootstrap myAtlante historique et collecte FR/IT réels. ZIP93bbc5038e642f5cc0ac00b82c8a68400b86f03c3ada6fc3bd3af11667732a24, contrat/manifeste/fichiers vérifiés après fermeture Actions(enabled=false). Preuves atlante-handoff/control/preflight.10handoffs prouvés,125encore non vérifiés ; aucune clôture globale. Normalisation des deux pays et bundle33 renouvelé en cours session99723 ; aucun nouveau tarif attribué par proximité.
+
+Prochain pilote préparé ES:reve_stream : reprendre exactement les archives partielles au lieu de page1, au maximum5requêtes, respect quota horaire/Retry-After. Une sortie incomplète doit rester en checkpoint et peut donc terminer le job en échec contrôlé, jamais en artefact publiable. Driver `/private/tmp/tcc-emsp-reve.py` à lancer seulement après nouveau préflight, état `renewal-reve/control.json`.4tests de reprise et archive réelle PASS. Aucun appel REVE encore réalisé à cette entrée.
+
+Brouillon6aed03e7c375ce290aaa79a9 :19parcours,11recherches/neufpays, contrôlesG9/SOC/mobile et équivalence dense PASS ;64 019résultats,56.4s dense sous lecturesréseau concurrentes, pas de PASS performance. Intégrité exhaustive encore en cours session29712. Prochaineopération : vérifier REVE borné, finir preuveNetlify ; préparer l’import des seuls Atlante renouvelés en conservant31autressources, puis recette pertinente. G2–G8 toujoursFAIL globalement.
+
+## 5 novembre — brouillon corrigé distant, pilote Atlante en cours
+
+Production1264896 ; nouveau brouillon6aed03e7c375ce290aaa79a9 ready/deploy-preview, paquet `site-served-manifest-final`, bundle8ad8e081 inchangé.19parcours distants,11recherches/neufpays avec parité exacte local/distant à heure fixe, contrôles G9/SOC manquant/mobile PASS ; rollback/public inchangés. Contrôle intégral3245fragments en cours session29712, reçu `/private/tmp/tcc-emsp-final-fragment-receipt.jsonl`; ne pas déployer de nouveau ni annoncer intégrité complète avant résultat. Dense distant en cours, limiteperformance toujours ouverte.
+
+**Pilote Atlante actif** : run42122453243 sur DataLab45475b3c8, driver session83782 ; état `.tcc-v9-cache/emsp-restoration-20261105/renewal-atlante/control.json`. Bootstrap historique a réellement réussi sans secret utilisateur ; collecte en cours, non déclarée validée. Driver ferme Actions après essai. Ne pas pousser de nouvelle requête pendant cette fenêtre.
+
+Correction REVE locale non committée : initialisation du checkpoint depuis les quatre fichiers historiques seulement en absence d’un checkpoint runtime ; SHA/cursors/quota conservés.4tests PASS dont archive réelle sans réseau. REVE doit encore être vérifié réellement avec MAPA_REVE_API_KEY ; cinq requêtes maximum par heure, état partiel jamais promu. Ubitricity UK toujours attente fournisseur. Prochaineopération : terminer pilote, fermerActions, vérifier artefact Atlante et normaliser/importer si réussi ; vérifier la reprise bornée REVE ensuite. ConserverpreuvesNetlify etjournal, G2–G8 globalementFAIL.
+
 ## 5 novembre — correction des préconditions Atlante/REVE, pilote borné préparé
 
 Retour utilisateur enregistré : REVE utilise déjà MAPA_REVE_API_KEY via son alias runtime ; aucune clé nouvelle à demander. Atlante réutilise le bootstrap historique myAtlante4519 épinglé par SHA ; correction du workflow qui écrasait la valeur générée par un secret vide, et extension aux deux modules Atlante concernés. Ubitricity UK reste bloqué par absence de réponse fournisseur, last-good conservé. Tests de routage hors ligne PASS ; réussite de collecte Atlante non encore démontrée. Dossier `credential-resolution.json` remplace l’interprétation erronée des seuls noms de secrets.

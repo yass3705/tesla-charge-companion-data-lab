@@ -19,6 +19,7 @@ SCRIPT = Path("scripts/reve_es_stream_collect.py")
 DATA = Path("data/spain_reve/full_20261018")
 FILES = ("tariff_status_stream_state.json", "reve_connector_tariffs_raw.json.gz",
          "reve_operational_status_raw.json.gz", "tariff_status_stream_last_run.json")
+ARCHIVE = ROOT / DATA
 
 
 def digest(path: Path) -> str:
@@ -93,12 +94,28 @@ def validate_output(out: Path) -> dict:
     return validate_data(out / DATA, require_complete=True)
 
 
+def seed_archived_checkpoint(checkpoint: Path) -> Path | None:
+    """Bootstrap only a missing checkpoint from the preserved partial acquisition.
+
+    A restored runtime checkpoint always wins, including its cooldown. Never
+    rewind a cursor or replace corrupted state with an apparently clean archive.
+    """
+    previous = validate_checkpoint(checkpoint)
+    if previous is not None:
+        return previous
+    if ARCHIVE.exists():
+        validate_data(ARCHIVE, require_complete=False)
+        save_checkpoint(ARCHIVE, checkpoint)
+        return validate_checkpoint(checkpoint)
+    return None
+
+
 def run(out: Path, checkpoint: Path, *, runner=subprocess.run) -> None:
     out, checkpoint = out.resolve(), checkpoint.resolve()
     if (out == ROOT or ROOT in out.parents or checkpoint == ROOT or ROOT in checkpoint.parents
             or out == checkpoint or out in checkpoint.parents or checkpoint in out.parents):
         raise ValueError("REVE output/checkpoint must be distinct and off checkout")
-    previous = validate_checkpoint(checkpoint)
+    previous = seed_archived_checkpoint(checkpoint)
     script = out / SCRIPT
     script.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / SCRIPT, script)

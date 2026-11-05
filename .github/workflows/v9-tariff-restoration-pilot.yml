@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        source: ['FR:atlante_fr_it']
+        source: ['ES:reve_stream']
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -31,14 +31,11 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_v9_orchestrator.py
           python -m unittest discover -s tests -p test_v9_artifact_selection.py
-      - name: Resolve preserved Atlante technical app header
-        env:
-          ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY }}
-        run: bash scripts/atlante/bootstrap_subscription_key.sh
+          python -m unittest discover -s tests -p test_v9_reve_stream.py
       - name: Renew the existing method outside checkout
         env:
           SOURCE_ID: ${{ matrix.source }}
-          ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY || env.ATLANTE_API_SUBSCRIPTION_KEY }}
+          REVE_API_KEY: ${{ secrets.MAPA_REVE_API_KEY || secrets.REVE_API_KEY }}
         run: python -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/tcc-v9-tariff-renewal" --workers 1 --attempts 1
       - name: Preserve validated immutable output
         if: success()

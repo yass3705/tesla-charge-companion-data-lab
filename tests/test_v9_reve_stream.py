@@ -57,6 +57,34 @@ class StreamRunner:
 
 
 class ReveStreamMigrationTests(unittest.TestCase):
+    def setUp(self):
+        # Small synthetic pagination tests start without a historical archive.
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.archive_patch = patch.object(reve_stream, "ARCHIVE", Path(self.temp.name) / "absent")
+        self.archive_patch.start()
+        self.addCleanup(self.archive_patch.stop)
+
+    def test_real_archived_cursors_seeded_without_network_or_overwrite(self):
+        archive = reve_stream.ROOT / reve_stream.DATA
+        original = {name: (archive / name).read_bytes() for name in reve_stream.FILES}
+        with tempfile.TemporaryDirectory() as tmp, patch.object(reve_stream, "ARCHIVE", archive):
+            checkpoint = Path(tmp) / "checkpoint"
+            folder = reve_stream.seed_archived_checkpoint(checkpoint)
+            self.assertEqual({name: (folder / name).read_bytes() for name in reve_stream.FILES}, original)
+            state = reve_stream.validate_data(folder, require_complete=False)
+            # Exact existing checkpoint is the oracle, not a historical volume threshold.
+            self.assertEqual(state, json.loads(original[reve_stream.FILES[0]]))
+            before = (checkpoint / "current.json").read_bytes()
+            with patch.object(reve_stream, "ARCHIVE", Path(tmp) / "corrupt-archive"):
+                reve_stream.ARCHIVE.mkdir()
+                self.assertEqual(reve_stream.seed_archived_checkpoint(checkpoint), folder)
+            self.assertEqual((checkpoint / "current.json").read_bytes(), before)
+            (folder / reve_stream.FILES[0]).write_text("{}")
+            with self.assertRaisesRegex(ValueError, "SHA"):
+                reve_stream.seed_archived_checkpoint(checkpoint)
+        self.assertEqual({name: (archive / name).read_bytes() for name in reve_stream.FILES}, original)
+
     def test_incomplete_checkpoint_then_exact_resume(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
