@@ -1,3 +1,11 @@
+## 5 novembre — eMSP élargi, Direct restauré, renouvellement Electra non validé
+
+Bundle immuable `3ad0c0ea896f5a44fbcd9cf795a77c4cb91e3a804836117e375a1799d6950d06`,32sources. Normaliseur parent Electroverse : identifiant parent/suffixe historique, prise et puissance exactes ;248offres supplémentaires sans nouvelle jointure.9tests DataLabPASS ; oracle toutes archives PASS. Production restaure aussi Belib(5757profils/offres), Suisse(3167offresCHF) et Allego(612énergie+idle) uniquement sur contrats complets prouvés.20tests transversauxPASS ; recette locale G9 `site-restored` et parcours Belib/SuissePASS ; Allego ajouté dans `site-complete-restoration`, recette en cours. Aucune nouvelle URL ni conformité distante annoncée.
+
+Pilote Electra42093326295 au SHA06f287c6 : completed/failure après32min, `collector_exit_nonzero`. Actions global et workflow pilote de nouveau désactivés. Artefact d'échec13449160770, digest `bcc46a97090132a02667e4cd6178b733021dc04ee10ac9ba3949ec8457894570`, sans nouveau snapshot validé. Journaux sous `.tcc-v9-cache/emsp-restoration-20261105/renewal-electra-retry/`. Le diagnostic du sous-processus a été perdu par l'ancien wrapper ; corriger cette perte avant répétition. L'archive historique contient13IDs d'offre répétés rejetés par le validateur ; ne pas prétendre que cette cause distante est démontrée sans diagnostic.115handoffs toujours ouverts.
+
+Prochaine opération : achever recette `site-complete-restoration` (mêmebundle), conserverpreuvesetcommits ; corriger le diagnostic d'échec Electra et l'isolation des identités répétées sans accepter de tarif ambigu ; poursuivre transmissions de familles contrôlées. G0/G1PASS, G2–G8FAIL. Main/sitepublic/Updater/Stable inchangés.
+
 ## 5 novembre — restauration eMSP, premiers renouvellements et correction du chargeur
 
 Production `295d5fb` et Data Lab `5eef8ea28` sauvegardés. Bundle archivé gardé `5ea2991914043b462505b5b7b40490df37213cc9a469703057582320bed64f8f` : 31 022 offres Electroverse / 95 417 Electra attribuées par identité nationale exacte, jamais par GPS. Oracle complet : 160+5 anciennes offres calculables préservées ; 30 907 Electroverse / 64 435 Electra calculables au scénario fixe, autres explicitement non calculées. 50 offres Electra contradictoires sur 25 EVSE mises en réserve, restrictions source non préservées également ; ces nombres sont diagnostiques.

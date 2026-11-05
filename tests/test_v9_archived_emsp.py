@@ -38,6 +38,30 @@ class ArchivedEmspTest(unittest.TestCase):
   d,r=normalize(self.n,'Electra',[raw],self.proof,{'loc':loc})
   self.assertEqual(d['offers'][0]['calculationHold'],'unpreserved_source_restrictions')
   loc['evses']=[];d,r=normalize(self.n,'Electra',[raw],self.proof,{'loc':loc});self.assertEqual(d['offers'],[])
+ def test_parent_variant_preserves_exact_evse_power_and_standard(self):
+  self.n['connectors']=[{'id':'ac','evseId':'e','powerKw':22,'plugType':'IRVE · Type 2 22 kW'},
+                        {'id':'dc','evseId':'e','powerKw':150,'plugType':'IRVE · CCS 150 kW'}]
+  self.raw['verifiedScope']='exact_evse_connector_power'
+  self.raw['metadata'].update(identityMode='exact_unique_national_irve_pdc_parent_connector_suffix',offerGranularity='connector_power',
+   physicalReferences=['FR*ABC*E1*1'],powerKw=22,standards=['IEC_62196_T2'],tariffHashes=['d'*64],connectorPks=[42],connectorCount=1)
+  d,r=self.build();self.assertEqual(len(d['offers']),1);self.assertEqual(d['offers'][0]['scope'],{'evseId':'e','connectorId':'ac'})
+  self.assertEqual(d['offers'][0]['proof'],'archived_exact_parent_connector_variant')
+  self.assertEqual(d['offers'][0]['rawOffer'],self.raw)
+  for field,value in [('physicalReferences',['FR*OTHER*E1*1']),('powerKw',23),('standards',['UNKNOWN']),('connectorCount',2)]:
+   old=self.raw['metadata'][field];self.raw['metadata'][field]=value
+   d,r=self.build();self.assertEqual(d['offers'],[])
+   self.raw['metadata'][field]=old
+ def test_disjoint_parent_power_tariffs_do_not_conflict(self):
+  self.n['connectors']=[{'id':'ac','evseId':'e','powerKw':22,'plugType':'IRVE · Type 2 22 kW'},
+                        {'id':'dc','evseId':'e','powerKw':150,'plugType':'IRVE · CCS 150 kW'}]
+  self.raw['verifiedScope']='exact_evse_connector_power'
+  self.raw['metadata'].update(identityMode='exact_unique_national_irve_pdc_parent_connector_suffix',offerGranularity='connector_power',
+   physicalReferences=['FR*ABC*E1*1'],powerKw=22,standards=['IEC_62196_T2'],tariffHashes=['d'*64],connectorPks=[42],connectorCount=1)
+  dc=copy.deepcopy(self.raw);dc['id']='dc-offer';dc['metadata'].update(powerKw=150,standards=['IEC_62196_T2_COMBO']);dc['pricing']['rules'][0]['pricePerKwh']=.9
+  d,r=self.build([self.raw,dc]);self.assertEqual(len(d['offers']),2);self.assertTrue(all(not o.get('calculationHold') for o in d['offers']))
+  broad=copy.deepcopy(self.raw);broad['id']='broad';broad['verifiedScope']='exact_evse';broad['metadata']['identityMode']='exact_unique_national_irve_pdc'
+  d,r=self.build([self.raw,dc,broad]);held=[o['sourceOfferId'] for o in d['offers'] if o.get('calculationHold')]
+  self.assertEqual(set(held),{'dc-offer','broad'})
  def test_archive_hash_and_internal_count_not_historical_volume(self):
   with tempfile.TemporaryDirectory() as t:
    p=Path(t);raw=gzip.compress(json.dumps({'schemaVersion':1,'country':'FR','emspOffers':[self.raw]}).encode());(p/'t_1_2.json.gz').write_bytes(raw)

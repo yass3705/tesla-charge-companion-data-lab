@@ -45,9 +45,34 @@ def read_archive(folder,channel):
    elif row['id'] not in locations:locations[row['id']]=row
  return m,sha(raw),offers,locations
 
+PARENT_MODE='exact_unique_national_irve_pdc_parent_connector_suffix'
+def parent_connectors(raw,evse,connectors):
+ """Replay the archived parent + child reference + connector-power contract.
+
+ Never match a power at another EVSE or guess a missing connector standard.
+ """
+ m=raw.get('metadata',{});parent=identity(evse.get('officialEvseId'))
+ refs=m.get('physicalReferences');power=m.get('powerKw');standards=m.get('standards')
+ kinds={'IEC_62196_T2':'Type 2','IEC_62196_T2_COMBO':'CCS','DOMESTIC_F':'EF'}
+ if (m.get('offerGranularity')!='connector_power' or not parent
+     or not isinstance(refs,list) or not refs
+     or any(not identity(r).startswith(parent) or not re.fullmatch(r'[0-9]{1,2}',identity(r)[len(parent):]) for r in refs)
+     or isinstance(power,bool) or not isinstance(power,(int,float)) or not math.isfinite(power) or power<=0
+     or not isinstance(standards,list) or not standards or any(v not in kinds for v in standards)
+     or not m.get('tariffHashes') or any(not re.fullmatch(r'[a-f0-9]{64}',str(v)) for v in m['tariffHashes'])
+     or not m.get('connectorPks') or m.get('connectorCount')!=len(m['connectorPks'])):return []
+ def kind(c):
+  label=c.get('plugType') or ''
+  return next((v for v in kinds.values() if re.fullmatch(r'IRVE\s*·\s*'+re.escape(v)+r'(?:\s+.*)?',label)),None)
+ wanted={kinds[v] for v in standards}
+ matches=[c for c in connectors if c['evseId']==evse['id'] and c.get('powerKw')==power and kind(c) in wanted]
+ if {kind(c) for c in matches}!=wanted:return []
+ return matches
+
 def normalize(national,channel,offers,provenance,locations=None):
  if national.get('source',{}).get('id')!='FR:irve_static':raise ValueError('National reference mismatch')
- source,_,mode=CONTRACTS[channel];by_id=collections.defaultdict(list)
+ source,_,mode=CONTRACTS[channel];by_id=collections.defaultdict(list);plugs=collections.defaultdict(list)
+ for c in national['connectors']:plugs[c['evseId']].append(c)
  for row in national['evses']:
   if row.get('officialEvseId'):by_id[identity(row['officialEvseId'])].append(row)
  stations={r['id']:r for r in national['stations']};cpos={r['id']:r for r in national['cpos']}
@@ -58,16 +83,21 @@ def normalize(national,channel,offers,provenance,locations=None):
  duplicates=0
  for group in groups.values():
   raw=group[0];meta=raw.get('metadata',{});ids=raw.get('evseIds');reason=None
+  parent_variant=channel=='Electroverse' and meta.get('identityMode')==PARENT_MODE
   if any(row!=raw for row in group[1:]):
    rejected.append({'sourceOfferId':raw['id'],'sourceEvseIds':ids,'reason':'conflicting_duplicate_source_offer'});continue
   duplicates+=len(group)-1
   if raw.get('provider')!=channel or meta.get('verified') is not True:reason='unverified_provider_offer'
-  elif meta.get('identityMode')!=mode:reason='historical_identity_method_requires_separate_proof'
-  elif (raw.get('verifiedScope') if channel=='Electroverse' else meta.get('verifiedScope'))!='exact_evse':reason='scope_not_exact_evse'
+  elif meta.get('identityMode')!=mode and not parent_variant:reason='historical_identity_method_requires_separate_proof'
+  elif (raw.get('verifiedScope') if channel=='Electroverse' else meta.get('verifiedScope'))!=('exact_evse_connector_power' if parent_variant else 'exact_evse'):reason='scope_not_exact_evse'
   elif not isinstance(ids,list) or len(ids)!=1 or not identity(ids[0]):reason='invalid_source_evse_scope'
   else:
    matches=by_id.get(identity(ids[0]),[])
    if len(matches)!=1:reason='national_evse_absent' if not matches else 'national_evse_ambiguous'
+  parent_targets=[]
+  if not reason and parent_variant:
+   parent_targets=parent_connectors(raw,matches[0],plugs[matches[0]['id']])
+   if not parent_targets:reason='parent_connector_power_or_reference_unproved'
   loc=None
   if not reason and channel=='Electra':
    loc=(locations or {}).get(meta.get('electraLocationId'))
@@ -96,17 +126,24 @@ def normalize(national,channel,offers,provenance,locations=None):
      if restrictions.get('maxDuration') is not None and kinds!={'CONGESTION_TIME'}:unknown.append('maxDuration')
      if restrictions.get('minDuration') and not kinds.issubset({'TIME','PARKING_TIME','CONGESTION_TIME'}):unknown.append('minDuration_non_time_component')
    if unknown:row['calculationHold']='unpreserved_source_restrictions';row['sourceRestrictionFields']=sorted(set(unknown));holds[row['calculationHold']]+=1
-  accepted.append(row)
+  if parent_variant:
+   for connector in parent_targets:
+    item=copy.deepcopy(row);item['id']=key('FR',source,'offer',(channel,raw['id'],evse['id'],connector['id']))
+    item['scope']['connectorId']=connector['id'];item['proof']='archived_exact_parent_connector_variant';accepted.append(item)
+  else:accepted.append(row)
  # A provider can repeat one national EVSE in different locations. Conflicting
  # complete tariffs for that same channel/EVSE must never compete by low price.
  by_target=collections.defaultdict(list)
- for row in accepted:by_target[row['scope']['evseId']].append(row)
+ for row in accepted:
+  targets=[row['scope']['connectorId']] if row['scope'].get('connectorId') else [c['id'] for c in plugs[row['scope']['evseId']]]
+  for target in targets:by_target[target].append(row)
+ conflicting=set()
  for rows in by_target.values():
-  signatures={json.dumps(row['rawOffer'].get('pricing'),sort_keys=True) for row in rows}
-  if len(signatures)>1:
-   for row in rows:
-    if row.get('calculationHold'):holds[row['calculationHold']]-=1
-    row['calculationHold']='conflicting_tariffs_for_same_evse';holds[row['calculationHold']]+=1
+  if len({json.dumps(row['rawOffer'].get('pricing'),sort_keys=True) for row in rows})>1:conflicting.update(r['id'] for r in rows)
+ for row in accepted:
+  if row['id'] in conflicting:
+   if row.get('calculationHold'):holds[row['calculationHold']]-=1
+   row['calculationHold']='conflicting_tariffs_for_same_evse';holds[row['calculationHold']]+=1
  station_ids={e['stationId'] for e in used.values()};cpo_ids={stations[s]['cpoId'] for s in station_ids}
  result={'schemaVersion':1,'source':{'id':source,'artifactSha256':sha(json.dumps(provenance,sort_keys=True).encode()),**provenance},
   'countries':[{'code':'FR'}],'cpos':[cpos[c] for c in sorted(cpo_ids)],'stations':[stations[s] for s in sorted(station_ids)],
