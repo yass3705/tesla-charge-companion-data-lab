@@ -1060,6 +1060,10 @@ Archived 1,207 historic workflows on Data Lab main, disabled stale registered wo
 ## 2026-10-28 — Netlify preview preflight
 
 Confirmed local package integrity, noindex header and public safety before any upload. Recorded Free-plan hard cap, large-file transfer risk and the missing dedicated Netlify access; deployment remains pending.
+## 2026-11-05 — Première recette G9, correction locale de présentation
+
+Le shell local limite maintenant l'affichage initial à 20 fiches et explicite les repères cartographiques sans prix. Le diagnostic exact de Carrefour Fécamp trouve huit EVSE nationaux mais aucune offre attribuable ; les tarifs Electra historiques sont retenus hors portée EVSE. Onze recherches ordinaires, dix tarifs de référence, neuf pays/mobile et le classement global passent. Le bundle 31 sources et le brouillon Netlify précédent restent immuables. Voir `memory/V9_REBUILD_PROGRESS.md` et les preuves Production `docs/v9-rebuild/evidence/g9-first-user-recipe-20261105.md`.
+
 ## 2026-11-05 — Préproduction Netlify V9 vérifiée à distance
 
 L'URL immuable du brouillon 31 sources répond en HTTPS ; gros fichier et 2 521 fragments signés vérifiés par SHA. Dix parcours tarifaires et neuf pays/mobile Firefox passent sur ce déploiement. Les paquets de retour arrière sont conservés. G9 est ouvert pour la validation visuelle ; G8 global et les autres portes non closes restent FAIL, sans changement du site public ni des Actions. Voir `memory/V9_REBUILD_PROGRESS.md` et les preuves Production `docs/v9-rebuild/evidence/netlify-draft-20261105.md`.

@@ -1,3 +1,7 @@
+## 5 novembre 2026 — première recette G9 corrigée localement
+
+Le nouveau candidat local affiche 20 fiches initiales, garde la pagination et le classement global, et rend lisibles les repères sans prix. À Fécamp, les huit EVSE sont présents mais aucune offre attribuable n'existe dans le bundle 31 sources ; les anciens tarifs Electra de localisation restent tenus hors attribution. Onze recherches ordinaires, dix parcours tarifaires, neuf pays/mobile et l'intégrité locale passent. Le brouillon Netlify actuel reste inchangé ; son remplacement ou la création d'un nouveau brouillon attend une autorisation explicite. G2–G8 restent FAIL et G9 en cours. Voir `memory/V9_REBUILD_PROGRESS.md`.
+
 ## 5 novembre 2026 — préproduction Netlify V9 accessible et vérifiée
 
 Le brouillon immuable 31 sources `6ae257f7d0d52c2b2ba9636b` est accessible sur HTTPS après ouverture des seules préversions du projet dédié. SHA des ressources et des 2 521 fragments, fichier de 11,7 Mo, dix parcours tarifaires et neuf pays/mobile Firefox passent sur l'URL distante. G9 peut commencer dans l'interface ; G8 global reste FAIL à cause des 119 handoffs GitHub et des écarts formels G3/G5/G6. Actions reste désactivé, site public inchangé. Voir `memory/V9_REBUILD_PROGRESS.md`.
