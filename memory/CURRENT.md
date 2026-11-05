@@ -1,3 +1,7 @@
+## 5 novembre 2026 — second brouillon G9 distant vérifié
+
+Le nouveau brouillon Netlify immuable `6aec9f2fb223d58706efe5b5` affiche 20 fiches initiales puis 20 supplémentaires par clic. HTTPS/noindex, SHA du shell et du fichier 11,7 Mo, 2 521 fragments, dix parcours tarifaires, onze recherches ordinaires et neuf pays/mobile Firefox passent sur l’URL distante. Ancien brouillon et site public inchangés ; le prochain lot utilisateur est documenté mais non implémenté avant validation. G2–G8 restent FAIL, G9 attend la recette visuelle. Voir `memory/V9_REBUILD_PROGRESS.md`.
+
 ## 5 novembre 2026 — première recette G9 corrigée localement
 
 Le nouveau candidat local affiche 20 fiches initiales, garde la pagination et le classement global, et rend lisibles les repères sans prix. À Fécamp, les huit EVSE sont présents mais aucune offre attribuable n'existe dans le bundle 31 sources ; les anciens tarifs Electra de localisation restent tenus hors attribution. Onze recherches ordinaires, dix parcours tarifaires, neuf pays/mobile et l'intégrité locale passent. Le brouillon Netlify actuel reste inchangé ; son remplacement ou la création d'un nouveau brouillon attend une autorisation explicite. G2–G8 restent FAIL et G9 en cours. Voir `memory/V9_REBUILD_PROGRESS.md`.

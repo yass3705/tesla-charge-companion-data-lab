@@ -1,3 +1,7 @@
+## 5 novembre 2026 — second brouillon de recette G9
+
+Un brouillon Netlify isolé `6aec9f2fb223d58706efe5b5` a été déployé sans `--prod`. Le contrôle SHA de 2 521 fragments et du crosswalk 11,7 Mo, dix tarifs, onze recherches ordinaires et neuf pays/mobile passent sur l’URL distante. Les quatre demandes suivantes sont préparées sans changement de code. Le site public, l’ancien brouillon et Actions restent inchangés. Voir `memory/V9_REBUILD_PROGRESS.md`.
+
 ## 28 October 2026 — Bump exact rules connected in code
 
 Data Lab preserves the archived Bump source and exact national EVSE join; Production `1130c26` evaluates only the historically compiled rules on that exact identity. Targeted historical fee and merge oracles pass. The 30-source preview is unchanged; G2–G8 remain FAIL and Actions stays disabled. See [reprise](V9_REBUILD_PROGRESS.md).
