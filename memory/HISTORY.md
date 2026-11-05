@@ -1,3 +1,9 @@
+## 5 novembre 20:25 UTC — Belib national restauré, collecte contrôlée en cours
+
+Les deux identifiants Belib local/itinérance sont préservés ; 1 754 EVSE ont une cible nationale exacte. Les 16 parcours Firefox du candidat `site-belib-identity` passent, dont Belib réellement tarifé. Bundle `aa6c9ea41bb1340f3f313ba742d64e4406e6374edb6fa4b5aff557612fb72cc0`, aucun nouveau déploiement. Un rapport de jointures49Mo nécessite transport gzip avec SHA compressé/original ; correction Production testée, aucune donnée retirée.
+
+Run borné42101119558 toujours en cours (Electra/Suisse) au SHAfc06c7f02 ; **contrôler sa fermeture et enabled=false avant toute fin de session**. Driver et prochaine opération dans `V9_REBUILD_PROGRESS.md`. 115 handoffs non vérifiés à ce point, G2–G8 FAIL. Main/Productionpublique/Updater/Stable intacts.
+
 ## 5 novembre — restauration eMSP, premiers renouvellements et correction du chargeur
 
 Production `295d5fb` et Data Lab `5eef8ea28` sauvegardés. Bundle archivé gardé `5ea2991914043b462505b5b7b40490df37213cc9a469703057582320bed64f8f` : 31 022 offres Electroverse / 95 417 Electra attribuées par identité nationale exacte, jamais par GPS. Oracle complet : 160+5 anciennes offres calculables préservées ; 30 907 Electroverse / 64 435 Electra calculables au scénario fixe, autres explicitement non calculées. 50 offres Electra contradictoires sur 25 EVSE mises en réserve, restrictions source non préservées également ; ces nombres sont diagnostiques.

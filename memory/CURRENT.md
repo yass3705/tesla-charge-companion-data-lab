@@ -1,3 +1,9 @@
+## 5 novembre 20:25 UTC — Belib national restauré, collecte contrôlée en cours
+
+Les deux identifiants Belib local/itinérance sont préservés ; 1 754 EVSE ont une cible nationale exacte. Les 16 parcours Firefox du candidat `site-belib-identity` passent, dont Belib réellement tarifé. Bundle `aa6c9ea41bb1340f3f313ba742d64e4406e6374edb6fa4b5aff557612fb72cc0`, aucun nouveau déploiement. Un rapport de jointures49Mo nécessite transport gzip avec SHA compressé/original ; correction Production testée, aucune donnée retirée.
+
+Run borné42101119558 toujours en cours (Electra/Suisse) au SHAfc06c7f02 ; **contrôler sa fermeture et enabled=false avant toute fin de session**. Driver et prochaine opération dans `V9_REBUILD_PROGRESS.md`. 115 handoffs non vérifiés à ce point, G2–G8 FAIL. Main/Productionpublique/Updater/Stable intacts.
+
 ## 5 novembre — eMSP élargi, Direct restauré, renouvellement Electra non validé
 
 Bundle immuable `3ad0c0ea896f5a44fbcd9cf795a77c4cb91e3a804836117e375a1799d6950d06`,32sources. Normaliseur parent Electroverse : identifiant parent/suffixe historique, prise et puissance exactes ;248offres supplémentaires sans nouvelle jointure.9tests DataLabPASS ; oracle toutes archives PASS. Production restaure aussi Belib(5757profils/offres), Suisse(3167offresCHF) et Allego(612énergie+idle) uniquement sur contrats complets prouvés.20tests transversauxPASS ; recette locale G9 `site-restored` et parcours Belib/SuissePASS ; Allego ajouté dans `site-complete-restoration`, recette en cours. Aucune nouvelle URL ni conformité distante annoncée.
