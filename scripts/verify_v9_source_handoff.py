@@ -33,6 +33,7 @@ from v9_rebuild.energyvision import validate_output as energyvision
 from v9_rebuild.uk_evyve import validate_output as uk_evyve
 from v9_rebuild.ozecar import validate_output as ozecar
 from v9_rebuild.izivia_fast import validate_output as izivia_fast
+from v9_rebuild.electroverse import validate_state as electroverse
 ARCHIVED_REPLAYS = {'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
 REPO='yass3705/tesla-charge-companion-data-lab'
 def belgium_nap(state):
@@ -44,6 +45,7 @@ VALIDATORS={'FR:irve_national':france_irve,'BE:nap':belgium_nap,'GB:midhope_veri
 VALIDATORS.update({'FR:zephyre':zephyre,'FR:zewatt':zewatt})
 VALIDATORS.update({'FR:fastned_inventory_family':fastned,'BE:energyvision':energyvision,'GB:evyve_pcpr':uk_evyve})
 VALIDATORS.update({'FR:ozecar':ozecar,'FR:izivia_fast':izivia_fast})
+VALIDATORS.update({'FR:electroverse_full':electroverse,'FR:electroverse_daily':electroverse})
 VALIDATORS.update({'FR:allego_stations': allego_stations, 'FR:bump_tariffs': bump_tariffs})
 VALIDATORS.update({'GB:blink_pcpr':uk_blink,'GB:gridserve_pcpr':uk_gridserve})
 VALIDATORS.update({'GB:allego_uk_pcpr': partial(uk_pcpr, provider='allego_uk'),

@@ -1,3 +1,9 @@
+## 14 novembre — pilote cache tarifaire Electroverse préparé
+
+Cache complet renouvelé par les chunks historiques de6000, strictement séquentiels, mêmes scripts/API/temporisations et128shards. Chaque frontière réussie peut reprendre ; une erreur/timeout conserve un manifeste de checkpoint lié au run/branche/SHA et arrête les appels. Aucun état partiel accepté par Production.8 tests helper/transfert PASS ;29tests timeout/inventaire précédents conservés. Mainc7204b3ef et1207blobs d’archives vérifiés, zéro déclencheur actif. Actions encore désactivé à la préparation. Driver horscheckout resume-20261114/electroverse-tariff-renewal/run-pilot.py fermeActions dansfinally.
+
+Ne pas renouveler les16partitions sur un ancien cache qui sera invalidé. Aucun succès fournisseur/artefact revendiqué avant exécution. Candidat localc49ade5fvalidé/Production531127c ; brouillon distantb87a89b7inchangé. G2–G8FAIL,26handoffsprouvés/109ouverts.
+
 ## 14 novembre — reprise sécurisée après timeout et candidat groupé validé localement
 
 Le runner de collecte arrête le groupe de processus avant de vérifier les checkpoints. Les checkpoints techniquement valides survivent au timeout et sont repris ; aucun état incomplet n’est promu. 18 tests d’orchestrateur PASS, dont arrêt réel d’un descendant et reprise simulée de partition ; cette nouvelle branche timeout n’est pas encore éprouvée sur GitHub. Garde nominatif Evyve : aucun nouvel appel ni accès au last-good tant que le périmètre fournisseur n’est pas corrigé (5 tests PASS).
