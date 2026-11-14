@@ -1,3 +1,7 @@
+## 14 novembre — renouvellement Direct France borné préparé
+
+Zephyre/Ze-Watt : collecteurs et compilateurs historiques exacts, quatre requêtes concurrentes, sans secret ni nouvelle investigation.10tests de méthode/transfertPASS. Pilote commun deuxjobs,mainneutraliséet1207archivesrestaurablesrecontrôlés,Actionsdésactivéàlapréparation. Driver resume-20261114/fr-direct-renewal/run-fr-pilot.py fermeActionsdansfinally. Aucun succès revendiquéavantreçus. GB33bundleenrecettelocaleindépendante, pasdenouveauNetlifyparsource.
+
 ## 14 novembre — Blink/GRIDSERVE renouvelés ; raccordement tarifaire GRIDSERVE corrigé
 
 Run43592866220, HEAD0e00cf0be : deux jobs réussis, ZIP/manifestes/SHA/contrats vérifiés réellement après fermeture Actions.19handoffs prouvés,116ouverts. Ancien dispositif toujours neutralisé,maininchangé,aucunworkflowactif. Le quota Blink est partagé entre endpoints et reprises.
