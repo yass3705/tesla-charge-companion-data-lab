@@ -1,3 +1,11 @@
+## 14 novembre — pilote belge corrigé réussi et Actions fermé
+
+Run 43587934900 / HEAD 17734182fbfd1494a04e51cae7fb48949565606e : collecte BE:nap réussie, 18 pages complètes, 40 fichiers vérifiés par SHA/manifeste/contrat. Actions désactivé et zéro workflow actif ; main c7204b3ef inchangé. Le défaut de dossier docs manquant est corrigé dans l’isolation, sans modification fournisseur. Reçu : docs/v9-rebuild/evidence/restoration-20261114/belgium-national-handoff.json. 15 handoffs réellement prouvés, 120 ouverts ; G2–G8 restent FAIL globalement.
+
+Le candidat français local est terminé : bundle 474a18a065b4dde765ef728911bec3db264fd25243e64e9d1e5ad94a598aad1f, site-national-france-20261114 ; 19 parcours, 11 recherches/neuf pays, contrôles G9/mobile, hébergement et scan différentiel PASS. Les pays inchangés restent exactement identiques ; les variations FR sont diagnostiques, sans seuil. Pas encore déployé.
+
+Prochain : terminer la normalisation BE et le bundle combiné FR/BE via resume-20261114/national-belgium-fixed/build-candidate.py (état et preuves hors checkout), préparer depuis prepared-national-france-20261114, vérifier les parcours pertinents puis un nouveau brouillon global. Dernière URL réellement vérifiée : https://6af8365acf7552d1d9e1768a--tcc-v9-preproduction-20261028.netlify.app. Ubitricity UK toujours attente fournisseur ; REVE utilise MAPA_REVE_API_KEY ; Atlante sans secret utilisateur. Aucun changement public/Mac/Stable.
+
 ## 14 novembre — régression d’isolation Belgique identifiée et corrigée
 
 Run43587027521 échoué et Actions refermé. Les18pages ont été reçues jusqu’au dernier nextOffset=null ; aucune erreurHTTP. L’échec est FileNotFoundError à l’écriture docs/belgium-cpo-progress-2026-09.json : ce dossier existe dans Git mais manquait dans l’espace isolé. Les36fichiers bruts/canoniques reçus sont conservés dans l’artefact d’échec vérifié, sans promotion. Preuves belgium-diagnostic-failure/control.json.
