@@ -54,13 +54,21 @@ def normalize_uk_pcpr(payload: dict, *, artifact_sha256: str, source_id: str) ->
         if tariff_id in tariffs or tariff.get("country_code") != "GB":
             raise ValueError("UK PCPR tariff identity invalid")
         tariffs[tariff_id] = tariff
+    unparsed = {}
+    for entry in source.get("unparsedTariffs", []):
+        raw = entry.get("tariff") or {}
+        identity = (_required(raw.get("party_id"), "unparsed tariff party"),
+                    _required(raw.get("id"), "unparsed tariff id"))
+        if raw.get("country_code") != "GB" or identity in unparsed or not entry.get("reason"):
+            raise ValueError("UK PCPR unparsed tariff identity invalid")
+        unparsed[identity] = entry
     result = {"schemaVersion": SCHEMA_VERSION,
               "source": {"id": source_id, "artifactSha256": artifact_sha256,
                          "generatedAt": payload.get("collectedAt"), "rawMetadata": {
                              "archiveSourceId": source["id"], "pricingScope": source["pricingScope"]}},
               "countries": [{"code": "GB"}], "cpos": [], "stations": [], "evses": [],
               "connectors": [], "offers": [], "tariffCatalog": tariffs,
-              **({"unresolvedTariffRefs": []} if raw_unverified else {})}
+              "unresolvedTariffRefs": []}
     cpos = {}
     for location in source["locations"]:
         if location.get("country_code") != "GB" or not isinstance(location.get("evses"), list):
@@ -99,14 +107,19 @@ def normalize_uk_pcpr(payload: dict, *, artifact_sha256: str, source_id: str) ->
                 if (not isinstance(refs, list) or not isinstance(source_refs, list) or
                         not all(isinstance(ref, str) and ref in tariffs for ref in refs) or
                         not all(isinstance(ref, str) for ref in source_refs) or
-                        (not raw_unverified and sorted(refs) != sorted(source_refs)) or
-                        (raw_unverified and not set(refs).issubset(set(source_refs)))):
+                        not set(refs).issubset(set(source_refs)) or
+                        len(refs) != len(set(refs))):
                     raise ValueError("UK PCPR tariff reference invalid")
-                if raw_unverified:
-                    for ref in source_refs:
-                        if ref not in refs:
-                            result["unresolvedTariffRefs"].append({"connectorId": connector_id,
-                                                                    "sourceTariffKey": ref})
+                for ref in sorted(set(source_refs) - set(refs)):
+                    entry = unparsed.get((party, ref))
+                    reason = entry["reason"] if entry else "missing_or_ambiguous_exact_tariff"
+                    result["unresolvedTariffRefs"].append({"connectorId": connector_id,
+                                                          "sourceTariffKey": ref, "reason": reason})
+                    if entry and not raw_unverified:
+                        result["offers"].append({"id": key("GB", source_id, "offer", [party, location_id, uid, native, ref]),
+                            "channel": "Direct", "scope": {"evseId": evse_id, "connectorId": connector_id},
+                            "sourceTariffKey": ref, "rawOffer": entry["tariff"],
+                            "calculationStatus": "not_evaluated", "calculationHold": reason})
                 result["connectors"].append({"id": connector_id, "evseId": evse_id,
                                              "sourceConnectorId": native, "officialConnectorId": None,
                                              "plugType": connector.get("standard"),
@@ -119,7 +132,7 @@ def normalize_uk_pcpr(payload: dict, *, artifact_sha256: str, source_id: str) ->
                                               "sourceTariffKey": tariff_id, "rawOffer": tariffs[tariff_id],
                                               "calculationStatus": "not_evaluated"})
     result["cpos"] = sorted(cpos.values(), key=lambda row: row["id"])
-    if raw_unverified:
+    if result["unresolvedTariffRefs"]:
         result["unresolvedTariffRefs"].sort(key=lambda row: (row["connectorId"], row["sourceTariffKey"]))
     for section in ("stations", "evses", "connectors", "offers"):
         result[section].sort(key=lambda row: row["id"])

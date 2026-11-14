@@ -33,6 +33,8 @@ PROVIDERS = {
                   "id": "source-ev-uk-pcpr-direct"},
 }
 ALLOWED_COMPONENTS = {"ENERGY", "TIME", "PARKING_TIME", "FLAT"}
+SOURCE_EV_ARCHIVED_PAYG = {"GB*SGB_02": Decimal("0.89"),
+                           "GB*SGB_02_22Kw_AC": Decimal("0.54")}
 SUPPORTED_STANDARDS = {"IEC_62196_T2", "IEC_62196_T2_COMBO"}
 ALLOWED_RESTRICTIONS = {"start_time", "end_time", "day_of_week", "min_duration",
                         "max_duration", "min_power", "max_power", "start_date", "end_date"}
@@ -169,8 +171,7 @@ def make_tariff(raw, cfg=None):
                     # Source EV supplies a fractional 0.2 where OCPI expects a
                     # percentage. Only observed prices corroborated by the CPO
                     # PAYG page are supported; future prices fail closed.
-                    known = {"GB*SGB_02": Decimal("0.89"),
-                             "GB*SGB_02_22Kw_AC": Decimal("0.54")}
+                    known = SOURCE_EV_ARCHIVED_PAYG
                     expected = known.get(str(raw.get("id")))
                     if (not cfg or cfg.get("slug") != "source_ev" or
                         vat != Decimal("0.2") or expected is None or
@@ -192,6 +193,15 @@ def make_tariff(raw, cfg=None):
             component["tccVatOrigin"] = vat_origin
             component["price"] = float((price * (Decimal(1) + vat / 100)).quantize(Decimal("0.000001")))
             component["vat"] = None  # already included; do not charge again
+            # The independent historical Source EV audit requires these same
+            # PAYG references for *every* VAT encoding, not just fractional VAT.
+            # An unproven offer is retained raw; it cannot invalidate unrelated
+            # stations or silently become a newly approved supplier price.
+            if cfg and cfg.get("slug") == "source_ev":
+                expected = SOURCE_EV_ARCHIVED_PAYG.get(str(raw.get("id")))
+                if expected is None or (component["type"] == "ENERGY" and
+                        abs(Decimal(str(component["price"])) - expected) > Decimal("0.005")):
+                    return None, "historical_payg_evidence_mismatch"
     result["tccPriceBasis"] = "GBP_including_public_UK_VAT"
     result["tccSourcePriceBasis"] = "OCPI_2.2.1_excluding_VAT"
     return result, None
@@ -208,6 +218,7 @@ def stage(locations, tariffs, stamp, cfg):
     missing = set()
     safe_locs = []
     used = {}
+    unparsed = {}
     seen_locs, seen_connectors = set(), set()
     connector_count, priced_count = 0, 0
     for raw in locations:
@@ -267,6 +278,7 @@ def stage(locations, tariffs, stamp, cfg):
                         tariff, why = make_tariff(matches[0], cfg)
                         if why:
                             rejected[why] += 1
+                            unparsed[(key[0], key[1], ref)] = {"tariff": copy.deepcopy(matches[0]), "reason": why}
                         else:
                             used[(key[0], key[1], ref)] = tariff
                             verified.append(ref)
@@ -295,7 +307,8 @@ def stage(locations, tariffs, stamp, cfg):
         "integrationStatus": "cpo_direct_exact_connector_vat_inclusive_staged",
         "sources": [{"id": cfg["id"], "name": cfg["name"], "country": "GB",
                      "pricingScope": "cpo_direct_pcpr", "locations": safe_locs,
-                     "tariffs": [used[key] for key in sorted(used_keys)]}],
+                     "tariffs": [used[key] for key in sorted(used_keys)],
+                     "unparsedTariffs": [unparsed[key] for key in sorted(unparsed)]}],
     }
     report = {
         "country": "GB", "provider": cfg["name"], "collectedAt": stamp,

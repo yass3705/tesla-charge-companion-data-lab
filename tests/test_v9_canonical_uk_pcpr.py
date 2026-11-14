@@ -57,6 +57,16 @@ class UkPcprCanonicalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "connector id"):
             normalize_uk_pcpr(payload, artifact_sha256=sha, source_id=IDS[0])
 
+    def test_missing_unpriced_reference_does_not_discard_valid_topology(self):
+        payload, sha = self.fixture(IDS[0])
+        connector = payload["sources"][0]["locations"][0]["evses"][0]["connectors"][0]
+        connector["sourceTariffIds"] = ["missing-tariff"]
+        connector["tariff_ids"] = []
+        result = normalize_uk_pcpr(payload, artifact_sha256=sha, source_id=IDS[0])
+        self.assertEqual(len(result["stations"]), 1)
+        self.assertTrue(any(ref["sourceTariffKey"] == "missing-tariff" for ref in result["unresolvedTariffRefs"]))
+        self.assertFalse(any(offer["sourceTariffKey"] == "missing-tariff" for offer in result["offers"]))
+
     def test_eco_movement_keeps_unattributed_refs_out_of_offers(self):
         source_id = "GB:eco_movement_pcpr_raw"
         payload, sha, _ = read_route(BY_SOURCE[source_id], source_id)

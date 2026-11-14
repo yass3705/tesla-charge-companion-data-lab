@@ -32,13 +32,31 @@ class TestUkPcpr(unittest.TestCase):
     def test_each_operator_priced_only_with_exact_connector(self):
         for key, name in (("allego_uk", "Allego UK"), ("source_ev", "Source-EV")):
             with self.subTest(key=key):
-                result, audit = module.stage([location(name)], [tariff()], "now", module.provider(key))
+                tid = "GB*SGB_02" if key == "source_ev" else "T1"
+                raw = tariff(tid)
+                if key == "source_ev":
+                    raw["elements"][0]["price_components"][0]["price"] = 0.7417
+                result, audit = module.stage([location(name, [tid])], [raw], "now", module.provider(key))
                 self.assertEqual(audit["pricedExactConnectors"], 1)
                 self.assertFalse(audit["publishedToV9"])
                 source = result["sources"][0]
-                self.assertEqual(source["locations"][0]["evses"][0]["connectors"][0]["tariff_ids"], ["T1"])
-                self.assertEqual(source["tariffs"][0]["elements"][0]["price_components"][0]["price"], 0.6)
+                self.assertEqual(source["locations"][0]["evses"][0]["connectors"][0]["tariff_ids"], [tid])
+                self.assertAlmostEqual(source["tariffs"][0]["elements"][0]["price_components"][0]["price"],
+                                       0.89004 if key == "source_ev" else 0.6)
                 self.assertIsNone(source["tariffs"][0]["elements"][0]["price_components"][0]["vat"])
+
+    def test_changed_source_ev_price_is_preserved_raw_not_approved(self):
+        raw = tariff("GB*SGB_02")
+        raw["elements"][0]["price_components"][0].update(price=0.5, vat=20)
+        result, audit = module.stage([location("Source EV", [raw["id"]])], [raw], "now", module.provider("source_ev"))
+        source = result["sources"][0]
+        self.assertEqual(audit["publicConnectors"], 1)
+        self.assertEqual(audit["pricedExactConnectors"], 0)
+        self.assertEqual(source["tariffs"], [])
+        self.assertEqual(source["unparsedTariffs"], [{"tariff": raw, "reason": "historical_payg_evidence_mismatch"}])
+        connector = source["locations"][0]["evses"][0]["connectors"][0]
+        self.assertEqual(connector["sourceTariffIds"], [raw["id"]])
+        self.assertEqual(connector["tariff_ids"], [])
 
     def test_different_operator_never_published(self):
         for key in module.PROVIDERS:

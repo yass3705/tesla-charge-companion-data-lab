@@ -59,6 +59,48 @@ class UKPCPRMigrationTests(unittest.TestCase):
                 self.assertEqual(artifact["status"], "ok")
                 self.assertEqual(len(artifact["files"]), 4)
 
+    def test_changed_price_keeps_station_and_raw_offer_through_historical_audit(self):
+        import gzip
+        import hashlib
+        from v9_rebuild.canonical_uk_pcpr import normalize_uk_pcpr
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"SOURCE_EV_PCPR_TOKEN": "offline-fixture"}):
+            root = Path(temp)
+            payload = fixture("source_ev")
+            payload["tariffs"][0]["elements"][0]["price_components"][0].update(price=0.5, vat=20)
+            path = root / "fixture.json"
+            path.write_text(json.dumps(payload))
+            run(root / "out", "source_ev", fixture=path)
+            doc = validate_output(root / "out", "source_ev")
+            staged = root / "out" / paths("source_ev")[1]
+            canonical = normalize_uk_pcpr(doc, artifact_sha256=hashlib.sha256(staged.read_bytes()).hexdigest(),
+                                         source_id="GB:source_ev_pcpr_direct")
+            self.assertEqual(len(canonical["stations"]), 1)
+            self.assertEqual(len(canonical["connectors"]), 1)
+            self.assertEqual(len(canonical["offers"]), 1)
+            self.assertEqual(canonical["offers"][0]["rawOffer"], payload["tariffs"][0])
+            self.assertEqual(canonical["offers"][0]["calculationHold"], "historical_payg_evidence_mismatch")
+            self.assertEqual(canonical["tariffCatalog"], {})
+            self.assertEqual(len(canonical["unresolvedTariffRefs"]), 1)
+
+    def test_failed_audit_preserves_raw_outside_objects_and_last_good(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"SOURCE_EV_PCPR_TOKEN": "offline-fixture"}):
+            root = Path(temp)
+            spec = next(row for row in read_sources() if row["id"] == "GB:source_ev_pcpr")
+            def outer(command, **kwargs):
+                out = Path(command[command.index("--out") + 1])
+                raw = out / paths("source_ev")[0]
+                raw.parent.mkdir(parents=True, exist_ok=True)
+                raw.write_bytes(b"quarantined-invalid-gzip")
+                (out / "private.log").write_text("not an allowed diagnostic")
+                return SimpleNamespace(returncode=1, stdout="", stderr="AssertionError: fixture")
+            result = run_source(spec, root / "artifacts", runner=outer, attempts=1)
+            failure = root / "artifacts/failures/GB_source_ev_pcpr/attempt-1/unvalidated-output"
+            self.assertEqual((failure / paths("source_ev")[0]).read_bytes(), b"quarantined-invalid-gzip")
+            self.assertFalse((failure / "private.log").exists())
+            self.assertIsNone(result.get("artifact"))
+            self.assertEqual(list((root / "artifacts/objects/GB_source_ev_pcpr").iterdir()), [])
+            self.assertFalse((root / "artifacts/checkpoints/GB_source_ev_pcpr").exists())
+
     def test_empty_and_wrong_operator_are_distinct(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ALLEGO_UK_PCPR_TOKEN": "offline-fixture"}):
             root = Path(temp)

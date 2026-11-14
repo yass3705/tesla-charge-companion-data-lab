@@ -1175,6 +1175,16 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                             target = failure_dir / "unvalidated-output" / relative
                             target.parent.mkdir(parents=True, exist_ok=True)
                             shutil.copyfile(path, target)
+                if uk_pcpr_module:
+                    # Only known public data outputs; no process environment or
+                    # raw logs. Failed audits must not destroy acquired evidence.
+                    from v9_rebuild.uk_pcpr import paths as pcpr_paths
+                    for relative in pcpr_paths(spec["provider"]):
+                        path = staged / relative
+                        if path.is_file() and not path.is_symlink():
+                            target = failure_dir / "unvalidated-output" / relative
+                            target.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copyfile(path, target)
                 reason = "collector_exit_nonzero"
                 if checkpoint_module and (output.is_file() or status_module or (waat_monta_module and any((staged / f"data/shards/waat_monta_shard_{index}.json.gz").is_file() for index in range(4)))):
                     from v9_rebuild.electroverse import validate_state
