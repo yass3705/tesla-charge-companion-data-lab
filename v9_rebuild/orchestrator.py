@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -37,6 +38,52 @@ def safe_relative(raw: str) -> Path:
     if path.is_absolute() or not path.parts or ".." in path.parts:
         raise ValueError(f"Unsafe registry path: {raw}")
     return path
+
+
+def run_isolated_process(command, *, timeout, check=False, capture_output=True, **kwargs):
+    """Stop descendants before examining a timed-out collector's checkpoint."""
+    if check or not capture_output:
+        raise ValueError("Collector runner requires captured, explicitly checked output")
+    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          start_new_session=True, **kwargs) as process:
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            def stop(sig):
+                try:
+                    os.killpg(process.pid, sig)
+                except ProcessLookupError:
+                    pass
+            stop(signal.SIGTERM)
+            try:
+                stdout, stderr = process.communicate(timeout=1)
+            except subprocess.TimeoutExpired:
+                stop(signal.SIGKILL)
+                stdout, stderr = process.communicate()
+            finally:
+                # A descendant may have closed its inherited pipes but still
+                # be writing files. No process in the group may survive.
+                stop(signal.SIGKILL)
+            raise subprocess.TimeoutExpired(command, timeout, output=stdout, stderr=stderr)
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def retain_checkpoint(staged: Path, checkpoint: Path, module: str) -> Path:
+    from v9_rebuild.electroverse import validate_state
+    from v9_rebuild.electroverse_status import validate_partial
+    from v9_rebuild.waat_monta_sharded import validate_checkpoint
+    if module == "electroverse_status":
+        validate_partial(staged)
+    elif module == "waat_monta_sharded":
+        validate_checkpoint(staged)
+    else:
+        validate_state(staged, require_complete=False)
+    if staged != checkpoint:
+        checkpoint.parent.mkdir(parents=True, exist_ok=True)
+        if checkpoint.exists():
+            raise ValueError("Another checkpoint already exists; refusing overwrite")
+        staged.rename(checkpoint)
+    return checkpoint
 
 
 def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
@@ -800,6 +847,11 @@ def validate_isolated_script_output(spec: dict, output: Path) -> bool:
 
 def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int = 2, timeout_s: int = 2400, runner=subprocess.run) -> dict:
     source_id = spec["id"]
+    if spec.get("renewal_block"):
+        # A provider-side scope failure cannot be repaired by repeated requests.
+        # Keep the method and its unverified handoff, but do not touch last-good.
+        return {"source": source_id, "status": "failed", "reason": "documented_provider_block",
+                "block": spec["renewal_block"], "attempts": 0}
     missing = [name for name in spec["secret_names"] if not os.environ.get(name)]
     if missing:
         return {"source": source_id, "status": "failed", "reason": "missing_required_secret", "missing_secret_names": missing}
@@ -1147,7 +1199,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 # The historical collector writes its progress report under
                 # docs/, which exists in Git but not in an empty isolated cwd.
                 (staged / "docs").mkdir(parents=True, exist_ok=True)
-            completed = runner(command, cwd=staged if spec["module"] == "belgium_nap" else root,
+            execute = run_isolated_process if runner is subprocess.run else runner
+            completed = execute(command, cwd=staged if spec["module"] == "belgium_nap" else root,
                                env=process_env, capture_output=True, text=True,
                                timeout=timeout_s, check=False)
             output = staged / spec["output_file"]
@@ -1187,17 +1240,8 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                             shutil.copyfile(path, target)
                 reason = "collector_exit_nonzero"
                 if checkpoint_module and (output.is_file() or status_module or (waat_monta_module and any((staged / f"data/shards/waat_monta_shard_{index}.json.gz").is_file() for index in range(4)))):
-                    from v9_rebuild.electroverse import validate_state
-                    from v9_rebuild.electroverse_status import validate_partial
-                    from v9_rebuild.waat_monta_sharded import validate_checkpoint
                     try:
-                        validate_checkpoint(staged) if waat_monta_module else validate_partial(staged) if status_module else validate_state(staged, require_complete=False)
-                        if staged != checkpoint:
-                            checkpoint.parent.mkdir(parents=True, exist_ok=True)
-                            if checkpoint.exists():
-                                shutil.rmtree(checkpoint)
-                            staged.rename(checkpoint)
-                            staged = checkpoint
+                        staged = retain_checkpoint(staged, checkpoint, spec["module"])
                     except (OSError, ValueError, KeyError, TypeError):
                         reason = "collector_checkpoint_invalid"
                 continue
@@ -1817,6 +1861,11 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
             }
         except subprocess.TimeoutExpired:
             reason = "collector_timeout"
+            if checkpoint_module:
+                try:
+                    staged = retain_checkpoint(staged, checkpoint, spec["module"])
+                except (OSError, ValueError, KeyError, TypeError):
+                    reason = "collector_timeout_checkpoint_invalid"
         finally:
             if staged.exists() and staged.name.startswith("attempt-"):
                 if belib_module and (staged / "reports/belib/latest_diagnostic.json").is_file():

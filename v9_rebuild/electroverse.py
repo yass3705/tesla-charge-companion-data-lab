@@ -119,6 +119,29 @@ def write_json(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def validate_daily_inventory(out: Path) -> None:
+    """A carried-forward tile is a checkpoint, never a complete acquisition."""
+    report = read_json(out / REPORTS / "daily-delta.json")
+    snapshot = read_json(out / INVENTORY / "france-current.json")
+    tiles, failures = snapshot.get("tiles"), report.get("failedTiles")
+    if (not isinstance(tiles, dict) or not isinstance(failures, list)
+            or report.get("tileCount") != len(tiles)
+            or snapshot.get("tileCount") != len(tiles)
+            or report.get("failedTileCount") != len(failures)
+            or not report.get("generatedAt")
+            or report["generatedAt"] != snapshot.get("generatedAt")
+            or any(not isinstance(tile, dict) or not isinstance(tile.get("ids"), list)
+                   for tile in tiles.values())):
+        raise ValueError("Electroverse daily inventory contract invalid")
+    if failures or any(tile.get("carriedForward") for tile in tiles.values()):
+        raise IncompleteCollection("Electroverse inventory has unresolved tiles")
+    ids = set(str(pk) for tile in tiles.values() for pk in tile["ids"])
+    if (not isinstance(snapshot.get("allIds"), list)
+            or len(snapshot["allIds"]) != len(ids)
+            or set(snapshot["allIds"]) != ids or report.get("inventoryCount") != len(ids)):
+        raise ValueError("Electroverse inventory IDs disagree with its tiles")
+
+
 def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None,
         runner=subprocess.run, chunk_size: int = CHUNK_SIZE, max_chunks: int | None = None) -> None:
     if mode not in {"daily", "full"} or chunk_size < 1 or (max_chunks is not None and max_chunks < 1):
@@ -141,6 +164,7 @@ def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None
         if not checkpoint.get("pending"):
             if run_script("electroverse_daily_delta_selector.mjs", out, env, runner):
                 raise IncompleteCollection("Daily selector failed")
+            validate_daily_inventory(out)
             selection = read_json(out / REPORTS / "incremental-selection.json")
             if not isinstance(selection.get("selected"), list):
                 raise ValueError("Daily selection contract invalid")

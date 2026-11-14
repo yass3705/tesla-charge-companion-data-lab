@@ -4,13 +4,14 @@ import os
 import tempfile
 import subprocess
 import sys
+import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from v9_rebuild.orchestrator import ROOT, read_sources, run_batch, run_source
+from v9_rebuild.orchestrator import ROOT, read_sources, run_batch, run_source, run_isolated_process
 from v9_rebuild.electroverse import IncompleteCollection, run as run_electroverse, validate_state as validate_electroverse
 from tests.test_v9_electroverse import SimulatedCollector, fixture
 from tests.test_v9_electroverse_status import fixture as status_fixture, part as status_part
@@ -284,6 +285,46 @@ raise SystemExit(m.main())
             self.assertEqual(calls, 2)
             self.assertEqual(validate_partial(out / "checkpoints/FR_electroverse_status")["verified_locations"], 1)
             self.assertFalse(list((out / "objects/FR_electroverse_status").glob("[0-9a-f]" * 64)))
+
+    def test_timeout_retains_valid_status_checkpoint_and_resumes(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
+            out = Path(temp) / "artifacts"
+            calls = 0
+            def interrupted(command, **kwargs):
+                nonlocal calls
+                calls += 1
+                staged = Path(command[command.index("--out") + 1])
+                if calls == 1:
+                    status_fixture(staged, [])
+                    from tests.test_v9_electroverse import save
+                    save(part_path(staged, 0), status_part(0, cache_fingerprint(staged),
+                         {"A": {"EVSE-A": "AVAILABLE"}}, expected=2))
+                    raise subprocess.TimeoutExpired(command, 1)
+                self.assertEqual(validate_partial(staged)["verified_locations"], 1)
+                return SimpleNamespace(returncode=2)
+            first = run_source(self.electroverse_status, out, attempts=1, runner=interrupted)
+            self.assertEqual(first["reason"], "collector_timeout")
+            self.assertEqual(validate_partial(out / "checkpoints/FR_electroverse_status")["verified_locations"], 1)
+            second = run_source(self.electroverse_status, out, attempts=1, runner=interrupted)
+            self.assertEqual(second["reason"], "collector_exit_nonzero")
+            self.assertEqual(calls, 2)
+            self.assertFalse(any(p.is_file() for p in (out / "objects").rglob("*")))
+
+    def test_timeout_stops_descendant_before_checkpoint_inspection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            marker = Path(temp) / "writes.txt"
+            child = ("import signal,time,pathlib; signal.signal(signal.SIGTERM,signal.SIG_IGN); "
+                     f"p=pathlib.Path({str(marker)!r}); "
+                     "exec(\"while True:\\n with p.open('a') as f: f.write('x')\\n time.sleep(.03)\")")
+            parent = ("import subprocess,sys,time; "
+                      f"subprocess.Popen([sys.executable,'-c',{child!r}],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); "
+                      "time.sleep(60)")
+            with self.assertRaises(subprocess.TimeoutExpired):
+                run_isolated_process([sys.executable, "-c", parent], timeout=1, text=True)
+            self.assertTrue(marker.exists())
+            size = marker.stat().st_size
+            time.sleep(.2)
+            self.assertEqual(marker.stat().st_size, size)
 
 
 if __name__ == "__main__":

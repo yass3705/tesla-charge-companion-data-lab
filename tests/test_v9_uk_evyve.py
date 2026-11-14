@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 from v9_rebuild.orchestrator import read_sources, run_source
 from v9_rebuild.uk_evyve import REPORT, run, validate_output
@@ -31,6 +31,20 @@ def fixture(*, empty=False, wrong=False):
 
 
 class EvyveMigrationTests(unittest.TestCase):
+    def test_documented_provider_block_prevents_retries_without_touching_last_good(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            previous = out / "last-good.json"
+            previous.write_bytes(b'{"preserved":true}')
+            runner = Mock(side_effect=AssertionError("No provider call is authorized by a retry"))
+            spec = next(row for row in read_sources() if row["id"] == "GB:evyve_pcpr")
+            result = run_source(spec, out, runner=runner)
+            self.assertEqual(result["reason"], "documented_provider_block")
+            self.assertEqual(result["attempts"], 0)
+            self.assertEqual(list(out.iterdir()), [previous])
+            self.assertEqual(previous.read_bytes(), b'{"preserved":true}')
+            runner.assert_not_called()
+
     def test_budget_shared_across_endpoints_and_retries(self):
         from v9_rebuild.uk_blink import load_script
         from v9_rebuild.electroverse import ROOT
@@ -66,6 +80,8 @@ class EvyveMigrationTests(unittest.TestCase):
             self.assertEqual(connectors[0]["tariff_ids"], ["T1"])
             self.assertEqual(connectors[1]["tariff_ids"], [])
             spec = next(row for row in read_sources() if row["id"] == "GB:evyve_pcpr")
+            # This isolated fixture proves code behavior, not corrected live access.
+            spec = {k: v for k, v in spec.items() if k != "renewal_block"}
             def outer(command, **kwargs):
                 run(Path(command[command.index("--out") + 1]), fixture=source)
                 return SimpleNamespace(returncode=0)

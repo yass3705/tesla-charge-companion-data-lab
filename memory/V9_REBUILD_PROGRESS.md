@@ -1,3 +1,19 @@
+## 14 novembre — reprise sécurisée après timeout et candidat groupé validé localement
+
+Le runner de collecte arrête le groupe de processus avant de vérifier les checkpoints. Les checkpoints techniquement valides survivent au timeout et sont repris ; aucun état incomplet n’est promu. 18 tests d’orchestrateur PASS, dont arrêt réel d’un descendant et reprise simulée de partition ; cette nouvelle branche timeout n’est pas encore éprouvée sur GitHub. Garde nominatif Evyve : aucun nouvel appel ni accès au last-good tant que le périmètre fournisseur n’est pas corrigé (5 tests PASS).
+
+Candidat groupé c49ade5f : 24 parcours tarifaires Firefox, 11 recherches/neuf pays, contrôles G9/mobile, hébergement et scan différentiel PASS localement. Le correctif Production conserve les métadonnées des deux offres lors d’une fusion exactement équivalente, sans changement de prix/portée. Le brouillon distant reste 6af855c4/b87a89b7, intact et vérifié ; le nouveau candidat n’est pas déployé. Preuves Production docs/v9-rebuild/evidence/restoration-20261114/grouped-local.
+
+26 handoffs complets prouvés, 109 ouverts ; G2–G8 FAIL. Inventaire Electroverse daily sécurisé : tuiles échouées/reportées et compteurs internes incohérents bloquent la promotion ; reprise testée,29 tests ciblés PASS. Prochaine opération : renouveler le cache tarifaire par chunks historiques avant toute reconstruction des 16 partitions de statuts ; tester le runner corrigé dans le pilote borné, sans activation permanente. Préserver les bundles/paquets de rollback.
+
+## 14 novembre — Fastned / EnergyVision transmis ; Evyve bloqué par le périmètre fournisseur
+
+Run43597937731 globalFAIL : jobsFastnedFR/GB etEnergyVisionBE réussis, ZIP/manifeste/SHA/contrats réellement vérifiés.26handoffs prouvés et109ouverts ; aucun de ces deux artefacts n’est encore normalisé/importé/servi. EnergyVision reste explicitement non publiable en prix selon son contrat. Actions fermé, zéroworkflow actif,main inchangé.
+
+Evyve échoue sur le garde de périmètre du collecteur (ligne232) : flux non vide sans opérateurEvyve. Ce blocage fournisseur était déjà documenté en octobre ; les noms d’opérateur de cette nouvelle réponse ne sont pas conservés. Aucun nouvel essai avant confirmation de périmètre corrigé, aucun fauxsite/prix ni déclassementN/A. Exception nominative evyve-scope-block.json. Correction du budget partagé28requêtes et tests de garde conservés.
+
+Candidat local groupé en préparation : bundlec49ade5f, seules OZECAR/IZIVIA/SourceEV changent parmi33sources. Chemin site-grouped-renewed-20261114 ; préparation et recette via resume-20261114/grouped-checkpoint-renewal. Production corrige une perte de provenance lors de fusion d’offres exactement équivalentes, trois suites de portée/classement PASS ; correction pas encore servie. Nouveau test navigateur distingue SourceEV AC prouvé etDC hors preuve. Brouillon distant vérifié6af855c4 inchangé. G2–G8 FAILglobal.
+
 ## 14 novembre — familles indépendantes préparées, aucun succès anticipé
 
 Fastned FR/GB, EnergyVision BE et Evyve UK réutilisent leurs méthodes historiques avec dépendances et secrets limités par job. Evyve partage désormais le budget28requêtes entre locations,tarifs et retries (même correction technique que Blink) ; test du dernier appel et429 PASS, aucune modification de prix/pagination.8tests de modules PASS ; validateur de transfert étendu aux trois contrats. EnergyVision reste non tarifable selon sa preuve historique ; un transfert réussi ne changera pas cette restriction. Contrôleur shared-public-renewal/run-pilot.py borné et réversible ; préparation seulement.

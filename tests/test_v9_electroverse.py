@@ -43,6 +43,10 @@ class SimulatedCollector:
         if name == "electroverse_daily_delta_selector.mjs":
             pks = [row["electroverseLocationPk"] for row in read_json(cwd / MAPPING)["mappings"]]
             save(cwd / REPORTS / "incremental-selection.json", {"selectedCount": len(pks), "selected": [{"pk": pk} for pk in pks]})
+            save(cwd / REPORTS / "daily-delta.json", {"generatedAt": "fixture", "tileCount": 1,
+                 "failedTiles": [], "failedTileCount": 0, "inventoryCount": len(pks)})
+            save(cwd / "data/electroverse/inventory/france-current.json", {"generatedAt": "fixture",
+                 "tileCount": 1, "tiles": {"9/1/1": {"ids": pks}}, "allIds": pks})
             return SimpleNamespace(returncode=0)
         self.selections.append([str(row["pk"]) for row in read_json(cwd / REPORTS / "incremental-selection.json")["selected"]])
         failed = []
@@ -67,6 +71,45 @@ class SimulatedCollector:
 
 
 class ElectroverseTests(unittest.TestCase):
+    def test_daily_partial_tiles_never_refresh_or_promote_and_can_retry(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
+            source, out = Path(temp) / "source", Path(temp) / "out"
+            fixture(source, ["a"])
+            collector = SimulatedCollector()
+            def partial(command, **kwargs):
+                result = collector(command, **kwargs)
+                cwd = Path(kwargs["cwd"])
+                if Path(command[-1]).name == "electroverse_daily_delta_selector.mjs":
+                    report = read_json(cwd / REPORTS / "daily-delta.json")
+                    report.update(failedTileCount=1, failedTiles=[{"tile": "9/1/1", "error": "HTTP 503"}])
+                    save(cwd / REPORTS / "daily-delta.json", report)
+                return result
+            with self.assertRaisesRegex(IncompleteCollection, "unresolved tiles"):
+                run(out, "daily", source=source, runner=partial)
+            self.assertEqual(collector.selections, [])
+            self.assertEqual(validate_state(out, require_complete=False)["totalStations"], 0)
+            run(out, "daily", source=source, runner=collector)
+            self.assertEqual(collector.selections, [["a"]])
+
+    def test_daily_inventory_internal_counts_and_carried_forward_are_checked(self):
+        from v9_rebuild.electroverse import validate_daily_inventory
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            fixture(out, ["a"])
+            SimulatedCollector()(["node", "electroverse_daily_delta_selector.mjs"], cwd=out)
+            validate_daily_inventory(out)
+            snapshot_path = out / "data/electroverse/inventory/france-current.json"
+            snapshot = read_json(snapshot_path)
+            snapshot["tiles"]["9/1/1"]["carriedForward"] = True
+            save(snapshot_path, snapshot)
+            with self.assertRaises(IncompleteCollection):
+                validate_daily_inventory(out)
+            del snapshot["tiles"]["9/1/1"]["carriedForward"]
+            snapshot["allIds"] = []
+            save(snapshot_path, snapshot)
+            with self.assertRaises(ValueError):
+                validate_daily_inventory(out)
+
     def test_full_chunk_budget_keeps_checkpoint_until_final_chunk(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
             source, out = Path(temp) / "source", Path(temp) / "out"
