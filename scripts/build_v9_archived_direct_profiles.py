@@ -8,12 +8,15 @@ from scripts.build_v9_archived_emsp import identity,sha
 from v9_rebuild.canonical import key,validate
 FAMILIES=('zewatt','zephyre')
 
-def replay(family,work):
+def replay(family,work,*,artifact_root=None):
  work=work.resolve()
  if family not in FAMILIES:raise ValueError('Unknown archived compiler')
  script=ROOT/f'scripts/{family}/compile_{family}_v9_offers.mjs'
- source=ROOT/f'data/{family}/france/current/{family}.json.gz'
- compiled=ROOT/f'v9-production-runtime/data/v9/france-{family}-offers.json'
+ # Renewed inputs may come from a verified immutable handoff. Always execute
+ # the preserved repository compiler, never code supplied by the artifact.
+ inputs=Path(artifact_root).resolve() if artifact_root is not None else ROOT
+ source=inputs/f'data/{family}/france/current/{family}.json.gz'
+ compiled=inputs/f'v9-production-runtime/data/v9/france-{family}-offers.json'
  target=work/(family+'.json')
  subprocess.run(['node',str(script),'--snapshot',str(source),'--out',str(target)],cwd=work,check=True,capture_output=True)
  old=json.loads(compiled.read_bytes());new=json.loads(target.read_bytes())
@@ -62,12 +65,14 @@ def normalize(national,archives,provenance):
              'rejectionCounts':dict(collections.Counter(r['reason'] for r in rejections)),'rejections':rejections,'provenance':provenance,'providerRequests':0}
 
 if __name__=='__main__':
- p=argparse.ArgumentParser();p.add_argument('--national',type=Path,required=True);p.add_argument('--out',type=Path,required=True);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--national',type=Path,required=True);p.add_argument('--out',type=Path,required=True)
+ for f in FAMILIES:p.add_argument('--'+f+'-artifact-root',type=Path)
+ a=p.parse_args()
  if a.out.exists() or ROOT==a.out.resolve() or ROOT in a.out.resolve().parents:raise ValueError('New isolated output required')
  a.out.parent.mkdir(parents=True,exist_ok=True)
  with tempfile.TemporaryDirectory(dir=a.out.parent) as t:
   archives={};proof={}
-  for f in FAMILIES:archives[f],proof[f]=replay(f,Path(t))
+  for f in FAMILIES:archives[f],proof[f]=replay(f,Path(t),artifact_root=getattr(a,f+'_artifact_root'))
   out,report=normalize(json.loads(a.national.read_bytes()),archives,proof)
   a.out.mkdir();target=a.out/'FR__archived_direct_exact.json';target.write_text(json.dumps(out,sort_keys=True,separators=(',',':'),ensure_ascii=False)+'\n')
   report['canonicalSha256']=sha(target.read_bytes());(a.out/'report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps({k:v for k,v in report.items() if k!='rejections'}))

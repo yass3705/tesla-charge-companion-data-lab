@@ -1,3 +1,13 @@
+## 14 novembre — renouvellement Zephyre / Ze-Watt vérifié, alimentation nationale exacte
+
+Pilote 43594190154 / HEAD f8c14d4e2 : deux acquisitions réussies, ZIP, manifestes, SHA et contrats vérifiés après fermeture. Actions désactivé, zéro workflow actif, main c7204b3ef inchangé. 21 transferts prouvés, 114 encore ouverts ; G2–G8 restent FAIL globalement.
+
+Les compilateurs historiques sont rejoués hors checkout sur chaque artefact renouvelé, avec égalité des sorties hors horodatage de compilation. Six tests incluant altération de tarif et refus d’exécuter du code d’artefact PASS. Canonique Direct 2ba80dfc7d0a33d2e9d7a7f314842c21c9b2a1f4cbff1fd698c7de59045ea85c : 928 offres exactement attribuées à l’IRVE, 11 identités absentes conservées dans le rapport de rejet, aucun site CPO ajouté. Compteurs diagnostiques uniquement. Preuves docs/v9-rebuild/evidence/restoration-20261114/fr-direct-* et reçus nominatifs.
+
+Candidat UK 8fd3c1b2 : 23 parcours Firefox, 11 recherches ordinaires/neuf pays, G9 ordinateur/mobile, pagination20/+20 et hébergement PASS localement. Runtime exact d97e420. Pas encore déployé. Regroupement des nouvelles acquisitions FR/UK en cours dans resume-20261114/fr-direct-renewal ; préserver les derniers Netlify et bundles.
+
+Prochaine opération : terminer build/prepare/validate-candidate.py de ce dossier, vérifier import Production et recette distante globale si conforme. Source EV corrigé doit attendre12:46UTC pour un nouvel essai borné ; Ubitricity UK reste attente fournisseur, REVE utiliseMAPA_REVE_API_KEY et Atlante le bootstrap historique sans secret utilisateur. Latence Amsterdam toujours ouverte.
+
 ## 14 novembre — renouvellement Direct France borné préparé
 
 Zephyre/Ze-Watt : collecteurs et compilateurs historiques exacts, quatre requêtes concurrentes, sans secret ni nouvelle investigation.10tests de méthode/transfertPASS. Pilote commun deuxjobs,mainneutraliséet1207archivesrestaurablesrecontrôlés,Actionsdésactivéàlapréparation. Driver resume-20261114/fr-direct-renewal/run-fr-pilot.py fermeActionsdansfinally. Aucun succès revendiquéavantreçus. GB33bundleenrecettelocaleindépendante, pasdenouveauNetlifyparsource.
