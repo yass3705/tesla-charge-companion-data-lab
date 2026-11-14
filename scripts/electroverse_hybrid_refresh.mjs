@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { DirectElectroverseClient, aliasBatchQuery, SINGLE_LOCATION_QUERY, PAGED_LOCATION_QUERY } from './lib/electroverse_direct_client.mjs';
+import { completeLocation } from './lib/electroverse_response_integrity.mjs';
 
 const API_KEY=process.env.ELECTROVERSE_API_KEY;
 const BATCH_SIZE=Number(process.env.ELECTROVERSE_BATCH_SIZE||5);
@@ -80,24 +81,27 @@ async function fetchSingle(pk){
   for(let attempt=1;attempt<=2;attempt++){
     if(attempt>1)await sleep(5000);
     last=await fallbackPaced(SINGLE_LOCATION_QUERY,{pk});
-    const loc=last.json?.data?.chargingLocation||null;if(loc)return{loc,mode:'single',attempts:attempt};
+    const loc=completeLocation(last,'chargingLocation',pk);if(loc)return{loc,mode:'single',attempts:attempt};
   }
   return{loc:null,last};
 }
 async function fetchPaged(pk){
-  const edges=[];let after=null,meta=null,lastCursor=null,pages=0;
+  const edges=[],cursors=new Set(),evseIds=new Set();let after=null,meta=null,pages=0;
   for(let page=1;page<=500;page++){
     pages=page;let loc=null,last=null;
     for(let attempt=1;attempt<=3&&!loc;attempt++){
       if(attempt>1)await sleep(4000*attempt);
       last=await fallbackPaced(PAGED_LOCATION_QUERY,{pk,first:5,after});
-      loc=last.json?.data?.chargingLocation||null;
+      loc=completeLocation(last,'chargingLocation',pk,{paged:true});
     }
     if(!loc?.evses)return{loc:null,pages,last};
-    meta??=loc;edges.push(...(loc.evses.edges||[]));const pi=loc.evses.pageInfo||{};
+    for(const edge of loc.evses.edges){
+      if(edge.node.pk!=null){const id=String(edge.node.pk);if(evseIds.has(id))return{loc:null,pages,error:'duplicate_evse_across_pages'};evseIds.add(id);}
+    }
+    meta??=loc;edges.push(...loc.evses.edges);const pi=loc.evses.pageInfo;
     if(!pi.hasNextPage)return{loc:{...meta,evses:{edges,pageInfo:pi}},pages,mode:'paged'};
-    if(!pi.endCursor||pi.endCursor===lastCursor)return{loc:null,pages,error:'cursor_not_advancing'};
-    lastCursor=pi.endCursor;after=pi.endCursor;
+    if(cursors.has(pi.endCursor))return{loc:null,pages,error:'cursor_not_advancing'};
+    cursors.add(pi.endCursor);after=pi.endCursor;
   }
   return{loc:null,pages,error:'page_limit'};
 }
@@ -113,9 +117,8 @@ for(let i=0;i<groups.length;i+=CONCURRENCY){
   const rs=await Promise.all(wave.map(async g=>{
     requests++;batchRequests++;
     const r=await client.request(aliasBatchQuery(g),{}, {attempts:1});
-    const data=r.json?.data||{};
     for(let k=0;k<g.length;k++){
-      const loc=data['s'+k]||null;
+      const loc=completeLocation(r,'s'+k,g[k]);
       if(loc)applyLocation(g[k],loc,'batch',null);else fallbackPks.push(g[k]);
     }
     return {status:r.status,errors:r.json?.errors?.length||0};

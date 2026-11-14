@@ -14,6 +14,23 @@ def artifact(kind: str, run_id: int, created: str, *, branch: str = "rebuild/v9-
 
 
 class ArtifactSelectionTests(unittest.TestCase):
+    def test_status_selects_tariffs_independently_of_its_checkpoint(self):
+        full = artifact("collection", 41, "2026-11-14T01:00:00Z")
+        checkpoint = {**artifact("checkpoints", 42, "2026-11-14T02:00:00Z"),
+                      "name": "tcc-v9-checkpoints-FR_electroverse_status"}
+        wrong = {**full, "workflow_run": {"id": 99, "head_branch": "main"},
+                 "created_at": "2026-11-14T03:00:00Z"}
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "output"
+            args = ["selector", "--repo", "owner/data-lab", "--branch", "rebuild/v9-20261020",
+                    "--source", "FR:electroverse_status", "--github-output", str(output)]
+            with patch("sys.argv", args), patch.dict("os.environ", {"GH_TOKEN": "fixture-token"}), \
+                 patch("v9_rebuild.artifact_selection.fetch", return_value=[full, wrong, checkpoint]), patch("builtins.print"):
+                main()
+            self.assertIn("tariff_run_id=41\n", output.read_text())
+            self.assertIn("checkpoint_run_id=42\n", output.read_text())
+            self.assertIn("state_run_id=\n", output.read_text())
+
     def test_swisscharge_restores_newer_checkpoint_from_same_branch(self):
         state = {**artifact("collection", 101, "2026-10-22T00:00:00Z"),
                  "name": "tcc-v9-collection-CH_swisscharge_full"}

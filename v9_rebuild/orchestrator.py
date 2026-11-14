@@ -86,6 +86,37 @@ def retain_checkpoint(staged: Path, checkpoint: Path, module: str) -> Path:
     return checkpoint
 
 
+def status_tariff_dependency(out_root: Path, checkpoint: Path, previous_state: Path | None) -> Path | None:
+    """Use the separate validated tariff generation, retaining older checkpoints.
+
+    Direct offline module use may still explicitly replay the archived baseline.
+    The shared Actions workflow requires this dependency before acquisition.
+    """
+    dependencies = out_root / "input_dependencies"
+    if not dependencies.exists():
+        return previous_state
+    candidates = [(source, dependencies / source.replace(":", "_"))
+                  for source in ("FR:electroverse_daily", "FR:electroverse_full")]
+    candidates = [(source, folder) for source, folder in candidates if folder.is_dir()]
+    if len(candidates) != 1:
+        raise ValueError("Exactly one validated tariff dependency required for statuses")
+    tariff = validated_dependency(candidates[0][1], candidates[0][0], "electroverse")
+    from v9_rebuild.electroverse_status import cache_fingerprint, validate_partial
+    fingerprint = cache_fingerprint(tariff)
+    if checkpoint.exists():
+        prior = validate_partial(checkpoint)
+        if prior["fingerprint"] != fingerprint:
+            digest, _ = artifact_digest(checkpoint)
+            archived = out_root / "checkpoint_history/FR_electroverse_status" / digest
+            archived.parent.mkdir(parents=True, exist_ok=True)
+            if archived.exists():
+                raise ValueError("Prior status checkpoint archive already exists; refusing overwrite")
+            checkpoint.rename(archived)
+    if previous_state is not None and cache_fingerprint(previous_state) == fingerprint:
+        return previous_state
+    return tariff
+
+
 def read_sources(root: Path = ROOT, registry: Path = REGISTRY) -> list[dict]:
     payload = json.loads(registry.read_text(encoding="utf-8"))
     if payload.get("schema_version") != 1:
@@ -940,6 +971,11 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     checkpoint_module = electroverse_module or status_module or waat_monta_module
     checkpoint = out_root / "checkpoints" / source_id.replace(":", "_")
     previous_state = previous_electroverse_state(out_root, source_id, spec["module"]) if (electroverse_module or status_module) else None
+    if status_module:
+        try:
+            previous_state = status_tariff_dependency(out_root, checkpoint, previous_state)
+        except (OSError, ValueError, KeyError, TypeError, RuntimeError):
+            return {"source": source_id, "status": "failed", "reason": "validated_tariff_dependency_invalid", "attempts": 0}
     belib_prior = None
     if (belib_module or fx_module or suc_module or tesla_mac_module or electric55_chain_module) and (out_root / "input_state").is_dir():
         try:

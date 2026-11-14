@@ -7,6 +7,7 @@ whole run's actual conclusion is retained. No collection or settings mutation.
 import argparse, hashlib, json, stat, subprocess, sys, tempfile, zipfile
 from functools import partial
 from pathlib import Path
+from datetime import datetime, timedelta
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from v9_rebuild.orchestrator import artifact_digest, safe_relative, sha256
 from v9_rebuild.belib import validate_output as belib
@@ -36,6 +37,24 @@ from v9_rebuild.izivia_fast import validate_output as izivia_fast
 from v9_rebuild.electroverse import validate_state as electroverse
 ARCHIVED_REPLAYS = {'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
 REPO='yass3705/tesla-charge-companion-data-lab'
+def verify_full_tariff_renewal(state, started_at, completed_at):
+    """Every currently mapped location must have been checked in this run.
+
+    Old unmapped cache rows remain retained, not counted as renewed. This is
+    execution completeness, not equality with any historical station volume.
+    """
+    parse = lambda value: datetime.fromisoformat(value.replace('Z', '+00:00'))
+    start, end = parse(started_at), parse(completed_at) + timedelta(seconds=120)
+    mapping = json.loads((state/'data/electroverse/irve_location_mapping.json').read_bytes())
+    checked = json.loads((state/'data/electroverse/tariff_cache/checked-at.json').read_bytes()).get('checkedAt')
+    if not isinstance(checked, dict):raise ValueError('Electroverse checked-at ledger missing')
+    ids = [str(row['electroverseLocationPk']) for row in mapping['mappings']]
+    if len(ids)!=len(set(ids)):raise ValueError('Duplicate mapped location')
+    for pk in ids:
+        if pk not in checked or not start <= parse(checked[pk]) <= end:
+            raise ValueError('Mapped location was not renewed in the source job')
+    return {'mappedLocationsCheckedThisJob':len(ids),'checkedLedgerEntries':len(checked),
+            'allMappedLocationsRenewed':True,'historicalVolumeGate':False}
 def belgium_nap(state):
     manifest = json.loads((state / 'data/belgium/nap-belgium-manifest.json').read_bytes())
     if not validate_belgium_output(state, manifest):
@@ -104,6 +123,7 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
             names.add(entry.filename)
         z.extractall(folder)
     state,object_sha,files=verify_files(folder,source)
+    renewal = verify_full_tariff_renewal(state,job['started_at'],job['completed_at']) if source=='FR:electroverse_full' else None
     report={'runId':run_id,'runConclusion':run['conclusion'],'runHeadSha':head,'runBranch':run['head_branch'],
         'acquisitionKind':'archived_replay' if source in ARCHIVED_REPLAYS else 'source_execution',
         'sourceId':source,'jobId':job['id'],'jobStatus':job['status'],'jobConclusion':job['conclusion'],
@@ -112,6 +132,7 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
         'actionsEnabledAfter':False,'artifactId':artifact['id'],'artifactZipSha256':digest,
         'artifactSetSha256':object_sha,'technicalValidation':'PASS','files':files,
         'scope':'One successful source job and downloaded immutable artifact; downstream import separately verified'}
+    if renewal is not None:report['renewalCompleteness']=renewal
     for name,value in [('run.json',run),('job.json',job),('artifact.json',artifact),('receipt.json',report)]:
         (out/name).write_text(json.dumps(value,indent=2)+'\n')
     (out/'state-path.txt').write_text(str(state.resolve())+'\n')

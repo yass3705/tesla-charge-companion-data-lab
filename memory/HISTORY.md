@@ -1,3 +1,9 @@
+## 14 novembre - integrite des reponses et dependance statuts Electroverse corrigees localement
+
+Le collecteur historique pouvait exploiter un objet partiel GraphQL/HTTP ; ajout de gardes techniques sans changer les requetes, prix ni frequences : reponse 2xx, identite exacte, listes imbriquees, pagination sans cycle/doublon. Deux tests Node dont execution du vrai collecteur sur reponses locales montrent le refus et la conservation du last-good/des reponses independantes. 41 tests Python PASS : reprise/timeout et selection du cache tarifaire pour les statuts. Le workflow commun exige ce cache independant ; un checkpoint d'une autre generation est archive sans fusion. Ces gardes additionnels restent NOT TESTED sur fournisseur/GitHub ; ne pas les attribuer au run en cours.
+
+Run 43599593600/087afd631 en cours de renouvellement complet par chunks ; son controleur hors checkout referme Actions. Ne pas relancer ni remplacer ce run. Aucune modification du brouillon distant ou de main. Apres fin : verifier controle ferme, resultat/ZIP/SHA/manifestes, preserver tout checkpoint partiel et traiter les erreurs avant transfert national.
+
 ## 14 novembre — pilote cache tarifaire Electroverse préparé
 
 Cache complet renouvelé par les chunks historiques de6000, strictement séquentiels, mêmes scripts/API/temporisations et128shards. Chaque frontière réussie peut reprendre ; une erreur/timeout conserve un manifeste de checkpoint lié au run/branche/SHA et arrête les appels. Aucun état partiel accepté par Production.8 tests helper/transfert PASS ;29tests timeout/inventaire précédents conservés. Mainc7204b3ef et1207blobs d’archives vérifiés, zéro déclencheur actif. Actions encore désactivé à la préparation. Driver horscheckout resume-20261114/electroverse-tariff-renewal/run-pilot.py fermeActions dansfinally.

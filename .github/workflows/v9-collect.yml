@@ -78,8 +78,11 @@ jobs:
           run-id: ${{ steps.prior.outputs.state_run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/tcc-v9-artifacts/input_state
-      - name: Restore validated tariff dependency for the overlay
-        if: ${{ inputs.source == 'FR:electroverse_overlay' && steps.prior.outputs.tariff_run_id != '' }}
+      - name: Require validated tariff cache for national statuses
+        if: ${{ inputs.source == 'FR:electroverse_status' && steps.prior.outputs.tariff_run_id == '' }}
+        run: echo 'Validated tariff dependency missing; no silent checkout fallback' >&2; exit 1
+      - name: Restore validated tariff dependency for statuses or overlay
+        if: ${{ (inputs.source == 'FR:electroverse_overlay' || inputs.source == 'FR:electroverse_status') && steps.prior.outputs.tariff_run_id != '' }}
         uses: actions/download-artifact@v4
         with:
           name: tcc-v9-collection-${{ steps.prior.outputs.tariff_slug }}
@@ -218,3 +221,11 @@ jobs:
           path: ${{ runner.temp }}/tcc-v9-artifacts/checkpoints
           if-no-files-found: ignore
           retention-days: 7
+      - name: Preserve checkpoints superseded by a different tariff cache
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcc-v9-checkpoint-history-${{ steps.prior.outputs.slug }}
+          path: ${{ runner.temp }}/tcc-v9-artifacts/checkpoint_history
+          if-no-files-found: ignore
+          retention-days: 30

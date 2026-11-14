@@ -80,13 +80,17 @@ def main() -> None:
     token = os.environ.get("GH_TOKEN")
     if not token:
         parser.error("GH_TOKEN is required")
-    if args.source == "FR:electroverse_overlay":
+    if args.source in {"FR:electroverse_overlay", "FR:electroverse_status"}:
         daily = fetch(args.repo, "tcc-v9-collection-FR_electroverse_daily", token)
         full = fetch(args.repo, "tcc-v9-collection-FR_electroverse_full", token)
         statuses = fetch(args.repo, "tcc-v9-collection-FR_electroverse_status", token)
         tariff_slug, tariff_run, status_run = choose_overlay_dependencies(daily, full, statuses, args.branch)
+        kind, run_id = ("baseline", None)
+        if args.source == "FR:electroverse_status":
+            checkpoints = fetch(args.repo, f"tcc-v9-checkpoints-{slug}", token)
+            kind, run_id = choose(checkpoints, statuses, args.source, args.branch)
         with args.github_output.open("a", encoding="utf-8") as handle:
-            handle.write(f"slug={slug}\ncheckpoint_run_id=\nstate_run_id=\n")
+            handle.write(f"slug={slug}\ncheckpoint_run_id={run_id if kind == 'checkpoint' else ''}\nstate_run_id={run_id if kind == 'state' else ''}\n")
             handle.write(f"tariff_slug={tariff_slug or ''}\ntariff_run_id={tariff_run or ''}\nstatus_run_id={status_run or ''}\n")
         print(json.dumps({"source": args.source, "tariff_run_id": tariff_run, "status_run_id": status_run}))
         return
