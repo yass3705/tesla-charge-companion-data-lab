@@ -1,4 +1,4 @@
-name: V9 bounded preserved France Direct verification
+name: V9 bounded preserved Source EV verification
 on:
   push:
     branches: [rebuild/v9-20261020]
@@ -17,9 +17,9 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
-        source: ['FR:ozecar']
+        source: ['GB:source_ev_pcpr']
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -30,11 +30,6 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - name: Preserved OZECAR browser dependency
-        if: matrix.source == 'FR:ozecar'
-        run: |
-          python -m pip install --disable-pip-version-check -q playwright==1.55.0
-          python -m playwright install --with-deps chromium
       - name: Exercise failure, retry, artifact and last-good contracts offline
         run: |
           python -m unittest discover -s tests -p test_v9_orchestrator.py
@@ -42,6 +37,7 @@ jobs:
       - name: Run the preserved Direct collection outside checkout
         env:
           SOURCE_ID: ${{ matrix.source }}
+          SOURCE_EV_PCPR_TOKEN: ${{ matrix.source == 'GB:source_ev_pcpr' && secrets.SOURCE_EV_PCPR_TOKEN || '' }}
         run: python -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/tcc-v9-tariff-renewal" --workers 1 --attempts 1
       - name: Preserve validated immutable output
         if: success()

@@ -1,3 +1,9 @@
+## 14 novembre — OZECAR renouvelé ; reprise Source EV bornée
+
+Run43595900013 / HEAD01b8864a : acquisition OZECAR réussie sur Ubuntu24.04, artefact14114561544 vérifié par ZIP, manifeste, SHA et contrat. Actions fermé, aucun workflow actif, main inchangé.23handoffs prouvés et112ouverts ; normalisation/import OZECAR restant à vérifier, pas encore servi. Le changement de runner corrige le défaut technique sans modifier le collecteur. Preuves ozecar-handoff.json / ozecar-control.json et YAML archivé.
+
+Source EV seul préparé pour reprendre après12:46UTC, budget horaire historique respecté. Les sorties non couvertes par la preuve tarifaire sont conservées brutes hors classement ; aucun nouveau prix approuvé. Contrôleur source-ev-ozecar-retry/run-retry-pilot.py referme Actions dans finally. Brouillon6af855c4 : parcours distants PASS, intégrité exhaustive encore en cours. G2–G8 FAIL globalement.
+
 ## 14 novembre — IZIVIA transmis ; runner OZECAR corrigé avant reprise
 
 Run43594993525 globalFAIL : IZIVIA FAST réussi, artefact14114325677 et import isolé3c517e8a vérifiés.22handoffs prouvés,113ouverts. Les616groupes station restent bruts, zéro EVSE inventé ni prix propagé ; pas encore servi. OZECAR n’a effectué aucun appel fournisseur : Playwright1.55.0 refuse Ubuntu26.04 installé par ubuntu-latest. Workflow commun épinglé Ubuntu24.04 ; nouvel essai OZECAR seul préparé, même méthode et dépendance.16tests locaux préservés, résultat réel du runner encore en attente.
