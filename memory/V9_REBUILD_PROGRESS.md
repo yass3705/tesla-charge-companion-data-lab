@@ -1,3 +1,9 @@
+## 14 novembre — préparation du pilote Direct Allego/Bump
+
+Les méthodes FR:allego_stations et FR:bump_tariffs sont conservées, sans secret utilisateur ni API nouvelle. Les validateurs existants sont raccordés au vérificateur de transferts ; 6 tests de provenance, 3 Allego et 5 Bump PASS. Préflight réel : main c7204b3ef, zéro workflow actif sur main, 1207 archives avec blobs restaurables. Un pilote commun borné à deux jobs est préparé, sans push automatique ni publication. Actions reste désactivé à cette entrée ; aucun nouveau succès revendiqué. Driver persistant : resume-20261114/direct-allego-bump/run-direct-pilot.py, fermeture en finally après 1800s maximum.
+
+Candidat national combiné b2f37b27510bc115bf66211e33e4ee06eeaed095c2003cb34caaa4ce5a41d309 en empaquetage/recette locale, pas encore déployé. Dernier Netlify vérifié inchangé. Prochain : effectuer le pilote borné, fermer Actions, vérifier chaque résultat indépendamment ; poursuivre la recette du candidat national sans promouvoir d’échec partiel.
+
 ## 14 novembre — pilote belge corrigé réussi et Actions fermé
 
 Run 43587934900 / HEAD 17734182fbfd1494a04e51cae7fb48949565606e : collecte BE:nap réussie, 18 pages complètes, 40 fichiers vérifiés par SHA/manifeste/contrat. Actions désactivé et zéro workflow actif ; main c7204b3ef inchangé. Le défaut de dossier docs manquant est corrigé dans l’isolation, sans modification fournisseur. Reçu : docs/v9-rebuild/evidence/restoration-20261114/belgium-national-handoff.json. 15 handoffs réellement prouvés, 120 ouverts ; G2–G8 restent FAIL globalement.

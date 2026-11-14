@@ -1260,3 +1260,10 @@ Le candidat français local est terminé : bundle 474a18a065b4dde765ef728911bec3
 
 Prochain : terminer la normalisation BE et le bundle combiné FR/BE via resume-20261114/national-belgium-fixed/build-candidate.py (état et preuves hors checkout), préparer depuis prepared-national-france-20261114, vérifier les parcours pertinents puis un nouveau brouillon global. Dernière URL réellement vérifiée : https://6af8365acf7552d1d9e1768a--tcc-v9-preproduction-20261028.netlify.app. Ubitricity UK toujours attente fournisseur ; REVE utilise MAPA_REVE_API_KEY ; Atlante sans secret utilisateur. Aucun changement public/Mac/Stable.
 
+
+## 14 novembre — préparation du pilote Direct Allego/Bump
+
+Les méthodes FR:allego_stations et FR:bump_tariffs sont conservées, sans secret utilisateur ni API nouvelle. Les validateurs existants sont raccordés au vérificateur de transferts ; 6 tests de provenance, 3 Allego et 5 Bump PASS. Préflight réel : main c7204b3ef, zéro workflow actif sur main, 1207 archives avec blobs restaurables. Un pilote commun borné à deux jobs est préparé, sans push automatique ni publication. Actions reste désactivé à cette entrée ; aucun nouveau succès revendiqué. Driver persistant : resume-20261114/direct-allego-bump/run-direct-pilot.py, fermeture en finally après 1800s maximum.
+
+Candidat national combiné b2f37b27510bc115bf66211e33e4ee06eeaed095c2003cb34caaa4ce5a41d309 en empaquetage/recette locale, pas encore déployé. Dernier Netlify vérifié inchangé. Prochain : effectuer le pilote borné, fermer Actions, vérifier chaque résultat indépendamment ; poursuivre la recette du candidat national sans promouvoir d’échec partiel.
+
