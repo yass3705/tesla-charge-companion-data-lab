@@ -1,3 +1,11 @@
+## 14 novembre — Allego renouvelé ; Bump rejeté, dernier état préservé
+
+Run 43589225728 global FAILURE : Allego source job SUCCESS et artefact/SHA vérifiés, Bump refusé par le contrôle de complétude GraphQL (requêtes ou compteurs). Actions fermé. 16 handoffs prouvés,119 ouverts. Reçu Allego et diagnostic Bump sous docs/v9-rebuild/evidence/restoration-20261114/. Allego : mêmes identités et offres que l’archive, nouvelles acquisition/provenance réelles ; canonique SHA8e9be93b13db60489c344a3d43e1644b6513526073fc7f6c525a38afe64a4fb0.
+
+Les détails de sortie Bump étaient supprimés lors d’un rejet. Correction : conservation de ses six fichiers publics déclarés en quarantaine failures/unvalidated-output, jamais objects/checkpoint/last-good. 6 tests Bump et16orchestration PASS. Une reprise bornée Bump seule est préparée pour préciser la cause, sans changer API, paramètres, validation ou prix. Driver resume-20261114/direct-bump-diagnostic/run-direct-pilot.py ; Actions désactivé avant cette reprise.
+
+Le candidat national b2f37b27 passe20parcours,11recherches/neufpays,contrôlesG9/mobile, hébergement et scan différentiel. Pas déployé : préparation d’un seul candidat combiné incluant Allego renouvelé, site-national-direct-20261114. Prochain : refermer le piloteBump et examiner les sorties ; terminer le candidat et sa recette distante. G2–G8 FAIL global, sitepublic/Mac/Stable inchangés.
+
 ## 14 novembre — préparation du pilote Direct Allego/Bump
 
 Les méthodes FR:allego_stations et FR:bump_tariffs sont conservées, sans secret utilisateur ni API nouvelle. Les validateurs existants sont raccordés au vérificateur de transferts ; 6 tests de provenance, 3 Allego et 5 Bump PASS. Préflight réel : main c7204b3ef, zéro workflow actif sur main, 1207 archives avec blobs restaurables. Un pilote commun borné à deux jobs est préparé, sans push automatique ni publication. Actions reste désactivé à cette entrée ; aucun nouveau succès revendiqué. Driver persistant : resume-20261114/direct-allego-bump/run-direct-pilot.py, fermeture en finally après 1800s maximum.

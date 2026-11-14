@@ -1267,3 +1267,12 @@ Les méthodes FR:allego_stations et FR:bump_tariffs sont conservées, sans secre
 
 Candidat national combiné b2f37b27510bc115bf66211e33e4ee06eeaed095c2003cb34caaa4ce5a41d309 en empaquetage/recette locale, pas encore déployé. Dernier Netlify vérifié inchangé. Prochain : effectuer le pilote borné, fermer Actions, vérifier chaque résultat indépendamment ; poursuivre la recette du candidat national sans promouvoir d’échec partiel.
 
+
+## 14 novembre — Allego renouvelé ; Bump rejeté, dernier état préservé
+
+Run 43589225728 global FAILURE : Allego source job SUCCESS et artefact/SHA vérifiés, Bump refusé par le contrôle de complétude GraphQL (requêtes ou compteurs). Actions fermé. 16 handoffs prouvés,119 ouverts. Reçu Allego et diagnostic Bump sous docs/v9-rebuild/evidence/restoration-20261114/. Allego : mêmes identités et offres que l’archive, nouvelles acquisition/provenance réelles ; canonique SHA8e9be93b13db60489c344a3d43e1644b6513526073fc7f6c525a38afe64a4fb0.
+
+Les détails de sortie Bump étaient supprimés lors d’un rejet. Correction : conservation de ses six fichiers publics déclarés en quarantaine failures/unvalidated-output, jamais objects/checkpoint/last-good. 6 tests Bump et16orchestration PASS. Une reprise bornée Bump seule est préparée pour préciser la cause, sans changer API, paramètres, validation ou prix. Driver resume-20261114/direct-bump-diagnostic/run-direct-pilot.py ; Actions désactivé avant cette reprise.
+
+Le candidat national b2f37b27 passe20parcours,11recherches/neufpays,contrôlesG9/mobile, hébergement et scan différentiel. Pas déployé : préparation d’un seul candidat combiné incluant Allego renouvelé, site-national-direct-20261114. Prochain : refermer le piloteBump et examiner les sorties ; terminer le candidat et sa recette distante. G2–G8 FAIL global, sitepublic/Mac/Stable inchangés.
+

@@ -1164,6 +1164,17 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                         if (staged / relative).is_dir():
                             shutil.copytree(staged / relative, failure_dir / "unvalidated-output" / relative,
                                             dirs_exist_ok=True)
+                if spec["module"] == "bump_tariffs":
+                    # These public, anonymous collector outputs are useful for
+                    # diagnosing a rejected tile/tariff response. They remain
+                    # quarantined, never immutable objects or resume/last-good.
+                    from v9_rebuild.bump_tariffs import FILES as bump_files
+                    for relative in bump_files:
+                        path = staged / relative
+                        if path.is_file() and not path.is_symlink():
+                            target = failure_dir / "unvalidated-output" / relative
+                            target.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copyfile(path, target)
                 reason = "collector_exit_nonzero"
                 if checkpoint_module and (output.is_file() or status_module or (waat_monta_module and any((staged / f"data/shards/waat_monta_shard_{index}.json.gz").is_file() for index in range(4)))):
                     from v9_rebuild.electroverse import validate_state

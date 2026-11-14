@@ -113,6 +113,26 @@ class BumpTariffMigrationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "requests or report incomplete"):
                 run(Path(temp), runner=OfflineRunner(matched=True, tariff_failure=True))
 
+    def test_failed_request_keeps_quarantined_outputs_not_last_good(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            spec = next(row for row in read_sources() if row["id"] == "FR:bump_tariffs")
+            def outer(command, **kwargs):
+                try:
+                    run(Path(command[command.index("--out") + 1]),
+                        runner=OfflineRunner(matched=True, tariff_failure=True))
+                except ValueError:
+                    return SimpleNamespace(returncode=1, stderr="ValueError: incomplete", stdout="")
+                self.fail("Incomplete tariff requests were accepted")
+            result = run_source(spec, root / "artifacts", runner=outer, attempts=1)
+            self.assertNotEqual(result["status"], "ok")
+            failure = root / "artifacts/failures/FR_bump_tariffs/attempt-1/unvalidated-output"
+            self.assertTrue((failure / GRAPHQL).is_file())
+            self.assertTrue((failure / TCC).is_file())
+            self.assertEqual(list((root / "artifacts/objects/FR_bump_tariffs").iterdir()), [])
+            self.assertIsNone(result.get("artifact"))
+            self.assertFalse((root / "artifacts/checkpoints/FR_bump_tariffs").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
