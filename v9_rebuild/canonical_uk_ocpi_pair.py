@@ -6,6 +6,7 @@ No price interpretation or station-level tariff propagation happens here.
 from __future__ import annotations
 
 import re
+import copy
 
 from v9_rebuild.canonical import SCHEMA_VERSION, key, validate
 
@@ -66,11 +67,29 @@ def normalize_uk_ocpi_pair(payload: dict, *, artifact_sha256: str, source_id: st
         if native in tariffs:
             raise ValueError("UK OCPI tariff identity collision")
         tariffs[native] = tariff
+    scope_validation = None
+    if source_id == "GB:gridserve_pcpr_direct":
+        # Reuse the preserved public-access/exact-connector constructor. The
+        # raw pair stays immutable and retained by SHA; it is not itself the
+        # public station catalogue (depots/testing/retired locations exist).
+        from scripts.uk_gridserve_v9_prepare import build
+        staged, crosswalk, report = build(locations_doc, tariffs_doc)
+        raw_locations = copy.deepcopy(staged["sources"][0]["locations"])
+        links = {(r["locationId"], r["evseUid"], r["connectorId"]): r for r in crosswalk["links"]}
+        for location in raw_locations:
+            for evse in location["evses"]:
+                for connector in evse["connectors"]:
+                    link = links[(str(location["id"]), str(evse["uid"]), str(connector["id"]))]
+                    connector["sourceTariffIds"] = link["originalTariffIds"]
+        scope_validation = {"method": "uk_gridserve_v9_prepare.build",
+                            "scope": "historical_public_exact_connector",
+                            "excludedCounts": report["excludedCounts"]}
     cpo_id = key("GB", source_id, "cpo", party)
     result = {"schemaVersion": SCHEMA_VERSION,
               "source": {"id": source_id, "artifactSha256": artifact_sha256,
                          "generatedAt": source.get("collectedAt"),
                          "rawMetadata": {"archiveSource": source_name, "partyId": party,
+                                         "scopeValidation": scope_validation,
                                          "tariffArtifactSha256": payload.get("tariffArtifactSha256") if source_id == "GB:gridserve_pcpr_direct" else artifact_sha256}},
               "countries": [{"code": "GB"}],
               "cpos": [{"id": cpo_id, "country": "GB", "sourceOperatorId": party, "name": party}],
@@ -111,7 +130,7 @@ def normalize_uk_ocpi_pair(payload: dict, *, artifact_sha256: str, source_id: st
                 refs = connector.get("tariff_ids")
                 if not isinstance(refs, list) or any(not isinstance(ref, str) or not ref for ref in refs):
                     raise ValueError("UK OCPI connector tariff references invalid")
-                unknown = sorted(set(refs) - tariffs.keys())
+                unknown = sorted(set(connector.get("sourceTariffIds", refs)) - tariffs.keys())
                 result["connectors"].append({"id": connector_id, "evseId": evse_id,
                                              "sourceConnectorId": native_connector,
                                              "officialConnectorId": None,

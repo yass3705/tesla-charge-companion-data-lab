@@ -58,6 +58,31 @@ class CanonicalUkOcpiPairTests(unittest.TestCase):
             normalize_uk_ocpi_pair(foreign, artifact_sha256=SHA,
                                    source_id="GB:ubitricity_pcpr_direct")
 
+    def test_gridserve_reuses_historical_public_scope_and_connector_references(self):
+        from tests.test_v9_uk_gridserve import fixture as gridserve_fixture
+        from scripts.uk_gridserve_v9_prepare import BLOCKED_LOCATION_IDS
+        import copy
+        locations, tariffs = gridserve_fixture()
+        hidden = copy.deepcopy(locations[0]); hidden["id"] = next(iter(BLOCKED_LOCATION_IDS))
+        unpublished = copy.deepcopy(locations[0]); unpublished.update(id="private", publish=False)
+        payload = {"locations": {"source":"GRIDSERVE PCPR Open Data API", "pages":1,
+                                  "collectedAt":"2026-11-14", "locations": locations+[hidden,unpublished]},
+                   "tariffs": {"source":"GRIDSERVE PCPR Open Data API", "pages":1,
+                                "collectedAt":"2026-11-14", "tariffs":tariffs}, "tariffArtifactSha256":SHA}
+        original = copy.deepcopy(payload)
+        data = normalize_uk_ocpi_pair(payload, artifact_sha256=SHA, source_id="GB:gridserve_pcpr_direct")
+        self.assertEqual(payload, original)
+        self.assertEqual([r["sourceStationId"] for r in data["stations"]], ["L1"])
+        self.assertEqual(len(data["offers"]), 1)
+        self.assertEqual(data["offers"][0]["rawOffer"], tariffs[0])
+        self.assertEqual(data["source"]["rawMetadata"]["scopeValidation"]["scope"], "historical_public_exact_connector")
+        payload["locations"]["locations"][0]["evses"][0]["connectors"][0]["tariff_ids"].append("missing")
+        data = normalize_uk_ocpi_pair(payload, artifact_sha256=SHA, source_id="GB:gridserve_pcpr_direct")
+        self.assertEqual(len(data["stations"]), 1)
+        self.assertEqual(data["offers"], [])
+        self.assertEqual(data["connectors"][0]["unresolvedTariffRefs"], ["missing"])
+        self.assertEqual(data["connectors"][0]["rawSourceFields"]["sourceTariffIds"], ["T1","missing"])
+
     def test_historical_gridserve_pair_contract(self):
         route = BY_SOURCE["GB:gridserve_pcpr_direct"]
         payload, source_sha, _ = MODULE.read_route(route, route.source_id)
