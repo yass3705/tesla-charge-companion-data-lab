@@ -1,3 +1,17 @@
+## 14 novembre — régression d’isolation Belgique identifiée et corrigée
+
+Run43587027521 échoué et Actions refermé. Les18pages ont été reçues jusqu’au dernier nextOffset=null ; aucune erreurHTTP. L’échec est FileNotFoundError à l’écriture docs/belgium-cpo-progress-2026-09.json : ce dossier existe dans Git mais manquait dans l’espace isolé. Les36fichiers bruts/canoniques reçus sont conservés dans l’artefact d’échec vérifié, sans promotion. Preuves belgium-diagnostic-failure/control.json.
+
+L’orchestrateur crée maintenant le dossier de sortie nécessaire, sans modifier le collecteur ou ses paramètres.16tests orchestration PASS, dont exécution réelle du constructeur historique horscheckout avec réponse locale contrôlée ; l’ancien test simulait directement les fichiers et ne couvrait pas cette erreur. Une vérification distante bornée du chemin normal corrigé est préparée, sourceBEseule ; aucune nouvelle API ni règle tarifaire.
+
+Bundle33 français renouvelé474a18a065b4dde765ef728911bec3db264fd25243e64e9d1e5ad94a598aad1f :32sources inchangées. Préparation des fragments/jointures puis empaquetage en cours via session22245, état national-renewal/pipeline-state.json. Le dernier Netlify vérifié reste6af8365acf7552d1d9e1768a. G2–G8 FAIL globalement,14handoffs prouvés/121ouverts. Prochain : exécuter le piloteBE corrigé, le fermer, vérifier son artefact, puis intégrer seulement les sources valides et continuer la recette.
+
+## 14 novembre — reprise belge en cours, ne pas dupliquer
+
+Fenêtre Actions bornée actuellement active pour le seul run43587027521, HEAD e3667ff377cbb7acc0fae03f2523d8b0945b9d04, sourceBE:nap. Driver/session3371 ; contrôle persistant `.tcc-v9-cache/emsp-restoration-20261105/resume-20261114/national-belgium-retry/national-control.json`. Délai1800s et fermeture enfinally ; vérifier réellement enabledAfter=false avant tout autre pilote ou interruption. Le premier run43586082154 est clos ; FR vérifié, BE en échec non diagnostiqué. Cette reprise conserve des diagnostics structurés sans secrets et les pages échouées hors last-good.
+
+Canonique français renouvelé PASS : SHA4a034e8a86f951690e4980fbf8c887e66b035d4de482f42c95f1e0323c5ca876 ; sourceRetrievedAt2026-11-14T10:36:59.248119Z conservé depuis manifeste signé. Assemblage du bundle33 remplaçant seulement FR:irve_static en cours, session23649, sortie national-renewal/bundle-france.json. Ne pas reconstruire les32sources inchangées. Prochaineopération : terminer ces deuxprocessus, fermerActions, examiner le diagnosticBE/valider son artefact si succès, préparer/importer le bundle national avec les jointures exactes puis recette locale avant autre déploiement. Le brouillon Atlante6af8365acf7552d1d9e1768a reste vérifié et inchangé.
+
 ## 14 novembre — IRVE renouvelé et validé ; Belgique en échec, diagnostic corrigé
 
 Run43586082154 est globalement FAILURE : jobFR:irve_national SUCCESS et artefact réellement vérifié ; jobBE:nap FAILED. Actions de nouveau désactivé, zéro workflow actif, main inchangé. Le reçu français conserve la conclusion globale failure, sans l’effacer.14handoffs vérifiés,121encore ouverts. Dernier snapshot belge conservé.

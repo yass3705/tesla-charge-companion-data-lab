@@ -1143,6 +1143,10 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
             process_env = os.environ.copy()
             process_env["PYTHONPATH"] = str(root) + (os.pathsep + process_env["PYTHONPATH"]
                                                     if process_env.get("PYTHONPATH") else "")
+            if spec["module"] == "belgium_nap":
+                # The historical collector writes its progress report under
+                # docs/, which exists in Git but not in an empty isolated cwd.
+                (staged / "docs").mkdir(parents=True, exist_ok=True)
             completed = runner(command, cwd=staged if spec["module"] == "belgium_nap" else root,
                                env=process_env, capture_output=True, text=True,
                                timeout=timeout_s, check=False)

@@ -2,6 +2,8 @@ import gzip
 import json
 import os
 import tempfile
+import subprocess
+import sys
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -149,6 +151,25 @@ class OrchestratorTests(unittest.TestCase):
             result = run_source(self.belgium, Path(tmp), attempts=1, runner=self.belgium_runner)
             self.assertEqual(result["status"], "ok")
             self.assertEqual(len([row for row in result["files"] if row["path"].endswith(".json.gz")]), 2)
+
+    def test_real_belgium_builder_finalizes_in_empty_isolated_workspace(self):
+        code = """
+import importlib.util, pathlib, sys
+path=pathlib.Path(sys.argv[1]);sys.path.insert(0,str(path.parent))
+spec=importlib.util.spec_from_file_location('legacy_nap_fixture',path)
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+payload={'locations':[{'idG':'fixture-location','energyInfrastructureStation':[
+ {'idG':'fixture-station','refillPoint':[{'aegiElectricChargingPoint':{'idG':'fixture-evse'}}]}]}]}
+m.fetch_page=lambda offset:(payload,{})
+raise SystemExit(m.main())
+"""
+        def offline(command, **kwargs):
+            return subprocess.run([sys.executable, '-c', code, str(ROOT / 'scripts/belgium_nap_full_country.py')],
+                cwd=kwargs['cwd'], env=kwargs['env'], capture_output=True, text=True, check=False)
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {'BELGIUM_NAP_TOKEN':'fixture-token'}):
+            result=run_source(self.belgium, Path(tmp), attempts=1, runner=offline)
+            self.assertEqual(result['status'],'ok')
+            self.assertTrue(any(row['path']=='docs/belgium-cpo-progress-2026-09.json' for row in result['files']))
 
     def test_failed_belgium_keeps_pages_and_safe_diagnostic_outside_last_good(self):
         def failed(command, **kwargs):
