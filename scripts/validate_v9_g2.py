@@ -48,8 +48,11 @@ def main() -> None:
             errors.append(f"verified handoff evidence unavailable: {spec['id']}")
             continue
         if claim.startswith("verified_source_job_"):
+            archive_replay = (spec.get("module") in {"france_canonical", "uk_midhope", "belgium_gap_archive"}
+                              and evidence.get("acquisitionKind") == "archived_replay"
+                              and spec.get("live") == "not_applicable_archived_replay")
             if (claim != f"verified_source_job_{evidence.get('runId')}_{evidence.get('jobId')}"
-                    or spec.get("live") != claim or evidence.get("sourceId") != spec["id"]
+                    or (spec.get("live") != claim and not archive_replay) or evidence.get("sourceId") != spec["id"]
                     or evidence.get("jobStatus") != "completed" or evidence.get("jobConclusion") != "success"
                     or evidence.get("runConclusion") not in {"success", "failure", "cancelled"}
                     or evidence.get("runBranch") != "rebuild/v9-20261020"

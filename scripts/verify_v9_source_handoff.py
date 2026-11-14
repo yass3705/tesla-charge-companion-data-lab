@@ -15,8 +15,12 @@ from v9_rebuild.swiss_bundle import validate_output as swiss_bundle
 from v9_rebuild.swiss_integration import validate_output as swiss_integration
 from v9_rebuild.nl_dotnl import validate_output as nl_dotnl
 from v9_rebuild.atlante_fr_it import validate_output as atlante_fr_it
+from v9_rebuild.uk_midhope import validate_output as uk_midhope
+from v9_rebuild.belgium_gap_archive import validate_output as belgium_gap_archive
+from v9_rebuild.france_canonical import validate_output as france_canonical
+ARCHIVED_REPLAYS = {'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
 REPO='yass3705/tesla-charge-companion-data-lab'
-VALIDATORS={'FR:atlante_fr_it':atlante_fr_it,'NL:dotnl':nl_dotnl,'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra,'CH:swiss_bundle':swiss_bundle,'CH:swiss_integration':swiss_integration}
+VALIDATORS={'GB:midhope_verified':uk_midhope,'BE:final_gap_archive':belgium_gap_archive,'FR:canonical':france_canonical,'FR:atlante_fr_it':atlante_fr_it,'NL:dotnl':nl_dotnl,'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra,'CH:swiss_bundle':swiss_bundle,'CH:swiss_integration':swiss_integration}
 def check_execution(run,jobs,artifact,source,head):
     if (run.get('status')!='completed' or run.get('head_branch')!='rebuild/v9-20261020'
         or run.get('head_sha')!=head or len(head)!=40
@@ -72,6 +76,7 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
         z.extractall(folder)
     state,object_sha,files=verify_files(folder,source)
     report={'runId':run_id,'runConclusion':run['conclusion'],'runHeadSha':head,'runBranch':run['head_branch'],
+        'acquisitionKind':'archived_replay' if source in ARCHIVED_REPLAYS else 'source_execution',
         'sourceId':source,'jobId':job['id'],'jobStatus':job['status'],'jobConclusion':job['conclusion'],
         'actionsEnabledAfter':False,'artifactId':artifact['id'],'artifactZipSha256':digest,
         'artifactSetSha256':object_sha,'technicalValidation':'PASS','files':files,
