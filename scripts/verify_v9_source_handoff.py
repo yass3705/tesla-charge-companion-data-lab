@@ -28,6 +28,9 @@ from v9_rebuild.uk_blink import validate_output as uk_blink
 from v9_rebuild.uk_gridserve import validate_output as uk_gridserve
 from v9_rebuild.zephyre import validate_output as zephyre
 from v9_rebuild.zewatt import validate_output as zewatt
+from v9_rebuild.fastned import validate_output as fastned
+from v9_rebuild.energyvision import validate_output as energyvision
+from v9_rebuild.uk_evyve import validate_output as uk_evyve
 from v9_rebuild.ozecar import validate_output as ozecar
 from v9_rebuild.izivia_fast import validate_output as izivia_fast
 ARCHIVED_REPLAYS = {'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
@@ -39,6 +42,7 @@ def belgium_nap(state):
     return manifest
 VALIDATORS={'FR:irve_national':france_irve,'BE:nap':belgium_nap,'GB:midhope_verified':uk_midhope,'BE:final_gap_archive':belgium_gap_archive,'FR:canonical':france_canonical,'FR:atlante_fr_it':atlante_fr_it,'NL:dotnl':nl_dotnl,'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra,'CH:swiss_bundle':swiss_bundle,'CH:swiss_integration':swiss_integration}
 VALIDATORS.update({'FR:zephyre':zephyre,'FR:zewatt':zewatt})
+VALIDATORS.update({'FR:fastned_inventory_family':fastned,'BE:energyvision':energyvision,'GB:evyve_pcpr':uk_evyve})
 VALIDATORS.update({'FR:ozecar':ozecar,'FR:izivia_fast':izivia_fast})
 VALIDATORS.update({'FR:allego_stations': allego_stations, 'FR:bump_tariffs': bump_tariffs})
 VALIDATORS.update({'GB:blink_pcpr':uk_blink,'GB:gridserve_pcpr':uk_gridserve})

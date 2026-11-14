@@ -19,7 +19,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -167,26 +169,26 @@ jobs:
       - name: Collect migrated sources into isolated artifacts
         env:
           SOURCE_ID: ${{ inputs.source }}
-          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
-          BELGIUM_NAP_TOKEN: ${{ secrets.BELGIUM_NAP_TOKEN }}
-          ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY || env.ATLANTE_API_SUBSCRIPTION_KEY }}
-          BLINK_PCPR_TOKEN: ${{ secrets.BLINK_PCPR_TOKEN }}
-          ALLEGO_UK_PCPR_TOKEN: ${{ secrets.ALLEGO_UK_PCPR_TOKEN }}
-          SOURCE_EV_PCPR_TOKEN: ${{ secrets.SOURCE_EV_PCPR_TOKEN }}
-          EVYVE_PCPR_TOKEN: ${{ secrets.EVYVE_PCPR_TOKEN }}
-          GRIDSERVE_PCPR_API_KEY: ${{ secrets.GRIDSERVE_API_KEY }}
-          GRIDSERVE_API_KEY: ${{ secrets.GRIDSERVE_API_KEY }}
-          UBITRICITY_PCPR_TOKEN: ${{ secrets.UBITRICITY_UK_TOKEN || secrets.UBITRICITY_PCPR_TOKEN || secrets.UBITRICITY_UK_PCPR_API_KEY || secrets.UBITRICITY_API_KEY }}
-          CONNECTED_KERB_TOKEN: ${{ secrets.CONNECTED_KERB_TOKEN }}
-          ECO_MOVEMENT_PCPR_TOKEN: ${{ secrets.ECO_MOVEMENT_PCPR_TOKEN }}
-          ENERGYVISION_API_KEY: ${{ secrets.ENERGYVISION_API_KEY }}
-          AVIA_APIM_SUBSCRIPTION_KEY: ${{ secrets.AVIA_APIM_SUBSCRIPTION_KEY }}
-          LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
-          YES55_PASS: ${{ secrets.YES55_PASS }}
-          LOADSTATIONS_PASS: ${{ secrets.LOADSTATIONS_PASS }}
-          REVEO_PASS: ${{ secrets.REVEO_PASS }}
-          MOBISDEC_PASS: ${{ secrets.MOBISDEC_PASS }}
-          REVE_API_KEY: ${{ secrets.MAPA_REVE_API_KEY || secrets.REVE_API_KEY }}
+          ELECTROVERSE_API_KEY: ${{ (inputs.source == 'FR:electroverse_daily' || inputs.source == 'FR:electroverse_full' || inputs.source == 'FR:electroverse_status') && (secrets.ELECTROVERSE_API_KEY) || '' }}
+          BELGIUM_NAP_TOKEN: ${{ (inputs.source == 'BE:nap') && (secrets.BELGIUM_NAP_TOKEN) || '' }}
+          ATLANTE_API_SUBSCRIPTION_KEY: ${{ (inputs.source == 'FR:atlante_direct' || inputs.source == 'FR:atlante_fr_it') && (secrets.ATLANTE_API_SUBSCRIPTION_KEY || env.ATLANTE_API_SUBSCRIPTION_KEY) || '' }}
+          BLINK_PCPR_TOKEN: ${{ (inputs.source == 'GB:blink_pcpr') && (secrets.BLINK_PCPR_TOKEN) || '' }}
+          ALLEGO_UK_PCPR_TOKEN: ${{ (inputs.source == 'GB:allego_uk_pcpr') && (secrets.ALLEGO_UK_PCPR_TOKEN) || '' }}
+          SOURCE_EV_PCPR_TOKEN: ${{ (inputs.source == 'GB:source_ev_pcpr') && (secrets.SOURCE_EV_PCPR_TOKEN) || '' }}
+          EVYVE_PCPR_TOKEN: ${{ (inputs.source == 'GB:evyve_pcpr') && (secrets.EVYVE_PCPR_TOKEN) || '' }}
+          GRIDSERVE_PCPR_API_KEY: ${{ (inputs.source == 'GB:gridserve_pcpr') && (secrets.GRIDSERVE_API_KEY) || '' }}
+          GRIDSERVE_API_KEY: ${{ (inputs.source == 'GB:gridserve_pcpr') && (secrets.GRIDSERVE_API_KEY) || '' }}
+          UBITRICITY_PCPR_TOKEN: ${{ (inputs.source == 'GB:ubitricity_pcpr') && (secrets.UBITRICITY_UK_TOKEN || secrets.UBITRICITY_PCPR_TOKEN || secrets.UBITRICITY_UK_PCPR_API_KEY || secrets.UBITRICITY_API_KEY) || '' }}
+          CONNECTED_KERB_TOKEN: ${{ (inputs.source == 'GB:connected_kerb_operator') && (secrets.CONNECTED_KERB_TOKEN) || '' }}
+          ECO_MOVEMENT_PCPR_TOKEN: ${{ (inputs.source == 'GB:eco_movement_pcpr') && (secrets.ECO_MOVEMENT_PCPR_TOKEN) || '' }}
+          ENERGYVISION_API_KEY: ${{ (inputs.source == 'BE:energyvision') && (secrets.ENERGYVISION_API_KEY) || '' }}
+          AVIA_APIM_SUBSCRIPTION_KEY: ${{ (inputs.source == 'CH:avia_guest') && (secrets.AVIA_APIM_SUBSCRIPTION_KEY) || '' }}
+          LOADMOTION_ID: ${{ (inputs.source == 'FR:loadmotion') && (secrets.LOADMOTION_ID) || '' }}
+          YES55_PASS: ${{ (inputs.source == 'FR:loadmotion') && (secrets.YES55_PASS) || '' }}
+          LOADSTATIONS_PASS: ${{ (inputs.source == 'FR:loadmotion') && (secrets.LOADSTATIONS_PASS) || '' }}
+          REVEO_PASS: ${{ (inputs.source == 'FR:loadmotion') && (secrets.REVEO_PASS) || '' }}
+          MOBISDEC_PASS: ${{ (inputs.source == 'FR:loadmotion') && (secrets.MOBISDEC_PASS) || '' }}
+          REVE_API_KEY: ${{ (inputs.source == 'ES:reve_stream') && (secrets.MAPA_REVE_API_KEY || secrets.REVE_API_KEY) || '' }}
         run: python -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/tcc-v9-artifacts" --workers 1 --attempts 2
       - name: Preserve validated immutable outputs
         if: success()

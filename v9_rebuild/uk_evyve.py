@@ -70,7 +70,7 @@ def run(out: Path, *, fixture: Path | None = None) -> None:
         payload = json.loads(fixture.read_text(encoding="utf-8"))
         if not isinstance(payload.get("locations"), list) or not isinstance(payload.get("tariffs"), list):
             raise ValueError("UK Evyve fixture envelope invalid")
-        collector.collect = lambda endpoint, authorization: (payload[endpoint], 1)
+        collector.collect = lambda endpoint, authorization, budget=None: (payload[endpoint], 1)
     collector.main()
     validate_output(out)
 

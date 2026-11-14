@@ -40,16 +40,20 @@ def write_json(path, document):
     dest.write_bytes(raw)
 
 
-def collect(endpoint, authorization):
+def collect(endpoint, authorization, budget=None):
+    budget = [0] if budget is None else budget
     rows = []
     offset = 0
     calls = 0
     while True:
-        if calls >= 28:
+        if budget[0] >= 28:
             raise RuntimeError(f'{endpoint}: request budget reached; refusing incomplete publication')
         url = BASE + endpoint + '?' + urllib.parse.urlencode({'limit': 1000, 'offset': offset})
         retries = 0
         while True:
+            if budget[0] >= 28:
+                raise RuntimeError("PCPR shared request budget reached; keeping previous snapshot")
+            budget[0] += 1
             calls += 1
             try:
                 req = urllib.request.Request(url, headers={'Authorization': authorization,
@@ -58,7 +62,7 @@ def collect(endpoint, authorization):
                     payload = json.load(response)
                 break
             except urllib.error.HTTPError as err:
-                if err.code in (429, 500, 502, 503, 504) and retries < 2 and calls < 28:
+                if err.code in (429, 500, 502, 503, 504) and retries < 2 and budget[0] < 28:
                     wait = min(120, 15 * 2 ** retries)
                     retry_after = (err.headers or {}).get('Retry-After')
                     if retry_after and str(retry_after).isdigit():
@@ -252,8 +256,9 @@ def main():
     if not token:
         raise SystemExit('Missing Actions secret EVYVE_PCPR_TOKEN; never enter token in code or logs')
     authorization = token if token.lower().startswith(('token ', 'bearer ')) else 'Token ' + token
-    locations, location_calls = collect('locations', authorization)
-    tariffs, tariff_calls = collect('tariffs', authorization)
+    budget = [0]  # shared by both endpoints and retries
+    locations, location_calls = collect('locations', authorization, budget)
+    tariffs, tariff_calls = collect('tariffs', authorization, budget)
     stamp = datetime.now(timezone.utc).isoformat()
     staged, audit = stage(locations, tariffs, stamp)
     audit['apiRequests'] = {'locations': location_calls, 'tariffs': tariff_calls}

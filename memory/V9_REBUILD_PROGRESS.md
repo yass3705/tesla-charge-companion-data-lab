@@ -1,3 +1,15 @@
+## 14 novembre — familles indépendantes préparées, aucun succès anticipé
+
+Fastned FR/GB, EnergyVision BE et Evyve UK réutilisent leurs méthodes historiques avec dépendances et secrets limités par job. Evyve partage désormais le budget28requêtes entre locations,tarifs et retries (même correction technique que Blink) ; test du dernier appel et429 PASS, aucune modification de prix/pagination.8tests de modules PASS ; validateur de transfert étendu aux trois contrats. EnergyVision reste non tarifable selon sa preuve historique ; un transfert réussi ne changera pas cette restriction. Contrôleur shared-public-renewal/run-pilot.py borné et réversible ; préparation seulement.
+
+## 14 novembre — transmission et reprise réelles Electroverse vérifiées
+
+Run43597034709 / HEADe59d01692 : deux jobs réussis.30réponses conservées après transfert GitHub puis30autres acquises ; manifeste/150fichiers/SHA des deux ZIP vérifiés localement, même fenêtre d’observation, aucun changement des partitions indépendantes. Les128shards et le mapping restent conservés. Preuve electroverse-status-checkpoint-handoff.json. Ce PASS concerne exclusivement un checkpoint partiel et sa reprise :0/16collecte nationale complète, aucune publication de statut ou tarif, FR:electroverse_status reste non vérifié pour la finalisation.24handoffs complets prouvés et111ouverts ; G2–G8 restent FAIL. Actions fermé/zéro workflow actif/main inchangé.
+
+Workflow commun : les secrets ne sont désormais injectés que dans les modules qui les déclarent ; aliasREVE et bootstrapAtlante inchangés, credentialscheckout non persistés. Deux tests de portée des secrets PASS ; aucun déploiement ou cadence activés. SourceEV renouvelé :336offres hors preuve conservées brutes,14offres AC historiques reproduisent5.40GBP/10kWh dans le moteur empaqueté. Ce nouvel import reste séparé du brouillon FR/UK vérifié.
+
+Suite : poursuivre les familles indépendantes dans des pilotes bornés ; préparer un candidat regroupé avec OZECAR, IZIVIA et SourceEV renouvelés. Ne pas réutiliser un statut partiel comme preuve nationale. Le checkpoint complet téléchargeable du run43597034709 est conservé horscheckout pour une future continuation respectant16h de fraîcheur et la cadence historique sans paralléliser les requêtes Electroverse.
+
 ## 14 novembre — essai réel de reprise Electroverse préparé
 
 Pilote borné :30locations maximum par passage, deux passages successifs sur le même checkpoint,16partitions et128shards historiques conservés. Premier job collecte un état partiel ; second job télécharge son artefact du même run, vérifie le SHA du manifeste, tous les fichiers, branche/HEAD/source et reprend sans perdre les réponses réussies ni modifier les partitions indépendantes. Aucun snapshot national ni prix nouveau promu. Script scripts/pilot_v9_status_checkpoint.py et tests de corruption/provenance/perte de données ajoutés. Résultat réel encore NON VÉRIFIÉ ; FR:electroverse_status reste non vérifié dans G2. Contrôleur resume-20261114/electroverse-status-resume/run-pilot.py fermera Actions après le seul run.

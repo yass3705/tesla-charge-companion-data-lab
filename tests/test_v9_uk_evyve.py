@@ -2,6 +2,8 @@
 
 import json
 import os
+import io
+import urllib.error
 import tempfile
 import unittest
 from pathlib import Path
@@ -29,6 +31,25 @@ def fixture(*, empty=False, wrong=False):
 
 
 class EvyveMigrationTests(unittest.TestCase):
+    def test_budget_shared_across_endpoints_and_retries(self):
+        from v9_rebuild.uk_blink import load_script
+        from v9_rebuild.electroverse import ROOT
+        module = load_script(ROOT / "scripts/uk_evyve_pcpr_collect.py", "v9_evyve_budget")
+        budget = [27]
+        with patch.object(module.urllib.request, "urlopen", return_value=io.BytesIO(b'{"data":[]}')) as request:
+            self.assertEqual(module.collect("locations", "offline", budget), ([], 1))
+            with self.assertRaisesRegex(RuntimeError, "budget reached"):
+                module.collect("tariffs", "offline", budget)
+            self.assertEqual(request.call_count, 1)
+        self.assertEqual(budget, [28])
+        budget = [27]
+        error = urllib.error.HTTPError("fixture", 429, "limited", {}, None)
+        with patch.object(module.urllib.request, "urlopen", side_effect=error) as request:
+            with self.assertRaisesRegex(RuntimeError, "HTTP 429"):
+                module.collect("locations", "offline", budget)
+            self.assertEqual(request.call_count, 1)
+        self.assertEqual(budget, [28])
+
     def fixture_file(self, root, **kwargs):
         path = root / "fixture.json"
         path.write_text(json.dumps(fixture(**kwargs)), encoding="utf-8")
