@@ -1,3 +1,7 @@
+## 14 novembre — pilote borné OZECAR / IZIVIA FAST préparé
+
+Méthodes historiques et dépendance Playwright1.55.0 du workflow commun conservées. Tests adaptateurs, erreurs et intégrité dans resume-20261114/fr-public-renewal/tests.log. Préflight main c7204b3ef,1207archives exactes et zéro YAML actif. Aucun renouvellement revendiqué avant reçu distant. Driver run-fr-pilot.py referme Actions dans finally. Ces acquisitions ne changent ni portée nationale ni règle de prix ; les preuves historiques insuffisantes restent brutes. Candidat FR/UK en recette indépendante.
+
 ## 14 novembre — renouvellement Zephyre / Ze-Watt vérifié, alimentation nationale exacte
 
 Pilote 43594190154 / HEAD f8c14d4e2 : deux acquisitions réussies, ZIP, manifestes, SHA et contrats vérifiés après fermeture. Actions désactivé, zéro workflow actif, main c7204b3ef inchangé. 21 transferts prouvés, 114 encore ouverts ; G2–G8 restent FAIL globalement.
