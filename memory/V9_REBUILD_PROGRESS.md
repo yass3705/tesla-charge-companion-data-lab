@@ -1,3 +1,15 @@
+## 14 novembre — essai réel de reprise Electroverse préparé
+
+Pilote borné :30locations maximum par passage, deux passages successifs sur le même checkpoint,16partitions et128shards historiques conservés. Premier job collecte un état partiel ; second job télécharge son artefact du même run, vérifie le SHA du manifeste, tous les fichiers, branche/HEAD/source et reprend sans perdre les réponses réussies ni modifier les partitions indépendantes. Aucun snapshot national ni prix nouveau promu. Script scripts/pilot_v9_status_checkpoint.py et tests de corruption/provenance/perte de données ajoutés. Résultat réel encore NON VÉRIFIÉ ; FR:electroverse_status reste non vérifié dans G2. Contrôleur resume-20261114/electroverse-status-resume/run-pilot.py fermera Actions après le seul run.
+
+## 14 novembre — Source EV renouvelé sans prix inventé ; brouillon FR/UK vérifié
+
+Run43596509114 / HEADd57d8be10 réussi, artefact14115145865 vérifié puis normalisé/importé en espace isolé (c0bfe484).350offres conservées avec portée exacte ; les composantes ne correspondant plus à la preuve PAYG historique restent brutes, incalculables, hors classement. Aucun montant renouvelé n’est approuvé par le seul succès de collecte. Les données ne sont pas encore servies. OZECAR également normalisé/importé (a39894e9),269EVSE/465offres brutes ; mêmes réserves de portée et calcul. Compteurs informatifs uniquement.24handoffs prouvés,111ouverts. Actions fermé, zéro workflow actif/main inchangé.
+
+Brouillon https://6af855c43ab7f937570c2a74--tcc-v9-preproduction-20261028.netlify.app désormais vérifié réellement :3241fragments SHA et fichiers critiques intégraux, HTTPS/noindex,23parcours tarifaires et11recherches/neufpays,contrôlesG9/mobilePASS. Bundleb87a89b7 ; preuves Production5f28eba. Rollback6af8470a conservé/vérifié,public inchangé. G2–G8 restent FAIL globalement, cadence et latence dense non validées.
+
+Prochaine opération : éprouver la transmission et la reprise réelles des checkpoints Electroverse dans une fenêtre bornée, sans promouvoir un état national partiel ; poursuivre les familles indépendantes et regrouper les acquisitions validées avant un prochain candidat global. Ne pas répéter les recettes inchangées.
+
 ## 14 novembre — OZECAR renouvelé ; reprise Source EV bornée
 
 Run43595900013 / HEAD01b8864a : acquisition OZECAR réussie sur Ubuntu24.04, artefact14114561544 vérifié par ZIP, manifeste, SHA et contrat. Actions fermé, aucun workflow actif, main inchangé.23handoffs prouvés et112ouverts ; normalisation/import OZECAR restant à vérifier, pas encore servi. Le changement de runner corrige le défaut technique sans modifier le collecteur. Preuves ozecar-handoff.json / ozecar-control.json et YAML archivé.
