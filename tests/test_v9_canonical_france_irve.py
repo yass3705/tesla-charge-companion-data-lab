@@ -1,4 +1,6 @@
 import copy
+import json
+import hashlib
 import unittest
 
 from v9_rebuild.canonical import normalize_france_irve_compact
@@ -22,6 +24,27 @@ class FranceIrveCanonicalTests(unittest.TestCase):
         self.assertEqual(first["offers"], [])
         self.assertTrue(all(row["officialConnectorId"] is None for row in first["connectors"]))
         self.assertEqual({row["officialEvseId"] for row in first["evses"]}, {"FRABCE1", "FRABCE2"})
+
+    def test_source_acquisition_date_survives_without_replacing_absence_by_build_date(self):
+        manifest = {"schemaVersion": 2, "dataset": "france-irve-static-v9", "allSha256": "a" * 64,
+                    "sourceRetrievedAt": "2026-10-20T07:36:07Z", "generatedAt": "2026-11-14T10:00:00Z",
+                    "sourceLastModified": None}
+        raw = json.dumps(manifest).encode()
+        plain = normalize_france_irve_compact([station()], artifact_sha256="a" * 64)
+        result = normalize_france_irve_compact([station()], artifact_sha256="a" * 64, source_manifest_bytes=raw)
+        self.assertEqual(result["source"]["generatedAt"], manifest["sourceRetrievedAt"])
+        self.assertEqual(result["source"]["sourceManifestSha256"], hashlib.sha256(raw).hexdigest())
+        for section in ("cpos", "stations", "evses", "connectors", "offers"):
+            self.assertEqual(result[section], plain[section])
+        manifest.pop("sourceRetrievedAt")
+        absent = normalize_france_irve_compact([station()], artifact_sha256="a" * 64,
+                                              source_manifest_bytes=json.dumps(manifest).encode())
+        self.assertIsNone(absent["source"]["generatedAt"])
+        for change in ({"allSha256": "b" * 64}, {"sourceRetrievedAt": "2026-11-14"},
+                       {"sourceRetrievedAt": "invalid"}, {"dataset": "other"}):
+            with self.assertRaises(ValueError):
+                normalize_france_irve_compact([station()], artifact_sha256="a" * 64,
+                    source_manifest_bytes=json.dumps({**manifest, **change}).encode())
 
     def test_ownership_and_internal_count_fail_closed(self):
         altered = station()

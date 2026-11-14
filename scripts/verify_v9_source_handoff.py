@@ -85,6 +85,8 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
     report={'runId':run_id,'runConclusion':run['conclusion'],'runHeadSha':head,'runBranch':run['head_branch'],
         'acquisitionKind':'archived_replay' if source in ARCHIVED_REPLAYS else 'source_execution',
         'sourceId':source,'jobId':job['id'],'jobStatus':job['status'],'jobConclusion':job['conclusion'],
+        'jobStartedAt':job.get('started_at'),'jobCompletedAt':job.get('completed_at'),
+        'artifactCreatedAt':artifact.get('created_at'),
         'actionsEnabledAfter':False,'artifactId':artifact['id'],'artifactZipSha256':digest,
         'artifactSetSha256':object_sha,'technicalValidation':'PASS','files':files,
         'scope':'One successful source job and downloaded immutable artifact; downstream import separately verified'}

@@ -150,6 +150,28 @@ class OrchestratorTests(unittest.TestCase):
             self.assertEqual(result["status"], "ok")
             self.assertEqual(len([row for row in result["files"] if row["path"].endswith(".json.gz")]), 2)
 
+    def test_failed_belgium_keeps_pages_and_safe_diagnostic_outside_last_good(self):
+        def failed(command, **kwargs):
+            out = Path(kwargs["cwd"])
+            raw = out / "artifacts/belgium-nap-raw-pages/page-000000.json.gz"
+            raw.parent.mkdir(parents=True)
+            raw.write_bytes(gzip.compress(b'{"locations": []}', mtime=0))
+            return SimpleNamespace(returncode=1, stdout='{"page":0,"offset":0,"nextOffset":1000}',
+                stderr='urllib.error.HTTPError: HTTP Error 429: confidential-provider-text')
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"BELGIUM_NAP_TOKEN": "fixture-token"}):
+            out = Path(tmp)
+            good = run_source(self.belgium, out, attempts=1, runner=self.belgium_runner)
+            before = (out / good["artifact"]).read_bytes()
+            result = run_source(self.belgium, out, attempts=1, runner=failed)
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual((out / good["artifact"]).read_bytes(), before)
+            failure = out / "failures/BE_nap/attempt-1"
+            report = json.loads((failure / "process.json").read_text())
+            self.assertEqual(report["httpStatuses"], [429])
+            self.assertNotIn("confidential", json.dumps(report))
+            self.assertTrue((failure / "unvalidated-output/artifacts/belgium-nap-raw-pages/page-000000.json.gz").is_file())
+            self.assertEqual(len(list((out / "objects/BE_nap").iterdir())), 1)
+
     def test_incomplete_belgium_pagination_fails(self):
         def incomplete(command, **kwargs):
             result = self.belgium_runner(command, **kwargs)

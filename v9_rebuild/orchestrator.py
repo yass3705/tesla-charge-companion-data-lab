@@ -1148,6 +1148,18 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                                timeout=timeout_s, check=False)
             output = staged / spec["output_file"]
             if completed.returncode != 0:
+                from v9_rebuild.failure_diagnostics import process_failure
+                failure_dir = out_root / "failures" / source_id.replace(":", "_") / f"attempt-{attempt}"
+                failure_dir.mkdir(parents=True, exist_ok=True)
+                diagnostic = {"sourceId": source_id, "attempt": attempt, **process_failure(completed)}
+                (failure_dir / "process.json").write_text(json.dumps(diagnostic, indent=2) + "\n")
+                if spec["module"] == "belgium_nap":
+                    # Preserve already received public pages separately from
+                    # immutable objects. This is diagnostic state, not last-good.
+                    for relative in ("artifacts/belgium-nap-raw-pages", "data/belgium/pages"):
+                        if (staged / relative).is_dir():
+                            shutil.copytree(staged / relative, failure_dir / "unvalidated-output" / relative,
+                                            dirs_exist_ok=True)
                 reason = "collector_exit_nonzero"
                 if checkpoint_module and (output.is_file() or status_module or (waat_monta_module and any((staged / f"data/shards/waat_monta_shard_{index}.json.gz").is_file() for index in range(4)))):
                     from v9_rebuild.electroverse import validate_state

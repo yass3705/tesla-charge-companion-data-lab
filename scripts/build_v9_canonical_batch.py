@@ -127,7 +127,8 @@ def build(destination: Path, selected: list[str] | None = None) -> dict:
             if source_id == "FR:irve_static":
                 ledger_raw = (ROOT / "reports/france/irve-public-access-validation-ledger.json").read_bytes()
                 extra = {"access_ledger": json.loads(ledger_raw),
-                         "access_ledger_sha256": hashlib.sha256(ledger_raw).hexdigest()}
+                         "access_ledger_sha256": hashlib.sha256(ledger_raw).hexdigest(),
+                         "source_manifest_bytes": (ROOT / route.manifest).read_bytes()}
             normalized = route.normalizer(payload, artifact_sha256=archive_sha, **extra)
             if normalized["source"]["id"] != source_id:
                 raise ValueError(f"Canonical route identity mismatch: {source_id}")

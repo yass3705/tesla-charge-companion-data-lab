@@ -10,6 +10,7 @@ import hashlib
 import json
 import re
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -592,7 +593,8 @@ def normalize_midhope_verified(payload: dict, *, artifact_sha256: str) -> dict:
 
 def normalize_france_irve_compact(payload: list, *, artifact_sha256: str,
                                   access_ledger: dict | None = None,
-                                  access_ledger_sha256: str | None = None) -> dict:
+                                  access_ledger_sha256: str | None = None,
+                                  source_manifest_bytes: bytes | None = None) -> dict:
     """Expand preserved national compact rows without assigning a tariff by site."""
     if not isinstance(payload, list):
         raise ValueError("France IRVE compact source schema invalid")
@@ -622,6 +624,31 @@ def normalize_france_irve_compact(payload: list, *, artifact_sha256: str,
                          **({"accessLedgerSha256": access_ledger_sha256} if access_ledger is not None else {})},
               "countries": [{"code": country}], "cpos": [], "stations": [],
               "evses": [], "connectors": [], "offers": []}
+    if source_manifest_bytes is not None:
+        manifest = json.loads(source_manifest_bytes)
+        if (manifest.get("dataset") != "france-irve-static-v9"
+                or manifest.get("schemaVersion") != 2
+                or manifest.get("allSha256") != artifact_sha256):
+            raise ValueError("France IRVE source manifest does not bind this artifact")
+        retrieved = manifest.get("sourceRetrievedAt")
+        if retrieved is not None:
+            if not isinstance(retrieved, str):
+                raise ValueError("France IRVE retrieval timestamp invalid")
+            try:
+                parsed = datetime.fromisoformat(retrieved.replace("Z", "+00:00"))
+            except ValueError as error:
+                raise ValueError("France IRVE retrieval timestamp invalid") from error
+            if parsed.tzinfo is None:
+                raise ValueError("France IRVE retrieval timestamp needs timezone")
+        result["source"].update({
+            "sourceManifestSha256": hashlib.sha256(source_manifest_bytes).hexdigest(),
+            "sourceRetrievedAt": retrieved,
+            # The runtime's extraction label consumes generatedAt. Never use
+            # build time as a substitute for an absent acquisition timestamp.
+            "generatedAt": retrieved,
+            "sourceBuildGeneratedAt": manifest.get("generatedAt"),
+            "sourceLastModified": manifest.get("sourceLastModified"),
+        })
     cpos, evses, connector_ids = {}, {}, set()
     for row in payload:
         if not isinstance(row, list) or len(row) != 11:

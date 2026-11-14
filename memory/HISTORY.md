@@ -1,3 +1,13 @@
+## 14 novembre — IRVE renouvelé et validé ; Belgique en échec, diagnostic corrigé
+
+Run43586082154 est globalement FAILURE : jobFR:irve_national SUCCESS et artefact réellement vérifié ; jobBE:nap FAILED. Actions de nouveau désactivé, zéro workflow actif, main inchangé. Le reçu français conserve la conclusion globale failure, sans l’effacer.14handoffs vérifiés,121encore ouverts. Dernier snapshot belge conservé.
+
+L’échec belge n’a laissé qu’un code collector_exit_nonzero : le diagnostic était perdu par l’orchestrateur. Correction commune : conservation de la classe d’exception, codes HTTP, frames et compteurs numériques, sans texte libre ni jeton ; pages BE déjà reçues conservées dans failures/unvalidated-output, jamais objects/last-good. Tests :2diagnostics,15orchestration/reprise/last-good PASS. Une seule reprise technique BE est préparée pour obtenir la cause réelle, sans nouvelle méthode ou enquête fournisseur.
+
+Autre perte confirmée : la date sourceRetrievedAt du manifeste IRVE disparaissait dans le canonique. Elle est désormais conservée avec SHA du manifeste, séparément de la date de construction ; si absente, reste absente.4tests normaliseur dont mauvaisSHA/date et identités invariantes +2tests bundles PASS. Canonique FR renouvelé en cours horscheckout, source acquise14novembre10:36UTC. La préproduction6af8365acf7552d1d9e1768a reste inchangée et entièrement vérifiée pour son propre paquet.
+
+Prochaine opération : piloteBE borné sur la branche seulement, driver persistant resume-20261114/national-belgium-retry/run-national-pilot.py, fermerActions puis examiner le diagnostic avant toute autre reprise. Préparer indépendamment l’import du catalogueFR validé ; ne pas promouvoir de sortieBE partielle. G2–G8 restentFAIL globalement.
+
 ## 14 novembre — préparation du renouvellement national FR/BE
 
 Candidat Netlify6af8365acf7552d1d9e1768a désormais vérifié :3247fragments signés etressourcescritiquesSHA/HTTPS/noindex,19parcours,11recherchesneufpays,mobile,classementdenseexact ; la latence66.7s resteFAILperformance. Sitepublicinchangé,retourarrière6aed03e7vérifié.
