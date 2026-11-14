@@ -61,7 +61,7 @@ def run(out: Path, *, fixture: Path | None = None) -> None:
         payload = json.loads(fixture.read_text(encoding="utf-8"))
         if not isinstance(payload.get("locations"), list) or not isinstance(payload.get("tariffs"), list):
             raise ValueError("Blink fixture envelope invalid")
-        collector.collect = lambda endpoint, authorization: (payload[endpoint], 1)
+        collector.collect = lambda endpoint, authorization, budget=None: (payload[endpoint], 1)
     collector.main()
     auditor = load_script(ROOT / "scripts/uk_blink_pcpr_validate.py", "v9_historical_uk_blink_audit")
     auditor.ROOT = out

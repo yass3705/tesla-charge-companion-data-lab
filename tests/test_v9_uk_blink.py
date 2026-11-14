@@ -79,6 +79,23 @@ class BlinkMigrationTests(unittest.TestCase):
         self.assertEqual((len(rows), calls), (1000, 2))
         self.assertIn("offset=1000", fetch.call_args_list[1].args[0].full_url)
 
+    def test_budget_is_shared_between_endpoints_including_retry(self):
+        module = load_script(ROOT / "scripts/uk_blink_pcpr_collect.py", "v9_blink_shared_budget")
+        budget = [27]
+        with patch.object(module.urllib.request, "urlopen", return_value=io.BytesIO(b'{"data":[]}')) as fetch:
+            self.assertEqual(module.collect("locations", "Token offline", budget), ([], 1))
+            with self.assertRaisesRegex(RuntimeError, "budget reached"):
+                module.collect("tariffs", "Token offline", budget)
+        self.assertEqual(fetch.call_count, 1)
+        self.assertEqual(budget, [28])
+        budget = [27]
+        error = module.urllib.error.HTTPError("https://fixture.invalid", 503, "offline", {}, None)
+        with patch.object(module.urllib.request, "urlopen", side_effect=error) as fetch, patch.object(module.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "HTTP 503"):
+                module.collect("locations", "Token offline", budget)
+        self.assertEqual(fetch.call_count, 1)
+        self.assertEqual(budget, [28])
+
 
 if __name__ == "__main__":
     unittest.main()

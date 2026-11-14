@@ -24,6 +24,8 @@ from v9_rebuild.orchestrator import validate_belgium_output
 from v9_rebuild.allego_stations import validate_output as allego_stations
 from v9_rebuild.bump_tariffs import validate_output as bump_tariffs
 from v9_rebuild.uk_pcpr import validate_output as uk_pcpr
+from v9_rebuild.uk_blink import validate_output as uk_blink
+from v9_rebuild.uk_gridserve import validate_output as uk_gridserve
 ARCHIVED_REPLAYS = {'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
 REPO='yass3705/tesla-charge-companion-data-lab'
 def belgium_nap(state):
@@ -33,6 +35,7 @@ def belgium_nap(state):
     return manifest
 VALIDATORS={'FR:irve_national':france_irve,'BE:nap':belgium_nap,'GB:midhope_verified':uk_midhope,'BE:final_gap_archive':belgium_gap_archive,'FR:canonical':france_canonical,'FR:atlante_fr_it':atlante_fr_it,'NL:dotnl':nl_dotnl,'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra,'CH:swiss_bundle':swiss_bundle,'CH:swiss_integration':swiss_integration}
 VALIDATORS.update({'FR:allego_stations': allego_stations, 'FR:bump_tariffs': bump_tariffs})
+VALIDATORS.update({'GB:blink_pcpr':uk_blink,'GB:gridserve_pcpr':uk_gridserve})
 VALIDATORS.update({'GB:allego_uk_pcpr': partial(uk_pcpr, provider='allego_uk'),
                    'GB:source_ev_pcpr': partial(uk_pcpr, provider='source_ev')})
 def check_execution(run,jobs,artifact,source,head):

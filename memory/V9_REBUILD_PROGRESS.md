@@ -1,3 +1,9 @@
+## 14 novembre — préparation bornée Blink et GRIDSERVE
+
+Allego UK vérifié et Source EV isolé dans80578636f. Deux prochains jobs indépendants Blink/GRIDSERVE : secrets existants par nom, mêmes endpoints/méthodes historiques ; aucun renouvellement encore revendiqué. Quota Blink corrigé en budget commun28appels (locations+tariffs+retries), au lieu de deux budgets séparés.14tests adaptateurs/transfert PASS. Préflight mainc7204b3ef restaurable1207archives,aucunYAMLactif. Driver horscheckout resume-20261114/uk-open-renewal/run-uk-pilot.py ; activer uniquement le workflow temporaire après vérification, fermer immédiatement après le run.
+
+Actions encore désactivé à cette entrée ; G2FAIL118handoffs non vérifiés. Source EV ne doit pas être rejoué avant12:46UTC après sa fenêtre précédente, etaucunjetonUbitricityUKàredemander. Aucun déploiement Netlify à ce lot.
+
 ## 14 novembre — Allego UK transmis, Source EV isolé sans inventer de prix
 
 Run43591511750 : Allego UK réussi, reçu SHA/manifeste/fichiers vérifié ; Source EV échoué sur la ligne54 de l’audit historique (écart à la référence PAYG), pas un secret manquant. Actions refermé, zéro workflow actif, main inchangé.17handoffs prouvés,118ouverts ; G2–G8 restent FAIL. Le brut de l’échec n’était pas conservé, donc aucun nouveau montant fournisseur n’est déclaré connu/valide.
