@@ -1283,3 +1283,12 @@ Run43589681840 FAILURE et Actions fermé/zéro workflow actif/main inchangé. Le
 
 Candidat regroupant acquisitions FR/BE/Allego : bundle29ab85449b08a68376e1b6b726476614a771aa96b12452f4d2e4014451d3e7f1,33sources dont30inchangées depuis le précédent Netlify. Préparation/recette en cours via resume-20261114/direct-allego-bump/pipeline-state.json et validation-state.json ; site-national-direct-20261114. Ne pas reconstruire les bundles validés. Prochaine : terminer tests locaux, scan/manifestes, puis un seul nouveau brouillon isolé et contrôles distants. G2–G8 restent FAIL ; dernière URL vérifiée6af8365a inchangée.
 
+
+## 14 novembre — brouillon national/Direct en recette distante ; préparation PCPR UK
+
+Nouveau brouillon6af8470ab1f6ac03083a27f4 ready/deploy-preview, aucun --prod. URL https://6af8470ab1f6ac03083a27f4--tcc-v9-preproduction-20261028.netlify.app ; bundle29ab85449b08a68376e1b6b726476614a771aa96b12452f4d2e4014451d3e7f1.20parcours et11recherches/neufpays identiques local/distant ; contrôlesG9/mobilePASS. SHA exhaustif encore en cours, reçu direct-allego-bump/fragment-receipt.jsonl ; ne pas annoncer sa fin avant remote-state.json/remote-integrity.json. Ancien brouillon6af8365a revérifié disponible, sitepublic inchangé. Audit de portée sur les neuf pays PASS, mêmes moteurs que le paquet servi ; Buc unique/sixEVSE, aucun CPO autonome dans les bases nationales.
+
+Prochaine famille utile : deux collecteurs PCPR historiques Allego UK / Source EV, mêmes méthodes et budget partagé28requêtes par identifiant/h. Noms des deux secrets existants confirmés sans valeurs ;3tests adaptateur,9testscollecteur,6teststransfertPASS. Pilote commun borné préparé ; Actions encore désactivé à cette entrée. Driver resume-20261114/uk-pcpr-renewal/run-uk-pilot.py ; fermer Actions avant vérification des artefacts. Aucun renouvellement UK revendiqué avant reçu réel.
+
+Registre Atlante précisé pour les deux modules : le nom ATLANTE_API_SUBSCRIPTION_KEY est un environnement technique alimenté par le bootstrap APK historique ; aucun secret utilisateur à créer. Ubitricity UK reste attente fournisseur, REVE utiliseMAPA_REVE_API_KEY, Bump est limité par le fournisseur et last-good intact. G2–G8 FAIL global,16handoffs prouvés/119ouverts.
+
