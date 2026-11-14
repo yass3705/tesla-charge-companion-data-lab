@@ -1,3 +1,9 @@
+## 14 novembre — refus fournisseur Bump identifié, aucun résultat partiel promu
+
+Run43589681840 FAILURE et Actions fermé/zéro workflow actif/main inchangé. Le reçu d’échec SHA et les six sorties en quarantaine établissent :70tuiles HTTP200 contenant « Too many requests. Please try again later. », aucun échec de groupe tarifaire, compteurs rapport/données identiques. Il s’agit d’une limitation fournisseur applicative, pas d’un secret manquant. Aucun troisième essai immédiat, aucun contournement de quota, aucune sortie partielle transmise. Le dernier Bump valide reste utilisé. Preuves bump-rate-limit-receipt.json / bump-diagnostic-control.json ; fichiers bruts horscheckout direct-bump-diagnostic/quarantine. La conservation des diagnostics est corrigée et testée ; le renouvellement fournisseur n’est PAS validé.16handoffs prouvés/119ouverts.
+
+Candidat regroupant acquisitions FR/BE/Allego : bundle29ab85449b08a68376e1b6b726476614a771aa96b12452f4d2e4014451d3e7f1,33sources dont30inchangées depuis le précédent Netlify. Préparation/recette en cours via resume-20261114/direct-allego-bump/pipeline-state.json et validation-state.json ; site-national-direct-20261114. Ne pas reconstruire les bundles validés. Prochaine : terminer tests locaux, scan/manifestes, puis un seul nouveau brouillon isolé et contrôles distants. G2–G8 restent FAIL ; dernière URL vérifiée6af8365a inchangée.
+
 ## 14 novembre — Allego renouvelé ; Bump rejeté, dernier état préservé
 
 Run 43589225728 global FAILURE : Allego source job SUCCESS et artefact/SHA vérifiés, Bump refusé par le contrôle de complétude GraphQL (requêtes ou compteurs). Actions fermé. 16 handoffs prouvés,119 ouverts. Reçu Allego et diagnostic Bump sous docs/v9-rebuild/evidence/restoration-20261114/. Allego : mêmes identités et offres que l’archive, nouvelles acquisition/provenance réelles ; canonique SHA8e9be93b13db60489c344a3d43e1644b6513526073fc7f6c525a38afe64a4fb0.
