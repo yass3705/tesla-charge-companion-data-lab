@@ -1,3 +1,11 @@
+## 14 novembre — reprise des opérations interrompues, aucun pilote relancé
+
+Branches reconstruction alignées avec origin : DataLab bf958eecb, Production1264896 ; modifications locales REVE conservées. Actions enabled=false recontrôlé. Atlante42122453243 est réussi/vérifié ; REVE42123311317 a reçu cinq HTTP200, puis refusé la publication car flux incomplets. Checkpoint exact conservé dans migration/v9/checkpoint-seeds/ES_reve_stream, SHA du ZIP et égalité avec l’artefact vérifiés. Cinq tests de seed/reprise PASS ; G2 FAIL uniquement125handoffs non vérifiés et registre partiel. Ubitricity UK reste attente fournisseur, aucune nouvelle demande de clé Atlante/REVE.
+
+Les fichiers temporaires /private/tmp ont disparu pendant l’interruption. Les archives horscheckout, bundles, sites et preuves versionnées sont intacts. Le résultat final du contrôle intégral6aed03e7 n’était pas sauvegardé : reprise justifiée du contrôle distant, reçu persistant `emsp-restoration-20261105/resume-20261114/previous-fragment-receipt.jsonl`, session40894. Pas de nouveau déploiement à cette entrée.
+
+Le bundle33 avec Atlante FR/IT renouvelé est `0bce189c967136aa3c0a46ad298e6b1be4304c80c8eb8c6ff4abb2d5e080ceb6` ; prepared-atlante-renewed vérifié,31sources inchangées. Empaquetage site-atlante-renewed en cours, sortie persistante resume-20261114/atlante-package.json. Les acquisitions Atlante datent du5novembre, pas du14 ; aucune fraîcheur inventée. Prochaineopération : terminer paquet et scan, recette ciblée Atlante puis intégrée neufpays/G9, nouveau brouillon isolé seulement après succès, SHA/navigateur distants, préserver6aed03e7 etpublic. Aucune promotion G2–G8 globale.
+
 ## 5 novembre — Atlante renouvelé réellement, REVE reprise bornée préparée
 
 Run42122453243/HEAD45475b3c8 success ; bootstrap myAtlante historique et collecte FR/IT réels. ZIP93bbc5038e642f5cc0ac00b82c8a68400b86f03c3ada6fc3bd3af11667732a24, contrat/manifeste/fichiers vérifiés après fermeture Actions(enabled=false). Preuves atlante-handoff/control/preflight.10handoffs prouvés,125encore non vérifiés ; aucune clôture globale. Normalisation des deux pays et bundle33 renouvelé en cours session99723 ; aucun nouveau tarif attribué par proximité.

@@ -20,6 +20,7 @@ DATA = Path("data/spain_reve/full_20261018")
 FILES = ("tariff_status_stream_state.json", "reve_connector_tariffs_raw.json.gz",
          "reve_operational_status_raw.json.gz", "tariff_status_stream_last_run.json")
 ARCHIVE = ROOT / DATA
+SEED_CHECKPOINT = ROOT / "migration/v9/checkpoint-seeds/ES_reve_stream"
 
 
 def digest(path: Path) -> str:
@@ -103,6 +104,12 @@ def seed_archived_checkpoint(checkpoint: Path) -> Path | None:
     previous = validate_checkpoint(checkpoint)
     if previous is not None:
         return previous
+    if SEED_CHECKPOINT.exists():
+        seed = validate_checkpoint(SEED_CHECKPOINT)
+        if seed is None:
+            raise ValueError("REVE recorded seed checkpoint missing")
+        save_checkpoint(seed, checkpoint)
+        return validate_checkpoint(checkpoint)
     if ARCHIVE.exists():
         validate_data(ARCHIVE, require_complete=False)
         save_checkpoint(ARCHIVE, checkpoint)

@@ -64,6 +64,25 @@ class ReveStreamMigrationTests(unittest.TestCase):
         self.archive_patch = patch.object(reve_stream, "ARCHIVE", Path(self.temp.name) / "absent")
         self.archive_patch.start()
         self.addCleanup(self.archive_patch.stop)
+        self.seed_patch = patch.object(reve_stream, "SEED_CHECKPOINT", Path(self.temp.name) / "absent-seed")
+        self.seed_patch.start()
+        self.addCleanup(self.seed_patch.stop)
+
+    def test_verified_github_seed_preserves_quota_and_takes_precedence_over_archive(self):
+        source = reve_stream.ROOT / "migration/v9/checkpoint-seeds/ES_reve_stream"
+        original = reve_stream.validate_checkpoint(source)
+        with tempfile.TemporaryDirectory() as tmp, patch.object(reve_stream, "SEED_CHECKPOINT", source):
+            target = Path(tmp) / "runtime-checkpoint"
+            seeded = reve_stream.seed_archived_checkpoint(target)
+            self.assertEqual({f: (seeded / f).read_bytes() for f in reve_stream.FILES},
+                             {f: (original / f).read_bytes() for f in reve_stream.FILES})
+            self.assertFalse(reve_stream.validate_data(seeded, require_complete=False)["complete"])
+            with self.assertRaisesRegex(ValueError, "incomplete"):
+                reve_stream.validate_data(seeded, require_complete=True)
+            # A later restored checkpoint wins even if the seed is unavailable.
+            with patch.object(reve_stream, "SEED_CHECKPOINT", Path(tmp) / "bad-seed"):
+                reve_stream.SEED_CHECKPOINT.mkdir()
+                self.assertEqual(reve_stream.seed_archived_checkpoint(target), seeded)
 
     def test_real_archived_cursors_seeded_without_network_or_overwrite(self):
         archive = reve_stream.ROOT / reve_stream.DATA
