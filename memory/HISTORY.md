@@ -1,3 +1,9 @@
+## 14 novembre — préparation du renouvellement national FR/BE
+
+Candidat Netlify6af8365acf7552d1d9e1768a désormais vérifié :3247fragments signés etressourcescritiquesSHA/HTTPS/noindex,19parcours,11recherchesneufpays,mobile,classementdenseexact ; la latence66.7s resteFAILperformance. Sitepublicinchangé,retourarrière6aed03e7vérifié.
+
+Prochainpiloteborné : FR:irve_national etBE:nap, méthodeshistoriques déjàmigrées, BE utilise le secretexistantBELGIUM_NAP_TOKEN sansconsultationdevaleur. Deuxjobsindépendants,aucunpushautomatique/publication. Préparation pendantActionsdésactivé ; contrôleHEADmain/workflowsavantactivationparledriverpersistant `resume-20261114/national-renewal/run-national-pilot.py`. Délai1800s,fermetureActionsenfinally,preuves `national-control.json`. Àcetteentrée aucuneacquisitionnouvelleencoreréussie. Les122handoffs restentnonvérifiés jusqu’aureçudistant. Ne pasécraserlast-goodsuréchec,nepasréduirepaginationniinventerprixpourpasser.
+
 ## 14 novembre — transmissions de constructeurs prouvées, Actions fermé
 
 Run43585513906/8faa6c081 success pour FR:canonical,GB:midhope_verified,BE:final_gap_archive. Les trois ZIP,manifestes,contrats et SHA sont réellement vérifiés après désactivation ;13handoffs prouvés,122restent ouverts. Archives rejouées, pas collectes fraîches. Import Production isolé de la sortie GB PASS ; identités/puissances/offres inchangées, seules dates archivées et empreinte changent (20octobre vs10octobre). Preuves `docs/v9-rebuild/evidence/restoration-20261114/`. Workflow temporaire archivé, mainc7204b3ef inchangé,enabled=false,zéro workflow actif. G2 FAIL :122handoffs +registrepartiel uniquement.

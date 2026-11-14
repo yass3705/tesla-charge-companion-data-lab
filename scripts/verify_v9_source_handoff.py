@@ -18,9 +18,16 @@ from v9_rebuild.atlante_fr_it import validate_output as atlante_fr_it
 from v9_rebuild.uk_midhope import validate_output as uk_midhope
 from v9_rebuild.belgium_gap_archive import validate_output as belgium_gap_archive
 from v9_rebuild.france_canonical import validate_output as france_canonical
+from v9_rebuild.france_irve import validate_output as france_irve
+from v9_rebuild.orchestrator import validate_belgium_output
 ARCHIVED_REPLAYS = {'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
 REPO='yass3705/tesla-charge-companion-data-lab'
-VALIDATORS={'GB:midhope_verified':uk_midhope,'BE:final_gap_archive':belgium_gap_archive,'FR:canonical':france_canonical,'FR:atlante_fr_it':atlante_fr_it,'NL:dotnl':nl_dotnl,'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra,'CH:swiss_bundle':swiss_bundle,'CH:swiss_integration':swiss_integration}
+def belgium_nap(state):
+    manifest = json.loads((state / 'data/belgium/nap-belgium-manifest.json').read_bytes())
+    if not validate_belgium_output(state, manifest):
+        raise ValueError('Belgium national pagination or integrity contract invalid')
+    return manifest
+VALIDATORS={'FR:irve_national':france_irve,'BE:nap':belgium_nap,'GB:midhope_verified':uk_midhope,'BE:final_gap_archive':belgium_gap_archive,'FR:canonical':france_canonical,'FR:atlante_fr_it':atlante_fr_it,'NL:dotnl':nl_dotnl,'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra,'CH:swiss_bundle':swiss_bundle,'CH:swiss_integration':swiss_integration}
 def check_execution(run,jobs,artifact,source,head):
     if (run.get('status')!='completed' or run.get('head_branch')!='rebuild/v9-20261020'
         or run.get('head_sha')!=head or len(head)!=40
