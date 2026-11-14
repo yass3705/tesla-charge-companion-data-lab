@@ -10,7 +10,7 @@ class FailureDiagnostics(unittest.TestCase):
             stdout=json.dumps({'offset':1000,'page':1,'nextOffset':2000,'locations':3,
                                'token':secret,'response':secret})+'\n'+secret,
             stderr='Traceback (most recent call last):\n  File "/private/project/collector.py", line 42, in fetch_page\n'+
-                   'urllib.error.HTTPError: HTTP Error 429: '+secret+'\nAuthorization: Bearer '+secret))
+                   'urllib.error.HTTPError: HTTP Error 429: '+secret+f'\nAuthorization: Bearer {secret}'))
         self.assertEqual(result['httpStatuses'],[429])
         self.assertEqual(result['exceptionType'],'urllib.error.HTTPError')
         self.assertEqual(result['frames'],[{'file':'collector.py','line':42,'function':'fetch_page'}])
