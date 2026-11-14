@@ -14,7 +14,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   collect:
-    runs-on: ubuntu-latest
+    # The preserved Playwright 1.55 browser contract does not support Ubuntu
+    # 26.04 (real pilot 43594993525). Keep the compatible runner explicit.
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4

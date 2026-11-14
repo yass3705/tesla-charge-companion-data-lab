@@ -1,3 +1,9 @@
+## 14 novembre — IZIVIA transmis ; runner OZECAR corrigé avant reprise
+
+Run43594993525 globalFAIL : IZIVIA FAST réussi, artefact14114325677 et import isolé3c517e8a vérifiés.22handoffs prouvés,113ouverts. Les616groupes station restent bruts, zéro EVSE inventé ni prix propagé ; pas encore servi. OZECAR n’a effectué aucun appel fournisseur : Playwright1.55.0 refuse Ubuntu26.04 installé par ubuntu-latest. Workflow commun épinglé Ubuntu24.04 ; nouvel essai OZECAR seul préparé, même méthode et dépendance.16tests locaux préservés, résultat réel du runner encore en attente.
+
+Actions refermé après le run. Nouveau brouillon FR/UK6af855c43ab7f937570c2a74 prêt côté Netlify, recette distante en cours : ne pas annoncer sa validation. Bundleb87a89b7,928profils FR renouvelés reproduits entièrement par l’oracle ; preuves sousfr-direct-renewal. Source EV attend toujours12:46UTC avant essai corrigé. G2–G8 restent FAIL globalement.
+
 ## 14 novembre — pilote borné OZECAR / IZIVIA FAST préparé
 
 Méthodes historiques et dépendance Playwright1.55.0 du workflow commun conservées. Tests adaptateurs, erreurs et intégrité dans resume-20261114/fr-public-renewal/tests.log. Préflight main c7204b3ef,1207archives exactes et zéro YAML actif. Aucun renouvellement revendiqué avant reçu distant. Driver run-fr-pilot.py referme Actions dans finally. Ces acquisitions ne changent ni portée nationale ni règle de prix ; les preuves historiques insuffisantes restent brutes. Candidat FR/UK en recette indépendante.
