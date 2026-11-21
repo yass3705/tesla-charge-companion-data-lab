@@ -1,3 +1,7 @@
+## Reprise REVE et collectes Direct — 21 novembre
+
+PR 344 : reprise permanente du flux REVE sur son horaire historique (minute 27 UTC). Le run manuel 44905451849 a restauré la génération vérifiée du 5 novembre et reçu cinq réponses HTTP 200. Les pages suivantes sont désormais 43/29 au lieu de 40/27 ; tout nouveau lot attend le quota. L’artefact 14707553257 a été restauré indépendamment avec contrôles SHA. Il reste partiel et ne peut pas être importé comme tarif national. Les échecs fournisseur conservent leur curseur et aucun ancien workflow ne s’est activé. L’événement programmé reste à vérifier. Sept reçus Direct supplémentaires sur le run 44905026998. Registre 60 handoffs vérifiés sur 135, 75 en attente. Brouillon 6b01917b en cours de vérification distante pour le bundle 96bfbdaf, antérieur aux renouvellements Direct de ce jour, hormis IONITY. Vérifier son intégrité complète, la reprise Electroverse 44902743843 et les premiers événements programmés.
+
 ## Cadences permanentes des preuves Direct — 21 novembre
 
 Le calendrier permanent regroupe 17 collecteurs Direct ayant déjà réussi leur transfert réel et dont le YAML archivé prévoit une collecte quotidienne. Les méthodes historiques manuelles sont exclues. PR 343 : un seul workflow actif, deux sources Direct simultanées maximum, 1 207 workflows archivés restaurables. IONITY reste à 03:37 UTC et les preuves Direct sont regroupées à 08:53 UTC. L’exécution cron est encore NOT TESTED ; les destinations sont des artefacts isolés et aucun prix générique n’est attribué à un PDC.

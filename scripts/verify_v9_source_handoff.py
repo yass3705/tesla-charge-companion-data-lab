@@ -111,15 +111,15 @@ def check_execution(run,jobs,artifact,source,head):
     branch = 'main' if scheduled else 'rebuild/v9-20261020'
     direct_schedule = scheduled and source != "FR:ionity_direct_family"
     if scheduled:
-        from scripts.check_v9_neutralized_main import SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED
-        if (head not in {SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED}
+        from scripts.check_v9_neutralized_main import SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED, REVE_INSTALLED
+        if (head not in {SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED, REVE_INSTALLED}
                 or run.get("workflow_id") != 425938005
                 or run.get("event") not in {"workflow_dispatch", "schedule"}):
             raise ValueError("Untrusted scheduled collection")
         if direct_schedule:
             cadence = _registry_root / "docs/v9-rebuild/evidence/restoration-20261121/direct-cadences.json"
             daily = {row["source"] for row in json.loads(cadence.read_bytes())["sources"]}
-            if head != DIRECT_INSTALLED or source not in daily or run["event"] != "schedule":
+            if head not in {DIRECT_INSTALLED, REVE_INSTALLED} or source not in daily or run["event"] != "schedule":
                 raise ValueError("Untrusted Direct schedule")
     if (run.get('status')!='completed' or run.get('head_branch')!=branch
         or run.get('head_sha')!=head or len(head)!=40
