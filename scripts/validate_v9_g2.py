@@ -48,7 +48,8 @@ def main() -> None:
             errors.append(f"verified handoff evidence unavailable: {spec['id']}")
             continue
         if claim.startswith("verified_source_job_"):
-            archive_replay = (spec.get("module") in {"france_canonical", "uk_midhope", "belgium_gap_archive"}
+            archive_replay = ((spec.get("module") in {"france_canonical", "uk_midhope", "belgium_gap_archive"}
+                               or spec["id"] in {"CH:ail_emoti","CH:ebs_ecarup","CH:iwb_basel"})
                               and evidence.get("acquisitionKind") == "archived_replay"
                               and spec.get("live") == "not_applicable_archived_replay")
             if (claim != f"verified_source_job_{evidence.get('runId')}_{evidence.get('jobId')}"
@@ -56,7 +57,9 @@ def main() -> None:
                     or evidence.get("jobStatus") != "completed" or evidence.get("jobConclusion") != "success"
                     or evidence.get("runConclusion") not in {"success", "failure", "cancelled"}
                     or evidence.get("runBranch") != "rebuild/v9-20261020"
-                    or evidence.get("actionsEnabledAfter") is not False
+                    or not (evidence.get("actionsEnabledAfter") is False
+                            or (evidence.get("actionsEnabledAfter") is True
+                                and evidence.get("activeWorkflowIdsAfter") == [425938005]))
                     or evidence.get("technicalValidation") != "PASS"
                     or not re.fullmatch(r"[0-9a-f]{40}", str(evidence.get("runHeadSha", "")))
                     or any(not re.fullmatch(r"[0-9a-f]{64}", str(evidence.get(k, "")))

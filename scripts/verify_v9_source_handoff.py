@@ -34,10 +34,11 @@ from v9_rebuild.energyvision import validate_output as energyvision
 from v9_rebuild.uk_evyve import validate_output as uk_evyve
 from v9_rebuild.ozecar import validate_output as ozecar
 from v9_rebuild.izivia_fast import validate_output as izivia_fast
+from v9_rebuild.cwd_script import validate_output as cwd_output
 from v9_rebuild.official_rules import RULES, validate_output as official_rules
 from v9_rebuild.ionity import validate_output as ionity
 from v9_rebuild.electroverse import validate_state as electroverse
-ARCHIVED_REPLAYS = {'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
+ARCHIVED_REPLAYS = {'CH:ail_emoti', 'CH:ebs_ecarup', 'CH:iwb_basel', 'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
 REPO='yass3705/tesla-charge-companion-data-lab'
 def verify_full_tariff_renewal(state, started_at, completed_at):
     """Every currently mapped location must have been checked in this run.
@@ -80,6 +81,8 @@ def manifest_evidence(folder, *, manifest_path):
 
 _registry_root = Path(__file__).resolve().parents[1]
 for _spec in json.loads((_registry_root / 'v9_rebuild/sources.json').read_bytes())['sources']:
+    if _spec['module'] == 'cwd_script':
+        VALIDATORS[_spec['id']] = partial(cwd_output, method=_spec['method'])
     if _spec['module'] == 'operator_manifest':
         VALIDATORS[_spec['id']] = partial(manifest_evidence, manifest_path=_registry_root / safe_relative(_spec['manifest']))
 
@@ -87,7 +90,7 @@ def check_execution(run,jobs,artifact,source,head):
     scheduled = run.get('path') == '.github/workflows/v9-scheduled.yml'
     branch = 'main' if scheduled else 'rebuild/v9-20261020'
     if scheduled and (run.get('event') not in ('workflow_dispatch', 'schedule')
-                      or head != '50c46bf1843560b9b06090c803ef80065f984dc6'
+                      or head not in ('50c46bf1843560b9b06090c803ef80065f984dc6', '83e59ba6a3b1c62a0c729685c2b5da65cbe604e3')
                       or source != 'FR:ionity_direct_family' or run.get('workflow_id') != 425938005):
         raise ValueError('Untrusted scheduled collection')
     if (run.get('status')!='completed' or run.get('head_branch')!=branch
@@ -124,6 +127,7 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
     if reuse_archive and (not (out/'artifact.zip').is_file() or (out/'receipt.json').exists()):raise ValueError('Only a previously downloaded unverified ZIP can be reused')
     def api(p):return json.loads(subprocess.check_output(['gh','api',f'repos/{REPO}/{p}']))
     enabled = api('actions/permissions')['enabled']
+    active = []
     if enabled:
         pages = json.loads(subprocess.check_output(['gh','api',f'repos/{REPO}/actions/workflows?per_page=100','--paginate','--slurp']))
         active = [w['id'] for page in pages for w in page['workflows'] if w['state']=='active']
@@ -156,7 +160,7 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
         'sourceId':source,'jobId':job['id'],'jobStatus':job['status'],'jobConclusion':job['conclusion'],
         'jobStartedAt':job.get('started_at'),'jobCompletedAt':job.get('completed_at'),
         'artifactCreatedAt':artifact.get('created_at'),
-        'actionsEnabledAfter':enabled,'artifactId':artifact['id'],'artifactZipSha256':digest,
+        'actionsEnabledAfter':enabled,'activeWorkflowIdsAfter':active,'artifactId':artifact['id'],'artifactZipSha256':digest,
         'artifactSetSha256':object_sha,'technicalValidation':'PASS','files':files,
         'scope':'One successful source job and downloaded immutable artifact; downstream import separately verified'}
     if renewal is not None:report['renewalCompleteness']=renewal

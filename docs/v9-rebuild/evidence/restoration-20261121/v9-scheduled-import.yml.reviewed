@@ -1,0 +1,54 @@
+name: V9 scheduled collections
+on:
+  schedule:
+    - cron: '37 3 * * *'
+  workflow_dispatch:
+    inputs:
+      collection_run:
+        description: Replay a verified IONITY collection from a previous run
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: v9-verified-schedule
+  cancel-in-progress: false
+jobs:
+  collect:
+    if: github.ref == 'refs/heads/main' && inputs.collection_run == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: FR:ionity_direct_family
+            slug: FR_ionity_direct_family
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 00b3ef4228e5c8ce30013f2f8c2527340dd03f86
+          persist-credentials: false
+      - name: Renew the approved method in temporary storage
+        env:
+          SOURCE_ID: ${{ matrix.source }}
+        run: python3 -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/v9" --workers 1 --attempts 1
+      - name: Retain complete collection
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-collection-${{ matrix.slug }}
+          path: |
+            ${{ runner.temp }}/v9/manifest.json
+            ${{ runner.temp }}/v9/objects
+          if-no-files-found: error
+          retention-days: 30
+  import:
+    needs: collect
+    if: always() && github.ref == 'refs/heads/main' && (needs.collect.result == 'success' || (needs.collect.result == 'skipped' && inputs.collection_run != ''))
+    permissions:
+      contents: read
+      actions: read
+    uses: yass3705/tesla-charge-companion-production/.github/workflows/v9-import-reviewed.yml@fd9adbe3d30c35422f60585b4f86343eca1a7d5e
+    with:
+      production_sha: fd9adbe3d30c35422f60585b4f86343eca1a7d5e
+      collection_run: ${{ inputs.collection_run || format('{0}', github.run_id) }}
