@@ -8,6 +8,7 @@ import argparse, hashlib, json, stat, subprocess, sys, tempfile, zipfile
 from functools import partial
 from pathlib import Path
 from datetime import datetime, timedelta
+import re
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from v9_rebuild.orchestrator import artifact_digest, safe_relative, sha256
 from v9_rebuild.bump_official import validate_output as bump_official
@@ -67,6 +68,62 @@ def verify_full_tariff_renewal(state, started_at, completed_at):
             raise ValueError('Mapped location was not renewed in the source job')
     return {'mappedLocationsCheckedThisJob':len(ids),'checkedLedgerEntries':len(checked),
             'allMappedLocationsRenewed':True,'historicalVolumeGate':False}
+def verified_window_chain(head):
+    """Follow only immutable checkpoint receipts pinned by the actual collector workflow."""
+    evidence = Path(__file__).resolve().parents[1] / "docs/v9-rebuild/evidence/restoration-20261121"
+    receipts = []
+    visited = set()
+    while True:
+        if not re.fullmatch(r"[0-9a-f]{40}", head) or head in visited:
+            raise ValueError("Invalid Electroverse checkpoint ancestry")
+        visited.add(head)
+        workflow = subprocess.check_output(["git", "show",
+            f"{head}:.github/workflows/v9-tariff-restoration-pilot.yml"], cwd=evidence, text=True)
+        if "--incoming" not in workflow:
+            break
+        pins = re.findall(r"--expected-sha ([a-f0-9]{64}) --expected-head ([a-f0-9]{40}) --expected-run (\d+)", workflow)
+        if len(pins) != 1:
+            raise ValueError("Unrecognized checkpoint recovery contract")
+        sha, parent, run = pins[0]
+        file = evidence / f"electroverse-checkpoint-{run}.json"
+        if run == "43599593600":
+            file = evidence / "electroverse-checkpoint.json"
+        receipt = json.loads(file.read_bytes())
+        if (str(receipt["runId"]) != run or receipt["head"] != parent or receipt["fileSetSHA256"] != sha
+                or receipt["complete"] is not False or receipt["source"] != "FR:electroverse_full"
+                or f'/artifacts/{receipt["artifactId"]}/zip' not in workflow
+                or receipt["zipSHA256"] + "  retained.zip" not in workflow):
+            raise ValueError("Checkpoint lineage and recovery workflow disagree")
+        if "renewalWindow" in receipt:
+            receipts.append(receipt)
+        elif run != "43599593600":
+            raise ValueError("Ancestor lacks verified tariff row fingerprints")
+        head = parent
+    return receipts
+
+
+def verify_tariff_generation(state, started_at, completed_at, receipts):
+    from v9_rebuild.electroverse import MAPPING, read_json
+    from v9_rebuild.electroverse_renewal import job_window, timestamp
+
+    renewed, current = job_window(state, started_at, completed_at)
+    boundary = timestamp(started_at)
+    for receipt in receipts:
+        if timestamp(receipt["jobCompletedAt"]) > boundary:
+            raise ValueError("Overlapping checkpoint jobs")
+        ids, actual = job_window(state, receipt["jobStartedAt"], receipt["jobCompletedAt"])
+        if actual != receipt["renewalWindow"] or renewed.intersection(ids):
+            raise ValueError("Historical tariff renewal rows or mapping changed")
+        renewed.update(ids)
+        boundary = timestamp(receipt["jobStartedAt"])
+    mapped = {str(row["electroverseLocationPk"]) for row in read_json(state / MAPPING)["mappings"]}
+    if mapped != renewed:
+        raise ValueError("Incomplete renewal generation")
+    return {"mappedLocationsCheckedThisJob": current["locations"], "verifiedLocations": len(renewed),
+            "ancestorRunIds": [r["runId"] for r in receipts], "allMappedLocationsRenewed": True,
+            "historicalVolumeGate": False}
+
+
 def belgium_nap(state):
     manifest = json.loads((state / 'data/belgium/nap-belgium-manifest.json').read_bytes())
     if not validate_belgium_output(state, manifest):
@@ -184,7 +241,7 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
             names.add(entry.filename)
         z.extractall(folder)
     state,object_sha,files=verify_files(folder,source)
-    renewal = verify_full_tariff_renewal(state,job['started_at'],job['completed_at']) if source=='FR:electroverse_full' else None
+    renewal = verify_tariff_generation(state,job['started_at'],job['completed_at'],verified_window_chain(head)) if source=='FR:electroverse_full' else None
     report={'runId':run_id,'runConclusion':run['conclusion'],'runHeadSha':head,'runBranch':run['head_branch'],'workflowId':run.get('workflow_id'),'event':run.get('event'),
         'acquisitionKind':'archived_replay' if source in ARCHIVED_REPLAYS else 'source_execution',
         'sourceId':source,'jobId':job['id'],'jobStatus':job['status'],'jobConclusion':job['conclusion'],

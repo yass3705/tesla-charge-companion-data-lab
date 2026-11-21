@@ -1,6 +1,5 @@
 """Download a failed tariff job's resumable state and verify it before reuse."""
 import argparse
-from datetime import datetime
 import hashlib
 import json
 from pathlib import Path
@@ -14,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.pilot_v9_tariff_chunks import BRANCH, ROOT, SOURCE, verify_checkpoint
 from v9_rebuild.electroverse import CACHE, CHUNK_SIZE, MAPPING, read_json
 from v9_rebuild.orchestrator import safe_relative
+from v9_rebuild.electroverse_renewal import job_window
 
 REPO = "yass3705/tesla-charge-companion-data-lab"
 
@@ -64,11 +64,8 @@ def verify_download(run_id, head, destination):
         result = read_json(folder / "manifest.json")
         if len(result["sources"]) != 1 or result["sources"][0]["source"] != SOURCE or result["sources"][0]["status"] != "failed":
             raise ValueError("Invalid failed source manifest")
-        parse = lambda t: datetime.fromisoformat(t.replace("Z", "+00:00"))
-        start, end = parse(job["started_at"]), parse(job["completed_at"])
         mapped = {str(m["electroverseLocationPk"]) for m in read_json(state / MAPPING)["mappings"]}
-        checked = read_json(state / CACHE / "checked-at.json")["checkedAt"]
-        renewed = sorted(pk for pk in mapped if pk in checked and start <= parse(checked[pk]) <= end)
+        renewed, proof = job_window(state, job["started_at"], job["completed_at"])
         checkpoint = read_json(state / "v9-electroverse-checkpoint.json")
         pending = checkpoint.get("pending") or {}
         completed = checkpoint["completed"]
@@ -82,7 +79,7 @@ def verify_download(run_id, head, destination):
                        reason=result["sources"][0].get("reason"), zipSHA256=digest, fileSetSHA256=manifest["sha256"],
                        filesVerified=len(manifest["files"]), shardsVerified=128, completedChunks=checkpoint["completed"],
                        pendingOffset=pending.get("offset"), pendingLocations=len(pending.get("pks", [])),
-                       mappedLocationsCheckedInJob=len(renewed), complete=False)
+                       mappedLocationsCheckedInJob=len(renewed), renewalWindow=proof, complete=False)
         (stage / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
         stage.rename(destination)
         return receipt
