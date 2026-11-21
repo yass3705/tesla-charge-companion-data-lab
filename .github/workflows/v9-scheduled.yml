@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: '37 3 * * *'
   workflow_dispatch:
+    inputs:
+      collection_run:
+        description: Replay a verified IONITY collection from a previous run
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -10,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   collect:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && inputs.collection_run == ''
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -37,3 +42,13 @@ jobs:
             ${{ runner.temp }}/v9/objects
           if-no-files-found: error
           retention-days: 30
+  import:
+    needs: collect
+    if: always() && github.ref == 'refs/heads/main' && (needs.collect.result == 'success' || (needs.collect.result == 'skipped' && inputs.collection_run != ''))
+    permissions:
+      contents: read
+      actions: read
+    uses: yass3705/tesla-charge-companion-production/.github/workflows/v9-import-reviewed.yml@fd9adbe3d30c35422f60585b4f86343eca1a7d5e
+    with:
+      production_sha: fd9adbe3d30c35422f60585b4f86343eca1a7d5e
+      collection_run: ${{ inputs.collection_run || format('{0}', github.run_id) }}
