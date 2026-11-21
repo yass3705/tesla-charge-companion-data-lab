@@ -1,3 +1,7 @@
+## Cadence Direct étendue sur main
+
+PR 345 intègre neuf méthodes quotidiennes ayant chacune un transfert réel validé. Le groupe permanent de 08:53 UTC exécute désormais 26 méthodes, avec deux collectes simultanées au maximum. Chaque nouvelle entrée épingle son code testé. Main 157f7e86f, un seul workflow actif, 1 207 anciens YAML restaurables. Les vérifications sur événements programmés restent ouvertes. Le paquet consolidé en préparation regroupe le renouvellement IONITY, les connecteurs EVGO et le catalogue Tesla/Mac du 23 octobre. G2 demeure ouvert (63/135 transferts vérifiés).
+
 ## Import réel Tesla/Mac du 21 novembre
 
 La collecte Mac reste dans Updater Test. Le pilote Data Lab 44907714124 a importé le catalogue validé publié le 23 octobre, différent des octets du brouillon 6b01917b. Artefact 14708846562, catalogue SHA 5794c76480ceaee63d73a6cf39ee8fb24ed68357cafdaa44b90ddd09a80f01d4. Les dates par pays sont conservées. Le registre compte 63 transferts prouvés et 72 ouverts. Le lot EVGO renouvelé a également passé l’import Production local (deux connecteurs ajoutés et deux retirés, aucun prix ajouté). Préparer le paquet groupé avec ces deux entrées et contrôler ses scénarios navigateur avant transfert. Electroverse 44906379578 et la cadence REVE restent à contrôler.
