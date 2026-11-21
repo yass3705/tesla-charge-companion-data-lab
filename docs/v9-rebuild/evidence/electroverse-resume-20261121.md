@@ -75,3 +75,12 @@ Contrôles observés dans les logs :
 
 **Suite sûre :** le sélecteur `scripts/select_v9_electroverse_checkpoint.py` doit choisir le nouvel artefact 14727835115 au prochain push ciblé `migration/v9/electroverse-resume-request.json` ; il vérifie branche/workflow/SHA/digest puis le ZIP/manifestes. Un nouveau run **n'est PAS encore lancé** et la reprise **entre runs** demeure manuelle. Ne pas modifier `main`, Production, les jointures IRVE, les statuts ni le fournisseur. Conserver le parent en secours ; vérifier l'unicité de sélection et l'absence d'exécution concurrente avant toute future collecte.
 
+
+## 21 novembre 2026, 22:23 UTC — deuxième run réel Electroverse lancé (non terminé)
+
+Demande explicite utilisateur « Ok lance le 2e run ». Contrôle préalable : aucun run de reconstruction actif dans les 40 derniers runs de `rebuild/v9-20261020`, artefact 14727835115 du run #44950136959 disponible, `expired=false`, digest `sha256:3622a321b6885434d7c4541199d2ffc58703c82f790a0511a6b3cf998e6e7aac` (expiration 21/12/2026). Le sélecteur `scripts/select_v9_electroverse_checkpoint.py` donne priorité aux artefacts `tcc-v9-electroverse-window` de la branche et valide run, SHA et digest avant récupération ; **le choix effectif du parent par le nouveau job doit être confirmé dans ses logs**.
+
+Push atomique du seul `migration/v9/electroverse-resume-request.json` `mode=collect`, `basisRun=44950136959`, `basisArtifact=14727835115`, commit `1edd310ebbad1d554f7bbe3c8599678dacbd440f` depuis `3010111750b1764ccbbf85ab08a79f4e26fb7d94`.
+
+[GitHub Actions #44956526554](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/44956526554), job `137005752077` : déclenché le 21/11/2026 à 22:23:44 UTC, **in_progress** au contrôle initial ; aucune conclusion encore. Périmètre : continuation de la campagne `FR:electroverse_full` sur cache 22 818 localisations, après 10 300 vérifications au dernier checkpoint et 1 700 PK `pending` au deuxième bloc (12 518 non revérifiées à l'échelle de la campagne). **Aucun gain n'est revendiqué pour ce nouveau run sans analyse de son ZIP**. Aucune modification du mapping IRVE, de la branche `main`, des workflows Production ni de Netlify. Automatisation entre runs séparés toujours non active. À clôture : vérifier conclusion, `collector_window_budget`, nouvel artifact, SHA du ZIP et 136 chemins, 128 shards, curseur, horaires et différences sous fenêtre uniquement. Ne jamais promouvoir automatiquement le checkpoint partiel.
+
