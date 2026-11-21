@@ -6,9 +6,13 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts.check_v9_neutralized_main import reviewed_scheduled_source
+
 G1_COMMIT = "15657f4a89c98e5e7c1d119c91c6cb55a891a913"
 REQUIRED_METHOD_DISPOSITIONS = {
     "retain_scheduled_data_method",
@@ -56,7 +60,9 @@ def main() -> None:
                     or (spec.get("live") != claim and not archive_replay) or evidence.get("sourceId") != spec["id"]
                     or evidence.get("jobStatus") != "completed" or evidence.get("jobConclusion") != "success"
                     or evidence.get("runConclusion") not in {"success", "failure", "cancelled"}
-                    or evidence.get("runBranch") != "rebuild/v9-20261020"
+                    or not (evidence.get("runBranch") == "rebuild/v9-20261020"
+                            or (evidence.get("runBranch") == "main" and reviewed_scheduled_source(
+                                spec["id"], evidence.get("runHeadSha"), evidence.get("workflowId"), evidence.get("event"))))
                     or not (evidence.get("actionsEnabledAfter") is False
                             or (evidence.get("actionsEnabledAfter") is True
                                 and evidence.get("activeWorkflowIdsAfter") == [425938005]))

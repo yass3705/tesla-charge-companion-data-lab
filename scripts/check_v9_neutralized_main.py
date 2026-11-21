@@ -18,6 +18,19 @@ SCHEDULE_PATH = ".github/workflows/v9-scheduled.yml"
 BACKUP = "migration/v9/main-workflow-backup-20261026/"
 
 
+def reviewed_scheduled_source(source, head, workflow_id, event):
+    if workflow_id != 425938005 or head not in {
+        SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED, REVE_INSTALLED
+    }:
+        return False
+    if source == "FR:ionity_direct_family":
+        return event in {"workflow_dispatch", "schedule"}
+    if event != "schedule" or head not in {DIRECT_INSTALLED, REVE_INSTALLED}:
+        return False
+    cadence = ROOT / "docs/v9-rebuild/evidence/restoration-20261121/direct-cadences.json"
+    return any(row["source"] == source for row in json.loads(cadence.read_bytes())["sources"])
+
+
 def git(*args: str) -> str:
     return subprocess.check_output(["git", *args], cwd=ROOT, text=True).strip()
 
