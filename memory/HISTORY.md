@@ -1,3 +1,9 @@
+## Préproduction 33 sources et reprise Electroverse du 21 novembre
+
+Le brouillon https://6b01917b60790d93e2aff701--tcc-v9-preproduction-20261028.netlify.app sert le bundle 96bfbdaf. Production 0124ce6 conserve les contrôles HTTPS/noindex, SHA des 3 244 fragments, 24 parcours tarifaires Firefox et 11 recherches sur neuf pays, ordinateur et mobile. IONITY a été renouvelé, importé et vérifié dans les données servies. Le paquet précédent reste restaurable.
+
+Le run Electroverse 44902743843 a atteint sa limite de temps après avoir vérifié 2 000 entrées. Son ZIP et ses 128 shards sont intègres. Il reste 4 000 entrées dans le premier bloc de 6 000. Le reçu electroverse-checkpoint-44902743843.json identifie la génération et son empreinte. Reprendre depuis 14707049235, vérifier le prochain checkpoint et sa filiation avant toute promotion. 60 transferts sur 135 prouvés. Les délais fournisseur et les déclenchements programmés restent à valider.
+
 ## Reprise REVE et collectes Direct — 21 novembre
 
 PR 344 : reprise permanente du flux REVE sur son horaire historique (minute 27 UTC). Le run manuel 44905451849 a restauré la génération vérifiée du 5 novembre et reçu cinq réponses HTTP 200. Les pages suivantes sont désormais 43/29 au lieu de 40/27 ; tout nouveau lot attend le quota. L’artefact 14707553257 a été restauré indépendamment avec contrôles SHA. Il reste partiel et ne peut pas être importé comme tarif national. Les échecs fournisseur conservent leur curseur et aucun ancien workflow ne s’est activé. L’événement programmé reste à vérifier. Sept reçus Direct supplémentaires sur le run 44905026998. Registre 60 handoffs vérifiés sur 135, 75 en attente. Brouillon 6b01917b en cours de vérification distante pour le bundle 96bfbdaf, antérieur aux renouvellements Direct de ce jour, hormis IONITY. Vérifier son intégrité complète, la reprise Electroverse 44902743843 et les premiers événements programmés.
