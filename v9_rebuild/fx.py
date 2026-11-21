@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date, datetime
 import json
 import shutil
 import subprocess
@@ -20,11 +21,19 @@ def validate_output(out: Path) -> dict:
     rates = json.loads((out / RATES).read_text(encoding="utf-8"))
     meta = json.loads((out / META).read_text(encoding="utf-8"))
     sys.path.insert(0, str(ROOT / "scripts"))
-    from update_fx import SUPPORTED
+    from update_fx import SUPPORTED, valid_rate, provider_date
     values = rates.get("rates") or {}
+    try:
+        published = date.fromisoformat(rates["date"])
+        checked = datetime.fromisoformat(rates["checkedAt"].replace("Z", "+00:00"))
+        if checked.tzinfo is None or provider_date(rates["providerDate"]) != published.isoformat():
+            raise ValueError
+    except (KeyError, TypeError, ValueError, AttributeError, OverflowError) as exc:
+        raise ValueError("FX technical contract invalid: missing provider publication date") from exc
     if (rates.get("base") != "EUR" or values.get("EUR") != 1.0
             or set(values) != set(SUPPORTED)
-            or any(not isinstance(values[code], (int, float)) or values[code] <= 0 for code in SUPPORTED)
+            or any(not valid_rate(values[code]) for code in SUPPORTED)
+            or rates.get("carriedForwardQuotes", []) != []
             or not rates.get("date") or not rates.get("checkedAt") or not rates.get("source")
             or meta.get("fxUpdated") != rates["date"]
             or meta.get("fxCheckedAt") != rates["checkedAt"]

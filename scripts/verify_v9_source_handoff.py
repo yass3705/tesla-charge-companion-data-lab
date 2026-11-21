@@ -52,7 +52,7 @@ from v9_rebuild.spain_fixed_core import validate_output as spain_fixed_core
 from v9_rebuild.spain_fixed_secondary import validate_output as spain_fixed_secondary
 from v9_rebuild.ionity import validate_output as ionity
 from v9_rebuild.electroverse import validate_state as electroverse
-from v9_rebuild import swiss_ebs_closeout
+from v9_rebuild import fx, swiss_ebs_closeout
 from v9_rebuild import electra_residual_audit, france_treated_audit, france_fixed_core, france_fixed_secondary, greenspot, morocco_inventory
 ARCHIVED_REPLAYS = {'CH:ebs_closeout','MA:kilowatt_reconcile','MA:kilowatt_tariff_overlay','FR:electra_residual_audit', 'FR:treated_reliability','CH:ail_emoti', 'CH:ebs_ecarup', 'CH:iwb_basel', 'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
 REPO='yass3705/tesla-charge-companion-data-lab'
@@ -158,7 +158,7 @@ VALIDATORS.update({
 VALIDATORS.update({f'FR:{name}_official':partial(official_rules,source=name) for name in RULES})
 VALIDATORS.update({"GL:tesla_mac": tesla_mac, "MA:evgo": morocco_evgo, "ES:fixed_tariff_core": spain_fixed_core,
                    "ES:fixed_tariff_secondary": spain_fixed_secondary, "FR:ionity_direct_family": ionity})
-VALIDATORS.update({"CH:ebs_closeout": swiss_ebs_closeout.validate_output,
+VALIDATORS.update({"GL:fx": fx.validate_output, "CH:ebs_closeout": swiss_ebs_closeout.validate_output,
                    "MA:kilowatt_reconcile": morocco_inventory.validate_reconciliation,
                    "MA:kilowatt_tariff_overlay": morocco_inventory.validate_tariff_overlay})
 VALIDATORS.update({"FR:electra_residual_audit": electra_residual_audit.validate_output,

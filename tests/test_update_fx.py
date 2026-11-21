@@ -35,6 +35,15 @@ class FXFallbackTest(unittest.TestCase):
         rates = json.loads(Path('data/fx/exchange_rates.json').read_text())['rates']
         self.assertEqual(rates['MAD'], 1.0)
         self.assertEqual(rates['CHF'], 2.0)
+        output = json.loads(Path('data/fx/exchange_rates.json').read_text())
+        self.assertEqual(output['carriedForwardQuotes'], ['MAD'])
+        from v9_rebuild.fx import validate_output
+        with self.assertRaisesRegex(ValueError, 'technical contract'):
+            validate_output(Path.cwd())
+
+    def test_non_numeric_or_non_finite_quote_cannot_be_promoted(self):
+        for bad in [True, float('inf'), float('nan'), -1]:
+            self.assertNotIn('MAD', update_fx.filter_rates({'MAD': bad}))
 
 
 if __name__ == '__main__':

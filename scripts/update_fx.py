@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -29,13 +30,17 @@ def read_previous(path: Path) -> dict:
         return {"rates": {"EUR": 1}}
 
 
+def valid_rate(value: object) -> bool:
+    return type(value) in (int, float) and math.isfinite(value) and value > 0
+
+
 def filter_rates(raw: dict) -> dict[str, float]:
     rates = {"EUR": 1.0}
     for code in SUPPORTED:
         value = raw.get(code)
         if code == "EUR":
             continue
-        if isinstance(value, (int, float)) and value > 0:
+        if valid_rate(value):
             rates[code] = float(value)
     return rates
 
@@ -80,7 +85,7 @@ def main() -> int:
                 continue
             quote = row.get("quote")
             rate = row.get("rate")
-            if quote in SUPPORTED and isinstance(rate, (int, float)) and rate > 0:
+            if quote in SUPPORTED and valid_rate(rate):
                 frankfurter_rates[quote] = float(rate)
             if isinstance(row.get("date"), str):
                 dates.append(row["date"])
@@ -109,6 +114,7 @@ def main() -> int:
         "date": published_date,
         "providerDate": remote_raw,
         "checkedAt": checked_at,
+        "carriedForwardQuotes": sorted(set(previous_rates).difference(fresh_rates)),
         "source": source,
         "rates": {code: merged[code] for code in SUPPORTED},
     }
