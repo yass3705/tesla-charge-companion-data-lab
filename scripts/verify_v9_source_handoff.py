@@ -34,6 +34,8 @@ from v9_rebuild.energyvision import validate_output as energyvision
 from v9_rebuild.uk_evyve import validate_output as uk_evyve
 from v9_rebuild.ozecar import validate_output as ozecar
 from v9_rebuild.izivia_fast import validate_output as izivia_fast
+from v9_rebuild.official_rules import RULES, validate_output as official_rules
+from v9_rebuild.ionity import validate_output as ionity
 from v9_rebuild.electroverse import validate_state as electroverse
 ARCHIVED_REPLAYS = {'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
 REPO='yass3705/tesla-charge-companion-data-lab'
@@ -61,6 +63,8 @@ def belgium_nap(state):
         raise ValueError('Belgium national pagination or integrity contract invalid')
     return manifest
 VALIDATORS={'FR:irve_national':france_irve,'BE:nap':belgium_nap,'GB:midhope_verified':uk_midhope,'BE:final_gap_archive':belgium_gap_archive,'FR:canonical':france_canonical,'FR:atlante_fr_it':atlante_fr_it,'NL:dotnl':nl_dotnl,'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra,'CH:swiss_bundle':swiss_bundle,'CH:swiss_integration':swiss_integration}
+VALIDATORS.update({f'FR:{name}_official':partial(official_rules,source=name) for name in RULES})
+VALIDATORS.update({'FR:ionity_direct_family':ionity})
 VALIDATORS.update({'FR:zephyre':zephyre,'FR:zewatt':zewatt})
 VALIDATORS.update({'FR:fastned_inventory_family':fastned,'BE:energyvision':energyvision,'GB:evyve_pcpr':uk_evyve})
 VALIDATORS.update({'FR:ozecar':ozecar,'FR:izivia_fast':izivia_fast})
@@ -70,17 +74,25 @@ VALIDATORS.update({'GB:blink_pcpr':uk_blink,'GB:gridserve_pcpr':uk_gridserve})
 VALIDATORS.update({'GB:allego_uk_pcpr': partial(uk_pcpr, provider='allego_uk'),
                    'GB:source_ev_pcpr': partial(uk_pcpr, provider='source_ev')})
 def check_execution(run,jobs,artifact,source,head):
-    if (run.get('status')!='completed' or run.get('head_branch')!='rebuild/v9-20261020'
+    scheduled = run.get('path') == '.github/workflows/v9-scheduled.yml'
+    branch = 'main' if scheduled else 'rebuild/v9-20261020'
+    if scheduled and (run.get('event') not in ('workflow_dispatch', 'schedule')
+                      or head != '50c46bf1843560b9b06090c803ef80065f984dc6'
+                      or source != 'FR:ionity_direct_family' or run.get('workflow_id') != 425938005):
+        raise ValueError('Untrusted scheduled collection')
+    if (run.get('status')!='completed' or run.get('head_branch')!=branch
         or run.get('head_sha')!=head or len(head)!=40
         or run.get('repository',{}).get('full_name')!=REPO
-        or run.get('path')!='.github/workflows/v9-tariff-restoration-pilot.yml'):
+        or (not scheduled and run.get('path')!='.github/workflows/v9-tariff-restoration-pilot.yml')):
         raise ValueError('Untrusted run provenance or incomplete run')
-    matches=[j for j in jobs if j.get('name')==f'collect ({source})']
+    slug = source.replace(':', '_')
+    job_name = f'collect ({source}, {slug})' if scheduled else f'collect ({source})'
+    matches=[j for j in jobs if j.get('name') == job_name]
     if len(matches)!=1 or matches[0].get('status')!='completed' or matches[0].get('conclusion')!='success':
         raise ValueError('Source job did not succeed')
     parent=artifact.get('workflow_run',{})
     if (artifact.get('expired') is not False or parent.get('id')!=run['id']
-        or parent.get('head_sha')!=head or parent.get('head_branch')!='rebuild/v9-20261020'
+        or parent.get('head_sha')!=head or parent.get('head_branch')!=branch
         or not str(artifact.get('digest','')).startswith('sha256:')):
         raise ValueError('Artifact not bound to expected run')
     return matches[0]
@@ -101,7 +113,12 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
     if (out.exists() and not reuse_archive) or root==out.resolve() or root in out.resolve().parents:raise ValueError('New isolated output required')
     if reuse_archive and (not (out/'artifact.zip').is_file() or (out/'receipt.json').exists()):raise ValueError('Only a previously downloaded unverified ZIP can be reused')
     def api(p):return json.loads(subprocess.check_output(['gh','api',f'repos/{REPO}/{p}']))
-    if api('actions/permissions')['enabled'] is not False:raise ValueError('Close controlled activation before recording handoff')
+    enabled = api('actions/permissions')['enabled']
+    if enabled:
+        pages = json.loads(subprocess.check_output(['gh','api',f'repos/{REPO}/actions/workflows?per_page=100','--paginate','--slurp']))
+        active = [w['id'] for page in pages for w in page['workflows'] if w['state']=='active']
+        if active != [425938005]:
+            raise ValueError('Unexpected enabled workflow during permanent operation')
     run=api(f'actions/runs/{run_id}');jobs=api(f'actions/runs/{run_id}/jobs?per_page=100')['jobs']
     artifacts=api(f'actions/runs/{run_id}/artifacts?per_page=100')['artifacts']
     selected=[a for a in artifacts if a['name']==artifact_name]
@@ -129,7 +146,7 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
         'sourceId':source,'jobId':job['id'],'jobStatus':job['status'],'jobConclusion':job['conclusion'],
         'jobStartedAt':job.get('started_at'),'jobCompletedAt':job.get('completed_at'),
         'artifactCreatedAt':artifact.get('created_at'),
-        'actionsEnabledAfter':False,'artifactId':artifact['id'],'artifactZipSha256':digest,
+        'actionsEnabledAfter':enabled,'artifactId':artifact['id'],'artifactZipSha256':digest,
         'artifactSetSha256':object_sha,'technicalValidation':'PASS','files':files,
         'scope':'One successful source job and downloaded immutable artifact; downstream import separately verified'}
     if renewal is not None:report['renewalCompleteness']=renewal

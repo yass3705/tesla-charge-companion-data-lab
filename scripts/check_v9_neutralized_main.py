@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = "def205b0de51dd55bd36a2e7fa672031364e6f75"
 NEUTRALIZED = "9243cf290a66ead623d32b7513ad1ebe8fe93001"
 PILOT_REMOVED = "c7204b3ef35fd28fdc9bfbd7f8cc7f5a4a64494d"
+SCHEDULE_INSTALLED = "50c46bf1843560b9b06090c803ef80065f984dc6"
+SCHEDULE_PATH = ".github/workflows/v9-scheduled.yml"
 BACKUP = "migration/v9/main-workflow-backup-20261026/"
 
 
@@ -19,7 +21,7 @@ def git(*args: str) -> str:
 
 def check() -> dict:
     current = git("rev-parse", "origin/main")
-    if current != PILOT_REMOVED:
+    if current not in (PILOT_REMOVED, SCHEDULE_INSTALLED):
         raise ValueError("Data Lab origin/main changed since the reviewed pilot teardown")
     if git("rev-list", "--parents", "-n", "1", NEUTRALIZED).split() != [NEUTRALIZED, BASE]:
         raise ValueError("Neutralization is not based on the reviewed main SHA")
@@ -29,15 +31,26 @@ def check() -> dict:
            if path.endswith((".yml", ".yaml"))]
     active = [path for path in git("ls-tree", "-r", "--name-only", current, ".github/workflows").splitlines()
               if path.endswith((".yml", ".yaml"))]
-    if active or len(old) != 1207:
+    allowed = [SCHEDULE_PATH] if current == SCHEDULE_INSTALLED else []
+    if active != allowed or len(old) != 1207:
         raise ValueError("Unexpected active or archived workflow set")
-    backups = git("ls-tree", "-r", "--name-only", current, BACKUP).splitlines()
-    if len(backups) != len(old):
-        raise ValueError("Workflow archive is incomplete")
-    for path in old:
-        backup = BACKUP + Path(path).name
-        if git("rev-parse", BASE + ":" + path) != git("rev-parse", current + ":" + backup):
-            raise ValueError("Workflow archive differs from original: " + path)
+    if allowed:
+        approved = ROOT / "docs/v9-rebuild/evidence/restoration-20261121/v9-scheduled.yml.reviewed"
+        if (git("hash-object", str(approved)) != git("rev-parse", current + ":" + SCHEDULE_PATH)
+                or git("diff", "--name-only", PILOT_REMOVED, current) != SCHEDULE_PATH):
+            raise ValueError("Unreviewed main change")
+    # Compare all original and backup blob IDs in two tree reads.
+    def blobs(ref, directory):
+        rows = git("ls-tree", "-r", ref, directory).splitlines()
+        result = {}
+        for row in rows:
+            meta, name = row.split("\t", 1)
+            if not name.endswith((".yml", ".yaml")):
+                continue
+            result[name.removeprefix(directory.rstrip("/") + "/")] = meta
+        return result
+    if blobs(BASE, ".github/workflows") != blobs(current, BACKUP):
+        raise ValueError("Workflow archive differs from originals")
     return {"status": "PASS", "currentMainSha": current, "reviewedBaseSha": BASE,
             "archivedWorkflows": len(old), "activeMainWorkflows": len(active),
             "exactBlobRestorationPossible": True}

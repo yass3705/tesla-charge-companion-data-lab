@@ -1,4 +1,4 @@
-name: V9 bounded Electroverse preserved tariff chunks
+name: V9 official Direct evidence renewal
 on:
   push:
     branches: [rebuild/v9-20261020]
@@ -8,18 +8,18 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: v9-tariff-restoration
+  group: v9-official-rules-renewal
   cancel-in-progress: false
 jobs:
   collect:
     if: github.ref == 'refs/heads/rebuild/v9-20261020'
     runs-on: ubuntu-24.04
-    timeout-minutes: 85
+    timeout-minutes: 25
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 2
       matrix:
-        source: ['FR:electroverse_full']
+        source: ['FR:atlante_official', 'FR:driveco_official', 'FR:eborn_official', 'FR:electric55_official', 'FR:etotem_official', 'FR:fastned_official', 'FR:freshmile_official', 'FR:iecharge_official', 'FR:ionity_official', 'FR:lidl_plus_official', 'FR:metropolis_official', 'FR:plenitude_official', 'FR:pluginn_fastcharge_official', 'FR:qovoltis_official', 'FR:vianeo_official', 'FR:zunder_official']
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -30,22 +30,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - name: Exercise checkpoint, timeout, failure and import integrity offline
-        run: |
-          python -m unittest tests.test_v9_orchestrator tests.test_v9_electroverse tests.test_v9_tariff_chunk_pilot tests.test_v9_source_handoff
-      - name: Recover the pinned partial tariff checkpoint
+      - name: Renew and validate the preserved official method
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          cd "$RUNNER_TEMP"
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/14116783407/zip" > retained.zip
-          echo '1651273a716605bd16528bb300ff01f8ea48828b944b808ad7bd431460d75bb1  retained.zip' | sha256sum -c -
-          unzip -q retained.zip -d retained
-      - name: Run preserved full tariff chunks sequentially outside checkout
-        env:
-          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
-        run: python scripts/pilot_v9_tariff_chunks.py --out "$RUNNER_TEMP/tcc-v9-tariff-renewal" --incoming "$RUNNER_TEMP/retained" --expected-sha d64d63ea8d22aaef29fc0774a15573b1e3173819c9a0439f713e5f89b165c8ac --expected-head 087afd63160235a72c7eca18e1a1a60a2e140940 --expected-run 43599593600
+          SOURCE_ID: ${{ matrix.source }}
+        run: python -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/tcc-v9-tariff-renewal" --workers 1 --attempts 1
       - name: Preserve validated immutable output
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
