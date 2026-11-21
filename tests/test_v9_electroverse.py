@@ -72,7 +72,7 @@ class SimulatedCollector:
 
 class ElectroverseTests(unittest.TestCase):
     def test_full_timeout_only_retries_uncommitted_window(self):
-        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, ELECTROVERSE_API_KEY="fixture-only"):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, ELECTROVERSE_API_KEY="placeholder"):
             source, out = Path(tmp) / "seed", Path(tmp) / "out"
             ids = [f"{i:03}" for i in range(201)]
             fixture(source, ids)
