@@ -1,3 +1,7 @@
+## Recette distante du nouveau paquet suisse
+
+Le brouillon 6b01a403 (Production b1d102d) a passé la recette distante de ses 3 242 fragments, 24 parcours tarifaires, 11 recherches sur les neuf pays, mobile, neuf parcours Tesla et rollback. Amsterdam à 100 km : 56,796 s à froid pour 64 019 stations ; signatures identiques. G7/G8 restent ouverts. Le run Electroverse 44912790561 a démarré sur 2d19e3615 avec le checkpoint 14710945245 ; vérifier son ZIP et ses lignes par scripts/verify_v9_tariff_checkpoint.py avant toute nouvelle reprise. Le rapprochement Connected Kerb doit restaurer le parent vérifié 14710885308.
+
 ## Reprise Electroverse et collectes britanniques du 21 novembre
 
 Le run 44909970308 a terminé volontairement une fenêtre après 1 400 identités supplémentaires. Vérification des 128 shards, des empreintes des lignes antérieures et du curseur exact : 5 200 identités cumulées, 800 restantes dans le premier bloc de 6 000. Le ZIP 14710945245 est un checkpoint partiel. Les statuts et l’overlay attendent le cache complet. Les deux sorties britanniques du run 44912549458 ont réussi les contrôles de transfert et de contenu ; la portée PAYG et la TVA Eco-Movement restent non démontrées. Le registre compte 77 transmissions prouvées, 58 ouvertes. Le brouillon suisse 6b01a403 a passé les contrôles distants de ses 3 242 fragments. Prochaine opération : reprendre le checkpoint vérifié, puis contrôler la prochaine fenêtre et les événements programmés.
