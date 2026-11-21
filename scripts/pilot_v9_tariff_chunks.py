@@ -45,7 +45,9 @@ def restore_checkpoint(incoming, out, *, expected_sha, expected_head, expected_r
 
 
 def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60, clock=time.monotonic):
-    if budget_seconds < 2700:
+    # A new provider window needs 30 min, plus 5 min for artifact upload.
+    reserve = 1800 + 300
+    if budget_seconds < reserve:
         raise ValueError("Process timeout and upload reserve required")
     checkpoint = out / "checkpoints/FR_electroverse_full"
     started = clock()
@@ -53,9 +55,15 @@ def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60,
     previous_completed = read_json(saved)["completed"] if saved.is_file() else []
     if previous_completed != list(range(0, len(previous_completed) * CHUNK_SIZE, CHUNK_SIZE)):
         raise ValueError("Checkpoint chunk offsets are inconsistent")
-    for number in range(len(previous_completed), chunk_count):
-        if clock() - started > budget_seconds - 2700:
-            raise RuntimeError("Tariff checkpoint retained at time budget; no new provider calls")
+    previous_cursor = None
+    while len(previous_completed) < chunk_count:
+        if clock() - started > budget_seconds - reserve:
+            if (out / "checkpoint-manifest.json").is_file():
+                validate_state(checkpoint, require_complete=False)
+                return {"status": "checkpointed", "reason": "runner_budget",
+                        "completeSnapshotValidated": False}
+            raise RuntimeError("Not enough time for first provider window")
+        number = len(previous_completed)
         result = execute(specs, out, workers=1, attempts=1)
         if result.get("status") == "complete":
             return result
@@ -72,10 +80,22 @@ def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60,
         # Continue only after a fully successful historical chunk boundary.
         # A failure/timeout is NOT an invitation to consume more supplier calls.
         reason = result.get("sources", [{}])[0].get("reason")
+        pending = state.get("pending")
+        if pending is not None:
+            if (not isinstance(pending, dict) or pending.get("offset") != number * CHUNK_SIZE
+                    or not isinstance(pending.get("pks"), list) or not pending["pks"]
+                    or len(set(pending["pks"])) != len(pending["pks"])):
+                raise RuntimeError("Invalid pending Electroverse cursor; no automatic provider retry")
+        cursor = (tuple(completed), pending["offset"] if pending else None,
+                  len(pending["pks"]) if pending else 0)
+        if cursor == previous_cursor:
+            raise RuntimeError("Electroverse checkpoint did not advance")
+        previous_cursor = cursor
         if (reason == "collector_window_budget" and state.get("mode") == "full"
-                and completed == previous_completed and (state.get("pending") or {}).get("offset") == number * CHUNK_SIZE
-                and state["pending"].get("pks")):
-            return {"status": "checkpointed", "reason": reason, "completeSnapshotValidated": False}
+                and completed == previous_completed and pending is not None):
+            # Continue the same chunk in this job only if another complete
+            # bounded window fits before the archive/upload reserve.
+            continue
         if (state.get("mode") != "full" or state.get("pending") is not None
                 or completed != [*previous_completed, number * CHUNK_SIZE]
                 or result.get("sources", [{}])[0].get("reason") != "collector_exit_nonzero"):

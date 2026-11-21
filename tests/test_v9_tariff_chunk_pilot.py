@@ -11,15 +11,15 @@ from tests.test_v9_electroverse import fixture, save
 class TariffChunkPilotTests(unittest.TestCase):
     def test_time_budget_keeps_upload_reserve_after_completed_chunk(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
-            calls=[];ticks=iter([0,0,1801]);out=Path(tmp)
+            calls=[];ticks=iter([0,0,2501]);out=Path(tmp)
             def execute(specs, folder, **kwargs):
                 calls.append(1)
                 state=folder / "checkpoints/FR_electroverse_full"
                 fixture(state,["a"])
                 save(state / "v9-electroverse-checkpoint.json", {"mode":"full","completed":[0],"pending":None})
                 return {"status":"partial_failure","sources":[{"reason":"collector_exit_nonzero"}]}
-            with self.assertRaisesRegex(RuntimeError,"time budget"):
-                advance(out,specs=[],chunk_count=2,execute=execute,clock=lambda:next(ticks))
+            result=advance(out,specs=[],chunk_count=2,execute=execute,clock=lambda:next(ticks))
+            self.assertEqual(result["status"], "checkpointed")
             self.assertEqual(len(calls),1)
             self.assertTrue((out / "checkpoint-manifest.json").is_file())
 
@@ -48,7 +48,8 @@ class TariffChunkPilotTests(unittest.TestCase):
                 save(state / "v9-electroverse-checkpoint.json",
                      {"mode": "full", "completed": [], "pending": {"offset": 0, "pks": ["b"]}})
                 return {"status": "partial_failure", "sources": [{"reason": "collector_window_budget"}]}
-            result = advance(out, specs=[], chunk_count=1, execute=execute)
+            ticks=iter([0,0,2501])
+            result = advance(out, specs=[], chunk_count=1, execute=execute, clock=lambda:next(ticks))
             self.assertEqual(result["status"], "checkpointed")
             self.assertFalse(result["completeSnapshotValidated"])
             self.assertFalse((out / "objects").exists())
@@ -68,6 +69,35 @@ class TariffChunkPilotTests(unittest.TestCase):
                     advance(out, specs=[], chunk_count=2, execute=execute)
                 self.assertEqual(len(calls), 1)
                 self.assertTrue((out / "checkpoint-manifest.json").is_file())
+
+    def test_second_window_continues_without_restarting_the_chunk(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
+            out=Path(tmp);calls=[]
+            def execute(specs, folder, **kwargs):
+                calls.append(1)
+                if len(calls)==2:
+                    return {"status":"complete"}
+                state=folder / "checkpoints/FR_electroverse_full"
+                fixture(state,["a","b"])
+                save(state / "v9-electroverse-checkpoint.json",
+                     {"mode":"full","completed":[],"pending":{"offset":0,"pks":["b"]}})
+                return {"status":"partial_failure","sources":[{"reason":"collector_window_budget"}]}
+            ticks=iter([0,0,1200])
+            result=advance(out,specs=[],chunk_count=1,execute=execute,clock=lambda:next(ticks))
+            self.assertEqual(result["status"],"complete")
+            self.assertEqual(len(calls),2)
+
+    def test_no_progress_between_windows_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
+            out=Path(tmp)
+            def execute(specs, folder, **kwargs):
+                state=folder / "checkpoints/FR_electroverse_full"
+                fixture(state,["a","b"])
+                save(state / "v9-electroverse-checkpoint.json",
+                     {"mode":"full","completed":[],"pending":{"offset":0,"pks":["b"]}})
+                return {"status":"partial_failure","sources":[{"reason":"collector_window_budget"}]}
+            with self.assertRaisesRegex(RuntimeError,"did not advance"):
+                advance(out,specs=[],chunk_count=1,execute=execute,clock=lambda:0)
 
 
 if __name__ == "__main__":
