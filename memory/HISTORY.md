@@ -1,3 +1,7 @@
+## Espagne et Maroc, 21 novembre
+
+Le run 44907080870 a transmis le lot tarifaire secondaire espagnol et les données EVGO du Maroc. Les deux ZIP ont été téléchargés et leurs sorties revérifiées avec les validateurs de source. Le lot tarifaire principal espagnol a échoué et conserve son dernier état valide. Ces deux nouveaux transferts ne figurent pas dans le brouillon 6b01917b. Le registre compte 62 transferts prouvés et 73 ouverts. L’import Production du catalogue Tesla/Mac a également passé ses contrôles sur l’archive réelle après retrait du seuil historique (b40c0a0). Prochaine opération : vérifier le checkpoint Electroverse 44906379578, l’événement horaire REVE, puis comparer EVGO au snapshot servi avant toute intégration.
+
 ## Reprise Electroverse et recette distante Amsterdam
 
 Le pilote Electroverse 44906379578 reprend le ZIP 14707049235 depuis f943911ba. Son YAML est archivé. Le workflow permanent est 425938005. G2 conserve deux motifs ouverts : 75 transferts à démontrer et registre d’exécution partiel. Le vérificateur 17990d2cc contrôle la filiation et les empreintes des lignes tarifaires dans chaque fenêtre de collecte. À la fin du run, vérifier son artefact avec scripts/verify_v9_tariff_checkpoint.py (SHA f943911ba5b585a850d00f55521ae98350b1f88c en cas de checkpoint), puis comparer les identités acquises. Contrôler aussi l’événement REVE programmé à :27 et son quota. Production 7d4013d consigne 51,419 s à froid sur Amsterdam à 100 km et l’égalité des résultats pour 64 019 stations.
