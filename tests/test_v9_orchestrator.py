@@ -1,3 +1,4 @@
+import hashlib
 import gzip
 import json
 import os
@@ -33,7 +34,14 @@ class OrchestratorTests(unittest.TestCase):
         operator = command[command.index("--operator") + 1]
         out = Path(command[command.index("--out") + 1])
         spec = self.by_operator[operator]
-        (out / self.output_names[operator]).write_text(json.dumps({"operator": spec["expected_operator"], "dataset": spec["expected_dataset"], "country": spec["expected_country"], "sourceEvidence": {"officialOnly": True}}))
+        manifest = json.loads((ROOT / spec["manifest"]).read_bytes())
+        facts = manifest["facts"]
+        fingerprint = hashlib.sha256(json.dumps(facts, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        evidence = [{"key": r["key"], "url": r["url"], "httpStatus": 200, "rawSha256": "a"*64} for r in manifest["sources"]]
+        (out / self.output_names[operator]).write_text(json.dumps({
+            "operator": spec["expected_operator"], "dataset": spec["expected_dataset"], "country": spec["expected_country"],
+            "generatedAt": "2026-11-21T12:00:00Z", **facts, "sourceEvidence": {"officialOnly": True,
+            "sources": evidence, "relevantTariffFingerprintSha256": fingerprint}}))
         return SimpleNamespace(returncode=0)
 
     def test_registry_and_independent_concurrent_outputs(self):

@@ -1294,11 +1294,12 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 reason = "collector_output_invalid_json"
                 continue
             if operator_module:
-                source_evidence = payload.get("sourceEvidence") if isinstance(payload, dict) else None
-                valid = (isinstance(payload, dict) and payload.get("operator") == spec["expected_operator"]
-                         and payload.get("dataset") == spec["expected_dataset"]
-                         and payload.get("country") == spec["expected_country"]
-                         and isinstance(source_evidence, dict) and source_evidence.get("officialOnly") is True)
+                from v9_rebuild.operator_evidence import validate as validate_evidence
+                try:
+                    validate_evidence(output, root / spec["manifest"])
+                    valid = True
+                except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                    valid = False
             elif nl_module:
                 from v9_rebuild.nl_dotnl import validate_output
                 try:

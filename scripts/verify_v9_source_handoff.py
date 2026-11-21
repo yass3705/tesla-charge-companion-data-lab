@@ -73,6 +73,16 @@ VALIDATORS.update({'FR:allego_stations': allego_stations, 'FR:bump_tariffs': bum
 VALIDATORS.update({'GB:blink_pcpr':uk_blink,'GB:gridserve_pcpr':uk_gridserve})
 VALIDATORS.update({'GB:allego_uk_pcpr': partial(uk_pcpr, provider='allego_uk'),
                    'GB:source_ev_pcpr': partial(uk_pcpr, provider='source_ev')})
+def manifest_evidence(folder, *, manifest_path):
+    from v9_rebuild.operator_evidence import validate
+    manifest = json.loads(manifest_path.read_bytes())
+    return validate(folder / safe_relative(manifest["outputFile"]), manifest_path)
+
+_registry_root = Path(__file__).resolve().parents[1]
+for _spec in json.loads((_registry_root / 'v9_rebuild/sources.json').read_bytes())['sources']:
+    if _spec['module'] == 'operator_manifest':
+        VALIDATORS[_spec['id']] = partial(manifest_evidence, manifest_path=_registry_root / safe_relative(_spec['manifest']))
+
 def check_execution(run,jobs,artifact,source,head):
     scheduled = run.get('path') == '.github/workflows/v9-scheduled.yml'
     branch = 'main' if scheduled else 'rebuild/v9-20261020'
