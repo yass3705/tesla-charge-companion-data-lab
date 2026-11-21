@@ -46,6 +46,7 @@ from v9_rebuild.ozecar import validate_output as ozecar
 from v9_rebuild.izivia_fast import validate_output as izivia_fast
 from v9_rebuild.cwd_script import validate_output as cwd_output
 from v9_rebuild.official_rules import RULES, validate_output as official_rules
+from v9_rebuild.tesla_mac import validate_output as tesla_mac
 from v9_rebuild.morocco_evgo import validate_output as morocco_evgo
 from v9_rebuild.spain_fixed_core import validate_output as spain_fixed_core
 from v9_rebuild.spain_fixed_secondary import validate_output as spain_fixed_secondary
@@ -145,7 +146,7 @@ VALIDATORS.update({
     "FR:izivia_official": izivia_official,
 })
 VALIDATORS.update({f'FR:{name}_official':partial(official_rules,source=name) for name in RULES})
-VALIDATORS.update({"MA:evgo": morocco_evgo, "ES:fixed_tariff_core": spain_fixed_core,
+VALIDATORS.update({"GL:tesla_mac": tesla_mac, "MA:evgo": morocco_evgo, "ES:fixed_tariff_core": spain_fixed_core,
                    "ES:fixed_tariff_secondary": spain_fixed_secondary, "FR:ionity_direct_family": ionity})
 VALIDATORS.update({'FR:zephyre':zephyre,'FR:zewatt':zewatt})
 VALIDATORS.update({'FR:fastned_inventory_family':fastned,'BE:energyvision':energyvision,'GB:evyve_pcpr':uk_evyve})
@@ -240,7 +241,7 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
     state,object_sha,files=verify_files(folder,source)
     renewal = verify_tariff_generation(state,job['started_at'],job['completed_at'],verified_window_chain(head)) if source=='FR:electroverse_full' else None
     report={'runId':run_id,'runConclusion':run['conclusion'],'runHeadSha':head,'runBranch':run['head_branch'],'workflowId':run.get('workflow_id'),'event':run.get('event'),
-        'acquisitionKind':'archived_replay' if source in ARCHIVED_REPLAYS else 'source_execution',
+        'acquisitionKind':('archived_replay' if source in ARCHIVED_REPLAYS else 'mac_catalogue_import' if source=='GL:tesla_mac' else 'source_execution'),
         'sourceId':source,'jobId':job['id'],'jobStatus':job['status'],'jobConclusion':job['conclusion'],
         'jobStartedAt':job.get('started_at'),'jobCompletedAt':job.get('completed_at'),
         'artifactCreatedAt':artifact.get('created_at'),
