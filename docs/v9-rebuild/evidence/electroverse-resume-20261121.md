@@ -52,3 +52,10 @@ Contrôles observés dans les logs :
 - Branche `main`, Production, Stable et Updater Test inchangés. Aucune collecte eMSP en cours du fait de cette vérification.
 
 **Statut exact :** installation branche et reprise de checkpoint **PASS**, continuation intra-job **tests offline PASS, collecte réelle NOT TESTED** ; reprise autonome **entre runs** **NOT IMPLEMENTED** (pas de workflow permanent/main). Ce résultat ne vaut pas PASS pour G2–G9 ou un nouveau jeu de prix.
+
+## 21 novembre 2026 — lancement réel Electroverse #44950136959 (à contrôler après terminaison)
+
+**Autorisation explicite utilisateur :** « D’accord lance le run ». Après vérification qu'aucun workflow de reconstruction n'était actif, checkpoint de départ `14711673559` non expiré, SHA-256 ZIP `a31e1630c39271e7f912a5d4e3262aa95a924a1f0d5dbb291f61d337b82c2879` et HEAD initial `df7ae13ce237e23f131dc1d810bf1508f46209fd`, push **du seul fichier** `migration/v9/electroverse-resume-request.json` en `mode=collect` : commit `78d3c997c156a54c7954808969c2fe369918a330`. Nouveau [run 44950136959](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/44950136959), job `136986031949`, démarré le 21/11/2026 21:10 UTC, **`in_progress` au dernier contrôle**. Aucun autre run concurrent observé lors du lancement.
+
+**Source** `FR:electroverse_full`. Reprise attendue de `completed=[0], pending.offset=6000, pending=4600` ; les 7 400 revérifiés antérieurement restent dans le checkpoint, les 15 418 autres restent archives jusqu'à un contrôle effectif. **Ne pas affirmer un traitement nouveau ou un succès avant les journaux, l'artefact et les empreintes en sortie.** Chaque fenêtre ne déclenche que les appels de la méthode déjà validée. Aucun rematching IRVE, changement Production/Netlify/`main`. La continuation automatique **entre jobs distincts** n'est pas activée. Après terminaison, examiner `conclusion`, états des steps, journaux, `checkpoint-manifest.json`, nombre de PK revérifiées, filiation, fichiers SHA/ZIP et absence de prix de faux positif. Toute nouvelle relance doit être fondée sur ce résultat et sur l'absence de concurrence.
+
