@@ -69,7 +69,7 @@ def run_isolated_process(command, *, timeout, check=False, capture_output=True, 
 
 
 def retain_checkpoint(staged: Path, checkpoint: Path, module: str) -> Path:
-    from v9_rebuild.electroverse import validate_state
+    from v9_rebuild.electroverse import recover_window, validate_state
     from v9_rebuild.electroverse_status import validate_partial
     from v9_rebuild.waat_monta_sharded import validate_checkpoint
     if module == "electroverse_status":
@@ -77,6 +77,7 @@ def retain_checkpoint(staged: Path, checkpoint: Path, module: str) -> Path:
     elif module == "waat_monta_sharded":
         validate_checkpoint(staged)
     else:
+        recover_window(staged)
         validate_state(staged, require_complete=False)
     if staged != checkpoint:
         checkpoint.parent.mkdir(parents=True, exist_ok=True)

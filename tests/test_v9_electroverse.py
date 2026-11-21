@@ -90,6 +90,31 @@ class ElectroverseTests(unittest.TestCase):
             self.assertEqual([pk for window in collector.selections for pk in window], ids)
             self.assertEqual(validate_state(out)["totalStations"], len(ids))
 
+    def test_timeout_during_shard_commit_restores_prior_window_before_retention(self):
+        from v9_rebuild.electroverse import write_json
+        from v9_rebuild.orchestrator import retain_checkpoint
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, ELECTROVERSE_API_KEY="placeholder"):
+            source, attempt, kept = (Path(tmp) / key for key in ("seed", "attempt", "retained"))
+            ids = [f"{i:03}" for i in range(101)]
+            fixture(source, ids)
+            collector = SimulatedCollector()
+
+            def stop_between_shard_and_manifest(command, **options):
+                if Path(command[-1]).name == "electroverse_hybrid_refresh.mjs" and collector.selections:
+                    shard = attempt / CACHE / "shard-000.json"
+                    write_json(shard, {"incomplete": True})
+                    raise subprocess.TimeoutExpired(command, 1)
+                return collector(command, **options)
+
+            with self.assertRaises(subprocess.TimeoutExpired):
+                run(attempt, "full", source=source, runner=stop_between_shard_and_manifest)
+            retain_checkpoint(attempt, kept, "electroverse")
+            self.assertEqual(validate_state(kept, require_complete=False)["totalStations"], 100)
+            self.assertEqual(read_json(kept / "v9-electroverse-checkpoint.json")["pending"]["pks"], ids[-1:])
+            run(kept, "full", source=source, runner=collector)
+            self.assertEqual(validate_state(kept)["totalStations"], len(ids))
+            self.assertEqual([pk for window in collector.selections for pk in window], ids)
+
     def test_daily_partial_tiles_never_refresh_or_promote_and_can_retry(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
             source, out = Path(temp) / "source", Path(temp) / "out"

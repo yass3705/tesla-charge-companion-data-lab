@@ -121,6 +121,58 @@ def write_json(path: Path, value: dict) -> None:
     temporary.replace(path)
 
 
+# These links exist only inside the isolated checkpoint directory. Both the
+# Node collector and write_json replace files by rename; no link targets Git.
+WINDOW = ".v9-window"
+LEDGER = Path("v9-electroverse-checkpoint.json")
+FAILURES = REPORTS / "hybrid-refresh-failures.json"
+
+
+def begin_window(out: Path) -> None:
+    stage = out / (WINDOW + "-preparing")
+    stage.mkdir()
+    for rel in (CACHE, LEDGER, FAILURES):
+        src, dest = out / rel, stage / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if src.is_dir():
+            shutil.copytree(src, dest, copy_function=os.link)
+        elif src.exists():
+            os.link(src, dest)
+    stage.rename(out / WINDOW)
+
+
+def close_window(out: Path) -> None:
+    committed = out / (WINDOW + "-committed")
+    (out / WINDOW).rename(committed)
+    shutil.rmtree(committed)
+
+
+def recover_window(out: Path) -> None:
+    """Restore the preceding window if the child stopped during shard writes."""
+    backup = out / WINDOW
+    if backup.is_symlink() or (backup.exists() and any(path.is_symlink() for path in backup.rglob("*"))):
+        raise ValueError("Unsafe Electroverse window checkpoint")
+    if backup.is_dir():
+        for rel in (CACHE, LEDGER, FAILURES):
+            src, dest = backup / rel, out / rel
+            if rel == CACHE:
+                if dest.exists():
+                    shutil.rmtree(dest)
+                shutil.copytree(src, dest, copy_function=os.link)
+            elif src.exists():
+                dest.unlink(missing_ok=True)
+                os.link(src, dest)
+            else:
+                dest.unlink(missing_ok=True)
+        close_window(out)
+    for suffix in ("-preparing", "-committed"):
+        path = out / (WINDOW + suffix)
+        if path.is_dir():
+            shutil.rmtree(path)
+    for rel in (LEDGER.with_suffix(".writing"), Path(str(FAILURES) + ".writing")):
+        (out / rel).unlink(missing_ok=True)
+
+
 def validate_daily_inventory(out: Path) -> None:
     """A carried-forward tile is a checkpoint, never a complete acquisition."""
     report = read_json(out / REPORTS / "daily-delta.json")
@@ -154,6 +206,7 @@ def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None
     out.mkdir(parents=True, exist_ok=True)
     if not (out / CACHE / "manifest.json").is_file():
         stage_state(resume or source, out)
+    recover_window(out)
     validate_state(out, require_complete=False)
     env = os.environ.copy()
     if not env.get("ELECTROVERSE_API_KEY"):
@@ -220,7 +273,8 @@ def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None
                     **selection, "selectedCount": len(window),
                     "selected": [{"pk": pk} for pk in window],
                 })
-            failure_path = out / REPORTS / "hybrid-refresh-failures.json"
+            begin_window(out)
+            failure_path = out / FAILURES
             failure_path.unlink(missing_ok=True)
             rc = run_script("electroverse_hybrid_refresh.mjs", out, env, runner)
             failures = read_json(failure_path).get("failures") if failure_path.is_file() else None
@@ -231,13 +285,20 @@ def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None
                 if rc == 2 and retry and len(retry) == len(set(retry)) == len(failures) and set(retry) <= set(window):
                     checkpoint["pending"]["pks"] = retry + remaining
                     write_json(checkpoint_path, checkpoint)
+                    close_window(out)
                 raise IncompleteCollection(f"Electroverse chunk {offset} failed")
             if remaining:
                 checkpoint["pending"]["pks"] = remaining
                 write_json(checkpoint_path, checkpoint)
-        checkpoint["pending"] = None
-        checkpoint["completed"].append(offset)
-        write_json(checkpoint_path, checkpoint)
+            else:
+                checkpoint["pending"] = None
+                checkpoint["completed"].append(offset)
+                write_json(checkpoint_path, checkpoint)
+            close_window(out)
+        if not selected_pks:
+            checkpoint["pending"] = None
+            checkpoint["completed"].append(offset)
+            write_json(checkpoint_path, checkpoint)
         validate_state(out, require_complete=False)
         processed += 1
     validate_state(out)

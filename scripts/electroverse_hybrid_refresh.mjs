@@ -16,6 +16,13 @@ const MANIFEST=`${DIR}/manifest.json`;
 const CHECKED=`${DIR}/checked-at.json`;
 if(!API_KEY) throw new Error('ELECTROVERSE_API_KEY required');
 
+// A window checkpoint holds hard links to the preceding cache generation.
+async function replaceJsonFile(path, contents) {
+  const temporary = path + '.writing';
+  await fs.writeFile(temporary, contents);
+  await fs.rename(temporary, path);
+}
+
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const stable=x=>Array.isArray(x)?x.map(stable):(x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(k=>[k,stable(x[k])])):x);
 const hash=x=>crypto.createHash('sha256').update(JSON.stringify(stable(x))).digest('hex');
@@ -139,9 +146,9 @@ for(let i=0;i<fallbackPks.length;i++){
 
 for(const i of dirtyShards){
   const data=shardData.get(i);data.generatedAt=new Date().toISOString();
-  await fs.writeFile(`${DIR}/${shardName(i)}`,JSON.stringify(data,null,2)+'\n');
+  await replaceJsonFile(`${DIR}/${shardName(i)}`,JSON.stringify(data,null,2)+'\n');
 }
-checkedState.generatedAt=new Date().toISOString();await fs.writeFile(CHECKED,JSON.stringify(checkedState)+'\n');
+checkedState.generatedAt=new Date().toISOString();await replaceJsonFile(CHECKED,JSON.stringify(checkedState)+'\n');
 
 let totalStations=0,maxShardBytes=0;const updatedMeta=[];
 for(let i=0;i<128;i++){
@@ -151,7 +158,7 @@ for(let i=0;i<128;i++){
 }
 manifest.generatedAt=new Date().toISOString();manifest.totalStations=totalStations;manifest.maxShardBytes=maxShardBytes;manifest.shards=updatedMeta;
 manifest.lastIncrementalRefresh={runAt:manifest.generatedAt,method:'hybrid-full-query-batch5x2-single-paged-fallback',selected:selected.length,new:newCount,changed,unchanged,failures,pagedUsed,batchRequests,fallbackRequests,httpRequests:requests,elapsedSeconds:Number(((performance.now()-t0)/1000).toFixed(2))};
-await fs.writeFile(MANIFEST,JSON.stringify(manifest,null,2)+'\n');
-await fs.writeFile('reports/electroverse/hybrid-refresh-failures.json',JSON.stringify({generatedAt:new Date().toISOString(),failures:failureRows},null,2)+'\n');
+await replaceJsonFile(MANIFEST,JSON.stringify(manifest,null,2)+'\n');
+await replaceJsonFile('reports/electroverse/hybrid-refresh-failures.json',JSON.stringify({generatedAt:new Date().toISOString(),failures:failureRows},null,2)+'\n');
 console.log(JSON.stringify({...manifest.lastIncrementalRefresh,totalStations,maxShardBytes},null,2));
 if(failures)process.exitCode=2;
