@@ -1,3 +1,7 @@
+## Import réel Tesla/Mac du 21 novembre
+
+La collecte Mac reste dans Updater Test. Le pilote Data Lab 44907714124 a importé le catalogue validé publié le 23 octobre, différent des octets du brouillon 6b01917b. Artefact 14708846562, catalogue SHA 5794c76480ceaee63d73a6cf39ee8fb24ed68357cafdaa44b90ddd09a80f01d4. Les dates par pays sont conservées. Le registre compte 63 transferts prouvés et 72 ouverts. Le lot EVGO renouvelé a également passé l’import Production local (deux connecteurs ajoutés et deux retirés, aucun prix ajouté). Préparer le paquet groupé avec ces deux entrées et contrôler ses scénarios navigateur avant transfert. Electroverse 44906379578 et la cadence REVE restent à contrôler.
+
 ## Espagne et Maroc, 21 novembre
 
 Le run 44907080870 a transmis le lot tarifaire secondaire espagnol et les données EVGO du Maroc. Les deux ZIP ont été téléchargés et leurs sorties revérifiées avec les validateurs de source. Le lot tarifaire principal espagnol a échoué et conserve son dernier état valide. Ces deux nouveaux transferts ne figurent pas dans le brouillon 6b01917b. Le registre compte 62 transferts prouvés et 73 ouverts. L’import Production du catalogue Tesla/Mac a également passé ses contrôles sur l’archive réelle après retrait du seuil historique (b40c0a0). Prochaine opération : vérifier le checkpoint Electroverse 44906379578, l’événement horaire REVE, puis comparer EVGO au snapshot servi avant toute intégration.
