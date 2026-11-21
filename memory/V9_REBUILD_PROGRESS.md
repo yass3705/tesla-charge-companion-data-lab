@@ -1,3 +1,7 @@
+## 21 novembre 2026 — décision normative : ordre de jointure nationale / Electroverse (documentation)
+
+Utilisateur : recherche avant « indisponible » **(1) bornes/EVSE/prises + opérateur ; (2) sinon adresse OU coordonnées GPS + opérateur**. S'applique à la France maintenant, par conception aux autres pays couverts ensuite. Ajout normatif dans `docs/v9-rebuild/PROJECT_SPEC_G0_G9.md` (G5), renvoi depuis les politiques eMSP FR/multicountry et le crosswalk international. Ne pas déduire l'identité d'une prise ni lui attribuer un tarif à partir de la seule station retrouvée ; respecter les alias validés et les conditions de groupe homogène, et tracer les candidats rejetés/ambiguïtés. **NOT TESTED / NOT IMPLEMENTED** : aucune modification des collecteurs, jointures, workflows, Production ou snapshots ; aucune collecte déclenchée. Reprise Electroverse : commencer par l'audit de réutilisabilité du cache historique et par des tests de priorité/fallback avant d'envisager un renouvellement massif.
+
 ## État de reprise — 21 novembre, 14 h 16 UTC
 
 La version de recette distante est le [brouillon 6b01a403](https://6b01a403ef31f5a551927fa2--tcc-v9-preproduction-20261028.netlify.app). La preuve Production b1d102d couvre le manifeste et 3 242 fragments, les parcours Firefox, le mobile, les contrôles nationaux et le retour arrière. Le registre Data Lab 628927825 compte 77 transferts prouvés et 58 ouverts.

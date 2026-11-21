@@ -1,3 +1,7 @@
+## 21 novembre 2026 — priorité de rapprochement Electroverse avec bases nationales
+
+Instruction fonctionnelle utilisateur : **correspondance des bornes + opérateur d'abord ; en cas d'échec, adresse ou coordonnées GPS + opérateur ; seulement ensuite marquer la liaison non résolue**. France pilote, politique générique pour extension internationale ultérieure. Alignement documentaire avec les règles historiques de rapprochement, groupes homogènes et non-propagation tarifaire. Norme G5 et documents eMSP mis à jour ; `CURRENT.md` et registre V9 aussi. Validation de code/run/Production : NOT TESTED. Aucun déclencheur Actions activé et aucune publication effectuée.
+
 ## 21 novembre 2026 — Audit des accès, documenté sans action fonctionnelle
 
 Compte GitHub et écriture sur `rebuild/v9-20261020` confirmés (commit de convention `c4c8d1483`). Lecture GitHub Actions, logs et téléchargement ZIP (FX, artefact `14709882404`) vérifiés. Pas de commande de dispatch direct exposée par le connecteur GitHub ; permissions Actions à l'exécution non testées. Navigateur TinyFish inaccessible faute de crédit ; accès de déploiement Netlify non établi. Réserves et suite enregistrées dans la section 8 de `WORKING_AGREEMENT.md`. Aucune collecte Electroverse déclenchée, aucun changement de Production ni de main.

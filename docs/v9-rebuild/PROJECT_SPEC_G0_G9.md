@@ -107,6 +107,19 @@ Conserver la chaîne Electroverse daily/full (128 shards et checkpoints), status
 
 ### G5 — Jointures nationales, CPO, Electra, Electroverse
 
+### Priorité de rapprochement base nationale ↔ Electroverse — décision utilisateur du 21 novembre 2026
+
+**Règle commune à tous les pays pris en charge** (France d'abord, puis autres bases nationales lorsque le fournisseur y est effectivement couvert). Avant de déclarer une liaison nationale/Electroverse indisponible, appliquer **obligatoirement et dans cet ordre** :
+
+1. **Correspondance des bornes ET de l'opérateur** : rechercher les identifiants station, EVSE/prise et connecteur officiels ou les alias exacts déjà validés, en vérifiant la concordance de l'opérateur/CPO et du pays. Le niveau exact de la preuve (station, EVSE, prise, groupe) doit être conservé. La correspondance d'une station ne prouve pas à elle seule celle de chacune de ses prises.
+2. **En l'absence de correspondance fiable à l'étape 1, adresse OU coordonnées GPS ET opérateur** : rapprocher les stations sur leur adresse normalisée ou sur une proximité GPS conforme aux règles déjà documentées (5–10 m pour les cas concernés), **avec concordance obligatoire de l'opérateur** et du pays. Contrôler l'unicité du site candidat, l'identité/réseau, les types de connecteurs, puissances, effectifs de prises et statuts lorsqu'ils sont disponibles. Une adresse postale commune à plusieurs stations ou une distance géographique seule n'autorise aucun rattachement.
+3. **Seulement après échec des deux étapes, liaison non résolue** : garder la station/EVSE nationale et la donnée Electroverse source, ainsi que la raison et les candidats rejetés ; ne pas effacer la borne ni inventer de prix. Si une offre Electroverse identifiée existe mais ne peut être attribuée ou calculée sans ambiguïté, afficher **« Tarif incalculable »** ; si aucune offre exploitable n'est identifiée, **« Prix non disponible »**, selon la politique existante.
+
+**Garde de portée** : même lorsqu'une station est rapprochée par adresse/GPS + opérateur, attribuer un prix **par EVSE/prise uniquement avec preuve de portée** ; les équivalences de groupe déjà autorisées exigent même puissance/type, même site et prix Electroverse homogène entre les prises concernées. En cas de grilles différentes, d'identifiants contradictoires, de plusieurs candidats, de différences d'opérateur ou de données insuffisantes, **aucune attribution automatique**. Ne pas substituer le tarif direct CPO au tarif eMSP. Documenter méthode (`exact+operator`, `validated_alias+operator`, `address+operator`, `gps+operator`, `unmatched/ambiguous`), pays, sources, IDs, distances quand pertinentes, contrôles, provenance/SHA et rejet. Les critères opérationnels doivent être testés en France sans seuil arbitraire de volume, puis appliqués aux autres pays sans inventer de couverture.
+
+**État de cette décision : spécification documentaire, pas correctif déjà implémenté ni résultat de jointure vérifié.** Elle doit être traduite en tests (priorité et fallback, unicité, faux positifs et aucune propagation de prix) avant toute promotion Production.
+
+
 **Travail :** réutiliser les règles et rapprochements déjà documentés ; joindre les offres avec **identité EVSE/prise et portée source prouvées**. Correspondance par GPS/puissance seulement selon les règles déjà établies et sans propagation tarifaire arbitraire à la station. Distinguer données nationales, CPO direct et eMSP ; traiter les EVSE non rapprochés sans les supprimer arbitrairement.
 
 **Porte PASS :** absence de duplication artificielle ou de propagation de prix, tests des correspondances exactes et supplémentaires déjà justifiées, identités et provenances auditées, canaux distincts, cas ambigu/inconnu explicites. Les taux de couverture sont indicatifs, jamais des seuils de rejet.
