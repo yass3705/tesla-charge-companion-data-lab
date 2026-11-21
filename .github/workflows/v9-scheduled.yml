@@ -206,3 +206,24 @@ jobs:
             ${{ runner.temp }}/spain-reve/work/objects
           if-no-files-found: error
           retention-days: 30
+
+  fx:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'schedule' && github.event.schedule == '37 3 * * *'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 1120c6919f43d0e9a9e0885c3a29116cd1e86bcf
+          persist-credentials: false
+      - name: Collect a complete dated FX table
+        run: python3 -m v9_rebuild.orchestrator --source GL:fx --out "$RUNNER_TEMP/fx" --workers 1 --attempts 1
+      - name: Preserve the validated conversion table
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-collection-GL_fx
+          path: |
+            ${{ runner.temp }}/fx/manifest.json
+            ${{ runner.temp }}/fx/objects
+          if-no-files-found: error
+          retention-days: 30
