@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import gzip,json,urllib.request
 from pathlib import Path
+from swiss_national_input import open_national
 from datetime import datetime,timezone
 URL="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
 PREFIX="CH*PAR"
 NAME="Partino Mobile Energie AG"
 req=urllib.request.Request(URL,headers={"User-Agent":"Tesla-Charge-Companion/9","Accept":"application/json"})
-with urllib.request.urlopen(req,timeout=90) as r: raw=r.read()
+with open_national(req,timeout=90) as r: raw=r.read()
 if raw[:2]==b"\x1f\x8b": raw=gzip.decompress(raw)
 j=json.loads(raw.decode("utf-8"))
 owned={}
