@@ -23,6 +23,27 @@ def api(path):
     return subprocess.check_output(["gh", "api", f"repos/{REPO}/" + path])
 
 
+def check_cursor_coverage(mapped, completed, pending, verified):
+    # Match the historical JS selector for every key, including non-numeric IDs.
+    sort_keys = """
+        const fs = require("node:fs");
+        const keys = JSON.parse(fs.readFileSync(0, "utf8"));
+        console.log(JSON.stringify(keys.sort((a, b) => a.localeCompare(b))));
+    """
+    ordered = json.loads(subprocess.check_output(
+        ["node", "-e", sort_keys], input=json.dumps(list(mapped)).encode()))
+    next_offset = len(completed) * CHUNK_SIZE
+    selected = set(ordered[:next_offset])
+    if pending:
+        outstanding = set(pending["pks"])
+        current_chunk = set(ordered[next_offset:next_offset + CHUNK_SIZE])
+        if not outstanding <= current_chunk:
+            raise ValueError("Pending tariff keys are outside their selected chunk")
+        selected.update(current_chunk - outstanding)
+    if verified != selected:
+        raise ValueError("Retained tariff rows differ from the exact completed and pending selections")
+
+
 def verify_download(run_id, head, destination):
     destination = destination.resolve()
     if destination == ROOT or ROOT in destination.parents or destination.exists():
@@ -81,20 +102,7 @@ def verify_download(run_id, head, destination):
             raise ValueError("Inconsistent offsets or unknown identities in checkpoint")
         ancestors = verified_window_chain(head)
         accumulated = verify_ancestor_rows(state, job["started_at"], renewed, ancestors)
-        # The historic selector uses JS localeCompare; preserve its order for
-        # every provider key, including non-numeric keys in future inputs.
-        ordered = json.loads(subprocess.check_output(
-            ["node", "-e", "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>console.log(JSON.stringify(JSON.parse(s).sort((a,b)=>a.localeCompare(b)))));"],
-            input=json.dumps(list(mapped)).encode()))
-        next_offset = len(completed) * CHUNK_SIZE
-        selected = set(ordered[:next_offset])
-        if pending:
-            current_chunk = set(ordered[next_offset:next_offset + CHUNK_SIZE])
-            if not set(pks) <= current_chunk:
-                raise ValueError("Pending tariff keys are outside their selected chunk")
-            selected.update(current_chunk - set(pks))
-        if accumulated != selected:
-            raise ValueError("Retained tariff rows differ from the exact completed and pending selections")
+        check_cursor_coverage(mapped, completed, pending, accumulated)
         receipt = dict(source=SOURCE, runId=run_id, head=head, jobId=job["id"], artifactId=artifact["id"],
                        jobStartedAt=job["started_at"], jobCompletedAt=job["completed_at"],
                        reason=result["sources"][0].get("reason"), jobConclusion=job["conclusion"], zipSHA256=digest, fileSetSHA256=manifest["sha256"],

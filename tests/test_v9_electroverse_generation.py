@@ -3,12 +3,21 @@ import tempfile
 import unittest
 
 from scripts.verify_v9_source_handoff import verify_tariff_generation
+from scripts.verify_v9_tariff_checkpoint import check_cursor_coverage
 from tests.test_v9_electroverse import fixture, save
 from v9_rebuild.electroverse import CACHE, MAPPING, read_json, shard_index
 from v9_rebuild.electroverse_renewal import job_window
 
 
 class GenerationTests(unittest.TestCase):
+    def test_cursor_proves_identities_not_just_counts(self):
+        mapped = {"11", "2", "3"}
+        check_cursor_coverage(mapped, [], {"pks": ["3"]}, {"11", "2"})
+        with self.assertRaisesRegex(ValueError, "exact completed"):
+            check_cursor_coverage(mapped, [], {"pks": ["3"]}, {"11", "3"})
+        with self.assertRaisesRegex(ValueError, "outside"):
+            check_cursor_coverage(mapped, [], {"pks": ["unknown"]}, {"11", "2"})
+
     def test_verified_ancestor_and_current_job_cover_exact_mapping(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
