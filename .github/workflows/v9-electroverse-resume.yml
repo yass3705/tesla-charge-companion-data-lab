@@ -1,0 +1,118 @@
+name: V9 Electroverse bounded checkpoint continuation
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/electroverse-resume-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-rebuild-exclusive
+  cancel-in-progress: false
+jobs:
+  resume:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 85
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify scope, offline tests and public safety
+        id: mode
+        run: |
+          set -euo pipefail
+          python -m unittest tests.test_v9_tariff_chunk_pilot tests.test_v9_electroverse_resume -q
+          python scripts/public_safety_check.py .
+          python - <<'PY'
+          import json, os
+          request = json.load(open('migration/v9/electroverse-resume-request.json'))
+          if request.get('source') != 'FR:electroverse_full' or request.get('mode') not in ('verify', 'collect'):
+              raise SystemExit('Electroverse resume request is not explicitly scoped')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              print('requested_mode=' + request['mode'], file=stream)
+          PY
+      - name: Select the latest validated branch checkpoint
+        id: parent
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/select_v9_electroverse_checkpoint.py --github-output "$GITHUB_OUTPUT"
+      - name: Recover exact immutable parent bytes
+        if: steps.parent.outputs.state == 'checkpoint'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PARENT_ARTIFACT: ${{ steps.parent.outputs.artifact }}
+          PARENT_ZIP_SHA: ${{ steps.parent.outputs.zip_sha }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$PARENT_ARTIFACT/zip" > parent.zip
+          echo "$PARENT_ZIP_SHA  parent.zip" | sha256sum -c -
+          mkdir -p retained
+          unzip -q parent.zip -d retained
+      - name: Verify all retained files and unchanged original mapping
+        if: steps.parent.outputs.state == 'checkpoint'
+        env:
+          PARENT_HEAD: ${{ steps.parent.outputs.head }}
+          PARENT_RUN: ${{ steps.parent.outputs.run }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from scripts.pilot_v9_tariff_chunks import verify_checkpoint
+          retained=Path(os.environ['RUNNER_TEMP'])/'retained'
+          expected=json.loads((retained/'checkpoint-manifest.json').read_text())['sha256']
+          state=verify_checkpoint(retained,expected_sha=expected,
+                                  expected_head=os.environ['PARENT_HEAD'],
+                                  expected_run=int(os.environ['PARENT_RUN']))
+          print('Verified resumable state:',state)
+          PY
+      - name: Continue bounded windows with the historical collector
+        id: renewal
+        if: steps.parent.outputs.state == 'checkpoint' && steps.mode.outputs.requested_mode == 'collect'
+        env:
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          PARENT_HEAD: ${{ steps.parent.outputs.head }}
+          PARENT_RUN: ${{ steps.parent.outputs.run }}
+        run: |
+          set -euo pipefail
+          PARENT_FILE_SHA="$(python -c 'import json,os; from pathlib import Path; print(json.loads((Path(os.environ["RUNNER_TEMP"])/"retained/checkpoint-manifest.json").read_text())["sha256"])')"
+          python scripts/pilot_v9_tariff_chunks.py --out "$RUNNER_TEMP/tcc-v9-electroverse-renewal" --incoming "$RUNNER_TEMP/retained" --expected-sha "$PARENT_FILE_SHA" --expected-head "$PARENT_HEAD" --expected-run "$PARENT_RUN" --window-budget-seconds 1800
+      - name: Retain partial checkpoint (never a Production input)
+        if: steps.renewal.outcome == 'success' && steps.renewal.outputs.collection_state == 'checkpointed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-window
+          path: |
+            ${{ runner.temp }}/tcc-v9-electroverse-renewal/manifest.json
+            ${{ runner.temp }}/tcc-v9-electroverse-renewal/checkpoints
+            ${{ runner.temp }}/tcc-v9-electroverse-renewal/checkpoint-manifest.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain only fully validated source output
+        if: steps.renewal.outcome == 'success' && steps.renewal.outputs.collection_state == 'complete'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-complete
+          path: |
+            ${{ runner.temp }}/tcc-v9-electroverse-renewal/manifest.json
+            ${{ runner.temp }}/tcc-v9-electroverse-renewal/objects
+          if-no-files-found: error
+          retention-days: 30
+      - name: Keep failures separate
+        if: failure() && steps.mode.outputs.requested_mode == 'collect'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-failure
+          path: |
+            ${{ runner.temp }}/tcc-v9-electroverse-renewal/manifest.json
+            ${{ runner.temp }}/tcc-v9-electroverse-renewal/checkpoints
+            ${{ runner.temp }}/tcc-v9-electroverse-renewal/checkpoint-manifest.json
+          if-no-files-found: ignore
+          retention-days: 30
