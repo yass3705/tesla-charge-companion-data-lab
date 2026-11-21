@@ -1,3 +1,7 @@
+## 21 novembre 2026 22:14 UTC — conclusion du premier run réel de continuation Electroverse
+
+Run `44950136959`, job `136986031949`, SHA code `78d3c997` : GitHub success mais collecte `checkpointed`/`collector_window_budget`, donc partielle. Artefact `14727835115`, ZIP SHA256 `3622a321b6885434d7c4541199d2ffc58703c82f790a0511a6b3cf998e6e7aac`, fileset `b04dfb1565024c06a40b5fc75069ea07cad2f03e24f7fa8032634657a662d1e3` : 136/136 fichiers internes OK, 128 shards intacts. Comparaison au parent `14711673559` : +2 900 checked (10 300 cumulés), 1 604 `tariffHash` modifiés, aucun changement hors ces PK, mapping identique ; `pending.offset=6000, pending.pks=1700`. Aucun nouveau run ni changement de Production/main ; suite dans rapport Electroverse.
+
 ## 21 novembre 2026 — lancement réel Electroverse #44950136959 (à contrôler après terminaison)
 
 **Autorisation explicite utilisateur :** « D’accord lance le run ». Après vérification qu'aucun workflow de reconstruction n'était actif, checkpoint de départ `14711673559` non expiré, SHA-256 ZIP `a31e1630c39271e7f912a5d4e3262aa95a924a1f0d5dbb291f61d337b82c2879` et HEAD initial `df7ae13ce237e23f131dc1d810bf1508f46209fd`, push **du seul fichier** `migration/v9/electroverse-resume-request.json` en `mode=collect` : commit `78d3c997c156a54c7954808969c2fe369918a330`. Nouveau [run 44950136959](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/44950136959), job `136986031949`, démarré le 21/11/2026 21:10 UTC, **`in_progress` au dernier contrôle**. Aucun autre run concurrent observé lors du lancement.
