@@ -14,19 +14,21 @@ with open_national(req,timeout=90) as r: raw=r.read()
 if raw[:2]==b"\x1f\x8b": raw=gzip.decompress(raw)
 j=json.loads(raw.decode("utf-8"))
 
-rows=[]
-def walk(x,anc=()):
-    if isinstance(x,dict):
-        ev=None
-        for k,v in x.items():
-            if isinstance(v,str) and "evse" in k.lower() and v.startswith("CH*SCH*E"):
-                ev=v
-        if ev:
-            rows.append((ev,x,anc))
-        for v in x.values(): walk(v,anc+(x,))
-    elif isinstance(x,list):
-        for v in x: walk(v,anc)
+# Preserve a tariff only when a single source record establishes its owner.
+records = {}
+def walk(x, owner=None):
+    if isinstance(x, dict):
+        owner = x.get("OperatorID", owner)
+        ev = x.get("EvseID")
+        if isinstance(ev, str) and ev.startswith("CH*SCH*E"):
+            records.setdefault(ev, []).append((owner, x))
+        for value in x.values():
+            walk(value, owner)
+    elif isinstance(x, list):
+        for value in x:
+            walk(value, owner)
 walk(j)
+rows = {ev: matches for ev, matches in records.items() if any(owner == "CH*SCH" for owner, _ in matches)}
 
 def flatten_num(obj):
     vals=[]
@@ -53,7 +55,11 @@ def flatten_text(obj):
     return out
 
 priced=[]; unresolved=[]
-for ev,obj,anc in sorted(rows,key=lambda x:x[0]):
+for ev, matches in sorted(rows.items()):
+    if len(matches) != 1:
+        unresolved.append({"evseId": ev, "reason": "ambiguous_national_identity"})
+        continue
+    _, obj = matches[0]
     powers=flatten_num(obj)
     power=max(powers) if powers else None
     text=" ".join(flatten_text(obj))
