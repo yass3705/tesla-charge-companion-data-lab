@@ -15,21 +15,24 @@ IMPORT_INSTALLED = "83e59ba6a3b1c62a0c729685c2b5da65cbe604e3"
 DIRECT_INSTALLED = "56b4a615d82d24f95095e42be7f9a2965ca432b3"
 REVE_INSTALLED = "7d5e23ba1ce4037d09bcc94524ca3e48ab0e1a98"
 EXTENDED_INSTALLED = "157f7e86f77c69221854e0532eb5d6048228f254"
+FX_INSTALLED = "669c53ce877ff1d042061c4722793f38476ae6c5"
 SCHEDULE_PATH = ".github/workflows/v9-scheduled.yml"
 BACKUP = "migration/v9/main-workflow-backup-20261026/"
 
 
 def reviewed_scheduled_source(source, head, workflow_id, event):
     if workflow_id != 425938005 or head not in {
-        SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED, REVE_INSTALLED, EXTENDED_INSTALLED
+        SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED, REVE_INSTALLED, EXTENDED_INSTALLED, FX_INSTALLED
     }:
         return False
+    if source == "GL:fx":
+        return head == FX_INSTALLED and event == "schedule"
     if source == "FR:ionity_direct_family":
         return event in {"workflow_dispatch", "schedule"}
-    if event != "schedule" or head not in {DIRECT_INSTALLED, REVE_INSTALLED, EXTENDED_INSTALLED}:
+    if event != "schedule" or head not in {DIRECT_INSTALLED, REVE_INSTALLED, EXTENDED_INSTALLED, FX_INSTALLED}:
         return False
     cadence = ROOT / "docs/v9-rebuild/evidence/restoration-20261121/direct-cadences.json"
-    if head == EXTENDED_INSTALLED:
+    if head in {EXTENDED_INSTALLED, FX_INSTALLED}:
         cadence = cadence.with_name("direct-cadences-extended.json")
     return any(row["source"] == source for row in json.loads(cadence.read_bytes())["sources"])
 
@@ -40,7 +43,7 @@ def git(*args: str) -> str:
 
 def check() -> dict:
     current = git("rev-parse", "origin/main")
-    if current not in (PILOT_REMOVED, SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED, REVE_INSTALLED, EXTENDED_INSTALLED):
+    if current not in (PILOT_REMOVED, SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED, REVE_INSTALLED, EXTENDED_INSTALLED, FX_INSTALLED):
         raise ValueError("Data Lab origin/main changed since the reviewed pilot teardown")
     if git("rev-list", "--parents", "-n", "1", NEUTRALIZED).split() != [NEUTRALIZED, BASE]:
         raise ValueError("Neutralization is not based on the reviewed main SHA")
@@ -50,7 +53,7 @@ def check() -> dict:
            if path.endswith((".yml", ".yaml"))]
     active = [path for path in git("ls-tree", "-r", "--name-only", current, ".github/workflows").splitlines()
               if path.endswith((".yml", ".yaml"))]
-    allowed = [SCHEDULE_PATH] if current in (SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED, REVE_INSTALLED, EXTENDED_INSTALLED) else []
+    allowed = [SCHEDULE_PATH] if current in (SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED, REVE_INSTALLED, EXTENDED_INSTALLED, FX_INSTALLED) else []
     if active != allowed or len(old) != 1207:
         raise ValueError("Unexpected active or archived workflow set")
     if allowed:
@@ -61,6 +64,8 @@ def check() -> dict:
             approved = approved.with_name("v9-scheduled-direct.yml.reviewed")
         if current == EXTENDED_INSTALLED:
             approved = approved.with_name("v9-scheduled-extended.yml.reviewed")
+        if current == FX_INSTALLED:
+            approved = approved.with_name("v9-scheduled-fx.yml.reviewed")
         if current == REVE_INSTALLED:
             approved = approved.with_name("v9-scheduled-reve.yml.reviewed")
         if (git("hash-object", str(approved)) != git("rev-parse", current + ":" + SCHEDULE_PATH)

@@ -204,6 +204,8 @@ def check_execution(run,jobs,artifact,source,head):
     job_name = f'collect ({source}, {slug})' if scheduled else f'collect ({source})'
     if direct_schedule:
         job_name = f'direct-evidence ({source}, {slug})'
+    if scheduled and source == "GL:fx":
+        job_name = "fx"
     matches=[j for j in jobs if j.get('name') == job_name]
     if len(matches)!=1 or matches[0].get('status')!='completed' or matches[0].get('conclusion')!='success':
         raise ValueError('Source job did not succeed')

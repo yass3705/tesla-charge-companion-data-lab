@@ -1,3 +1,7 @@
+## Cadence des taux de change du 21 novembre
+
+GL:fx a obtenu la table datée du 20 novembre, sans taux ancien reporté. Le ZIP 14709882404 du run 44911943370 est vérifié. Les réponses partielles, montants booléens ou non finis et dates fournisseur absentes empêchent la promotion. PR 346 : FX en job isolé à son horaire historique de 03:37 UTC sur main 669c53ce8. Une défaillance FX est indépendante de l’import IONITY. Le déclenchement programmé reste à démontrer. Les 1 207 workflows archivés restent restaurables. Registre global : 75 handoffs vérifiés, 60 ouverts. Le brouillon 6b01a403 est en recette distante.
+
 ## Import des sources dérivées et candidat suisse
 
 Le run 44911508448 transmet trois sorties vérifiées depuis deux ZIP parents identifiés et restaurés (Kilowatt et EBS). Aucun nouvel appel fournisseur pour ce lot. G2 compte 75 transferts démontrés sur 135 et 60 ouverts. Le nouveau brouillon Netlify 6b01a403 sert le bundle afee49dc ; sa recette distante est en cours. La prochaine vérification Electroverse doit comparer toutes les fenêtres précédentes aux lignes conservées et aux identités encore en attente.
