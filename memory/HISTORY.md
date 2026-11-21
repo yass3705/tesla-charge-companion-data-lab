@@ -1,3 +1,7 @@
+## 21 novembre 2026 — Audit des accès, documenté sans action fonctionnelle
+
+Compte GitHub et écriture sur `rebuild/v9-20261020` confirmés (commit de convention `c4c8d1483`). Lecture GitHub Actions, logs et téléchargement ZIP (FX, artefact `14709882404`) vérifiés. Pas de commande de dispatch direct exposée par le connecteur GitHub ; permissions Actions à l'exécution non testées. Navigateur TinyFish inaccessible faute de crédit ; accès de déploiement Netlify non établi. Réserves et suite enregistrées dans la section 8 de `WORKING_AGREEMENT.md`. Aucune collecte Electroverse déclenchée, aucun changement de Production ni de main.
+
 ## 21 novembre 2026 — Accord intersessions ChatGPT / Codex CLI
 
 Décision utilisateur : tracer les modifications significatives, preuves, SHA, runs/artefacts, checkpoints, états partiels, dépendances, sécurité, rollback et prochaine reprise ; assurer lecture commune des références dans toute nouvelle conversation ou session Codex. Nouvelle référence `memory/WORKING_AGREEMENT.md`, reliée à `AGENTS.md` et `memory/README.md`. Modification **strictement documentaire**, sans collecte, activation de workflow, changement de prix, de Production ou de cahier des charges. Autorisation d'exécuter Electroverse à demander séparément. Les capacités non testées des connecteurs restent explicitement non garanties.

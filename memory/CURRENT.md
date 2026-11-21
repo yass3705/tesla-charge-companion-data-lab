@@ -1,3 +1,7 @@
+## Vérification des accès — 21 novembre 2026 (sans démarrage Electroverse)
+
+Accord partagé enregistré dans `memory/WORKING_AGREEMENT.md` (commit `c4c8d1483`). Audit détaillé à sa section 8 : droits GitHub de dépôt et écriture sur branche prouvés, téléchargement d'artefact ZIP prouvé ; permission de lancer/arrêter des Actions spécifiques et déploiement Netlify **non démontrés**. Navigateur TinyFish temporairement bloqué par crédit fournisseur. Aucun workflow, collecte ou déploiement lancé par cette intervention. **Avant de commencer Electroverse :** confirmer les mécanismes d'exécution Actions, les autorisations de secrets via les workflows existants, la stratégie d'artefacts durables et la sortie Production/Netlify. Le présent audit est un constat, pas une validation de G2–G9.
+
 ## Décision de coordination — 21 novembre 2026 (documentation uniquement)
 
 Accord formalisé dans [`memory/WORKING_AGREEMENT.md`](WORKING_AGREEMENT.md), imposant lecture avant intervention (AGENTS, README, CURRENT, V9_REBUILD_PROGRESS, spécification), synchronisation Git, traçabilité intégrale et preuves des checkpoints/handoffs, états PASS/FAIL/NOT TESTED, rollback, distinction entre données collectées, validées, importées et servies. Le chantier Electroverse **n'est pas lancé par ce commit** et aucune étape G2–G8 n'est requalifiée. Les permissions de dépôt ne suffisent pas à démontrer les permissions spécifiques de lancement Actions, d'accès Netlify ou aux secrets : audit préalable exigé.

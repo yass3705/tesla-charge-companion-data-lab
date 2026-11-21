@@ -60,3 +60,15 @@ Contrôler pour la session courante : lecture + écriture Git des dépôts requi
 ## 7. Message de reprise minimal
 
 « Reprenons TCC V9. Lis `AGENTS.md` et `memory/WORKING_AGREEMENT.md` depuis `rebuild/v9-20261020` de Data Lab, puis `memory/README.md`, `memory/CURRENT.md`, `memory/V9_REBUILD_PROGRESS.md` et `PROJECT_SPEC_G0_G9.md`. Vérifie les commits et les runs/artefacts actuels Data Lab/Production, les éventuelles modifications locales Codex et les autorisations. Restitue l'état réellement démontré avant toute modification. »
+
+## 8. Audit initial des connecteurs — 21 novembre 2026
+
+**État vérifié avant lancement Electroverse ; accès à réévaluer au début de l'intervention.**
+
+- Compte GitHub authentifié `yass3705`. Les quatre dépôts Data Lab, Production, Stable et Updater Test sont accessibles ; la permission de dépôt expose `push: true` et `admin: true`. Le commit documentaire atomique `c4c8d1483266d91be717671f1c7e21755cbd7b65` sur `rebuild/v9-20261020` démontre réellement l'écriture GitHub sur cette branche.
+- Lecture des commits, workflows, jobs, logs et artefacts GitHub : opérationnelle. Téléchargement de l'artefact `14709882404` (`GL:fx`) réussi et ZIP de trois entrées contrôlé localement. Cela ne prouve pas encore la validation d'un checkpoint Electroverse complet.
+- L'interface disponible du connecteur GitHub **n'expose pas directement** de commande `workflow_dispatch` ni d'annulation de run ; elle expose des opérations de redémarrage de jobs, **sans essai d'écriture Actions à ce stade**. Une orchestration `push` sur un chemin de requête explicitement filtré peut être envisagée après revue de sécurité et accord de lancement. Un droit Git `admin` ne prouve pas le scope Actions nécessaire pour chaque opération.
+- La connexion navigateur TinyFish possède un ancien état de connexion GitHub, mais une tentative **strictement en lecture seule** a échoué avant lancement faute de crédit du fournisseur. Cet accès navigateur n'est **pas opérationnel à cette date** ; aucun contrôle GitHub n'a été cliqué.
+- Aucun accès Netlify de gestion/déploiement n'a été démontré. Le connecteur GitHub ne gère pas à lui seul l'API Netlify ; la publication d'une nouvelle préproduction et sa recette complète exigera une méthode autorisée distincte ou un passage de relais. Aucun secret fournisseur ou Netlify n'a été lu.
+- Les workflows visibles sur Data Lab `rebuild/v9-20261020` : `v9-check.yml` (PR/manuel), `v9-collect.yml` (manuel) et `v9-tariff-restoration-pilot.yml` (push uniquement sur `migration/v9/tariff-restoration-request.json`, ou manuel). Les commits documentaires ci-dessus ne modifient aucun chemin de collecte. Le site public et `main` restent inchangés.
+- **Conclusion de capacité** : GitHub suffit déjà pour lire, corriger, versionner, examiner les runs et récupérer des artefacts. **Il n'est pas prouvé suffisant, à lui seul, pour garantir toute la chaîne Electroverse jusqu'au déploiement Netlify**. Le démarrage du chantier, les droits précis d'exécution Actions, la méthode de déploiement et la persistance des checkpoints doivent encore être validés séparément.
