@@ -174,8 +174,6 @@ def api_get(api_key: str, endpoint: str, page: int) -> dict[str, Any]:
         "headers": {k: headers[k] for k in ("total-count", "total-pages", "retry-after") if k in headers},
         "payload": payload,
         "transportExitCode": proc.returncode,
-        "stderrPreview": (proc.stderr or "")[:300] or None,
-        "bodyPreview": None if payload is not None else btext[:300],
     }
 
 
@@ -272,6 +270,8 @@ def validate_checkpoint(state: dict[str, Any], tariffs: dict[str, Any], statuses
         if total_pages is not None and (not isinstance(total_pages, int) or total_pages < 1):
             raise ValueError(f"REVE {stream} total pages invalid")
         if state.get("complete"):
+            if not isinstance(total_pages, int) or next_page != total_pages + 1:
+                raise ValueError(f"REVE {stream} final page differs from supplier pagination")
             total_count = state.get(f"{stream}TotalCount")
             if not isinstance(total_count, int) or total_count < 1 or len(store) != total_count:
                 raise ValueError(f"REVE {stream} complete count differs from supplier total")
@@ -288,7 +288,7 @@ def collect() -> int:
     statuses = load_gzip(STATUS_STORE)
     validate_checkpoint(state, tariffs, statuses)
     previous_run = load_json(LAST_RUN, {})
-    if not state.get("quotaUntil") and previous_run.get("requestsAttempted", 0) >= HARD_LIMIT:
+    if not state.get("quotaUntil") and previous_run.get("requestsAttempted", 0) > 0:
         stamp = previous_run.get("generatedAt")
         if stamp:
             state["quotaUntil"] = (datetime.fromisoformat(stamp.replace("Z", "+00:00")) + timedelta(hours=1)).isoformat()
@@ -309,16 +309,21 @@ def collect() -> int:
     for stream, page in plan:
         if report["requestsAttempted"] >= HARD_LIMIT:
             break
+        prefix = "tariff" if stream == "tariffs" else "status"
+        # The plan was made before the first response supplied its page count.
+        total_pages = state.get(prefix + "TotalPages")
+        if isinstance(total_pages, int) and page > total_pages:
+            continue
         endpoint = "/connectors/tariffs" if stream == "tariffs" else "/evses/operational_status"
         result = api_get(api_key, endpoint, page)
         report["requestsAttempted"] += 1
         entry = {"stream": stream, "page": page, "endpoint": endpoint, "status": result["status"], "headers": result["headers"]}
         report["requests"].append(entry)
-        if result["status"] != 200 or not isinstance(result["payload"], list):
+        if result["status"] != 200 or result.get("transportExitCode") != 0 or not isinstance(result["payload"], list):
             if result["status"] == 429:
                 delay = retry_after_seconds(result["headers"].get("retry-after"))
                 state["cooldownUntil"] = (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
-            entry["error"] = {"transportExitCode": result["transportExitCode"], "stderrPreview": result["stderrPreview"], "bodyPreview": result["bodyPreview"]}
+            entry["error"] = {"transportExitCode": result.get("transportExitCode"), "responseIsArray": isinstance(result["payload"], list)}
             report["stoppedAfterError"] = True
             break
         if not result["payload"] and (not isinstance(state.get("tariffTotalPages" if stream == "tariffs" else "statusTotalPages"), int) or page <= state.get("tariffTotalPages" if stream == "tariffs" else "statusTotalPages")):
@@ -328,6 +333,10 @@ def collect() -> int:
         keys = [tariff_key(row) if stream == "tariffs" else status_key(row) for row in result["payload"] if isinstance(row, dict)]
         if len(keys) != len(result["payload"]) or any(not key for key in keys):
             entry["error"] = "missing exact connector or EVSE identity"
+            report["stoppedAfterError"] = True
+            break
+        if len(set(keys)) != len(keys):
+            entry["error"] = "duplicate exact identity in supplier page"
             report["stoppedAfterError"] = True
             break
         report["requestsSucceeded"] += 1
@@ -351,7 +360,7 @@ def collect() -> int:
         entry["newRows"] = n
         entry["updatedRows"] = u
 
-    if report["requestsAttempted"] >= HARD_LIMIT:
+    if report["requestsAttempted"]:
         state["quotaUntil"] = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     normalize_state(state, tariffs, statuses)
     validate_checkpoint(state, tariffs, statuses)

@@ -66,6 +66,8 @@ def validate_checkpoint(checkpoint: Path) -> Path | None:
     generation = manifest.get("generation")
     if not isinstance(generation, str) or len(generation) != 64 or any(c not in "0123456789abcdef" for c in generation):
         raise ValueError("REVE checkpoint generation invalid")
+    if hashlib.sha256(json.dumps(sha, sort_keys=True).encode()).hexdigest() != generation:
+        raise ValueError("REVE generation differs from its file manifest")
     folder = checkpoint / "generations" / generation
     if any(not (folder / name).is_file() or digest(folder / name) != sha[name] for name in FILES):
         raise ValueError("REVE checkpoint SHA mismatch")

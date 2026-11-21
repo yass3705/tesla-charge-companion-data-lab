@@ -40,6 +40,9 @@ class FreshReveCheckpointTest(unittest.TestCase):
             validate_checkpoint(state, {'a': {}}, {'b': {}})
         state['tariffTotalCount'] = 1
         validate_checkpoint(state, {'a': {}}, {'b': {}})
+        state['tariffTotalPages'] = 2
+        with self.assertRaisesRegex(ValueError, 'final page'):
+            validate_checkpoint(state, {'a': {}}, {'b': {}})
 
     def test_full_recent_budget_skips_supplier_requests(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -58,3 +61,18 @@ class FreshReveCheckpointTest(unittest.TestCase):
                 saved = json.loads((root/'state.json').read_text())
                 self.assertEqual((saved['nextTariffPage'], saved['nextStatusPage']), (1, 1))
                 self.assertIsNotNone(saved['quotaUntil'])
+
+class RevePartialBatchSafetyTest(unittest.TestCase):
+    def test_duplicate_page_does_not_advance_and_partial_batch_respects_quota(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            response = {"status": 200, "transportExitCode": 0, "headers": {"total-pages": "2"},
+                        "payload": [{"connector_id": "same"}, {"connector_id": "same"}]}
+            with patch.multiple(collector, DATA=root, STATE=root/'state.json', TARIFF_STORE=root/'tariffs.gz',
+                                STATUS_STORE=root/'statuses.gz', LAST_RUN=root/'report.json'), \
+                    patch.dict(os.environ, REVE_API_KEY='placeholder'), patch.object(collector, 'api_get', return_value=response) as api:
+                self.assertEqual(collector.collect(), 1)
+                self.assertEqual(api.call_count, 1)
+                self.assertEqual(collector.collect(), 0)
+                self.assertEqual(api.call_count, 1)
+                self.assertEqual(json.loads((root/'state.json').read_text())['nextTariffPage'], 1)
