@@ -52,6 +52,12 @@ for(const failure of ['cursor_cycle','duplicate_evse']){
   assert.equal(good.stations.good.tariff.chargingLocationPk,'good','independent successful source response retained');
   const m=await read('data/electroverse/tariff_cache/manifest.json');
   assert.equal(m.lastIncrementalRefresh.failures,1);assert.equal(m.lastIncrementalRefresh.new,1);
+  const ledger = path.join(cache,'checked-at.json');
+  await fs.writeFile(ledger, '{broken');
+  const damaged = spawnSync(process.execPath,[path.join(out,'fixture.mjs')],{cwd:out,encoding:'utf8',
+    env:{...process.env,ELECTROVERSE_API_KEY:'placeholder'}});
+  assert.equal(damaged.status,1);
+  assert.equal(await fs.readFile(ledger,'utf8'),'{broken');
  }finally{await fs.rm(out,{recursive:true,force:true});}
 }
 console.log('Actual hybrid collector: cyclic cursors and duplicate paged EVSE fail, last-good and successful siblings retained; offline only PASS');

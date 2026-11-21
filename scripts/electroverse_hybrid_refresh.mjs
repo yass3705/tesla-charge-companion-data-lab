@@ -49,16 +49,23 @@ const mapping=JSON.parse(await fs.readFile(MAPPING,'utf8'));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 const manifest=JSON.parse(await fs.readFile(MANIFEST,'utf8'));
 let checkedState={version:1,generatedAt:null,checkedAt:{}};
-try{checkedState=JSON.parse(await fs.readFile(CHECKED,'utf8'));}catch{}
-checkedState.checkedAt??={};
+try {
+  checkedState = JSON.parse(await fs.readFile(CHECKED, 'utf8'));
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+}
+if (!checkedState.checkedAt || typeof checkedState.checkedAt !== 'object' || Array.isArray(checkedState.checkedAt)) {
+  throw new Error('Malformed Electroverse checked-at ledger');
+}
 const selected=(selection.selected||[]).map(x=>String(x.pk));
 if(!selected.length){console.log(JSON.stringify({selected:0,note:'Nothing selected'},null,2));process.exit(0)}
 
 const neededShards=[...new Set(selected.map(shardFor))], shardData=new Map(), dirtyShards=new Set();
 for(const i of neededShards){
-  const path=`${DIR}/${shardName(i)}`; let data={version:1,shard:i,shardCount:128,generatedAt:new Date().toISOString(),stations:{}};
-  try{data=JSON.parse(await fs.readFile(path,'utf8'));}catch{}
-  data.stations??={}; shardData.set(i,data);
+  const data = JSON.parse(await fs.readFile(`${DIR}/${shardName(i)}`, 'utf8'));
+  if (data.shard !== i || data.shardCount !== 128 || !data.stations ||
+      typeof data.stations !== 'object' || Array.isArray(data.stations)) throw new Error('Malformed Electroverse shard');
+  shardData.set(i, data);
 }
 
 const client=new DirectElectroverseClient({apiKey:API_KEY});

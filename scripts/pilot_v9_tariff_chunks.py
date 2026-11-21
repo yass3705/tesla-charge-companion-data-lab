@@ -21,7 +21,7 @@ SOURCE = "FR:electroverse_full"
 BRANCH = "rebuild/v9-20261020"
 
 
-def restore_checkpoint(incoming, out, *, expected_sha, expected_head, expected_run):
+def verify_checkpoint(incoming, *, expected_sha, expected_head, expected_run):
     manifest = read_json(incoming / "checkpoint-manifest.json")
     state = incoming / "checkpoints/FR_electroverse_full"
     if (any(path.is_symlink() for path in incoming.rglob("*"))
@@ -35,6 +35,12 @@ def restore_checkpoint(incoming, out, *, expected_sha, expected_head, expected_r
     validate_state(state, require_complete=False)
     if (state / MAPPING).read_bytes() != (ROOT / MAPPING).read_bytes():
         raise ValueError("Checkpoint mapping and pinned collector differ")
+    return state
+
+
+def restore_checkpoint(incoming, out, *, expected_sha, expected_head, expected_run):
+    state = verify_checkpoint(incoming, expected_sha=expected_sha, expected_head=expected_head,
+                              expected_run=expected_run)
     shutil.copytree(state, out / "checkpoints/FR_electroverse_full")
 
 
