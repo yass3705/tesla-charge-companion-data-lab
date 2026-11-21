@@ -27,6 +27,7 @@ from v9_rebuild.swiss_bundle import validate_output as swiss_bundle
 from v9_rebuild.swiss_integration import validate_output as swiss_integration
 from v9_rebuild.nl_dotnl import validate_output as nl_dotnl
 from v9_rebuild.atlante_fr_it import validate_output as atlante_fr_it
+from v9_rebuild import uk_connected_kerb_operator, uk_eco_movement
 from v9_rebuild.uk_midhope import validate_output as uk_midhope
 from v9_rebuild.belgium_gap_archive import validate_output as belgium_gap_archive
 from v9_rebuild.france_canonical import validate_output as france_canonical
@@ -172,6 +173,8 @@ VALIDATORS.update({'FR:fastned_inventory_family':fastned,'BE:energyvision':energ
 VALIDATORS.update({'FR:ozecar':ozecar,'FR:izivia_fast':izivia_fast})
 VALIDATORS.update({'FR:electroverse_full':electroverse,'FR:electroverse_daily':electroverse})
 VALIDATORS.update({'FR:allego_stations': allego_stations, 'FR:bump_tariffs': bump_tariffs})
+VALIDATORS.update({"GB:connected_kerb_operator": uk_connected_kerb_operator.validate_output,
+                   "GB:eco_movement_pcpr": uk_eco_movement.validate_output})
 VALIDATORS.update({'GB:blink_pcpr':uk_blink,'GB:gridserve_pcpr':uk_gridserve})
 VALIDATORS.update({'GB:allego_uk_pcpr': partial(uk_pcpr, provider='allego_uk'),
                    'GB:source_ev_pcpr': partial(uk_pcpr, provider='source_ev')})

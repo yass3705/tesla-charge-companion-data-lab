@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Preserved inline Eco-Movement PCPR collector from G1 workflow archive."""
+import hashlib
 import os,json,time,urllib.request,urllib.parse,urllib.error,gzip
 from pathlib import Path
 from datetime import datetime,timezone
@@ -19,28 +20,57 @@ def get_json(url,timeout=60):
         body=r.read()
         return r.status,dict(r.headers.items()),json.loads(body.decode("utf-8"))
 
-def page(endpoint,limit=1000):
-    out=[]; offset=0
+def response_rows(payload, endpoint, *, allow_list=False):
+    if isinstance(payload, dict):
+        if "status_code" in payload and payload["status_code"] != 1000:
+            raise RuntimeError(f"{endpoint}: provider reported a failed request")
+        rows = payload.get("data")
+    else:
+        rows = payload if allow_list else None
+    if isinstance(rows, dict):
+        rows = [rows]
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise RuntimeError(f"{endpoint}: missing or invalid data records")
+    return rows
+
+
+def page(endpoint, limit=1000):
+    out = []
+    seen_pages = set()
+    expected = None
     while True:
-        q=urllib.parse.urlencode({"limit":limit,"offset":offset})
-        st,h,j=get_json(f"{BASE}/{endpoint}?{q}")
-        if st!=200: raise RuntimeError(f"{endpoint} HTTP {st}")
-        data=j.get("data") if isinstance(j,dict) else None
-        if data is None: data=[]
-        if isinstance(data,dict): data=[data]
-        out.extend(data)
-        if len(data)<limit: break
-        offset+=len(data)
+        query = urllib.parse.urlencode({"limit": limit, "offset": len(out)})
+        status, headers, payload = get_json(f"{BASE}/{endpoint}?{query}")
+        if status != 200:
+            raise RuntimeError(f"{endpoint}: HTTP {status}")
+        rows = response_rows(payload, endpoint)
+        total = next((v for k, v in headers.items() if k.lower() == "x-total-count"), None)
+        if total is not None:
+            if not str(total).isdigit() or (expected is not None and int(total) != expected):
+                raise RuntimeError(f"{endpoint}: inconsistent pagination total")
+            expected = int(total)
+        if rows:
+            fingerprint = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).digest()
+            if fingerprint in seen_pages:
+                raise RuntimeError(f"{endpoint}: repeated page")
+            seen_pages.add(fingerprint)
+        out.extend(rows)
+        if expected is not None:
+            if len(out) == expected:
+                return out
+            if not rows or len(out) > expected:
+                raise RuntimeError(f"{endpoint}: incomplete or inconsistent pagination")
+        elif len(rows) < limit:
+            return out
         time.sleep(.25)
-    return out
 
-locations=page("locations")
-tariffs=page("tariffs")
 
-status_http,status_headers,status_json=get_json(STATUS_URL)
-statuses=status_json.get("data") if isinstance(status_json,dict) else status_json
-if statuses is None: statuses=[]
-if isinstance(statuses,dict): statuses=[statuses]
+locations = page("locations")
+tariffs = page("tariffs")
+status_http, _, status_json = get_json(STATUS_URL)
+if status_http != 200:
+    raise RuntimeError(f"statuses: HTTP {status_http}")
+statuses = response_rows(status_json, "statuses", allow_list=True)
 
 def names(loc):
     vals=[]

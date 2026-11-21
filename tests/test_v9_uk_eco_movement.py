@@ -36,8 +36,9 @@ class Reply(io.BytesIO):
 
 
 class OfflineRunner:
-    def __init__(self, fail_second_page=False, fail=False):
+    def __init__(self, fail_second_page=False, fail=False, fault=None):
         self.fail_second_page = fail_second_page
+        self.fault = fault
         self.fail = fail
 
     def __call__(self, command, **kwargs):
@@ -58,6 +59,16 @@ class OfflineRunner:
                 rows = [{"id": "status-1"}]
             else:
                 raise AssertionError(f"Unexpected preserved route: {url}")
+            if endpoint == "locations" and offset and self.fault == "repeat":
+                rows = [fixture_location(i) for i in range(1, 1001)]
+            if endpoint == "statuses" and self.fault == "missing":
+                return Reply(b'{}')
+            if endpoint == "tariffs" and self.fault == "provider":
+                return Reply(b'{"status_code": 2001, "data": []}')
+            if endpoint == "locations" and self.fault == "truncated":
+                result = Reply(json.dumps({"data": rows if not offset else []}).encode())
+                result.headers = {"X-Total-Count": "1001"}
+                return result
             return Reply(json.dumps({"data": rows}).encode())
 
         old = Path.cwd()
@@ -94,6 +105,14 @@ class EcoMovementMigrationTests(unittest.TestCase):
             with patch.dict(os.environ, {"ECO_MOVEMENT_PCPR_TOKEN": "fixture-token"}):
                 result = run_source(spec, root / "artifacts", runner=simulated_process)
             self.assertEqual(result["status"], "ok")
+
+    def test_invalid_responses_do_not_create_a_snapshot(self):
+        for fault in ("missing", "provider", "repeat", "truncated"):
+            with self.subTest(fault=fault), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                with self.assertRaisesRegex(RuntimeError, "Historical Eco-Movement"):
+                    run(root, runner=OfflineRunner(fault=fault))
+                self.assertFalse((root / RAW).exists())
 
     def test_interrupted_page_and_corrupt_staging(self):
         with tempfile.TemporaryDirectory() as temp:
