@@ -17,13 +17,14 @@ if len(raw)>=2 and raw[:2]==b"\x1f\x8b": raw=gzip.decompress(raw)
 nat=json.loads(raw.decode("utf-8"))
 
 evses={}
+ambiguous_records={}
 def walk(x,owner=None,owner_name=None):
     if isinstance(x,dict):
         if isinstance(x.get("OperatorID"),str):
             owner=x.get("OperatorID"); owner_name=x.get("OperatorName")
         eid=x.get("EvseID")
         if isinstance(eid,str):
-            evses[eid]={
+            row={
               "evseId":eid,"operatorId":owner,"operatorName":owner_name,
               "stationId":x.get("ChargingStationId"),"names":x.get("ChargingStationNames"),
               "address":x.get("Address"),"coordinates":x.get("GeoCoordinates"),
@@ -32,22 +33,17 @@ def walk(x,owner=None,owner_name=None):
               "paymentOptions":x.get("PaymentOptions"),"isOpen24Hours":x.get("IsOpen24Hours"),
               "directTariffs":[],"directTariffStatus":"unresolved"
             }
+            if eid in evses:
+                ambiguous_records.setdefault(eid, []).append(row)
+            else:
+                evses[eid] = row
         for v in x.values(): walk(v,owner,owner_name)
     elif isinstance(x,list):
         for v in x: walk(v,owner,owner_name)
 walk(nat)
 
-def norm_eid(v):
-    return ''.join(ch for ch in str(v or '').upper() if ch.isalnum())
-
-_norm_map={}
-for _eid in evses:
-    _norm_map.setdefault(norm_eid(_eid),[]).append(_eid)
-
 def resolve_eid(eid):
-    if eid in evses: return eid
-    hits=_norm_map.get(norm_eid(eid),[])
-    return hits[0] if len(hits)==1 else None
+    return eid if eid in evses and eid not in ambiguous_records else None
 
 # Curated production artifacts only. Generic atlas first/second-pass files are deliberately excluded.
 sources=[
@@ -252,6 +248,10 @@ if pp.exists():
 
 now=datetime.now(timezone.utc).isoformat()
 rows=list(evses.values())
+for eid, extra in ambiguous_records.items():
+    for record in [evses[eid], *extra]:
+        record["ambiguousNationalEvseId"] = True
+    rows.extend(extra)
 payload={
  "schemaVersion":1,"dataset":"tcc-v9-switzerland","generatedAt":now,
  "country":"CH","nationalSource":NAT,

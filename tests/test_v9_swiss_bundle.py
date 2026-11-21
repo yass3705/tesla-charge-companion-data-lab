@@ -45,6 +45,37 @@ class SwissBundleTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "differs from verified input"):
                 validate_output(out)
 
+    def test_shared_official_id_keeps_both_station_records_and_no_tariff(self):
+        from v9_rebuild.canonical import normalize_swiss
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            source.mkdir()
+            write_input(source, ["CH*ABC*E1"])
+            path = source / NATIONAL
+            national = json.loads(gzip.decompress(path.read_bytes()))
+            group = national["Operators"][0]
+            row = group["ChargingStations"][0]["Evses"][0]
+            group["ChargingStations"].append({"ChargingStationId": "S2",
+                "Evses": [dict(row, ChargingStationId="S2")]})
+            path.write_bytes(gzip.compress(json.dumps(national).encode(), mtime=0))
+            overlay = "data/switzerland/migrol-official-direct-tariffs.json"
+            (source / overlay).parent.mkdir(parents=True)
+            (source / overlay).write_text(json.dumps({"evses": [{"evseId": row["EvseID"], "pricePerKwh": 1}]}))
+            manifest = json.loads((source / "input-manifest.json").read_bytes())
+            for name in [str(NATIONAL), overlay]:
+                manifest["files"][name] = hashlib.sha256((source / name).read_bytes()).hexdigest()
+            (source / "input-manifest.json").write_text(json.dumps(manifest))
+            run(root / "bundle", source)
+            run_integration(root / "public", root / "bundle")
+            raw = (root / "public/data/national/switzerland_public_charging_v9.json").read_bytes()
+            result = normalize_swiss(json.loads(raw), artifact_sha256=hashlib.sha256(raw).hexdigest())
+            self.assertEqual({ev["officialEvseId"] for ev in result["evses"]}, {row["EvseID"]})
+            self.assertEqual(len({ev["stationId"] for ev in result["evses"]}), 2)
+            self.assertEqual(len({ev["id"] for ev in result["evses"]}), 2)
+            self.assertTrue(all(ev["rawSourceFields"]["ambiguousNationalEvseId"] for ev in result["evses"]))
+            self.assertEqual(result["offers"], [])
+
     def test_bad_sha_and_branch(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

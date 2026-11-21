@@ -53,7 +53,8 @@ def normalize_swiss(payload: dict, *, artifact_sha256: str, source_id: str = "CH
             raise ValueError("Swiss station source identity missing")
         cpo_key = key("CH", source_id, "cpo", operator)
         station_key = key("CH", source_id, "station", [operator, source_station])
-        evse_key = key("CH", source_id, "evse", source_evse)
+        evse_identity = [operator, source_station, source_evse] if row.get("ambiguousNationalEvseId") else source_evse
+        evse_key = key("CH", source_id, "evse", evse_identity)
         cpos.setdefault(cpo_key, {"id": cpo_key, "country": "CH", "sourceOperatorId": operator, "name": row.get("operatorName")})
         candidate_station = {"id": station_key, "country": "CH", "cpoId": cpo_key, "sourceStationId": source_station,
                              "names": row.get("names"), "address": row.get("address"), "coordinates": row.get("coordinates")}
@@ -79,13 +80,15 @@ def normalize_swiss(payload: dict, *, artifact_sha256: str, source_id: str = "CH
         for connector in sorted(fingerprints, key=lambda item: digest(item)):
             fingerprint = digest(connector)
             occurrences[fingerprint] += 1
-            connector_key = key("CH", source_id, "connector", [source_evse, fingerprint, occurrences[fingerprint]])
+            connector_key = key("CH", source_id, "connector", [evse_identity, fingerprint, occurrences[fingerprint]])
             connectors.append({"id": connector_key, "evseId": evse_key, "sourceConnectorId": None,
                                "officialConnectorId": None, "plugType": connector["plugType"],
                                "powerKw": _power(connector["facility"]), "rawFacility": connector["facility"]})
         tariff = row.get("directTariff") or {}
         status = tariff.get("status")
         overlays = tariff.get("overlays") or []
+        if row.get("ambiguousNationalEvseId") and (status != "unresolved" or overlays):
+            raise ValueError("Ambiguous Swiss tariff scope")
         if status == "priced" and not overlays:
             raise ValueError("Swiss priced EVSE lacks exact source offer")
         if status != "priced" and overlays:

@@ -1,3 +1,7 @@
+## Inventaire national suisse et portée des offres
+
+L’ancien constructeur remplaçait une ligne nationale par la dernière occurrence de son EVSE_ID. Sur l’entrée nationale du 21 novembre, 94 identifiants appartiennent à plusieurs couples opérateur/station. Le constructeur conserve les lignes physiques, marque l’ambiguïté avant le filtre d’accès public et exclut ces identités des jointures et calculs. Le replay des quatre artefacts suisses et des autres contrats conservés produit 163 lignes publiques concernées, sans offre attribuée par leur identifiant ambigu. Dix-sept tests ciblés passent. Le brouillon 6b019c9c utilise encore la Suisse antérieure à cette correction. Contrôler ensuite le nouveau paquet suisse et les parcours distants avant de le proposer.
+
 ## Nouvelle préproduction vérifiée et reprise des collectes du 21 novembre
 
 Le candidat [6b019c9c](https://6b019c9cdd3d0f7827ea0491--tcc-v9-preproduction-20261028.netlify.app) a passé la recette distante. Le commit Production ba1d2dd conserve les 3 244 empreintes, 24 parcours tarifaires, recherches neuf pays, contrôles mobiles et retour arrière. Amsterdam à 100 km reste lent (52,961 s à froid en mesure isolée).

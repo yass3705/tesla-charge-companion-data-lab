@@ -24,18 +24,20 @@ def validate_output(out: Path) -> dict:
     payload = json.loads((out / OUTPUT).read_text(encoding="utf-8"))
     report = json.loads((out / REPORT).read_text(encoding="utf-8"))
     raw = original["evses"]
-    expected = {row["evseId"]: row for row in raw if row["accessibility"] in PUBLIC}
+    expected = {(row.get("operatorId"), row.get("stationId"), row["evseId"]): row for row in raw if row["accessibility"] in PUBLIC}
     observed = payload.get("evses")
     if not isinstance(observed, list) or len(expected) != len(observed):
         raise ValueError("Swiss public EVSE set inconsistent")
     seen = set()
     for row in observed:
         eid = row.get("evseId")
-        if eid not in expected or eid in seen or row.get("accessibility") not in PUBLIC:
+        identity = (row.get("operatorId"), row.get("chargingStationId"), eid)
+        if identity not in expected or identity in seen or row.get("accessibility") not in PUBLIC:
             raise ValueError("Swiss public EVSE identity or access invalid")
-        seen.add(eid)
-        source = expected[eid]
-        if (row.get("chargingStationId") != source.get("stationId")
+        seen.add(identity)
+        source = expected[identity]
+        if (row.get("ambiguousNationalEvseId") != source.get("ambiguousNationalEvseId")
+                or row.get("chargingStationId") != source.get("stationId")
                 or row.get("directTariff", {}).get("overlays") != source.get("directTariffs")
                 or row.get("directTariff", {}).get("status") != ("priced" if source.get("directTariffStatus") == "resolved" else source.get("directTariffStatus"))
                 or row.get("plugs") != source.get("plugs")

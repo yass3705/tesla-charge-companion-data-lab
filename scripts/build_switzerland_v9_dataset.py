@@ -41,6 +41,7 @@ def main():
             unresolved+=1
         rows.append({
           "evseId":ev.get("evseId"),
+          **({"ambiguousNationalEvseId": True} if ev.get("ambiguousNationalEvseId") else {}),
           "operatorId":ev.get("operatorId"),
           "operatorName":ev.get("operatorName"),
           "chargingStationId":ev.get("stationId"),
