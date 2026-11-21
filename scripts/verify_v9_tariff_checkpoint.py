@@ -14,6 +14,7 @@ from scripts.pilot_v9_tariff_chunks import BRANCH, ROOT, SOURCE, verify_checkpoi
 from v9_rebuild.electroverse import CHUNK_SIZE, MAPPING, read_json
 from v9_rebuild.orchestrator import safe_relative
 from v9_rebuild.electroverse_renewal import job_window
+from scripts.verify_v9_source_handoff import verified_window_chain, verify_ancestor_rows
 
 REPO = "yass3705/tesla-charge-companion-data-lab"
 
@@ -78,12 +79,29 @@ def verify_download(run_id, head, destination):
                 or (pending and pending.get("offset") != len(completed)*CHUNK_SIZE)
                 or not isinstance(pks, list) or len(set(pks)) != len(pks) or not set(pks) <= mapped):
             raise ValueError("Inconsistent offsets or unknown identities in checkpoint")
+        ancestors = verified_window_chain(head)
+        accumulated = verify_ancestor_rows(state, job["started_at"], renewed, ancestors)
+        # The historic selector uses JS localeCompare; preserve its order for
+        # every provider key, including non-numeric keys in future inputs.
+        ordered = json.loads(subprocess.check_output(
+            ["node", "-e", "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>console.log(JSON.stringify(JSON.parse(s).sort((a,b)=>a.localeCompare(b)))));"],
+            input=json.dumps(list(mapped)).encode()))
+        next_offset = len(completed) * CHUNK_SIZE
+        selected = set(ordered[:next_offset])
+        if pending:
+            current_chunk = set(ordered[next_offset:next_offset + CHUNK_SIZE])
+            if not set(pks) <= current_chunk:
+                raise ValueError("Pending tariff keys are outside their selected chunk")
+            selected.update(current_chunk - set(pks))
+        if accumulated != selected:
+            raise ValueError("Retained tariff rows differ from the exact completed and pending selections")
         receipt = dict(source=SOURCE, runId=run_id, head=head, jobId=job["id"], artifactId=artifact["id"],
                        jobStartedAt=job["started_at"], jobCompletedAt=job["completed_at"],
                        reason=result["sources"][0].get("reason"), jobConclusion=job["conclusion"], zipSHA256=digest, fileSetSHA256=manifest["sha256"],
                        filesVerified=len(manifest["files"]), shardsVerified=128, completedChunks=checkpoint["completed"],
                        pendingOffset=pending.get("offset"), pendingLocations=len(pending.get("pks", [])),
-                       mappedLocationsCheckedInJob=len(renewed), renewalWindow=proof, complete=False)
+                       mappedLocationsCheckedInJob=len(renewed), renewalWindow=proof, complete=False,
+                       cumulativeLocationsVerified=len(accumulated), ancestorRunIds=[r["runId"] for r in ancestors])
         (stage / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
         stage.rename(destination)
         return receipt

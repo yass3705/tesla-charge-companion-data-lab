@@ -1,3 +1,7 @@
+## Import des sources dérivées et candidat suisse
+
+Le run 44911508448 transmet trois sorties vérifiées depuis deux ZIP parents identifiés et restaurés (Kilowatt et EBS). Aucun nouvel appel fournisseur pour ce lot. G2 compte 75 transferts démontrés sur 135 et 60 ouverts. Le nouveau brouillon Netlify 6b01a403 sert le bundle afee49dc ; sa recette distante est en cours. La prochaine vérification Electroverse doit comparer toutes les fenêtres précédentes aux lignes conservées et aux identités encore en attente.
+
 ## Renouvellements Direct et contrôles d’archives
 
 Run 44910925626 : les transferts de FastVolt, Greenspot et des tarifs fixes secondaires français ont réussi. Deux autres jobs ont traité uniquement les archives de fiabilité et de résidus Electra. Le contrôle des tarifs fixes principaux français a échoué et son dernier état valide est conservé. Registre G2 : 72 transferts démontrés sur 135 ; 63 restent ouverts. Le nouveau bundle local afee49dc contient les entrées suisses renouvelées et a été importé. La nouvelle recette suisse et ses contrôles distants demeurent en attente.

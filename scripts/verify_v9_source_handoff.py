@@ -108,11 +108,10 @@ def verified_window_chain(head):
     return receipts
 
 
-def verify_tariff_generation(state, started_at, completed_at, receipts):
-    from v9_rebuild.electroverse import MAPPING, read_json
+def verify_ancestor_rows(state, started_at, current_ids, receipts):
     from v9_rebuild.electroverse_renewal import job_window, timestamp
 
-    renewed, current = job_window(state, started_at, completed_at)
+    renewed = set(current_ids)
     boundary = timestamp(started_at)
     for receipt in receipts:
         if timestamp(receipt["jobCompletedAt"]) > boundary:
@@ -122,6 +121,15 @@ def verify_tariff_generation(state, started_at, completed_at, receipts):
             raise ValueError("Historical tariff renewal rows or mapping changed")
         renewed.update(ids)
         boundary = timestamp(receipt["jobStartedAt"])
+    return renewed
+
+
+def verify_tariff_generation(state, started_at, completed_at, receipts):
+    from v9_rebuild.electroverse import MAPPING, read_json
+    from v9_rebuild.electroverse_renewal import job_window
+
+    current_ids, current = job_window(state, started_at, completed_at)
+    renewed = verify_ancestor_rows(state, started_at, current_ids, receipts)
     mapped = {str(row["electroverseLocationPk"]) for row in read_json(state / MAPPING)["mappings"]}
     if mapped != renewed:
         raise ValueError("Incomplete renewal generation")
