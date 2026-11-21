@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from v9_rebuild.electroverse import ROOT
+from v9_rebuild.failure_diagnostics import historical_failure
 
 SCRIPT = Path("scripts/shell_recharge_official.py")
 TEMP = Path("out/shell_recharge/shell_recharge_official_france.json")
@@ -57,7 +58,7 @@ def run(out: Path, *, runner=subprocess.run) -> None:
     completed = runner([sys.executable, str(script), "--out", str(out / "out/shell_recharge")],
                        cwd=out, capture_output=True, text=True, timeout=1800, check=False)
     if completed.returncode:
-        raise RuntimeError("Historical Shell official method failed")
+        raise historical_failure("Historical Shell official method failed", completed)
     for old, new in ((TEMP, OUTPUT), (TEMP_REPORT, REPORT)):
         destination = out / new
         destination.parent.mkdir(parents=True, exist_ok=True)

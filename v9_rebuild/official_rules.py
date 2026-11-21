@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from v9_rebuild.electroverse import ROOT
+from v9_rebuild.failure_diagnostics import historical_failure
 
 RULES = {
     "atlante": ("Atlante", "atlante-official-france", 4),
@@ -185,7 +186,7 @@ def run(out: Path, source: str, *, runner=subprocess.run) -> None:
     result = runner([sys.executable, str(ROOT / f"scripts/{source}_official.py"), "--out", str(out / temp)],
                     cwd=out, capture_output=True, text=True, timeout=900, check=False)
     if result.returncode:
-        raise RuntimeError(f"Historical {source} official method failed")
+        raise historical_failure(f"Historical {source} official method failed", result)
     (out / output).parent.mkdir(parents=True, exist_ok=True)
     (out / report).parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(out / temp / output.name, out / output)

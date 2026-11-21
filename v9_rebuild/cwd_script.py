@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from v9_rebuild.electroverse import ROOT
+from v9_rebuild.failure_diagnostics import historical_failure
 
 METHODS = {
     "etotem_inventory": ("scripts/etotem_direct_station_inventory.py", "data/national/etotem_direct_stations_france.json.gz"),
@@ -569,7 +570,7 @@ def run(out: Path, method: str, *, runner=subprocess.run, source: Path | None = 
     result = runner([sys.executable, str(ROOT / METHODS[method][0])],
                     cwd=out, capture_output=True, text=True, timeout=1200, check=False)
     if result.returncode:
-        raise RuntimeError(f"Historical {method} method failed")
+        raise historical_failure(f"Historical {method} method failed", result)
     if method == "qwello_saone_et_loire":
         generated = out / "out/qwello_saone_et_loire"
         output = out / METHODS[method][1]

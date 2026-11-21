@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from v9_rebuild.electroverse import ROOT
+from v9_rebuild.failure_diagnostics import historical_failure
 
 SCRIPT = Path("scripts/totalenergies_official.py")
 TEMP = Path("out/totalenergies/totalenergies_official_france.json")
@@ -54,7 +55,7 @@ def run(out: Path, *, runner=subprocess.run) -> None:
     completed = runner([sys.executable, str(script), "--out", str(out / "out/totalenergies")],
                        cwd=out, capture_output=True, text=True, timeout=900, check=False)
     if completed.returncode:
-        raise RuntimeError("Historical TotalEnergies official method failed")
+        raise historical_failure("Historical TotalEnergies official method failed", completed)
     for old, new in ((TEMP, OUTPUT), (TEMP_REPORT, REPORT)):
         destination = out / new
         destination.parent.mkdir(parents=True, exist_ok=True)

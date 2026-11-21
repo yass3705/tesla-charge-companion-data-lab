@@ -29,3 +29,11 @@ def process_failure(completed) -> dict:
             'exceptionType': exceptions[-1] if exceptions else None,
             'httpStatuses': statuses, 'frames': frames[-12:], 'progress': progress,
             'rawLogsStored': False}
+
+
+def historical_failure(label, completed):
+    """Carry only numeric HTTP evidence across the subprocess boundary."""
+    diagnostic = process_failure(completed)
+    statuses = sorted(set(diagnostic["httpStatuses"]))
+    suffix = " ".join(f"HTTP Error {code}:" for code in statuses)
+    return RuntimeError(f"{label} (exit {completed.returncode}) {suffix}".rstrip())
