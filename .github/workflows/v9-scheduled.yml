@@ -1,10 +1,17 @@
 name: V9 scheduled collections
+run-name: ${{ (github.event.schedule == '27 * * * *' || inputs.reve_stream == true) && 'V9 REVE bounded stream' || 'V9 scheduled collections' }}
 on:
   schedule:
     - cron: '37 3 * * *'
     - cron: '53 8 * * *'
+    - cron: '27 * * * *'
   workflow_dispatch:
     inputs:
+      reve_stream:
+        description: Advance the existing REVE generation within its hourly quota
+        required: false
+        type: boolean
+        default: false
       collection_run:
         description: Replay a verified IONITY collection from a previous run
         required: false
@@ -12,11 +19,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: v9-verified-${{ github.event.schedule || 'manual' }}
+  group: v9-verified-${{ (inputs.reve_stream == true || github.event.schedule == '27 * * * *') && 'reve' || github.event.schedule || 'manual' }}
   cancel-in-progress: false
 jobs:
   collect:
-    if: github.ref == 'refs/heads/main' && inputs.collection_run == '' && (github.event_name == 'workflow_dispatch' || github.event.schedule == '37 3 * * *')
+    if: github.ref == 'refs/heads/main' && inputs.reve_stream != true && inputs.collection_run == '' && (github.event_name == 'workflow_dispatch' || github.event.schedule == '37 3 * * *')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -45,7 +52,7 @@ jobs:
           retention-days: 30
   import:
     needs: collect
-    if: always() && github.ref == 'refs/heads/main' && (needs.collect.result == 'success' || (needs.collect.result == 'skipped' && inputs.collection_run != ''))
+    if: always() && github.ref == 'refs/heads/main' && inputs.reve_stream != true && (needs.collect.result == 'success' || (needs.collect.result == 'skipped' && inputs.collection_run != ''))
     permissions:
       contents: read
       actions: read
@@ -124,4 +131,51 @@ jobs:
             ${{ runner.temp }}/v9/manifest.json
             ${{ runner.temp }}/v9/failures/*/attempt-*/process.json
           if-no-files-found: warn
+          retention-days: 30
+
+  reve:
+    if: github.ref == 'refs/heads/main' && (github.event.schedule == '27 * * * *' || (github.event_name == 'workflow_dispatch' && inputs.reve_stream == true && inputs.collection_run == ''))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 9695cb6a10f5ade872716a04439d3f4e643e9c28
+          persist-credentials: false
+      - name: Advance only verified REVE pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVE_API_KEY: ${{ secrets.MAPA_REVE_API_KEY }}
+        run: python3 scripts/scheduled_v9_reve.py "$RUNNER_TEMP/spain-reve"
+      - name: Preserve verified generation for resumption
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-REVE-generation
+          path: ${{ runner.temp }}/spain-reve/retained
+          if-no-files-found: error
+          retention-days: 30
+      - name: Read completion from the verified generation
+        id: state
+        if: success()
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          receipt = json.loads((Path(os.environ['RUNNER_TEMP']) / 'spain-reve/retained/receipt.json').read_bytes())
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('complete=' + str(receipt['state'] == 'complete').lower(), file=output)
+          PYTHON
+      - name: Retain complete collection only
+        if: success() && steps.state.outputs.complete == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-collection-ES_reve_stream
+          path: |
+            ${{ runner.temp }}/spain-reve/work/manifest.json
+            ${{ runner.temp }}/spain-reve/work/objects
+          if-no-files-found: error
           retention-days: 30
