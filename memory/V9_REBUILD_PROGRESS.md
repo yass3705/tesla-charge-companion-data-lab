@@ -1,3 +1,7 @@
+## Renouvellements Direct et contrôles d’archives
+
+Run 44910925626 : les transferts de FastVolt, Greenspot et des tarifs fixes secondaires français ont réussi. Deux autres jobs ont traité uniquement les archives de fiabilité et de résidus Electra. Le contrôle des tarifs fixes principaux français a échoué et son dernier état valide est conservé. Registre G2 : 72 transferts démontrés sur 135 ; 63 restent ouverts. Le nouveau bundle local afee49dc contient les entrées suisses renouvelées et a été importé. La nouvelle recette suisse et ses contrôles distants demeurent en attente.
+
 ## Inventaire national suisse et portée des offres
 
 L’ancien constructeur remplaçait une ligne nationale par la dernière occurrence de son EVSE_ID. Sur l’entrée nationale du 21 novembre, 94 identifiants appartiennent à plusieurs couples opérateur/station. Le constructeur conserve les lignes physiques, marque l’ambiguïté avant le filtre d’accès public et exclut ces identités des jointures et calculs. Le replay des quatre artefacts suisses et des autres contrats conservés produit 163 lignes publiques concernées, sans offre attribuée par leur identifiant ambigu. Dix-sept tests ciblés passent. Le brouillon 6b019c9c utilise encore la Suisse antérieure à cette correction. Contrôler ensuite le nouveau paquet suisse et les parcours distants avant de le proposer.
