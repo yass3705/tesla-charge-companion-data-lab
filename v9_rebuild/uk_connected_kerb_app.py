@@ -45,6 +45,12 @@ def validate_app_output(out: Path) -> dict:
     records = details.get("records")
     if not all(isinstance(rows, list) for rows in (source_offers, unresolved, records)):
         raise ValueError("Connected Kerb guest detail lists missing")
+    scope_exclusions = {"no_unique_exact_qr_and_geo_match", "detail_location_mismatch", "no_physical_reference"}
+    for record in records:
+        if record.get("error") and record["error"] not in scope_exclusions:
+            raise ValueError("Connected Kerb guest lookup incomplete; preserve last-good")
+        if not record.get("error") and not isinstance(record.get("location"), dict):
+            raise ValueError("Connected Kerb guest record has no scope decision")
     exact = {(item.get("locationId"), item.get("evseUid"), item.get("connectorId")) for item in source_offers}
     if (not stamp or operator.get("collectedAt") != stamp
             or details.get("operatorBaselineCollectedAt") != stamp

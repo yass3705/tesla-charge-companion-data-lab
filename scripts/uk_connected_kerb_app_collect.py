@@ -157,10 +157,13 @@ def main():
             return {"operatorLocationId": loc["id"], "error": "collection_budget_reached"}
         probes = list(dict.fromkeys(qr(e.get("physical_reference")) for e in loc.get("evses", []) if e.get("physical_reference")))
         errors = []
+        lookup_failures = []
         for physical in probes[:3]:
             try:
                 found = client.get("/locations/search?" + urllib.parse.urlencode({"qrCode": physical, "exactMatch": "true"}))
-                candidates = [l for l in found.get("locations", []) if
+                if not isinstance(found, dict) or not isinstance(found.get("locations"), list):
+                    raise RuntimeError("invalid location search response")
+                candidates = [l for l in found["locations"] if
                     any(qr(s.get("qrCode")) == physical for s in l.get("sockets", [])) and distance(loc, l) <= 100]
                 if len(candidates) != 1:
                     errors.append("no_unique_exact_qr_and_geo_match")
@@ -177,7 +180,9 @@ def main():
                         cache[app_id] = detail
                 return {"operatorLocationId": loc["id"], "lookupQrCode": physical, "location": detail}
             except Exception as error:
-                errors.append(str(error) if isinstance(error, RuntimeError) else type(error).__name__)
+                lookup_failures.append(str(error) if isinstance(error, RuntimeError) else type(error).__name__)
+        if lookup_failures:
+            return {"operatorLocationId": loc["id"], "error": lookup_failures[-1]}
         return {"operatorLocationId": loc["id"], "error": errors[-1] if errors else "no_physical_reference"}
 
     details = []

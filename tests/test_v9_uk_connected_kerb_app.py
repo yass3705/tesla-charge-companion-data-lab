@@ -1,5 +1,6 @@
 """Offline guest app, exact QR joins, signed dependency and recovery."""
 
+import gzip
 import io
 import json
 import os
@@ -15,7 +16,7 @@ from urllib.parse import parse_qs, urlparse
 
 from tests.test_v9_uk_connected_kerb_operator import OfflineRunner as OperatorRunner
 from v9_rebuild.orchestrator import read_sources, run_batch, run_source
-from v9_rebuild.uk_connected_kerb_app import run, validate_app_output
+from v9_rebuild.uk_connected_kerb_app import DETAILS, run, validate_app_output
 from v9_rebuild.uk_connected_kerb_operator import run as run_operator
 
 
@@ -89,6 +90,23 @@ class ConnectedKerbAppTests(unittest.TestCase):
 
             result = run_source(spec, artifacts, runner=simulated_process)
             self.assertEqual(result["status"], "ok")
+
+    def test_partial_transport_or_budget_does_not_replace_last_good(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dep = operator_bundle(root)
+            relative = Path(json.loads((dep / "manifest.json").read_text())["sources"][0]["artifact"])
+            state = dep / Path(*relative.parts[:3])
+            out = root / "guest"
+            run(out, state, runner=AppRunner(missing={"1002"}))
+            records = json.loads(gzip.decompress((out / DETAILS).read_bytes()))
+            failed = next(row for row in records["records"] if row.get("error"))
+            for reason in ("app HTTP 503", "collection_budget_reached", "invalid location search response"):
+                with self.subTest(reason=reason):
+                    failed["error"] = reason
+                    (out / DETAILS).write_bytes(gzip.compress(json.dumps(records).encode()))
+                    with self.assertRaisesRegex(ValueError, "guest lookup incomplete"):
+                        validate_app_output(out)
 
     def test_partial_and_missing_prices_are_explicit(self):
         with tempfile.TemporaryDirectory() as temp:
