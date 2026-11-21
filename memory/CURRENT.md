@@ -1,3 +1,7 @@
+## Reprise Electroverse et recette distante Amsterdam
+
+Le pilote Electroverse 44906379578 reprend le ZIP 14707049235 depuis f943911ba. Son YAML est archivé. Le workflow permanent est 425938005. G2 conserve deux motifs ouverts : 75 transferts à démontrer et registre d’exécution partiel. Le vérificateur 17990d2cc contrôle la filiation et les empreintes des lignes tarifaires dans chaque fenêtre de collecte. À la fin du run, vérifier son artefact avec scripts/verify_v9_tariff_checkpoint.py (SHA f943911ba5b585a850d00f55521ae98350b1f88c en cas de checkpoint), puis comparer les identités acquises. Contrôler aussi l’événement REVE programmé à :27 et son quota. Production 7d4013d consigne 51,419 s à froid sur Amsterdam à 100 km et l’égalité des résultats pour 64 019 stations.
+
 ## Préproduction 33 sources et reprise Electroverse du 21 novembre
 
 Le brouillon https://6b01917b60790d93e2aff701--tcc-v9-preproduction-20261028.netlify.app sert le bundle 96bfbdaf. Production 0124ce6 conserve les contrôles HTTPS/noindex, SHA des 3 244 fragments, 24 parcours tarifaires Firefox et 11 recherches sur neuf pays, ordinateur et mobile. IONITY a été renouvelé, importé et vérifié dans les données servies. Le paquet précédent reste restaurable.
