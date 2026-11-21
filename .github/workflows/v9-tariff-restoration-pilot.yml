@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        source: ['CH:ail_emoti', 'CH:ebs_ecarup', 'CH:iwb_basel', 'CH:fastned_official', 'CH:lidl_official', 'CH:ionity_national', 'CH:migrol_official', 'CH:ewd_official', 'CH:tae_matterhorn', 'FR:qwello_saone_et_loire', 'FR:reveo_official']
+        source: ['FR:bump_official', 'FR:allego_official', 'FR:soregies_mobilites_official', 'FR:evadea_official', 'FR:powerdot_official', 'FR:shell_recharge_official', 'FR:totalenergies_official', 'FR:mobisdec_official', 'FR:izivia_official']
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -30,6 +30,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - name: Install archived collector browser dependency
+        if: contains(fromJSON('["FR:allego_official","FR:powerdot_official","FR:shell_recharge_official","FR:mobisdec_official","FR:izivia_official"]'), matrix.source)
+        run: python -m pip install --disable-pip-version-check -q selenium
+      - name: Install the historic image text reader
+        if: matrix.source == 'FR:evadea_official'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-fra
       - name: Renew and validate the preserved official method
         env:
           SOURCE_ID: ${{ matrix.source }}

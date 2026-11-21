@@ -1,3 +1,7 @@
+## Cadences permanentes des preuves Direct — 21 novembre
+
+Le calendrier permanent regroupe 17 collecteurs Direct ayant déjà réussi leur transfert réel et dont le YAML archivé prévoit une collecte quotidienne. Les méthodes historiques manuelles sont exclues. PR 343 : un seul workflow actif, deux sources Direct simultanées maximum, 1 207 workflows archivés restaurables. IONITY reste à 03:37 UTC et les preuves Direct sont regroupées à 08:53 UTC. L’exécution cron est encore NOT TESTED ; les destinations sont des artefacts isolés et aucun prix générique n’est attribué à un PDC.
+
 ## Handoffs suisses et intégrité des fenêtres Electroverse — 21 novembre
 
 Huit nouvelles transmissions ont été vérifiées sur le run 44904301044. AIL, EBS et IWB sont des transformations d’archives ; cinq validations ont utilisé leur méthode d’acquisition. Trois jobs ont échoué. Les reçus de chaque artefact figurent dans docs/v9-rebuild/evidence/restoration-20261121/direct-receipts. Registre à 53 transferts vérifiés sur 135. Electroverse : le nouveau journal de fenêtre restaure les 128 shards et le curseur après interruption pendant une écriture ; 29 tests Python et deux tests Node passent. Le run 44902743843 a démarré avant cette protection supplémentaire. Le candidat local en préparation 96bfbdaf incorpore le snapshot Production issu d’IONITY ; aucun contrôle distant de ce candidat à cette étape.

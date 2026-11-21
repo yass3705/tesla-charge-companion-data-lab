@@ -10,6 +10,15 @@ from pathlib import Path
 from datetime import datetime, timedelta
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from v9_rebuild.orchestrator import artifact_digest, safe_relative, sha256
+from v9_rebuild.bump_official import validate_output as bump_official
+from v9_rebuild.allego_official import validate_output as allego_official
+from v9_rebuild.soregies_official import validate_output as soregies_official
+from v9_rebuild.evadea_official import validate_output as evadea_official
+from v9_rebuild.powerdot_official import validate_output as powerdot_official
+from v9_rebuild.shell_official import validate_output as shell_official
+from v9_rebuild.totalenergies_official import validate_output as totalenergies_official
+from v9_rebuild.mobisdec_official import validate_output as mobisdec_official
+from v9_rebuild.izivia_official import validate_output as izivia_official
 from v9_rebuild.belib import validate_output as belib
 from v9_rebuild.driveco_evse import validate_output as driveco
 from v9_rebuild.electra_france import validate_output as electra
@@ -64,6 +73,17 @@ def belgium_nap(state):
         raise ValueError('Belgium national pagination or integrity contract invalid')
     return manifest
 VALIDATORS={'FR:irve_national':france_irve,'BE:nap':belgium_nap,'GB:midhope_verified':uk_midhope,'BE:final_gap_archive':belgium_gap_archive,'FR:canonical':france_canonical,'FR:atlante_fr_it':atlante_fr_it,'NL:dotnl':nl_dotnl,'FR:belib':belib,'FR:driveco_evse':driveco,'FR:electra_platform':electra,'CH:swiss_bundle':swiss_bundle,'CH:swiss_integration':swiss_integration}
+VALIDATORS.update({
+    "FR:bump_official": bump_official,
+    "FR:allego_official": allego_official,
+    "FR:soregies_mobilites_official": soregies_official,
+    "FR:evadea_official": evadea_official,
+    "FR:powerdot_official": powerdot_official,
+    "FR:shell_recharge_official": shell_official,
+    "FR:totalenergies_official": totalenergies_official,
+    "FR:mobisdec_official": mobisdec_official,
+    "FR:izivia_official": izivia_official,
+})
 VALIDATORS.update({f'FR:{name}_official':partial(official_rules,source=name) for name in RULES})
 VALIDATORS.update({'FR:ionity_direct_family':ionity})
 VALIDATORS.update({'FR:zephyre':zephyre,'FR:zewatt':zewatt})
@@ -89,10 +109,18 @@ for _spec in json.loads((_registry_root / 'v9_rebuild/sources.json').read_bytes(
 def check_execution(run,jobs,artifact,source,head):
     scheduled = run.get('path') == '.github/workflows/v9-scheduled.yml'
     branch = 'main' if scheduled else 'rebuild/v9-20261020'
-    if scheduled and (run.get('event') not in ('workflow_dispatch', 'schedule')
-                      or head not in ('50c46bf1843560b9b06090c803ef80065f984dc6', '83e59ba6a3b1c62a0c729685c2b5da65cbe604e3')
-                      or source != 'FR:ionity_direct_family' or run.get('workflow_id') != 425938005):
-        raise ValueError('Untrusted scheduled collection')
+    direct_schedule = scheduled and source != "FR:ionity_direct_family"
+    if scheduled:
+        from scripts.check_v9_neutralized_main import SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED
+        if (head not in {SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED}
+                or run.get("workflow_id") != 425938005
+                or run.get("event") not in {"workflow_dispatch", "schedule"}):
+            raise ValueError("Untrusted scheduled collection")
+        if direct_schedule:
+            cadence = _registry_root / "docs/v9-rebuild/evidence/restoration-20261121/direct-cadences.json"
+            daily = {row["source"] for row in json.loads(cadence.read_bytes())["sources"]}
+            if head != DIRECT_INSTALLED or source not in daily or run["event"] != "schedule":
+                raise ValueError("Untrusted Direct schedule")
     if (run.get('status')!='completed' or run.get('head_branch')!=branch
         or run.get('head_sha')!=head or len(head)!=40
         or run.get('repository',{}).get('full_name')!=REPO
@@ -100,6 +128,8 @@ def check_execution(run,jobs,artifact,source,head):
         raise ValueError('Untrusted run provenance or incomplete run')
     slug = source.replace(':', '_')
     job_name = f'collect ({source}, {slug})' if scheduled else f'collect ({source})'
+    if direct_schedule:
+        job_name = f'direct-evidence ({source}, {slug})'
     matches=[j for j in jobs if j.get('name') == job_name]
     if len(matches)!=1 or matches[0].get('status')!='completed' or matches[0].get('conclusion')!='success':
         raise ValueError('Source job did not succeed')
@@ -155,7 +185,7 @@ def verify(run_id,source,artifact_name,head,out,*,reuse_archive=False):
         z.extractall(folder)
     state,object_sha,files=verify_files(folder,source)
     renewal = verify_full_tariff_renewal(state,job['started_at'],job['completed_at']) if source=='FR:electroverse_full' else None
-    report={'runId':run_id,'runConclusion':run['conclusion'],'runHeadSha':head,'runBranch':run['head_branch'],
+    report={'runId':run_id,'runConclusion':run['conclusion'],'runHeadSha':head,'runBranch':run['head_branch'],'workflowId':run.get('workflow_id'),'event':run.get('event'),
         'acquisitionKind':'archived_replay' if source in ARCHIVED_REPLAYS else 'source_execution',
         'sourceId':source,'jobId':job['id'],'jobStatus':job['status'],'jobConclusion':job['conclusion'],
         'jobStartedAt':job.get('started_at'),'jobCompletedAt':job.get('completed_at'),

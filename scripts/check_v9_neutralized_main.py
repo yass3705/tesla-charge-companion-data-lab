@@ -12,6 +12,7 @@ NEUTRALIZED = "9243cf290a66ead623d32b7513ad1ebe8fe93001"
 PILOT_REMOVED = "c7204b3ef35fd28fdc9bfbd7f8cc7f5a4a64494d"
 SCHEDULE_INSTALLED = "50c46bf1843560b9b06090c803ef80065f984dc6"
 IMPORT_INSTALLED = "83e59ba6a3b1c62a0c729685c2b5da65cbe604e3"
+DIRECT_INSTALLED = "56b4a615d82d24f95095e42be7f9a2965ca432b3"
 SCHEDULE_PATH = ".github/workflows/v9-scheduled.yml"
 BACKUP = "migration/v9/main-workflow-backup-20261026/"
 
@@ -22,7 +23,7 @@ def git(*args: str) -> str:
 
 def check() -> dict:
     current = git("rev-parse", "origin/main")
-    if current not in (PILOT_REMOVED, SCHEDULE_INSTALLED, IMPORT_INSTALLED):
+    if current not in (PILOT_REMOVED, SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED):
         raise ValueError("Data Lab origin/main changed since the reviewed pilot teardown")
     if git("rev-list", "--parents", "-n", "1", NEUTRALIZED).split() != [NEUTRALIZED, BASE]:
         raise ValueError("Neutralization is not based on the reviewed main SHA")
@@ -32,13 +33,15 @@ def check() -> dict:
            if path.endswith((".yml", ".yaml"))]
     active = [path for path in git("ls-tree", "-r", "--name-only", current, ".github/workflows").splitlines()
               if path.endswith((".yml", ".yaml"))]
-    allowed = [SCHEDULE_PATH] if current in (SCHEDULE_INSTALLED, IMPORT_INSTALLED) else []
+    allowed = [SCHEDULE_PATH] if current in (SCHEDULE_INSTALLED, IMPORT_INSTALLED, DIRECT_INSTALLED) else []
     if active != allowed or len(old) != 1207:
         raise ValueError("Unexpected active or archived workflow set")
     if allowed:
         approved = ROOT / "docs/v9-rebuild/evidence/restoration-20261121/v9-scheduled.yml.reviewed"
         if current == IMPORT_INSTALLED:
             approved = approved.with_name("v9-scheduled-import.yml.reviewed")
+        if current == DIRECT_INSTALLED:
+            approved = approved.with_name("v9-scheduled-direct.yml.reviewed")
         if (git("hash-object", str(approved)) != git("rev-parse", current + ":" + SCHEDULE_PATH)
                 or git("diff", "--name-only", PILOT_REMOVED, current) != SCHEDULE_PATH):
             raise ValueError("Unreviewed main change")
