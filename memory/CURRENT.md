@@ -1,3 +1,7 @@
+## 21 novembre 2026 — Electroverse : pilote GitHub de reprise VALIDÉ (sans collecte live)
+
+[Run **44947769520**](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/44947769520), job **136978761119**, code `d14a5326d0b06dcd09c7429d374694946d6aa56e` : **SUCCESS**. **10 tests unitaires PASS**, `Public safety scan: OK`, sélection GitHub de l'artefact 14711673559, contrôle ZIP `parent.zip: OK` et validation de l'intégralité du checkpoint/mapping depuis le runner GitHub. **Aucune collecte Electroverse, aucun prix modifié** (`mode=verify`, étape fournisseur sautée). Le code de continuation multifenêtre `725cb00e5` est testé hors ligne, **pas encore exercé en acquisition réelle**. L'auto-déclenchement d'un run suivant reste **non installé**. Détails dans `docs/v9-rebuild/evidence/electroverse-resume-20261121.md` section 6. Pour une nouvelle exécution il faut une nouvelle demande push explicite, pas une promesse d'autonomie complète.
+
 ## 21 novembre 2026 — Electroverse : sauvegarde checkpoint et reprise intra-job codée
 
 **Source sûre :** run `44912790561`, artefact `14711673559`, SHA-256 ZIP `a31e1630c39271e7f912a5d4e3262aa95a924a1f0d5dbb291f61d337b82c2879`. 136/136 empreintes et 128 shards vérifiés. `completed=[0]`, `pending.offset=6000`, 4600 PK encore sur le deuxième chunk ; 7400 vérifiées, 15418 archivées sans vérification de novembre. **Ne pas confondre partiel et collecte complète.**

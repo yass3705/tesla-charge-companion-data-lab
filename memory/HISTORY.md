@@ -1,3 +1,7 @@
+## 21 novembre 2026 — preuve distante PASS de la restauration Electroverse, mode verify
+
+Run `44947769520` / job `136978761119`, code `d14a5326` : succès GitHub Actions ; 10 tests offline PASS et scan public OK ; parent `44912790561` / artefact `14711673559` sélectionné automatiquement puis archive ZIP sha et contenu validés sur runner, mapping conservé. L'étape fournisseur a été sautée par conception ; aucune donnée tarifaire acquise. Autorésolution inter-runs non installée. État et limites reportés dans `docs/v9-rebuild/evidence/electroverse-resume-20261121.md` §6.
+
 ## 21 novembre 2026 — correctif Electroverse de continuation bornée, test Actions en lecture seule
 
 `725cb00e5` : le pilote conserve `completed/pending`, continue plusieurs fenêtres dans le même job si budget suffisant, et impose réserve 1800+300 secondes, validations de curseur et arrêt avant retard. `ee7bd6a3` : nouveau workflow dédié branche reconstruction, permission GitHub read-only, sélecteur provenance/digest/manifest/root immuable ; artefacts partiel/complet/échec séparés. `d14a5326` : déclencheur `mode=verify` uniquement, run `44947769520` lancé (résultat à confirmer). Archive 14711673559/136 fichiers/128 shards SHA vérifiés, 7400/22818 localisations contrôlées ; 4600 PK pending du chunk 6000. Aucune modification de Production/main ou mapping, aucune acquisition nouvelle. Autoréexécution inter-runs non configurée. Voir `docs/v9-rebuild/evidence/electroverse-resume-20261121.md`.

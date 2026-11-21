@@ -25,7 +25,7 @@
 - Modes : `verify` = tests offline, scan public et vérification ZIP/manifestes/mapping **sans appel Electroverse** ; `collect` = même validation préalable, puis avance bornée du collecteur historique avec secret `ELECTROVERSE_API_KEY` injecté uniquement dans l'étape fournisseur.
 - Le parent est sélectionné par sa **provenance exacte** (nom d'artefact, branche, workflow, run réussi, SHA, empreinte ZIP, manifeste). En l'absence de nouvelle génération dédiée, le parent est **l'artefact historique 14711673559**. Une génération complète dédiée plus récente empêche une nouvelle reprise sur l'ancien partiel.
 - Artefacts étiquetés différemment : `tcc-v9-electroverse-window` (partiel), `tcc-v9-electroverse-complete` (complet sous réserve des validations métier dédiées), `tcc-v9-electroverse-failure` (échec). Rétention 30 jours, aucun push de données brutes sur le dépôt public.
-- Demande de test en lecture seule `d14a5326d0b06dcd09c7429d374694946d6aa56e`. [Run GitHub 44947769520](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/44947769520) **démarré**, résultat à relever explicitement avant toute proclamation PASS de la transmission GitHub.
+- Demande de test en lecture seule `d14a5326d0b06dcd09c7429d374694946d6aa56e`. [Run GitHub 44947769520](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/44947769520) **SUCCESS vérifié**, comme détaillé en section 6 ; aucune collecte en mode verify.
 
 ## 4. Frontière d'automatisation : fait vs non fait
 
@@ -33,8 +33,22 @@
 
 **Non mis en service** : auto-déclenchement d'un nouveau workflow après chaque checkpoint, ou cron Electroverse permanent. Selon [GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), `workflow_dispatch`, `workflow_run` et `schedule` nécessitent que le workflow approprié existe sur la branche par défaut ; le `GITHUB_TOKEN` ne déclenche pas de nouveaux jobs sur un simple push automatisé. Aucun workflow sur `main` n'a été modifié pour contourner ces restrictions. Une automatisation permanente nécessitera un mécanisme approuvé et des preuves spécifiques de sécurité.
 
-**Tests** : le code et les tests sont versionnés ; le résultat du run 44947769520 fait foi pour l'exécution distante. Tant que cette vérification n'est pas un succès confirmé, le transport de checkpoint reste `NOT TESTED / IN PROGRESS`. **Aucun appel massif fournisseur ni collecte ne résulte des commits ou de la demande `mode=verify`.** Les portes G2–G9 restent dans leur état antérieur.
+**Tests** : le code et les tests sont versionnés ; le run 44947769520 a confirmé le transfert, les 10 tests et le scan public. La continuation sur API réelle n'a pas été exercée. **Aucun appel massif fournisseur ni collecte ne résulte des commits ou de la demande `mode=verify`.** Les portes G2–G9 restent dans leur état antérieur.
 
 ## 5. Reprise sans perdre l'historique
 
 Lire `AGENTS.md` et `memory/WORKING_AGREEMENT.md` puis ce rapport et `CURRENT.md`. Vérifier que `main` ne possède aucun déclencheur indirect pour la branche. Examiner le [run 44947769520](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/44947769520), puis le manifeste `checkpoint-manifest.json` de l'artefact parent. Si le test est `PASS`, un futur push explicite de demande `mode=collect` peut démarrer des fenêtres réelles sur la même branche, avec rapprochements et snapshots existants inchangés. Ne jamais relancer deux générations concurrentes.
+
+## 6. Résultat du pilote read-only — validation distante confirmée
+
+[Run GitHub **44947769520**](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/44947769520), job **136978761119**, SHA de code `d14a5326d0b06dcd09c7429d374694946d6aa56e`, branche `rebuild/v9-20261020`, conclusion **SUCCESS** le 21/11/2026 à 20:45 UTC.
+
+Contrôles observés dans les logs :
+- **10 tests unitaires PASS** (`tests.test_v9_tariff_chunk_pilot`, `tests.test_v9_electroverse_resume` ; 0 erreur).
+- **Public safety scan: OK**.
+- Sélecteur : parent `run=44912790561`, `artifact=14711673559`, `head=2d19e361530f5a66072a56b6491f16779a9a823f`, SHA-256 ZIP `a31e1630c39271e7f912a5d4e3262aa95a924a1f0d5dbb291f61d337b82c2879`.
+- Téléchargement GitHub Action `parent.zip: OK` au contrôle SHA ; `verify_checkpoint()` et validation des 136 entrées/SHA, 128 shards et mapping de la génération héritée **PASS** en runner Linux.
+- Étape « Continue bounded windows » **skipped** conformément à `mode=verify`. Aucun secret fournisseur utilisé par le code de collecte, aucune requête tarifaire initiée, aucun artefact source renouvelé.
+- Branche `main`, Production, Stable et Updater Test inchangés. Aucune collecte eMSP en cours du fait de cette vérification.
+
+**Statut exact :** installation branche et reprise de checkpoint **PASS**, continuation intra-job **tests offline PASS, collecte réelle NOT TESTED** ; reprise autonome **entre runs** **NOT IMPLEMENTED** (pas de workflow permanent/main). Ce résultat ne vaut pas PASS pour G2–G9 ou un nouveau jeu de prix.
