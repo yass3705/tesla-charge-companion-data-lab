@@ -1,3 +1,7 @@
+## Décision de coordination — 21 novembre 2026 (documentation uniquement)
+
+Accord formalisé dans [`memory/WORKING_AGREEMENT.md`](WORKING_AGREEMENT.md), imposant lecture avant intervention (AGENTS, README, CURRENT, V9_REBUILD_PROGRESS, spécification), synchronisation Git, traçabilité intégrale et preuves des checkpoints/handoffs, états PASS/FAIL/NOT TESTED, rollback, distinction entre données collectées, validées, importées et servies. Le chantier Electroverse **n'est pas lancé par ce commit** et aucune étape G2–G8 n'est requalifiée. Les permissions de dépôt ne suffisent pas à démontrer les permissions spécifiques de lancement Actions, d'accès Netlify ou aux secrets : audit préalable exigé.
+
 ## État de reprise — 21 novembre, 14 h 16 UTC
 
 La version de recette distante est le [brouillon 6b01a403](https://6b01a403ef31f5a551927fa2--tcc-v9-preproduction-20261028.netlify.app). La preuve Production b1d102d couvre le manifeste et 3 242 fragments, les parcours Firefox, le mobile, les contrôles nationaux et le retour arrière. Le registre Data Lab 628927825 compte 77 transferts prouvés et 58 ouverts.

@@ -1,3 +1,7 @@
+## 21 novembre 2026 — Accord intersessions ChatGPT / Codex CLI
+
+Décision utilisateur : tracer les modifications significatives, preuves, SHA, runs/artefacts, checkpoints, états partiels, dépendances, sécurité, rollback et prochaine reprise ; assurer lecture commune des références dans toute nouvelle conversation ou session Codex. Nouvelle référence `memory/WORKING_AGREEMENT.md`, reliée à `AGENTS.md` et `memory/README.md`. Modification **strictement documentaire**, sans collecte, activation de workflow, changement de prix, de Production ou de cahier des charges. Autorisation d'exécuter Electroverse à demander séparément. Les capacités non testées des connecteurs restent explicitement non garanties.
+
 ## État de reprise — 21 novembre, 14 h 16 UTC
 
 La version de recette distante est le [brouillon 6b01a403](https://6b01a403ef31f5a551927fa2--tcc-v9-preproduction-20261028.netlify.app). La preuve Production b1d102d couvre le manifeste et 3 242 fragments, les parcours Firefox, le mobile, les contrôles nationaux et le retour arrière. Le registre Data Lab 628927825 compte 77 transferts prouvés et 58 ouverts.

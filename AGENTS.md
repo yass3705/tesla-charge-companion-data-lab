@@ -8,6 +8,10 @@ Pour toute session de reconstruction TCC V9 (G0 à G9), lire **avant de dévelop
 
 Les décisions centrales sont : réutiliser les méthodes existantes sans nouvelle recherche tarifaire, éliminer les seuils de variation des volumes EVSE, garder les Actions Data Lab désactivées jusqu'à sécurisation et autorisation, et poursuivre en autonomie jusqu'à la préproduction TCC validable visuellement par l'utilisateur. Ne pas refaire les étapes PASS ni demander des validations techniques ordinaires.
 
+## Convention commune ChatGPT / Codex CLI — décision utilisateur du 21 novembre 2026
+
+**OBLIGATOIRE avant toute modification :** lire [l'accord permanent de traçabilité et de reprise](memory/WORKING_AGREEMENT.md), puis `memory/README.md`, `memory/CURRENT.md`, `memory/V9_REBUILD_PROGRESS.md` et le cahier des charges. Vérifier la branche exacte (reconstruction vs `main`), les SHA, les runs, la présence d'un autre intervenant et les checkpoints. Tracer chaque changement avec motif, diff, preuve, artefacts, état réellement servi et rollback ; actualiser mémoire et historique à chaque étape significative. Les permissions GitHub globales ne prouvent pas les droits Actions/Netlify. Cette convention ne lance aucune collecte et n'autorise aucune publication publique.
+
 ## Au début d'une mission TCC
 
 1. Lire `tesla-charge-companion-data-lab/memory/README.md` et `tesla-charge-companion-data-lab/memory/CURRENT.md` (ou `memory/...` depuis Data Lab). Lire ensuite les documents métier sources cités pour le sujet ; ne pas réinventer une règle déjà validée.

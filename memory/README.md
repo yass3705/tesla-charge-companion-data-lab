@@ -2,6 +2,10 @@
 
 Point d'entrée versionné pour reprendre le travail depuis Codex Mac ou ChatGPT mobile via GitHub. Ce répertoire est un **index et un journal**, pas une copie des dossiers `docs/`, `reports/` ni des données. Les liens ci-dessous pointent vers la source de référence dans chaque dépôt. Une affirmation ancienne reste datée ; vérifier le code, les artefacts et les commits avant de la présenter comme déployée.
 
+## Accord permanent ChatGPT / Codex CLI
+
+**[Convention commune de traçabilité, synchronisation, preuves, permissions et reprise](WORKING_AGREEMENT.md)** — décision utilisateur du 21 novembre 2026. Lecture obligatoire avant chaque intervention, depuis Codex Mac ou une nouvelle conversation ChatGPT. L'accord reste versionné sur la branche de reconstruction tant qu'il n'a pas été expressément porté sur une autre branche. Toujours contrôler `rebuild/v9-20261020` et non supposer que `main` possède les mêmes instructions.
+
 ## Reconstruction complète V9 (G0 à G9)
 
 - **[Cahier des charges permanent, décisions utilisateur et portes de recette G0–G9](../docs/v9-rebuild/PROJECT_SPEC_G0_G9.md)** : à relire au début de chaque session Codex, même après remise à zéro du quota ou ouverture d'une nouvelle conversation.
