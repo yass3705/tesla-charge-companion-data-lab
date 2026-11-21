@@ -6,8 +6,10 @@ chunk boundary can continue in the same job without repeating acquired rows.
 """
 import argparse
 import json
+import shutil
 import os
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,10 +21,35 @@ SOURCE = "FR:electroverse_full"
 BRANCH = "rebuild/v9-20261020"
 
 
-def advance(out, *, specs, chunk_count, execute=run_batch):
+def restore_checkpoint(incoming, out, *, expected_sha, expected_head, expected_run):
+    manifest = read_json(incoming / "checkpoint-manifest.json")
+    state = incoming / "checkpoints/FR_electroverse_full"
+    if (any(path.is_symlink() for path in incoming.rglob("*"))
+            or manifest.get("source") != SOURCE or manifest.get("branch") != BRANCH
+            or manifest.get("headSha") != expected_head or manifest.get("runId") != expected_run
+            or manifest.get("state") != "partial_checkpoint"
+            or manifest.get("completeSnapshotValidated") is not False
+            or manifest.get("sha256") != expected_sha
+            or artifact_digest(state) != (expected_sha, manifest.get("files"))):
+        raise ValueError("Untrusted Electroverse tariff checkpoint")
+    validate_state(state, require_complete=False)
+    if (state / MAPPING).read_bytes() != (ROOT / MAPPING).read_bytes():
+        raise ValueError("Checkpoint mapping and pinned collector differ")
+    shutil.copytree(state, out / "checkpoints/FR_electroverse_full")
+
+
+def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60, clock=time.monotonic):
+    if budget_seconds < 2700:
+        raise ValueError("Process timeout and upload reserve required")
     checkpoint = out / "checkpoints/FR_electroverse_full"
-    previous_completed = []
-    for number in range(chunk_count):
+    started = clock()
+    saved = checkpoint / "v9-electroverse-checkpoint.json"
+    previous_completed = read_json(saved)["completed"] if saved.is_file() else []
+    if previous_completed != list(range(0, len(previous_completed) * CHUNK_SIZE, CHUNK_SIZE)):
+        raise ValueError("Checkpoint chunk offsets are inconsistent")
+    for number in range(len(previous_completed), chunk_count):
+        if clock() - started > budget_seconds - 2700:
+            raise RuntimeError("Tariff checkpoint retained at time budget; no new provider calls")
         result = execute(specs, out, workers=1, attempts=1)
         if result.get("status") == "complete":
             return result
@@ -49,10 +76,19 @@ def advance(out, *, specs, chunk_count, execute=run_batch):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--incoming", type=Path)
+    p.add_argument("--expected-sha")
+    p.add_argument("--expected-head")
+    p.add_argument("--expected-run", type=int)
     a = p.parse_args()
     out = a.out.resolve()
     if out.exists() or out == ROOT or ROOT in out.parents or os.environ.get("GITHUB_REF_NAME") != BRANCH:
         raise ValueError("New isolated pilot directory on reconstruction branch required")
+    if a.incoming:
+        if not all((a.expected_sha, a.expected_head, a.expected_run)):
+            raise ValueError("Checkpoint receipt required")
+        restore_checkpoint(a.incoming, out, expected_sha=a.expected_sha,
+                           expected_head=a.expected_head, expected_run=a.expected_run)
     chunks = max(1, (len(read_json(ROOT / MAPPING)["mappings"]) + CHUNK_SIZE - 1) // CHUNK_SIZE)
     result = advance(out, specs=[s for s in read_sources() if s["id"] == SOURCE], chunk_count=chunks)
     print(json.dumps({"status": result["status"], "chunks": chunks}))

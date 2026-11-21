@@ -1,16 +1,48 @@
 import os
+import hashlib
+import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.pilot_v9_status_cycle import advance
+from scripts.pilot_v9_status_cycle import advance, record_checkpoint, restore_checkpoint
+from v9_rebuild.electroverse import MAPPING, CACHE
 from tests.test_v9_electroverse import fixture, save
 from v9_rebuild.electroverse_status import STATUS_REPORT, cache_fingerprint, part_path
 from tests.test_v9_electroverse_status import part
 
 
 class StatusCyclePilotTests(unittest.TestCase):
+    def test_cross_run_restore_requires_receipt_and_identical_tariff(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
+            root = Path(tmp); incoming = root / "incoming"; tariff = root / "tariff"
+            state = incoming / "checkpoints/FR_electroverse_status"
+            fixture(state, ["a"]); fixture(tariff, ["a"])
+            save(part_path(state, 0), part(0, cache_fingerprint(state), {}))
+            record_checkpoint(incoming, [])
+            pin = hashlib.sha256((incoming / "checkpoint-manifest.json").read_bytes()).hexdigest()
+            args = dict(head="a"*40, run_id=1, manifest_sha=pin)
+            restored = restore_checkpoint(incoming, root / "restored", tariff, **args)
+            self.assertEqual(len(restored["partitions"]), 1)
+            self.assertEqual((root / "restored/checkpoints/FR_electroverse_status" / part_path(Path(), 0)).read_bytes(), part_path(state, 0).read_bytes())
+            for changed in ({"head":"b"*40}, {"run_id":2}, {"manifest_sha":"0"*64}):
+                with self.subTest(changed=changed), self.assertRaises(ValueError):
+                    restore_checkpoint(incoming, root / "bad", tariff, **dict(args, **changed))
+                self.assertFalse((root / "bad").exists())
+            # Same-length altered mapping must fail even when the historical
+            # fingerprint (cache manifest metadata) is still identical.
+            (tariff / MAPPING).write_bytes((tariff / MAPPING).read_bytes().replace(b'"a"', b'"b"'))
+            self.assertEqual(cache_fingerprint(state), cache_fingerprint(tariff))
+            with self.assertRaisesRegex(ValueError, "mapping"):
+                restore_checkpoint(incoming, root / "bad", tariff, **args)
+            (tariff / MAPPING).write_bytes((state / MAPPING).read_bytes())
+            shard = tariff / CACHE / "shard-000.json"
+            shard.write_bytes(shard.read_bytes().replace(b'"version": 1', b'"version": 2'))
+            with self.assertRaisesRegex(ValueError, "cache"):
+                restore_checkpoint(incoming, root / "bad", tariff, **args)
+            self.assertFalse((root / "bad").exists())
+
     def executor(self, reports):
         calls = []
         def run(specs, out, **kwargs):

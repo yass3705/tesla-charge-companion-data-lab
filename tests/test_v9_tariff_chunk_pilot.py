@@ -9,6 +9,20 @@ from tests.test_v9_electroverse import fixture, save
 
 
 class TariffChunkPilotTests(unittest.TestCase):
+    def test_time_budget_keeps_upload_reserve_after_completed_chunk(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
+            calls=[];ticks=iter([0,0,1801]);out=Path(tmp)
+            def execute(specs, folder, **kwargs):
+                calls.append(1)
+                state=folder / "checkpoints/FR_electroverse_full"
+                fixture(state,["a"])
+                save(state / "v9-electroverse-checkpoint.json", {"mode":"full","completed":[0],"pending":None})
+                return {"status":"partial_failure","sources":[{"reason":"collector_exit_nonzero"}]}
+            with self.assertRaisesRegex(RuntimeError,"time budget"):
+                advance(out,specs=[],chunk_count=2,execute=execute,clock=lambda:next(ticks))
+            self.assertEqual(len(calls),1)
+            self.assertTrue((out / "checkpoint-manifest.json").is_file())
+
     def test_only_successful_chunk_boundaries_continue(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
             out = Path(tmp)

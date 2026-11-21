@@ -116,7 +116,9 @@ def run_script(name: str, out: Path, env: dict[str, str], runner=subprocess.run)
 
 
 def write_json(path: Path, value: dict) -> None:
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary = path.with_suffix(".writing")
+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(path)
 
 
 def validate_daily_inventory(out: Path) -> None:
@@ -206,18 +208,33 @@ def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None
             raise ValueError("Duplicate selected Electroverse location")
         checkpoint["pending"] = {"offset": offset, "pks": selected_pks}
         write_json(checkpoint_path, checkpoint)
-        if selected_pks:
-            rc = run_script("electroverse_hybrid_refresh.mjs", out, env, runner)
+        # Keep the historical 6000-location selection and provider pacing.
+        # Commit progress inside the chunk so the runner timeout only replays
+        # the in-flight selection. Its successful predecessors remain durable.
+        window_size = 100 if mode == "full" else max(1, len(selected_pks))
+        for start in range(0, len(selected_pks), window_size):
+            window = selected_pks[start:start + window_size]
+            remaining = selected_pks[start + window_size:]
+            if mode == "full":
+                write_json(out / REPORTS / "incremental-selection.json", {
+                    **selection, "selectedCount": len(window),
+                    "selected": [{"pk": pk} for pk in window],
+                })
             failure_path = out / REPORTS / "hybrid-refresh-failures.json"
+            failure_path.unlink(missing_ok=True)
+            rc = run_script("electroverse_hybrid_refresh.mjs", out, env, runner)
             failures = read_json(failure_path).get("failures") if failure_path.is_file() else None
-            if rc or not isinstance(failures, list) or failures:
-                if isinstance(failures, list) and failures:
-                    retry_pks = [str(row["pk"]) for row in failures if isinstance(row, dict) and row.get("pk")]
-                    if not retry_pks or len(retry_pks) != len(failures):
-                        raise IncompleteCollection("Failure report lacks retryable IDs")
-                    checkpoint["pending"]["pks"] = retry_pks
+            if not isinstance(failures, list):
+                raise IncompleteCollection("Missing current collection report")
+            if rc or failures:
+                retry = [str(row["pk"]) for row in failures if isinstance(row, dict) and row.get("pk")]
+                if rc == 2 and retry and len(retry) == len(set(retry)) == len(failures) and set(retry) <= set(window):
+                    checkpoint["pending"]["pks"] = retry + remaining
                     write_json(checkpoint_path, checkpoint)
                 raise IncompleteCollection(f"Electroverse chunk {offset} failed")
+            if remaining:
+                checkpoint["pending"]["pks"] = remaining
+                write_json(checkpoint_path, checkpoint)
         checkpoint["pending"] = None
         checkpoint["completed"].append(offset)
         write_json(checkpoint_path, checkpoint)

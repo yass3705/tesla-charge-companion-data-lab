@@ -71,6 +71,25 @@ class SimulatedCollector:
 
 
 class ElectroverseTests(unittest.TestCase):
+    def test_full_timeout_only_retries_uncommitted_window(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, ELECTROVERSE_API_KEY="fixture-only"):
+            source, out = Path(tmp) / "seed", Path(tmp) / "out"
+            ids = [f"{i:03}" for i in range(201)]
+            fixture(source, ids)
+            collector = SimulatedCollector()
+            def interrupt(command, **kwargs):
+                if Path(command[-1]).name == "electroverse_hybrid_refresh.mjs" and collector.selections:
+                    raise subprocess.TimeoutExpired(command, 1)
+                return collector(command, **kwargs)
+            with self.assertRaises(subprocess.TimeoutExpired):
+                run(out, "full", source=source, runner=interrupt)
+            checkpoint = read_json(out / "v9-electroverse-checkpoint.json")
+            self.assertEqual(checkpoint["completed"], [])
+            self.assertEqual(checkpoint["pending"]["pks"], ids[100:])
+            run(out, "full", source=source, runner=collector)
+            self.assertEqual([pk for window in collector.selections for pk in window], ids)
+            self.assertEqual(validate_state(out)["totalStations"], len(ids))
+
     def test_daily_partial_tiles_never_refresh_or_promote_and_can_retry(self):
         with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
             source, out = Path(temp) / "source", Path(temp) / "out"

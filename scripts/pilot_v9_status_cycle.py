@@ -6,6 +6,7 @@ set SHA. Every partition retains its own checkpoint; no incomplete national
 snapshot can be returned as complete. No provider retry follows a failed part.
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -19,9 +20,34 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from v9_rebuild.electroverse_status import STATUS_REPORT, validate_partial, is_fresh_complete
 from v9_rebuild.orchestrator import artifact_digest, read_sources, run_batch, validated_dependency
+from v9_rebuild.electroverse import CACHE, MAPPING
+from scripts.pilot_v9_status_checkpoint import CHECKPOINT, verify_package
 
 SOURCE = "FR:electroverse_status"
 BRANCH = "rebuild/v9-20261020"
+
+
+def restore_checkpoint(incoming, out, tariff, *, head, run_id, manifest_sha):
+    """Restore a separately verified prior run, bound to the exact tariff files."""
+    manifest = incoming / "checkpoint-manifest.json"
+    if (not re.fullmatch(r"[a-f0-9]{64}", manifest_sha)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest() != manifest_sha):
+        raise ValueError("Checkpoint manifest differs from the verified receipt")
+    prior = verify_package(incoming, head=head, run_id=run_id)
+    # The historical fingerprint uses sizes/counts. Here also compare bytes:
+    # equal sizes alone never prove that this checkpoint uses this tariff.
+    for relative in (CACHE, MAPPING):
+        left, right = prior / relative, tariff / relative
+        if relative == CACHE:
+            if artifact_digest(left) != artifact_digest(right):
+                raise ValueError("Checkpoint tariff cache differs from pinned dependency")
+        elif left.read_bytes() != right.read_bytes():
+            raise ValueError("Checkpoint mapping differs from pinned dependency")
+    destination = out / CHECKPOINT
+    if destination.exists():
+        raise ValueError("Refusing to overwrite a retained checkpoint")
+    shutil.copytree(prior, destination)
+    return validate_partial(destination)
 
 
 def record_checkpoint(out, reports):
@@ -71,6 +97,10 @@ def main():
     p.add_argument("--max-partitions", type=int, default=16)
     p.add_argument("--budget-seconds", type=int, default=5*3600)
     p.add_argument("--github-output", type=Path, required=True)
+    p.add_argument("--incoming-checkpoint", type=Path)
+    p.add_argument("--checkpoint-head")
+    p.add_argument("--checkpoint-run", type=int)
+    p.add_argument("--checkpoint-manifest-sha")
     a = p.parse_args();out = a.out.resolve()
     if (out.exists() or out == ROOT or ROOT in out.parents
             or os.environ.get("GITHUB_REF_NAME") != BRANCH
@@ -79,6 +109,12 @@ def main():
     state = validated_dependency(a.tariff_bundle, "FR:electroverse_full", "electroverse")
     if artifact_digest(state)[0] != a.expected_tariff_sha:
         raise ValueError("Tariff dependency does not match the verified GitHub receipt")
+    pins = (a.checkpoint_head, a.checkpoint_run, a.checkpoint_manifest_sha)
+    if bool(a.incoming_checkpoint) != all(pins) or (not a.incoming_checkpoint and any(pins)):
+        raise ValueError("Incoming checkpoint requires its independent head, run and manifest SHA")
+    if a.incoming_checkpoint:
+        restore_checkpoint(a.incoming_checkpoint, out, state, head=a.checkpoint_head,
+                           run_id=a.checkpoint_run, manifest_sha=a.checkpoint_manifest_sha)
     shutil.copytree(a.tariff_bundle, out / "input_dependencies/FR_electroverse_full")
     result = advance(out, specs=[s for s in read_sources() if s["id"] == SOURCE],
                      max_partitions=a.max_partitions, budget_seconds=a.budget_seconds)
