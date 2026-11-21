@@ -1,3 +1,7 @@
+## 21 novembre 2026 — Audit du cache historique Electroverse (réutilisabilité, lecture seule)
+
+Rapport daté : `docs/v9-rebuild/evidence/electroverse-reuse-audit-20261121.md`. Deux ZIP réels téléchargés ; SHA externe et 136/136 SHA internes validés, 128 shards et mapping sans divergence ; 22 818 lieux / 7 400 contrôlés en novembre / 15 418 octobre. Dernier run 44912790561 : succès workflow mais checkpoint partiel, non promotionnable. 1 058 objets `tariff` modifiés entre deux checkpoints, pas nécessairement des prix numériques. Mapping historique : 22 816/22 818 correspondances spatiales, opérateur pas démontré pour chaque ligne ; 13 partitions de statuts datées/incomplètes et incompatibles. Réutiliser archive last-good, audit exact+opérateur puis adresse/GPS+opérateur **à venir**, aucune requalification PASS ni nouvel appel fournisseur. Uniquement documentaire.
+
 ## 21 novembre 2026 — priorité de rapprochement Electroverse avec bases nationales
 
 Instruction fonctionnelle utilisateur : **correspondance des bornes + opérateur d'abord ; en cas d'échec, adresse ou coordonnées GPS + opérateur ; seulement ensuite marquer la liaison non résolue**. France pilote, politique générique pour extension internationale ultérieure. Alignement documentaire avec les règles historiques de rapprochement, groupes homogènes et non-propagation tarifaire. Norme G5 et documents eMSP mis à jour ; `CURRENT.md` et registre V9 aussi. Validation de code/run/Production : NOT TESTED. Aucun déclencheur Actions activé et aucune publication effectuée.
