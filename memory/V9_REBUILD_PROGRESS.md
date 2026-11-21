@@ -1,3 +1,9 @@
+## Nouvelle préproduction vérifiée et reprise des collectes du 21 novembre
+
+Le candidat [6b019c9c](https://6b019c9cdd3d0f7827ea0491--tcc-v9-preproduction-20261028.netlify.app) a passé la recette distante. Le commit Production ba1d2dd conserve les 3 244 empreintes, 24 parcours tarifaires, recherches neuf pays, contrôles mobiles et retour arrière. Amsterdam à 100 km reste lent (52,961 s à froid en mesure isolée).
+
+Le run suisse 44910057641 a rejoué les octets nationaux authentifiés du run 44909322062. Les trois artefacts autoSense, Partino et Saascharge ont été téléchargés et contrôlés. Les quatre identités Saascharge ambiguës sont conservées sans prix. Ces artefacts suisses sont en amont du candidat servi. Le registre comporte 67 transferts prouvés, 68 ouverts. Electroverse 44909970308 reprend le checkpoint vérifié 14709253407 à partir de b1a8773d6b22275d36e0713e8d137d9ac554f9cf. À sa fin, vérifier le ZIP et la filiation avec scripts/verify_v9_tariff_checkpoint.py, puis préparer la prochaine fenêtre. Attendre les événements cron réels et vérifier leurs SHA et imports. G2–G8 restent ouverts.
+
 ## Reprise des fenêtres Electroverse et de la source nationale suisse
 
 Le ZIP 14709253407 du run 44906379578 est conservé et les 128 shards sont vérifiés. La même génération a progressé de 1 800 identités supplémentaires ; il en reste 2 200 dans le premier bloc. Le checkpoint reste isolé. Prochaine fenêtre bornée à 30 minutes, puis vérification du ZIP et des identités avant toute reprise.
