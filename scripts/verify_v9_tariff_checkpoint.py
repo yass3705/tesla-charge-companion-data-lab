@@ -11,7 +11,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.pilot_v9_tariff_chunks import BRANCH, ROOT, SOURCE, verify_checkpoint
-from v9_rebuild.electroverse import CACHE, CHUNK_SIZE, MAPPING, read_json
+from v9_rebuild.electroverse import CHUNK_SIZE, MAPPING, read_json
 from v9_rebuild.orchestrator import safe_relative
 from v9_rebuild.electroverse_renewal import job_window
 
@@ -29,14 +29,16 @@ def verify_download(run_id, head, destination):
     run = json.loads(api(f"actions/runs/{run_id}"))
     if (run["id"] != run_id or run["repository"]["full_name"] != REPO or run["head_sha"] != head
             or run["head_branch"] != BRANCH or run["path"] != ".github/workflows/v9-tariff-restoration-pilot.yml"
-            or run["conclusion"] != "failure" or run["status"] != "completed"):
-        raise ValueError("Expected the reviewed failed reconstruction run")
+            or run["conclusion"] not in {"failure", "success"} or run["status"] != "completed"):
+        raise ValueError("Expected a completed reviewed reconstruction run")
     jobs = json.loads(api(f"actions/runs/{run_id}/jobs?per_page=100"))["jobs"]
-    jobs = [j for j in jobs if j["name"] == f"collect ({SOURCE})" and j["conclusion"] == "failure"]
+    paused = run["conclusion"] == "success"
+    artifact_name = "tcc-v9-tariff-window-0" if paused else "tcc-v9-tariff-renewal-failure-0"
+    jobs = [j for j in jobs if j["name"] == f"collect ({SOURCE})" and j["conclusion"] == run["conclusion"]]
     artifacts = json.loads(api(f"actions/runs/{run_id}/artifacts?per_page=100"))["artifacts"]
-    matches = [a for a in artifacts if a["name"] == "tcc-v9-tariff-renewal-failure-0" and not a["expired"]]
+    matches = [a for a in artifacts if a["name"] == artifact_name and not a["expired"]]
     if len(jobs) != 1 or len(matches) != 1:
-        raise ValueError("Unique failed job and retained checkpoint required")
+        raise ValueError("Unique source job and retained checkpoint required")
     job, artifact = jobs[0], matches[0]
     parent = artifact["workflow_run"]
     if (parent["id"], parent["head_sha"], parent["head_branch"]) != (run_id, head, BRANCH):
@@ -64,6 +66,8 @@ def verify_download(run_id, head, destination):
         result = read_json(folder / "manifest.json")
         if len(result["sources"]) != 1 or result["sources"][0]["source"] != SOURCE or result["sources"][0]["status"] != "failed":
             raise ValueError("Invalid failed source manifest")
+        if paused and result["sources"][0].get("reason") != "collector_window_budget":
+            raise ValueError("A successful checkpoint-only job must have stopped at a verified window boundary")
         mapped = {str(m["electroverseLocationPk"]) for m in read_json(state / MAPPING)["mappings"]}
         renewed, proof = job_window(state, job["started_at"], job["completed_at"])
         checkpoint = read_json(state / "v9-electroverse-checkpoint.json")
@@ -76,7 +80,7 @@ def verify_download(run_id, head, destination):
             raise ValueError("Inconsistent offsets or unknown identities in checkpoint")
         receipt = dict(source=SOURCE, runId=run_id, head=head, jobId=job["id"], artifactId=artifact["id"],
                        jobStartedAt=job["started_at"], jobCompletedAt=job["completed_at"],
-                       reason=result["sources"][0].get("reason"), zipSHA256=digest, fileSetSHA256=manifest["sha256"],
+                       reason=result["sources"][0].get("reason"), jobConclusion=job["conclusion"], zipSHA256=digest, fileSetSHA256=manifest["sha256"],
                        filesVerified=len(manifest["files"]), shardsVerified=128, completedChunks=checkpoint["completed"],
                        pendingOffset=pending.get("offset"), pendingLocations=len(pending.get("pks", [])),
                        mappedLocationsCheckedInJob=len(renewed), renewalWindow=proof, complete=False)

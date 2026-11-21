@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from v9_rebuild.electroverse import CACHE, MAPPING, REPORTS, IncompleteCollection, read_json, run, shard_index, validate_state
+from v9_rebuild.electroverse import CACHE, MAPPING, REPORTS, IncompleteCollection, WindowBudgetReached, read_json, run, shard_index, validate_state
 
 
 def save(path: Path, value: dict) -> None:
@@ -71,6 +71,20 @@ class SimulatedCollector:
 
 
 class ElectroverseTests(unittest.TestCase):
+    def test_budget_pauses_after_success_and_resume_skips_acquired_rows(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, ELECTROVERSE_API_KEY="placeholder"):
+            source, out = Path(tmp) / "seed", Path(tmp) / "out"
+            ids = [f"{i:03}" for i in range(201)]
+            fixture(source, ids)
+            collector = SimulatedCollector()
+            clock = iter([0, 31])
+            with self.assertRaises(WindowBudgetReached):
+                run(out, "full", source=source, runner=collector, window_budget_seconds=30, clock=lambda: next(clock))
+            self.assertEqual(read_json(out / "v9-electroverse-checkpoint.json")["pending"]["pks"], ids[100:])
+            run(out, "full", source=source, runner=collector)
+            self.assertEqual([pk for window in collector.selections for pk in window], ids)
+            validate_state(out)
+
     def test_full_timeout_only_retries_uncommitted_window(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, ELECTROVERSE_API_KEY="placeholder"):
             source, out = Path(tmp) / "seed", Path(tmp) / "out"

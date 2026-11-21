@@ -71,6 +71,11 @@ def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60,
         completed = state.get("completed", [])
         # Continue only after a fully successful historical chunk boundary.
         # A failure/timeout is NOT an invitation to consume more supplier calls.
+        reason = result.get("sources", [{}])[0].get("reason")
+        if (reason == "collector_window_budget" and state.get("mode") == "full"
+                and completed == previous_completed and (state.get("pending") or {}).get("offset") == number * CHUNK_SIZE
+                and state["pending"].get("pks")):
+            return {"status": "checkpointed", "reason": reason, "completeSnapshotValidated": False}
         if (state.get("mode") != "full" or state.get("pending") is not None
                 or completed != [*previous_completed, number * CHUNK_SIZE]
                 or result.get("sources", [{}])[0].get("reason") != "collector_exit_nonzero"):
@@ -86,6 +91,7 @@ def main():
     p.add_argument("--expected-sha")
     p.add_argument("--expected-head")
     p.add_argument("--expected-run", type=int)
+    p.add_argument("--window-budget-seconds", type=int)
     a = p.parse_args()
     out = a.out.resolve()
     if out.exists() or out == ROOT or ROOT in out.parents or os.environ.get("GITHUB_REF_NAME") != BRANCH:
@@ -96,7 +102,13 @@ def main():
         restore_checkpoint(a.incoming, out, expected_sha=a.expected_sha,
                            expected_head=a.expected_head, expected_run=a.expected_run)
     chunks = max(1, (len(read_json(ROOT / MAPPING)["mappings"]) + CHUNK_SIZE - 1) // CHUNK_SIZE)
-    result = advance(out, specs=[s for s in read_sources() if s["id"] == SOURCE], chunk_count=chunks)
+    specs = [s for s in read_sources() if s["id"] == SOURCE]
+    if a.window_budget_seconds is not None:
+        specs = [dict(s, window_budget_seconds=a.window_budget_seconds) for s in specs]
+    result = advance(out, specs=specs, chunk_count=chunks)
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+            stream.write("collection_state=" + result["status"] + "\n")
     print(json.dumps({"status": result["status"], "chunks": chunks}))
 
 

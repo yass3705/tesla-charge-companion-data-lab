@@ -39,6 +39,20 @@ class TariffChunkPilotTests(unittest.TestCase):
             self.assertEqual(len(calls), 2)
             self.assertTrue((out / "checkpoint-manifest.json").is_file())
 
+    def test_graceful_budget_produces_only_a_partial_checkpoint(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
+            out = Path(tmp)
+            def execute(specs, folder, **kwargs):
+                state = folder / "checkpoints/FR_electroverse_full"
+                fixture(state, ["a", "b"])
+                save(state / "v9-electroverse-checkpoint.json",
+                     {"mode": "full", "completed": [], "pending": {"offset": 0, "pks": ["b"]}})
+                return {"status": "partial_failure", "sources": [{"reason": "collector_window_budget"}]}
+            result = advance(out, specs=[], chunk_count=1, execute=execute)
+            self.assertEqual(result["status"], "checkpointed")
+            self.assertFalse(result["completeSnapshotValidated"])
+            self.assertFalse((out / "objects").exists())
+
     def test_failed_or_timed_out_chunk_preserves_state_without_retry(self):
         for reason, pending in [("collector_exit_nonzero", {"offset": 0, "pks": ["b"]}), ("collector_timeout", None)]:
             with self.subTest(reason=reason), tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):

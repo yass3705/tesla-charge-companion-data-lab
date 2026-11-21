@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 
@@ -22,6 +23,10 @@ MAPPING = Path("data/electroverse/irve_location_mapping.json")
 INVENTORY = Path("data/electroverse/inventory")
 REPORTS = Path("reports/electroverse")
 CHUNK_SIZE = 6000  # Preserved from the four legacy full-refresh jobs.
+
+
+class WindowBudgetReached(RuntimeError):
+    """The last successful window is durable and no provider failure occurred."""
 
 
 class IncompleteCollection(RuntimeError):
@@ -197,9 +202,15 @@ def validate_daily_inventory(out: Path) -> None:
 
 
 def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None,
-        runner=subprocess.run, chunk_size: int = CHUNK_SIZE, max_chunks: int | None = None) -> None:
+        runner=subprocess.run, chunk_size: int = CHUNK_SIZE, max_chunks: int | None = None,
+        window_budget_seconds: int | None = None, clock=time.monotonic) -> None:
     if mode not in {"daily", "full"} or chunk_size < 1 or (max_chunks is not None and max_chunks < 1):
         raise ValueError("Unsupported Electroverse mode or chunk size")
+    deadline = None
+    if window_budget_seconds is not None:
+        if mode != "full" or window_budget_seconds <= 0:
+            raise ValueError("Positive full-refresh window budget required")
+        deadline = clock() + window_budget_seconds
     out = out.resolve()
     if out == ROOT or ROOT in out.parents:
         raise ValueError("Electroverse output must be outside the checkout")
@@ -295,6 +306,9 @@ def run(out: Path, mode: str, *, source: Path = ROOT, resume: Path | None = None
                 checkpoint["completed"].append(offset)
                 write_json(checkpoint_path, checkpoint)
             close_window(out)
+            if remaining and deadline is not None and clock() >= deadline:
+                validate_state(out, require_complete=False)
+                raise WindowBudgetReached("Validated window persisted before runner deadline")
         if not selected_pks:
             checkpoint["pending"] = None
             checkpoint["completed"].append(offset)
@@ -311,8 +325,13 @@ def main() -> None:
     parser.add_argument("--mode", choices=("daily", "full"), required=True)
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--max-chunks", type=int)
+    parser.add_argument("--window-budget-seconds", type=int)
     args = parser.parse_args()
-    run(args.out, args.mode, resume=args.resume, max_chunks=args.max_chunks)
+    try:
+        run(args.out, args.mode, resume=args.resume, max_chunks=args.max_chunks,
+            window_budget_seconds=args.window_budget_seconds)
+    except WindowBudgetReached:
+        raise SystemExit(75)
 
 
 if __name__ == "__main__":

@@ -1227,6 +1227,11 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                 command.extend(["--source", str(owner_state)])
             if electroverse_module and spec["mode"] == "full":
                 command.extend(["--max-chunks", "1"])
+                if spec.get("window_budget_seconds") is not None:
+                    budget = spec["window_budget_seconds"]
+                    if type(budget) is not int or not 0 < budget < timeout_s:
+                        raise ValueError("Full-refresh budget must precede its hard process timeout")
+                    command.extend(["--window-budget-seconds", str(budget)])
             # File-invoked adapters import the shared v9_rebuild package. Python
             # otherwise puts only the adapter's directory on sys.path.
             process_env = os.environ.copy()
@@ -1281,6 +1286,10 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
                         staged = retain_checkpoint(staged, checkpoint, spec["module"])
                     except (OSError, ValueError, KeyError, TypeError):
                         reason = "collector_checkpoint_invalid"
+                if (reason == "collector_exit_nonzero" and electroverse_module and spec["mode"] == "full"
+                        and spec.get("window_budget_seconds") and completed.returncode == 75 and checkpoint.is_dir()):
+                    reason = "collector_window_budget"
+                    break
                 continue
             if not output.is_file():
                 reason = "collector_output_missing"
