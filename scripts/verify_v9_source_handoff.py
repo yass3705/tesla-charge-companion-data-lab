@@ -46,6 +46,9 @@ from v9_rebuild.ozecar import validate_output as ozecar
 from v9_rebuild.izivia_fast import validate_output as izivia_fast
 from v9_rebuild.cwd_script import validate_output as cwd_output
 from v9_rebuild.official_rules import RULES, validate_output as official_rules
+from v9_rebuild.morocco_evgo import validate_output as morocco_evgo
+from v9_rebuild.spain_fixed_core import validate_output as spain_fixed_core
+from v9_rebuild.spain_fixed_secondary import validate_output as spain_fixed_secondary
 from v9_rebuild.ionity import validate_output as ionity
 from v9_rebuild.electroverse import validate_state as electroverse
 ARCHIVED_REPLAYS = {'CH:ail_emoti', 'CH:ebs_ecarup', 'CH:iwb_basel', 'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
@@ -142,7 +145,8 @@ VALIDATORS.update({
     "FR:izivia_official": izivia_official,
 })
 VALIDATORS.update({f'FR:{name}_official':partial(official_rules,source=name) for name in RULES})
-VALIDATORS.update({'FR:ionity_direct_family':ionity})
+VALIDATORS.update({"MA:evgo": morocco_evgo, "ES:fixed_tariff_core": spain_fixed_core,
+                   "ES:fixed_tariff_secondary": spain_fixed_secondary, "FR:ionity_direct_family": ionity})
 VALIDATORS.update({'FR:zephyre':zephyre,'FR:zewatt':zewatt})
 VALIDATORS.update({'FR:fastned_inventory_family':fastned,'BE:energyvision':energyvision,'GB:evyve_pcpr':uk_evyve})
 VALIDATORS.update({'FR:ozecar':ozecar,'FR:izivia_fast':izivia_fast})
