@@ -44,7 +44,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/select_v9_electroverse_checkpoint.py --github-output "$GITHUB_OUTPUT"
       - name: Recover exact immutable parent bytes
-        if: steps.parent.outputs.state == 'checkpoint'
+        if: (steps.parent.outputs.state == 'checkpoint' || steps.parent.outputs.state == 'recovered_failure')
         env:
           GH_TOKEN: ${{ github.token }}
           PARENT_ARTIFACT: ${{ steps.parent.outputs.artifact }}
@@ -56,8 +56,17 @@ jobs:
           echo "$PARENT_ZIP_SHA  parent.zip" | sha256sum -c -
           mkdir -p retained
           unzip -q parent.zip -d retained
+      - name: Verify failed-checkpoint ancestry and all retained identities
+        if: steps.parent.outputs.state == 'recovered_failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/14727835115/zip" > "$RUNNER_TEMP/confirmed-parent.zip"
+          echo "3622a321b6885434d7c4541199d2ffc58703c82f790a0511a6b3cf998e6e7aac  $RUNNER_TEMP/confirmed-parent.zip" | sha256sum -c -
+          python scripts/verify_v9_electroverse_failed_parent.py --parent "$RUNNER_TEMP/confirmed-parent.zip" --failed "$RUNNER_TEMP/parent.zip"
       - name: Verify all retained files and unchanged original mapping
-        if: steps.parent.outputs.state == 'checkpoint'
+        if: (steps.parent.outputs.state == 'checkpoint' || steps.parent.outputs.state == 'recovered_failure')
         env:
           PARENT_HEAD: ${{ steps.parent.outputs.head }}
           PARENT_RUN: ${{ steps.parent.outputs.run }}
@@ -75,7 +84,7 @@ jobs:
           PY
       - name: Continue bounded windows with the historical collector
         id: renewal
-        if: steps.parent.outputs.state == 'checkpoint' && steps.mode.outputs.requested_mode == 'collect'
+        if: (steps.parent.outputs.state == 'checkpoint' || steps.parent.outputs.state == 'recovered_failure') && steps.mode.outputs.requested_mode == 'collect'
         env:
           ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
           PARENT_HEAD: ${{ steps.parent.outputs.head }}
