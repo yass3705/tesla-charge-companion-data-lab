@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from v9_rebuild.acquisition_scope import ARCHIVED_REPLAYS
 from scripts.check_v9_neutralized_main import reviewed_scheduled_source
 
 G1_COMMIT = "15657f4a89c98e5e7c1d119c91c6cb55a891a913"
@@ -52,12 +53,13 @@ def main() -> None:
             errors.append(f"verified handoff evidence unavailable: {spec['id']}")
             continue
         if claim.startswith("verified_source_job_"):
-            archive_replay = ((spec.get("module") in {"france_canonical", "uk_midhope", "belgium_gap_archive"}
-                               or spec["id"] in {"CH:ail_emoti","CH:ebs_ecarup","CH:iwb_basel"})
-                              and evidence.get("acquisitionKind") == "archived_replay"
-                              and spec.get("live") == "not_applicable_archived_replay")
+            if spec["id"] in ARCHIVED_REPLAYS:
+                scope_verified = (evidence.get("acquisitionKind") == "archived_replay"
+                                  and spec.get("live") == "not_applicable_archived_replay")
+            else:
+                scope_verified = spec.get("live") == claim and evidence.get("acquisitionKind") != "archived_replay"
             if (claim != f"verified_source_job_{evidence.get('runId')}_{evidence.get('jobId')}"
-                    or (spec.get("live") != claim and not archive_replay) or evidence.get("sourceId") != spec["id"]
+                    or not scope_verified or evidence.get("sourceId") != spec["id"]
                     or evidence.get("jobStatus") != "completed" or evidence.get("jobConclusion") != "success"
                     or evidence.get("runConclusion") not in {"success", "failure", "cancelled"}
                     or not (evidence.get("runBranch") == "rebuild/v9-20261020"

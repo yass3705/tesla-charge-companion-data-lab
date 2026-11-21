@@ -55,7 +55,7 @@ from v9_rebuild.ionity import validate_output as ionity
 from v9_rebuild.electroverse import validate_state as electroverse
 from v9_rebuild import fx, swiss_ebs_closeout
 from v9_rebuild import electra_residual_audit, france_treated_audit, france_fixed_core, france_fixed_secondary, greenspot, morocco_inventory
-ARCHIVED_REPLAYS = {'CH:ebs_closeout','MA:kilowatt_reconcile','MA:kilowatt_tariff_overlay','FR:electra_residual_audit', 'FR:treated_reliability','CH:ail_emoti', 'CH:ebs_ecarup', 'CH:iwb_basel', 'FR:canonical', 'GB:midhope_verified', 'BE:final_gap_archive'}
+from v9_rebuild.acquisition_scope import ARCHIVED_REPLAYS
 REPO='yass3705/tesla-charge-companion-data-lab'
 def verify_full_tariff_renewal(state, started_at, completed_at):
     """Every currently mapped location must have been checked in this run.

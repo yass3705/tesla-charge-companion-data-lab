@@ -1,3 +1,7 @@
+## Reprise Electroverse et collectes britanniques du 21 novembre
+
+Le run 44909970308 a terminé volontairement une fenêtre après 1 400 identités supplémentaires. Vérification des 128 shards, des empreintes des lignes antérieures et du curseur exact : 5 200 identités cumulées, 800 restantes dans le premier bloc de 6 000. Le ZIP 14710945245 est un checkpoint partiel. Les statuts et l’overlay attendent le cache complet. Les deux sorties britanniques du run 44912549458 ont réussi les contrôles de transfert et de contenu ; la portée PAYG et la TVA Eco-Movement restent non démontrées. Le registre compte 77 transmissions prouvées, 58 ouvertes. Le brouillon suisse 6b01a403 a passé les contrôles distants de ses 3 242 fragments. Prochaine opération : reprendre le checkpoint vérifié, puis contrôler la prochaine fenêtre et les événements programmés.
+
 ## Cadence des taux de change du 21 novembre
 
 GL:fx a obtenu la table datée du 20 novembre, sans taux ancien reporté. Le ZIP 14709882404 du run 44911943370 est vérifié. Les réponses partielles, montants booléens ou non finis et dates fournisseur absentes empêchent la promotion. PR 346 : FX en job isolé à son horaire historique de 03:37 UTC sur main 669c53ce8. Une défaillance FX est indépendante de l’import IONITY. Le déclenchement programmé reste à démontrer. Les 1 207 workflows archivés restent restaurables. Registre global : 75 handoffs vérifiés, 60 ouverts. Le brouillon 6b01a403 est en recette distante.
