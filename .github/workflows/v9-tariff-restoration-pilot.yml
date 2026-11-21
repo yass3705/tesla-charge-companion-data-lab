@@ -1,4 +1,4 @@
-name: V9 Swiss direct enrichment from one national acquisition
+name: V9 bounded Electroverse preserved tariff chunks
 on:
   push:
     branches: [rebuild/v9-20261020]
@@ -8,42 +8,18 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: v9-swiss-shared-national
+  group: v9-tariff-restoration
   cancel-in-progress: false
 jobs:
-  national:
-    if: github.ref == 'refs/heads/rebuild/v9-20261020'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 8
-    outputs:
-      sha: ${{ steps.acquire.outputs.sha }}
-      artifact: ${{ steps.archive.outputs.artifact-id }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
-      - id: acquire
-        run: |
-          set -euo pipefail
-          sha=$(python3 scripts/swiss_national_input.py "$RUNNER_TEMP/oicp")
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-      - id: archive
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: tcc-v9-swiss-national-input
-          path: ${{ runner.temp }}/oicp
-          if-no-files-found: error
-          retention-days: 30
   collect:
-    needs: national
     if: github.ref == 'refs/heads/rebuild/v9-20261020'
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 85
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
-        source: ['CH:autosense_amag', 'CH:chevp_evpass', 'CH:partino_restricted', 'CH:saascharge_official']
+        source: ['FR:electroverse_full']
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -54,31 +30,42 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - name: Recover the single national response from this run
+      - name: Exercise checkpoint, timeout, failure and import integrity offline
+        run: |
+          python -m unittest tests.test_v9_orchestrator tests.test_v9_electroverse tests.test_v9_tariff_chunk_pilot tests.test_v9_source_handoff
+      - name: Recover the pinned partial tariff checkpoint
         env:
           GH_TOKEN: ${{ github.token }}
-          ARTIFACT: ${{ needs.national.outputs.artifact }}
-          EXPECTED_SHA: ${{ needs.national.outputs.sha }}
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP"
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT/zip" > national.zip
-          unzip -p national.zip national.json > national.json
-          echo "$EXPECTED_SHA  national.json" | sha256sum -c -
-      - name: Renew and validate the preserved official method
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/14709253407/zip" > retained.zip
+          echo 'fdcfe34b53e5727d48e16f7c137c535026dfeb281fe7b48a5bfaf98d0dc8fc45  retained.zip' | sha256sum -c -
+          unzip -q retained.zip -d retained
+      - name: Run preserved full tariff chunks sequentially outside checkout
+        id: renewal
         env:
-          SOURCE_ID: ${{ matrix.source }}
-          TCC_CH_OICP_FILE: ${{ runner.temp }}/national.json
-          TCC_CH_OICP_SHA256: ${{ needs.national.outputs.sha }}
-        run: python -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/tcc-v9-tariff-renewal" --workers 1 --attempts 1
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+        run: python scripts/pilot_v9_tariff_chunks.py --out "$RUNNER_TEMP/tcc-v9-tariff-renewal" --incoming "$RUNNER_TEMP/retained" --expected-sha 5a2d0d63958278117d42dab21bc4e0a54062930136e4c5a7f3de0f554449beee --expected-head f943911ba5b585a850d00f55521ae98350b1f88c --expected-run 44906379578 --window-budget-seconds 1800
       - name: Preserve validated immutable output
-        if: success()
+        if: success() && steps.renewal.outputs.collection_state == 'complete'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: tcc-v9-tariff-renewal-${{ strategy.job-index }}
           path: |
             ${{ runner.temp }}/tcc-v9-tariff-renewal/manifest.json
             ${{ runner.temp }}/tcc-v9-tariff-renewal/objects
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain the signed partial window separately
+        if: success() && steps.renewal.outputs.collection_state == 'checkpointed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-tariff-window-0
+          path: |
+            ${{ runner.temp }}/tcc-v9-tariff-renewal/manifest.json
+            ${{ runner.temp }}/tcc-v9-tariff-renewal/checkpoints
+            ${{ runner.temp }}/tcc-v9-tariff-renewal/checkpoint-manifest.json
           if-no-files-found: error
           retention-days: 30
       - name: Preserve failures separately

@@ -3,6 +3,7 @@
 import json
 import os
 import runpy
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -43,7 +44,8 @@ class FixtureRunner:
         try:
             os.chdir(kwargs["cwd"])
             with patch("urllib.request.urlopen", return_value=Response(json.dumps(fixture).encode())), patch("builtins.print"):
-                runpy.run_path(str(ROOT / METHODS[self.method][0]), run_name="__main__")
+                with patch.object(sys, "path", [str(ROOT / "scripts"), *sys.path]):
+                    runpy.run_path(str(ROOT / METHODS[self.method][0]), run_name="__main__")
         finally:
             os.chdir(cwd)
         return SimpleNamespace(returncode=0)

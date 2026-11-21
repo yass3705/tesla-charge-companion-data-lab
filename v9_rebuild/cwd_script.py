@@ -6,11 +6,14 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import os
+import urllib.request
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from scripts.swiss_national_input import URL as SWISS_NATIONAL_URL, open_national
 from v9_rebuild.electroverse import ROOT
 from v9_rebuild.failure_diagnostics import historical_failure
 
@@ -39,6 +42,26 @@ METHODS = {
     "swiss_ecarup_coordinate": ("scripts/reconcile_swiss_ecarup_coordinate_safe.py", "data/switzerland/ecarup-owner-coordinate-safe-overlay.json"),
     "swiss_ecarup_owner": ("scripts/reconcile_swiss_ecarup_owner.py", "data/switzerland/ecarup-owner-direct-tariffs.json"),
 }
+
+
+def swiss_owner_scope(ids, operator):
+    """The OICP operator owns its explicit records, even with a different EVSE prefix."""
+    if not (os.environ.get("TCC_CH_OICP_FILE") or os.environ.get("TCC_CH_OICP_SHA256")):
+        return all(isinstance(key, str) and key.startswith(operator + "*E") for key in ids)
+    with open_national(urllib.request.Request(SWISS_NATIONAL_URL), timeout=90) as stream:
+        groups = json.load(stream)["EVSEData"]
+    owners = {}
+    expected = set()
+    for group in groups:
+        for row in group["EVSEDataRecord"]:
+            key = row.get("EvseID")
+            if group["OperatorID"] == operator:
+                if not isinstance(key, str) or not key.strip() or key in expected:
+                    return False
+                expected.add(key)
+            if isinstance(key, str):
+                owners.setdefault(key, set()).add(group["OperatorID"])
+    return set(ids) == expected and all(owners[key] == {operator} for key in expected)
 
 
 def validate_output(out: Path, method: str) -> dict:
@@ -195,7 +218,8 @@ def validate_output(out: Path, method: str) -> dict:
         counts = payload.get("counts") or {}
         if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
                 or payload.get("operatorId") != operator
-                or any(not value or not value.startswith(operator + "*E") for value in all_ids)
+                or (not swiss_owner_scope(all_ids, operator) if method == "swiss_partino" else
+                    any(not value or not value.startswith(operator + "*E") for value in all_ids))
                 or len(all_ids) != len(set(all_ids))
                 or counts.get("nationalEvseCount") != len(all_ids)
                 or counts.get("unresolvedEvseCount") != len(unresolved_ids)
@@ -229,7 +253,8 @@ def validate_output(out: Path, method: str) -> dict:
         counts = payload.get("counts") or {}
         if (payload.get("schemaVersion") != 1 or payload.get("country") != "CH"
                 or payload.get("operatorId") != operator
-                or any(not value or not value.startswith(operator + ("*E" if operator != "CHEVP" else "E")) for value in all_ids)
+                or (not swiss_owner_scope(all_ids, operator) if method == "swiss_autosense" else
+                    any(not value or not value.startswith(operator + ("*E" if operator != "CHEVP" else "E")) for value in all_ids))
                 or len(all_ids) != len(set(all_ids))
                 or any(row.get("currency") != "CHF" for row in rows)
                 or counts.get("nationalEvseCount") != len(all_ids)

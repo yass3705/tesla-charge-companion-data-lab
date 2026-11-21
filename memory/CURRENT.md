@@ -1,3 +1,9 @@
+## Reprise des fenêtres Electroverse et de la source nationale suisse
+
+Le ZIP 14709253407 du run 44906379578 est conservé et les 128 shards sont vérifiés. La même génération a progressé de 1 800 identités supplémentaires ; il en reste 2 200 dans le premier bloc. Le checkpoint reste isolé. Prochaine fenêtre bornée à 30 minutes, puis vérification du ZIP et des identités avant toute reprise.
+
+Suisse : le ZIP national 14709390954 a permis de renouveler le périmètre CHEVP. Le registre passe à 64 transferts prouvés sur 135. Le replay des mêmes octets établit que l’appartenance OICP de Partino et autoSense ne se déduit pas du préfixe des identifiants. La correction compare les identités et leur propriétaire exact ; deux replays passent. Les quatre identités Saascharge présentes chez deux opérateurs empêchent la promotion de sa sortie. Ces replays ne valent pas transfert GitHub.
+
 ## Cadence Direct étendue sur main
 
 PR 345 intègre neuf méthodes quotidiennes ayant chacune un transfert réel validé. Le groupe permanent de 08:53 UTC exécute désormais 26 méthodes, avec deux collectes simultanées au maximum. Chaque nouvelle entrée épingle son code testé. Main 157f7e86f, un seul workflow actif, 1 207 anciens YAML restaurables. Les vérifications sur événements programmés restent ouvertes. Le paquet consolidé en préparation regroupe le renouvellement IONITY, les connecteurs EVGO et le catalogue Tesla/Mac du 23 octobre. G2 demeure ouvert (63/135 transferts vérifiés).

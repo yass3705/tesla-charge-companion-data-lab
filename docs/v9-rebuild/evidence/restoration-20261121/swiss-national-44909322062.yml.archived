@@ -1,0 +1,95 @@
+name: V9 Swiss direct enrichment from one national acquisition
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/tariff-restoration-request.json]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-swiss-shared-national
+  cancel-in-progress: false
+jobs:
+  national:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    outputs:
+      sha: ${{ steps.acquire.outputs.sha }}
+      artifact: ${{ steps.archive.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - id: acquire
+        run: |
+          set -euo pipefail
+          sha=$(python3 scripts/swiss_national_input.py "$RUNNER_TEMP/oicp")
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - id: archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-swiss-national-input
+          path: ${{ runner.temp }}/oicp
+          if-no-files-found: error
+          retention-days: 30
+  collect:
+    needs: national
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        source: ['CH:autosense_amag', 'CH:chevp_evpass', 'CH:partino_restricted', 'CH:saascharge_official']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Recover the single national response from this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT: ${{ needs.national.outputs.artifact }}
+          EXPECTED_SHA: ${{ needs.national.outputs.sha }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT/zip" > national.zip
+          unzip -p national.zip national.json > national.json
+          echo "$EXPECTED_SHA  national.json" | sha256sum -c -
+      - name: Renew and validate the preserved official method
+        env:
+          SOURCE_ID: ${{ matrix.source }}
+          TCC_CH_OICP_FILE: ${{ runner.temp }}/national.json
+          TCC_CH_OICP_SHA256: ${{ needs.national.outputs.sha }}
+        run: python -m v9_rebuild.orchestrator --source "$SOURCE_ID" --out "$RUNNER_TEMP/tcc-v9-tariff-renewal" --workers 1 --attempts 1
+      - name: Preserve validated immutable output
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-tariff-renewal-${{ strategy.job-index }}
+          path: |
+            ${{ runner.temp }}/tcc-v9-tariff-renewal/manifest.json
+            ${{ runner.temp }}/tcc-v9-tariff-renewal/objects
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve failures separately
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-tariff-renewal-failure-${{ strategy.job-index }}
+          path: |
+            ${{ runner.temp }}/tcc-v9-tariff-renewal/manifest.json
+            ${{ runner.temp }}/tcc-v9-tariff-renewal/failures
+            ${{ runner.temp }}/tcc-v9-tariff-renewal/checkpoints
+            ${{ runner.temp }}/tcc-v9-tariff-renewal/checkpoint-manifest.json
+          if-no-files-found: ignore
+          retention-days: 30
