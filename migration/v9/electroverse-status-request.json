@@ -1,6 +1,6 @@
 {
   "source": "FR:electroverse_status",
-  "mode": "collect",
+  "mode": "verify",
   "basisRun": 45024846774,
   "basisArtifact": 14760747281,
   "basisZipSha256": "0d3abcc15dc4762b360c5816b6e783accdcafa664442c8ce99b7c0500743a5fe",
@@ -10,8 +10,8 @@
   "budgetSeconds": 18000,
   "automaticPublication": false,
   "providerRetries": 3,
-  "operation": "live_resume_3984_station_scoped_429_sweep_then_deferred_recovery",
-  "reason": "User explicitly authorized a controlled Electroverse status live restart after verifying concurrency, checkpoint freshness, cooldown, immutable pins and final offline preflight 45065751191. Resume exact source status checkpoint 45058177243/14770651817 with 3984 verified, 31 deferred errors and three partitions. Limit cumulative 429 waits to 480 seconds per ChargingLocation PK (batch/page/single, same-run sweep and final recovery), with consecutive 60/120/300-second retries and stop on fourth; keep global runner timeout and checkpoint integrity, skip individual failures until final recovery. No automatic publication, tariffs or Production updates.",
+  "operation": "offline_verify_partition_durable_artifacts_runner_loss_recovery",
+  "reason": "User directed the next phase after hosted GitHub runner lost communication on live run 45066431395 and published NO artifact. Offline-only verify bounded 16-step sweep plus 16-step deferred retry, checkpoint upload after each unit, strict provenance and 429 safety, recovery from last durable verified artifact 14770651817 (3984 verified, 31 errors). Do not use supplier API or promote status data. Freshness remains strict and must be rechecked before any later approved live run.",
   "previousOfflineAttempt": 45045047597,
   "verifiedOfflineRun": 45065751191,
   "checkpointRun": 45058177243,
@@ -21,7 +21,7 @@
   "checkpointVerifiedLocations": 3984,
   "checkpointErrorCount": 31,
   "checkpointPartitionCount": 3,
-  "explicitProviderAuthorization": true,
+  "explicitProviderAuthorization": false,
   "status429WaitSeconds": [
     60,
     120,
