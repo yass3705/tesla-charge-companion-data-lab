@@ -139,6 +139,29 @@ test('batch stops if any involved PK has already exhausted its own allowance',as
  assert.equal(t.api.stationWaitSeconds('B'),0);
 });
 
+test('station wait budget survives sweep-to-recovery subprocess handoff',async()=>{
+ const initial=simulated([limited(),{status:200}]);
+ await initial.api.request('a',{},'status_batch',['A','B']);
+ assert.deepEqual(initial.api.snapshotStationBudgets(),{A:60,B:60});
+ const next=simulated([limited(),{status:200}],{budget:60});
+ next.api.restoreStationBudgets(initial.api.snapshotStationBudgets(),['A','B']);
+ assert.equal(next.api.stationWaitSeconds('A'),60);
+ await assert.rejects(()=>next.api.request('page',{},'status_page',['A']),error=>{
+  assert.equal(error.rateLimit.stopReason,'station_wait_budget_exhausted');
+  return true;
+ });
+ assert.deepEqual(next.paused,[]);
+ next.api.completeStations(['B']);
+ assert.deepEqual(next.api.snapshotStationBudgets(),{A:60});
+});
+
+test('tampered per-station checkpoint wait is refused',()=>{
+ const next=simulated([{status:200}]);
+ assert.throws(()=>next.api.restoreStationBudgets({'A':481},['A']),/Untrusted station budget/);
+ assert.throws(()=>next.api.restoreStationBudgets({'other':60},['A']),/Untrusted station budget/);
+ assert.throws(()=>next.api.restoreStationBudgets({'A':-1},['A']),/Untrusted station budget/);
+});
+
 test('GraphQL throttling on HTTP 200 uses the same safe retry sequence',async()=>{
  const graphite={status:200,json:{errors:[{extensions:{code:'THROTTLED'}}]}};
  const t=simulated([graphite,{status:200,json:{data:{ok:true}}}]);
