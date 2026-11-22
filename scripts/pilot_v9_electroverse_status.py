@@ -305,7 +305,6 @@ def main() -> None:
     started = time.monotonic()
     reason = "all_partitions_complete"
     last_report = None
-    remaining_429_wait_seconds = 480
     attempted = []
 
     def budget_available() -> bool:
@@ -313,15 +312,17 @@ def main() -> None:
         return time.monotonic() - started <= args.budget_seconds - 4200
 
     def attempt_partition(i: int, phase: str) -> bool:
-        nonlocal last_report, remaining_429_wait_seconds
+        nonlocal last_report
         existing_path = part_path(work, i)
         existing = read_json(existing_path) if existing_path.is_file() else None
         if existing and not resume_eligibility(
                 {"partitions": [existing]}, {}, datetime.now(timezone.utc))[0]:
             raise ValueError("Existing status partition became stale: refusing silent replay")
         before = dict(existing["entries"]) if existing else {}
-        # Protect cumulative waiting across all sweep and recovery subprocesses.
-        os.environ["ELECTROVERSE_STATUS_429_BUDGET_SECONDS"] = str(remaining_429_wait_seconds)
+        # Each charging-location PK has its own 480s 429 budget.
+        # No carryover of waits from other PKs, partitions or subprocesses.
+        os.environ.pop("ELECTROVERSE_STATUS_429_BUDGET_SECONDS", None)
+        os.environ["ELECTROVERSE_STATUS_429_MAX_SECONDS_PER_STATION"] = "480"
         os.environ["ELECTROVERSE_STATUS_DEFER_FAILED"] = "1" if phase == "sweep" else "0"
         os.environ["ELECTROVERSE_STATUS_RECOVERY_ONLY"] = "1" if phase == "recovery" else "0"
         try:
@@ -330,14 +331,21 @@ def main() -> None:
             pass
         last_report = read_json(work / STATUS_REPORT)
         recovery = last_report.get("rateLimitRecovery")
-        used_wait = recovery.get("totalWaitSeconds") if isinstance(recovery, dict) else None
+        if not isinstance(recovery, dict) or recovery.get("budgetScope") != "station_pk":
+            raise ValueError("Status 429 recovery must report a per-station budget")
+        if recovery.get("maxSecondsPerStation") != 480:
+            raise ValueError("Unexpected per-station 429 wait allowance")
+        used_wait = recovery.get("totalWaitSeconds")
+        max_station = recovery.get("maxStationWaitSeconds")
         if (isinstance(used_wait, bool) or not isinstance(used_wait, (int, float))
-                or not 0 <= used_wait <= remaining_429_wait_seconds):
-            raise ValueError("Status 429 recovery wait budget report is missing or invalid")
-        remaining_429_wait_seconds -= used_wait
-        print(json.dumps({"event": "status_429_run_budget", "partition": i,
-                          "phase": phase, "waitedSeconds": used_wait,
-                          "remainingSeconds": remaining_429_wait_seconds}))
+                or not 0 <= used_wait
+                or isinstance(max_station, bool) or not isinstance(max_station, (int, float))
+                or not 0 <= max_station <= 480):
+            raise ValueError("Status 429 per-station report is missing or invalid")
+        print(json.dumps({"event": "status_429_station_metrics", "partition": i,
+                          "phase": phase, "totalWaitSeconds": used_wait,
+                          "maxStationWaitSeconds": max_station,
+                          "budgetScope": "station_pk"}))
         part = validate_part(work, i)
         if any(part["entries"].get(pk) != statuses for pk, statuses in before.items()):
             raise ValueError("A previously verified status row was replayed or replaced")
