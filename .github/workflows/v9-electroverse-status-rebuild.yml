@@ -28,11 +28,11 @@ jobs:
         id: mode
         run: |
           set -euo pipefail
-          python -m unittest tests.test_v9_electroverse_status tests.test_v9_electroverse tests.test_v9_electroverse_resume tests.test_v9_electroverse_status_checkpoint -q
+          python -m unittest tests.test_v9_electroverse_status tests.test_v9_electroverse tests.test_v9_electroverse_resume tests.test_v9_electroverse_status_checkpoint tests.test_v9_electroverse_deferred -q
           python -m py_compile scripts/pilot_v9_electroverse_status.py
           node --check scripts/electroverse_status_incremental.mjs
           node --check scripts/lib/electroverse_status_429_recovery.mjs
-          node --test tests/electroverse_failure_diagnostics.test.mjs tests/electroverse_rate_limit_integration.test.mjs tests/electroverse_status_429_recovery.test.mjs
+          node --test tests/electroverse_failure_diagnostics.test.mjs tests/electroverse_rate_limit_integration.test.mjs tests/electroverse_status_429_recovery.test.mjs tests/electroverse_status_deferred.test.mjs
           python scripts/public_safety_check.py .
           python - <<'PY'
           import json, os
@@ -51,6 +51,9 @@ jobs:
               'status429WaitSeconds':[60,120,300],
               'status429WaitBudgetSeconds':480,
               'stopOnFourthConsecutive429':True,
+              'statusPartitionProcessing':'sweep_then_deferred_recovery',
+              'deferredRecoveryPasses':1,
+              'continueOnIndividualErrors':True,
           }
           if not isinstance(request,dict) or any(request.get(k)!=v for k,v in approved.items()):
               raise SystemExit('Status operation not explicitly pinned to the complete audited tariff generation')
