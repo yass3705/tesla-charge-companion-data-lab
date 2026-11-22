@@ -1,3 +1,7 @@
+## 2026-11-22 — Per-station HTTP 429 budget final validation
+
+Verified final offline [run 45065751191](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45065751191), SHA f95da82eee6d672c36834a54ba0ce5aa43b64d1a; 31 Python, 25 Node and public-safety PASS, supplierCalls=0, checkpoint 3984 statuses/31 errors verified. 480s wait cap now per ChargingLocation PK with same-run sweep/recovery continuity, not partition-wide or run-wide; initial 60/120/300 and fourth-429 stop preserved. No provider run or publication started. [Evidence](../docs/v9-rebuild/evidence/electroverse-status-stage3-20261122.md).
+
 ## 2026-11-22 — Electroverse: plafonnement 429 corrigé PAR STATION, pas par partition/run
 
 **Décision utilisateur:** la limite cumulée d'attente 429 de 480 secondes s'applique à chaque station Electroverse (ChargingLocation PK) et non au cumul des partitions ou du run. Chaque requête batch impute la pause aux PK concernés ; pages et fallback individuel consomment le même budget de la station. Pauses sur 429 consécutifs: 60s, 120s, 300s, puis stop sur quatrième 429; les autres stations ne sont pas pénalisées par la consommation de la première. Total des pauses physiques d'un run permis >480s si PK distincts; limite du runner et fenêtre de fraîcheur 16h inchangées. Aucun prix, overlay IRVE ou Production ne dépend des statuts live.
