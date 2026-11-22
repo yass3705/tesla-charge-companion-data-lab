@@ -1,0 +1,40 @@
+name: Morocco Club EV-Charge authority evidence gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/morocco_club_evcharge_authority_evidence_gate.py'
+      - '.github/workflows/morocco-club-evcharge-authority-evidence.yml'
+      - 'reports/morocco/totalenergies/club-ev-charge-runtime-entrypoint-2026-09-01.json'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Evaluate evidence gate offline
+        run: python3 scripts/morocco_club_evcharge_authority_evidence_gate.py
+      - name: Validate fail-closed result
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('artifacts/morocco-club-evcharge-authority-evidence/summary.json').read_text())
+          assert d['policy']['network_request_count']==0
+          assert d['policy']['no_guessed_prefix_composition'] is True
+          assert d['evidence']['getstationstate_route_locally_bound'] is True
+          assert d['evidence']['version_2_locally_bound'] is False
+          assert d['evidence']['authority_proven'] is False
+          assert d['evidence']['exact_anonymous_get_target_proven'] is False
+          assert d['decision']=='blocked_no_exact_target'
+          assert d['production_decision']=='no_promotion'
+          print(json.dumps({'ok':True,'fail_closed':True}))
+          PY
