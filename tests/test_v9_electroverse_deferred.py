@@ -53,7 +53,8 @@ class DeferredSweepTests(unittest.TestCase):
         phase = "recovery" if os.environ.get("ELECTROVERSE_STATUS_RECOVERY_ONLY") == "1" else "sweep"
         self.seen.append((phase, partition))
         assert source == self.source
-        assert os.environ["ELECTROVERSE_STATUS_429_BUDGET_SECONDS"] == "480"
+        assert os.environ["ELECTROVERSE_STATUS_429_MAX_SECONDS_PER_STATION"] == "480"
+        assert "ELECTROVERSE_STATUS_429_BUDGET_SECONDS" not in os.environ
         if phase == "sweep":
             assert os.environ["ELECTROVERSE_STATUS_DEFER_FAILED"] == "1"
         else:
@@ -80,7 +81,10 @@ class DeferredSweepTests(unittest.TestCase):
         write(work / STATUS_REPORT, {
             "partition": partition, "sourceFingerprint": self.fingerprint,
             "verifiedLocations": len(data["entries"]), "rateLimit": limit,
-            "rateLimitRecovery": {"totalWaitSeconds": 0},
+            "rateLimitRecovery": {"totalWaitSeconds": 0,
+                                  "maxStationWaitSeconds": 0,
+                                  "maxSecondsPerStation": 480,
+                                  "budgetScope": "station_pk"},
         })
         raise IncompleteStatus("fixture partition recorded")
 
