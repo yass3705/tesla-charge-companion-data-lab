@@ -10,6 +10,7 @@ Never publish an incomplete status ledger or alter the pinned tariff parent.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -22,6 +23,7 @@ from scripts.pilot_v9_electroverse_status import (
     finish_checkpoint, finish_complete, resume_eligibility,
 )
 from v9_rebuild.electroverse import read_json
+from v9_rebuild.orchestrator import artifact_digest, sha256
 from v9_rebuild.electroverse_status import (
     PARTITION_COUNT, STATUS, STATUS_REPORT, IncompleteStatus, cache_fingerprint,
     is_fresh_complete, part_path, run, validate_complete, validate_part,
@@ -134,6 +136,134 @@ def require_fresh(work: Path) -> None:
         raise IncompleteStatus("checkpoint_stale_or_near_expiry:" + reason)
 
 
+def delta_paths(staging: Path) -> list[Path]:
+    """Only mutable live status data and the last report; never tariff shards."""
+    full = read_json(staging / "checkpoint-manifest.json")
+    paths = []
+    for record in full["files"]:
+        relative = Path(record["path"])
+        if (relative.parts[:3] == ("data", "electroverse", "live_statuses")
+                or relative.as_posix() == STATUS_REPORT.as_posix()):
+            paths.append(relative)
+    if STATUS_REPORT not in paths or not any(p.name.startswith("part-") for p in paths):
+        raise ValueError("Status delta needs at least one partition and its last report")
+    return paths
+
+
+def delta_digest(records: list[dict]) -> str:
+    h = hashlib.sha256()
+    for row in sorted(records, key=lambda x: x["path"]):
+        h.update(row["path"].encode("utf-8") + b"\0" +
+                 row["sha256"].encode("ascii") + b"\n")
+    return h.hexdigest()
+
+
+def export_delta(staging: Path, destination: Path) -> None:
+    """Small, independently validated artifact; full status state can be rehydrated."""
+    if destination.exists():
+        shutil.rmtree(destination)
+    destination.mkdir(parents=True)
+    source_files = [Path("manifest.json"), Path("checkpoint-manifest.json"),
+                    *delta_paths(staging)]
+    records = []
+    for relative in sorted(source_files):
+        src = staging / relative
+        if src.is_symlink() or not src.is_file():
+            raise ValueError("Unsafe status checkpoint delta member")
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, target)
+        records.append({"path": relative.as_posix(),
+                        "sha256": sha256(target), "bytes": target.stat().st_size})
+    full = read_json(staging / "checkpoint-manifest.json")
+    manifest = {
+        "schemaVersion": 1,
+        "kind": "tcc-v9-electroverse-status-delta",
+        "source": "FR:electroverse_status",
+        "branch": BRANCH,
+        "sourceFingerprint": full["sourceFingerprint"],
+        "completeSnapshotValidated": False,
+        "fullFilesetSha256": full["sha256"],
+        "sha256": delta_digest(records),
+        "files": records,
+    }
+    write_json(destination / "delta-manifest.json", manifest)
+    print(json.dumps({"event": "segmented_delta_ready",
+                      "files": len(records), "sha256": manifest["sha256"],
+                      "fullFilesetSha256": full["sha256"]}))
+
+
+def restore_delta(tariff_parent: Path, delta: Path, dest: Path) -> dict:
+    """Reconstitute canonical, SHA-checked full checkpoint from small artifact.
+
+    This is deliberately usable by a later GitHub run after runner disappearance.
+    """
+    if dest.exists() or not delta.is_dir() or not tariff_parent.is_dir():
+        raise ValueError("Fresh destination and trusted input directories required")
+    meta = read_json(delta / "delta-manifest.json")
+    if (meta.get("schemaVersion") != 1
+            or meta.get("kind") != "tcc-v9-electroverse-status-delta"
+            or meta.get("source") != "FR:electroverse_status"
+            or meta.get("branch") != BRANCH
+            or meta.get("completeSnapshotValidated") is not False):
+        raise ValueError("Untrusted Electroverse segment delta")
+    files = meta.get("files")
+    if not isinstance(files, list) or not files:
+        raise ValueError("Missing segment file inventory")
+    seen = set()
+    for record in files:
+        relative = Path(record.get("path", ""))
+        valid = (relative in (Path("manifest.json"), Path("checkpoint-manifest.json"),
+                              STATUS_REPORT)
+                 or relative.parts[:3] == ("data", "electroverse", "live_statuses"))
+        if (not valid or not relative.parts or relative.is_absolute()
+                or ".." in relative.parts or relative.as_posix() in seen):
+            raise ValueError("Invalid or duplicate status delta path")
+        seen.add(relative.as_posix())
+        path = delta / relative
+        if (not path.is_file() or path.is_symlink()
+                or path.stat().st_size != record.get("bytes")
+                or sha256(path) != record.get("sha256")):
+            raise ValueError("Status delta member SHA-256 mismatch")
+    found = {p.relative_to(delta).as_posix() for p in delta.rglob("*") if p.is_file()}
+    if found != seen | {"delta-manifest.json"} or delta_digest(files) != meta.get("sha256"):
+        raise ValueError("Status delta inventory or digest mismatch")
+    source = read_json(delta / "checkpoint-manifest.json")
+    if (source.get("sha256") != meta.get("fullFilesetSha256")
+            or source.get("sourceFingerprint") != meta.get("sourceFingerprint")):
+        raise ValueError("Delta full-checkpoint provenance does not match")
+    dest.mkdir(parents=True)
+    work = dest / "checkpoints/FR_electroverse_status"
+    shutil.copytree(tariff_parent, work)
+    for row in files:
+        rel = Path(row["path"])
+        if rel in (Path("manifest.json"), Path("checkpoint-manifest.json")):
+            continue
+        target = work / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(delta / rel, target)
+    digest, inventory = artifact_digest(work)
+    if digest != source["sha256"] or inventory != source["files"]:
+        raise ValueError("Status delta could not reconstruct canonical full fileset")
+    for name in ("manifest.json", "checkpoint-manifest.json"):
+        shutil.copy2(delta / name, dest / name)
+    _root, partial, report = checked_status_checkpoint(
+        dest, tariff_parent,
+        fileset_sha=source["sha256"],
+        verified_locations=source["verifiedLocations"],
+        error_count=sum(len(p["errors"]) for p in validate_partial(work)["partitions"]),
+        partition_count=source["partitionCount"],
+    )
+    if meta["sourceFingerprint"] != partial["fingerprint"]:
+        raise ValueError("Restored status fingerprint mismatch")
+    print(json.dumps({"event": "restored_verified_status_delta",
+                      "verifiedLocations": partial["verified_locations"],
+                      "partitions": len(partial["partitions"]),
+                      "fullFilesetSha256": digest,
+                      "rateLimited": bool(report.get("rateLimit"))}))
+    return source
+
+
 def make_checkpoint(out: Path, state: dict) -> None:
     """Build a separately validated, immutable snapshot without moving live work."""
     work = out / "work"
@@ -172,6 +302,7 @@ def make_checkpoint(out: Path, state: dict) -> None:
         error_count=queue["errorCount"],
         partition_count=queue["partitionCount"],
     )
+    export_delta(staging, out / "stage-delta")
     print(json.dumps({"event": "segmented_checkpoint_validated",
                       "segment": state["lastSegment"],
                       "verifiedLocations": queue["verifiedLocations"],
@@ -306,9 +437,10 @@ def finish(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("prepare", "segment", "finish"))
+    parser.add_argument("command", choices=("prepare", "segment", "finish", "rehydrate"))
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--bundle", type=Path)
+    parser.add_argument("--delta", type=Path)
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--checkpoint-fileset")
     parser.add_argument("--checkpoint-run", type=int)
@@ -330,6 +462,11 @@ def main() -> None:
         if args.phase is None or args.partition is None:
             raise ValueError("Segment phase and partition are required")
         collect_segment(args)
+    elif args.command == "rehydrate":
+        if args.bundle is None or args.delta is None:
+            raise ValueError("Rehydration requires canonical tariff parent and pinned delta")
+        parent = checked_source(args.bundle.resolve())
+        restore_delta(parent, args.delta.resolve(), args.out.resolve())
     else:
         finish(args)
 
