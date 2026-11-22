@@ -221,10 +221,15 @@ def restore_delta(tariff_parent: Path, delta: Path, dest: Path) -> dict:
             raise ValueError("Invalid or duplicate status delta path")
         seen.add(relative.as_posix())
         path = delta / relative
-        if (not path.is_file() or path.is_symlink()
+        if (not path.resolve().is_relative_to(delta.resolve())
+                or any((delta / Path(*relative.parts[:i])).is_symlink()
+                       for i in range(1, len(relative.parts) + 1))
+                or not path.is_file()
                 or path.stat().st_size != record.get("bytes")
                 or sha256(path) != record.get("sha256")):
             raise ValueError("Status delta member SHA-256 mismatch")
+    if any(p.is_symlink() for p in delta.rglob("*")):
+        raise ValueError("Status delta cannot include symlinks")
     found = {p.relative_to(delta).as_posix() for p in delta.rglob("*") if p.is_file()}
     if found != seen | {"delta-manifest.json"} or delta_digest(files) != meta.get("sha256"):
         raise ValueError("Status delta inventory or digest mismatch")
