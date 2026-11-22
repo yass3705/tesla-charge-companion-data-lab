@@ -46,6 +46,7 @@ let rateLimit=null;
 let requests=0,pages=0;
 let saveCheckpointOn429=async()=>{};
 const rateLimitRecovery=createStatus429Recovery({
+ maxTotalWaitSeconds:Number(process.env.ELECTROVERSE_STATUS_429_BUDGET_SECONDS ?? '480'),
  send:async(query,variables,options)=>{
   // Count the actual provider HTTP requests, INCLUDING in-process 429 retries.
   requests++;
