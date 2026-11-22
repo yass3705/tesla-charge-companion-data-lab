@@ -56,7 +56,7 @@ def stage_state(source: Path, target: Path) -> None:
             shutil.copytree(src, dest, dirs_exist_ok=True)
         else:
             shutil.copy2(src, dest)
-    for name in ("hybrid-refresh-failures.json", "daily-delta.json", "incremental-selection.json"):
+    for name in ("hybrid-refresh-failures.json", "failure-diagnostics.json", "daily-delta.json", "incremental-selection.json"):
         src = source / REPORTS / name
         if src.is_file():
             dest = target / REPORTS / name
@@ -131,12 +131,13 @@ def write_json(path: Path, value: dict) -> None:
 WINDOW = ".v9-window"
 LEDGER = Path("v9-electroverse-checkpoint.json")
 FAILURES = REPORTS / "hybrid-refresh-failures.json"
+FAILURE_DIAGNOSTICS = REPORTS / "failure-diagnostics.json"
 
 
 def begin_window(out: Path) -> None:
     stage = out / (WINDOW + "-preparing")
     stage.mkdir()
-    for rel in (CACHE, LEDGER, FAILURES):
+    for rel in (CACHE, LEDGER, FAILURES, FAILURE_DIAGNOSTICS):
         src, dest = out / rel, stage / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         if src.is_dir():
@@ -158,7 +159,7 @@ def recover_window(out: Path) -> None:
     if backup.is_symlink() or (backup.exists() and any(path.is_symlink() for path in backup.rglob("*"))):
         raise ValueError("Unsafe Electroverse window checkpoint")
     if backup.is_dir():
-        for rel in (CACHE, LEDGER, FAILURES):
+        for rel in (CACHE, LEDGER, FAILURES, FAILURE_DIAGNOSTICS):
             src, dest = backup / rel, out / rel
             if rel == CACHE:
                 if dest.exists():
@@ -174,7 +175,7 @@ def recover_window(out: Path) -> None:
         path = out / (WINDOW + suffix)
         if path.is_dir():
             shutil.rmtree(path)
-    for rel in (LEDGER.with_suffix(".writing"), Path(str(FAILURES) + ".writing")):
+    for rel in (LEDGER.with_suffix(".writing"), Path(str(FAILURES) + ".writing"), Path(str(FAILURE_DIAGNOSTICS) + ".writing")):
         (out / rel).unlink(missing_ok=True)
 
 
