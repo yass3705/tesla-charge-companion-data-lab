@@ -110,6 +110,10 @@ async function collect(i){
  const existing=old?.sourceFingerprint===cacheFingerprint&&old?.expectedLocations===expected.length&&observationFresh?old:null;
  const entries=existing?.entries||{};
  const bad=existing?.errors||{};
+ // Preserve the same station's wait budget between sweep and final retry.
+ // A new pilot run clears these ephemeral counters after validating its source.
+ rateLimitRecovery.restoreStationBudgets(existing?.station429WaitSeconds,
+  expected.filter(pk=>!(pk in entries)));
  const started=new Date().toISOString();
  let successful=0,failed=0,batchRequests=0,aliasesFallback=0;
  // Initial sweep defers pre-existing failures; final recovery revisits unresolved PKs.
@@ -122,7 +126,8 @@ const todo=expected.filter(pk=>!(pk in entries)&&(!deferFailed||!(pk in bad)));
  async function checkpoint(){
   await fs.writeFile(filename(i),JSON.stringify({schemaVersion:1,partition:i,partitionCount:count,sourceFingerprint:cacheFingerprint,
    sourceCacheDate:manifest.generatedAt,startedAt:existing?.startedAt||started,updatedAt:new Date().toISOString(),
-   expectedLocations:expected.length,entries,errors:bad},null,2)+'\n');
+   expectedLocations:expected.length,entries,errors:bad,
+   station429WaitSeconds:rateLimitRecovery.snapshotStationBudgets()},null,2)+'\n');
  }
  saveCheckpointOn429=checkpoint;
  try {
