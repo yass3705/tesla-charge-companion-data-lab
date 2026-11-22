@@ -38,14 +38,35 @@ jobs:
           request = json.load(open('migration/v9/electroverse-resume-request.json'))
           if request.get('source') != 'FR:electroverse_full' or request.get('mode') not in ('verify', 'collect'):
               raise SystemExit('Electroverse resume request is not explicitly scoped')
+          budget = request.get('windowBudgetSeconds')
+          if type(budget) is not int or budget not in (300, 600, 900):
+              raise SystemExit('Unapproved Electroverse provider window budget')
+          if request.get('providerWindowLimit') != 1:
+              raise SystemExit('Electroverse provider run must remain exactly one window')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
               print('requested_mode=' + request['mode'], file=stream)
+              print('window_budget_seconds=' + str(budget), file=stream)
           PY
       - name: Select the latest validated branch checkpoint
         id: parent
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/select_v9_electroverse_checkpoint.py --github-output "$GITHUB_OUTPUT"
+      - name: Confirm the requested immutable checkpoint is selected
+        env:
+          PARENT_ARTIFACT: ${{ steps.parent.outputs.artifact }}
+          PARENT_RUN: ${{ steps.parent.outputs.run }}
+          PARENT_ZIP_SHA: ${{ steps.parent.outputs.zip_sha }}
+        run: |
+          python - <<'PY'
+          import json, os
+          request=json.load(open('migration/v9/electroverse-resume-request.json'))
+          if (int(os.environ['PARENT_RUN']) != request.get('basisRun')
+                  or int(os.environ['PARENT_ARTIFACT']) != request.get('basisArtifact')
+                  or os.environ['PARENT_ZIP_SHA'] != request.get('basisZipSha256')):
+              raise SystemExit('Selected checkpoint differs from explicitly verified user-requested basis')
+          print('Pinned Electroverse basis matches requested run, artifact and ZIP digest')
+          PY
       - name: Recover exact immutable parent bytes
         if: (steps.parent.outputs.state == 'checkpoint' || steps.parent.outputs.state == 'recovered_failure')
         env:
@@ -99,7 +120,7 @@ jobs:
         run: |
           set -euo pipefail
           PARENT_FILE_SHA="$(python -c 'import json,os; from pathlib import Path; print(json.loads((Path(os.environ["RUNNER_TEMP"])/"retained/checkpoint-manifest.json").read_text())["sha256"])')"
-          python scripts/pilot_v9_tariff_chunks.py --out "$RUNNER_TEMP/tcc-v9-electroverse-renewal" --incoming "$RUNNER_TEMP/retained" --expected-sha "$PARENT_FILE_SHA" --expected-head "$PARENT_HEAD" --expected-run "$PARENT_RUN" --window-budget-seconds 300 --max-provider-windows 1
+          python scripts/pilot_v9_tariff_chunks.py --out "$RUNNER_TEMP/tcc-v9-electroverse-renewal" --incoming "$RUNNER_TEMP/retained" --expected-sha "$PARENT_FILE_SHA" --expected-head "$PARENT_HEAD" --expected-run "$PARENT_RUN" --window-budget-seconds "${{ steps.mode.outputs.window_budget_seconds }}" --max-provider-windows 1
       - name: Retain partial checkpoint (never a Production input)
         if: steps.renewal.outcome == 'success' && steps.renewal.outputs.collection_state == 'checkpointed'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
