@@ -88,12 +88,17 @@ def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60,
             "files": files, "completeSnapshotValidated": False,
         }, indent=2) + "\n")
         completed = state.get("completed", [])
+        guarded_finish = len(specs) == 1 and specs[0].get("finish_remaining_chunks") is True
+        if guarded_finish and (completed[:len(previous_completed)] != previous_completed
+                               or completed != list(range(0, len(completed) * CHUNK_SIZE, CHUNK_SIZE))):
+            raise RuntimeError("Full-run completion cursor lost its verified chunk lineage")
         # Continue only after a fully successful historical chunk boundary.
         # A failure/timeout is NOT an invitation to consume more supplier calls.
         reason = result.get("sources", [{}])[0].get("reason")
         pending = state.get("pending")
         if pending is not None:
-            if (not isinstance(pending, dict) or pending.get("offset") != number * CHUNK_SIZE
+            expected_offset = len(completed) * CHUNK_SIZE if guarded_finish else number * CHUNK_SIZE
+            if (not isinstance(pending, dict) or pending.get("offset") != expected_offset
                     or not isinstance(pending.get("pks"), list) or not pending["pks"]
                     or len(set(pending["pks"])) != len(pending["pks"])):
                 raise RuntimeError("Invalid pending Electroverse cursor; no automatic provider retry")
@@ -103,7 +108,7 @@ def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60,
             raise RuntimeError("Electroverse checkpoint did not advance")
         previous_cursor = cursor
         if (reason == "collector_window_budget" and state.get("mode") == "full"
-                and completed == previous_completed and pending is not None):
+                and (completed == previous_completed or guarded_finish) and pending is not None):
             # One audited diagnostic window per run until provider stability is demonstrated.
             if max_provider_windows is not None and completed_provider_windows >= max_provider_windows:
                 return {"status": "checkpointed", "reason": "pilot_provider_window_limit",
