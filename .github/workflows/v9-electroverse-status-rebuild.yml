@@ -13,7 +13,7 @@ jobs:
   rebuild-statuses:
     if: github.ref == 'refs/heads/rebuild/v9-20261020'
     runs-on: ubuntu-24.04
-    timeout-minutes: 330
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -186,15 +186,10 @@ jobs:
                       target.write_bytes(archive.read(m))
           print('Pinned status checkpoint ZIP recovered:',len(seen),'entries')
           PY
-      - name: Verify source only or run the guarded 16-part census
-        id: census
+      - name: Verify source only; supplier disabled
+        if: ${{ steps.mode.outputs.mode == 'verify' }}
         env:
           PYTHONPATH: ${{ github.workspace }}
-          ELECTROVERSE_API_KEY: ${{ steps.mode.outputs.mode == 'collect' && secrets.ELECTROVERSE_API_KEY || '' }}
-          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
-          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
-          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
-          ELECTROVERSE_STATUS_ATTEMPTS: '2'
         run: |
           set -euo pipefail
           python scripts/pilot_v9_electroverse_status.py \
@@ -206,38 +201,808 @@ jobs:
             --checkpoint-verified "${{ steps.mode.outputs.checkpointVerifiedLocations }}" \
             --checkpoint-errors "${{ steps.mode.outputs.checkpointErrorCount }}" \
             --checkpoint-partitions "${{ steps.mode.outputs.checkpointPartitionCount }}" \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" --mode verify
+      - name: Prepare isolated segmented status work
+        if: ${{ steps.mode.outputs.mode == 'collect' }}
+        id: status_prepare
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py prepare \
+            --bundle "$RUNNER_TEMP/status-tariff-parent" \
+            --checkpoint "$RUNNER_TEMP/status-checkpoint" \
+            --checkpoint-fileset "${{ steps.mode.outputs.checkpointFilesetSha256 }}" \
+            --checkpoint-run "${{ steps.mode.outputs.checkpointRun }}" \
+            --checkpoint-artifact "${{ steps.mode.outputs.checkpointArtifact }}" \
+            --checkpoint-verified "${{ steps.mode.outputs.checkpointVerifiedLocations }}" \
+            --checkpoint-errors "${{ steps.mode.outputs.checkpointErrorCount }}" \
+            --checkpoint-partitions "${{ steps.mode.outputs.checkpointPartitionCount }}" \
+            --out "$RUNNER_TEMP/tcc-v9-status-census"
+      - name: Bounded sweep 00
+        id: sweep00
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
             --out "$RUNNER_TEMP/tcc-v9-status-census" \
-            --mode "${{ steps.mode.outputs.mode }}" --budget-seconds 18000
+            --phase sweep --partition 0
+      - name: Preserve immutable sweep 00 checkpoint
+        if: ${{ steps.sweep00.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-00
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 01
+        id: sweep01
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 1
+      - name: Preserve immutable sweep 01 checkpoint
+        if: ${{ steps.sweep01.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-01
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 02
+        id: sweep02
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 2
+      - name: Preserve immutable sweep 02 checkpoint
+        if: ${{ steps.sweep02.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-02
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 03
+        id: sweep03
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 3
+      - name: Preserve immutable sweep 03 checkpoint
+        if: ${{ steps.sweep03.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-03
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 04
+        id: sweep04
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 4
+      - name: Preserve immutable sweep 04 checkpoint
+        if: ${{ steps.sweep04.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-04
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 05
+        id: sweep05
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 5
+      - name: Preserve immutable sweep 05 checkpoint
+        if: ${{ steps.sweep05.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-05
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 06
+        id: sweep06
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 6
+      - name: Preserve immutable sweep 06 checkpoint
+        if: ${{ steps.sweep06.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-06
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 07
+        id: sweep07
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 7
+      - name: Preserve immutable sweep 07 checkpoint
+        if: ${{ steps.sweep07.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-07
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 08
+        id: sweep08
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 8
+      - name: Preserve immutable sweep 08 checkpoint
+        if: ${{ steps.sweep08.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-08
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 09
+        id: sweep09
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 9
+      - name: Preserve immutable sweep 09 checkpoint
+        if: ${{ steps.sweep09.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-09
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 10
+        id: sweep10
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 10
+      - name: Preserve immutable sweep 10 checkpoint
+        if: ${{ steps.sweep10.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-10
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 11
+        id: sweep11
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 11
+      - name: Preserve immutable sweep 11 checkpoint
+        if: ${{ steps.sweep11.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-11
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 12
+        id: sweep12
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 12
+      - name: Preserve immutable sweep 12 checkpoint
+        if: ${{ steps.sweep12.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-12
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 13
+        id: sweep13
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 13
+      - name: Preserve immutable sweep 13 checkpoint
+        if: ${{ steps.sweep13.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-13
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 14
+        id: sweep14
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 14
+      - name: Preserve immutable sweep 14 checkpoint
+        if: ${{ steps.sweep14.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-14
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded sweep 15
+        id: sweep15
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase sweep --partition 15
+      - name: Preserve immutable sweep 15 checkpoint
+        if: ${{ steps.sweep15.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-sweep-15
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 00
+        id: recovery00
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 0
+      - name: Preserve immutable recovery 00 checkpoint
+        if: ${{ steps.recovery00.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-00
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 01
+        id: recovery01
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 1
+      - name: Preserve immutable recovery 01 checkpoint
+        if: ${{ steps.recovery01.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-01
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 02
+        id: recovery02
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 2
+      - name: Preserve immutable recovery 02 checkpoint
+        if: ${{ steps.recovery02.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-02
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 03
+        id: recovery03
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 3
+      - name: Preserve immutable recovery 03 checkpoint
+        if: ${{ steps.recovery03.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-03
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 04
+        id: recovery04
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 4
+      - name: Preserve immutable recovery 04 checkpoint
+        if: ${{ steps.recovery04.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-04
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 05
+        id: recovery05
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 5
+      - name: Preserve immutable recovery 05 checkpoint
+        if: ${{ steps.recovery05.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-05
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 06
+        id: recovery06
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 6
+      - name: Preserve immutable recovery 06 checkpoint
+        if: ${{ steps.recovery06.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-06
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 07
+        id: recovery07
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 7
+      - name: Preserve immutable recovery 07 checkpoint
+        if: ${{ steps.recovery07.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-07
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 08
+        id: recovery08
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 8
+      - name: Preserve immutable recovery 08 checkpoint
+        if: ${{ steps.recovery08.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-08
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 09
+        id: recovery09
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 9
+      - name: Preserve immutable recovery 09 checkpoint
+        if: ${{ steps.recovery09.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-09
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 10
+        id: recovery10
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 10
+      - name: Preserve immutable recovery 10 checkpoint
+        if: ${{ steps.recovery10.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-10
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 11
+        id: recovery11
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 11
+      - name: Preserve immutable recovery 11 checkpoint
+        if: ${{ steps.recovery11.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-11
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 12
+        id: recovery12
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 12
+      - name: Preserve immutable recovery 12 checkpoint
+        if: ${{ steps.recovery12.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-12
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 13
+        id: recovery13
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 13
+      - name: Preserve immutable recovery 13 checkpoint
+        if: ${{ steps.recovery13.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-13
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 14
+        id: recovery14
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 14
+      - name: Preserve immutable recovery 14 checkpoint
+        if: ${{ steps.recovery14.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-14
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Bounded recovery 15
+        id: recovery15
+        if: ${{ steps.mode.outputs.mode == 'collect' && env.STATUS_HALT != 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py segment \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --phase recovery --partition 15
+      - name: Preserve immutable recovery 15 checkpoint
+        if: ${{ steps.recovery15.outputs.checkpoint_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-stage-recovery-15
+          path: ${{ runner.temp }}/tcc-v9-status-census/staged/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Strict finalization of fully verified statuses only
+        if: ${{ steps.mode.outputs.mode == 'collect' }}
+        id: status_finish
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py finish \
+            --out "$RUNNER_TEMP/tcc-v9-status-census"
       - name: Upload only fully validated national statuses
-        if: steps.census.outputs.collection_state == 'complete'
+        if: ${{ steps.status_finish.outputs.collection_state == 'complete' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: tcc-v9-electroverse-status-complete
-          path: |
-            ${{ runner.temp }}/tcc-v9-status-census/manifest.json
-            ${{ runner.temp }}/tcc-v9-status-census/objects
+          path: ${{ runner.temp }}/tcc-v9-status-census/complete/
           if-no-files-found: error
           retention-days: 30
-      - name: Retain partial statuses and fingerprinted checkpoint
-        if: steps.census.outputs.collection_state == 'checkpointed'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: tcc-v9-electroverse-status-checkpoint
-          path: |
-            ${{ runner.temp }}/tcc-v9-status-census/manifest.json
-            ${{ runner.temp }}/tcc-v9-status-census/checkpoint-manifest.json
-            ${{ runner.temp }}/tcc-v9-status-census/checkpoints
-          if-no-files-found: error
-          retention-days: 30
-      - name: Retain isolated failure diagnostics, never promote
-        if: failure() && steps.mode.outputs.mode == 'collect'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: tcc-v9-electroverse-status-failure
-          path: |
-            ${{ runner.temp }}/tcc-v9-status-census/manifest.json
-            ${{ runner.temp }}/tcc-v9-status-census/checkpoint-manifest.json
-            ${{ runner.temp }}/tcc-v9-status-census/work/data/electroverse/live_statuses/parts
-            ${{ runner.temp }}/tcc-v9-status-census/work/reports/electroverse/status-partition-latest.json
-          if-no-files-found: ignore
-          retention-days: 30
+          compression-level: 6
