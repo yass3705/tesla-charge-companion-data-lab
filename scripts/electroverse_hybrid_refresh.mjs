@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { DirectElectroverseClient, aliasBatchQuery, SINGLE_LOCATION_QUERY, PAGED_LOCATION_QUERY } from './lib/electroverse_direct_client.mjs';
 import { completeLocation } from './lib/electroverse_response_integrity.mjs';
+import {summarizeAttempt,boundedTrace} from './lib/electroverse_failure_diagnostics.mjs';
 
 const API_KEY=process.env.ELECTROVERSE_API_KEY;
 const BATCH_SIZE=Number(process.env.ELECTROVERSE_BATCH_SIZE||5);
@@ -14,6 +15,7 @@ const MAPPING='data/electroverse/irve_location_mapping.json';
 const DIR='data/electroverse/tariff_cache';
 const MANIFEST=`${DIR}/manifest.json`;
 const CHECKED=`${DIR}/checked-at.json`;
+const FAILURE_DIAGNOSTICS='reports/electroverse/failure-diagnostics.json';
 if(!API_KEY) throw new Error('ELECTROVERSE_API_KEY required');
 
 // A window checkpoint holds hard links to the preceding cache generation.
@@ -91,33 +93,36 @@ async function fallbackPaced(query,vars){
   requests++;fallbackRequests++;return client.request(query,vars,{attempts:1});
 }
 async function fetchSingle(pk){
-  let last=null;
+  let last=null;const diagnostics=[];
   for(let attempt=1;attempt<=2;attempt++){
     if(attempt>1)await sleep(5000);
     last=await fallbackPaced(SINGLE_LOCATION_QUERY,{pk});
-    const loc=completeLocation(last,'chargingLocation',pk);if(loc)return{loc,mode:'single',attempts:attempt};
+    const loc=completeLocation(last,'chargingLocation',pk);
+    diagnostics.push(summarizeAttempt(last,{phase:'single',attempt,page:1,complete:!!loc}));
+    if(loc)return{loc,mode:'single',attempts:attempt,diagnostics};
   }
-  return{loc:null,last};
+  return{loc:null,last,diagnostics};
 }
 async function fetchPaged(pk){
-  const edges=[],cursors=new Set(),evseIds=new Set();let after=null,meta=null,pages=0;
+  const edges=[],cursors=new Set(),evseIds=new Set(),diagnostics=[];let after=null,meta=null,pages=0;
   for(let page=1;page<=500;page++){
     pages=page;let loc=null,last=null;
     for(let attempt=1;attempt<=3&&!loc;attempt++){
       if(attempt>1)await sleep(4000*attempt);
       last=await fallbackPaced(PAGED_LOCATION_QUERY,{pk,first:5,after});
       loc=completeLocation(last,'chargingLocation',pk,{paged:true});
+      diagnostics.push(summarizeAttempt(last,{phase:'paged',attempt,page,complete:!!loc}));
     }
-    if(!loc?.evses)return{loc:null,pages,last};
+    if(!loc?.evses)return{loc:null,pages,last,diagnostics};
     for(const edge of loc.evses.edges){
-      if(edge.node.pk!=null){const id=String(edge.node.pk);if(evseIds.has(id))return{loc:null,pages,error:'duplicate_evse_across_pages'};evseIds.add(id);}
+      if(edge.node.pk!=null){const id=String(edge.node.pk);if(evseIds.has(id))return{loc:null,pages,error:'duplicate_evse_across_pages',diagnostics};evseIds.add(id);}
     }
     meta??=loc;edges.push(...loc.evses.edges);const pi=loc.evses.pageInfo;
-    if(!pi.hasNextPage)return{loc:{...meta,evses:{edges,pageInfo:pi}},pages,mode:'paged'};
-    if(cursors.has(pi.endCursor))return{loc:null,pages,error:'cursor_not_advancing'};
+    if(!pi.hasNextPage)return{loc:{...meta,evses:{edges,pageInfo:pi}},pages,mode:'paged',diagnostics};
+    if(cursors.has(pi.endCursor))return{loc:null,pages,error:'cursor_not_advancing',diagnostics};
     cursors.add(pi.endCursor);after=pi.endCursor;
   }
-  return{loc:null,pages,error:'page_limit'};
+  return{loc:null,pages,error:'page_limit',diagnostics};
 }
 
 const batchCandidates=[], knownPaged=[];
@@ -143,10 +148,18 @@ for(let i=0;i<groups.length;i+=CONCURRENCY){
 fallbackPks.push(...knownPaged);
 for(let i=0;i<fallbackPks.length;i++){
   const pk=fallbackPks[i], prev=shardData.get(shardFor(pk))?.stations?.[pk];
-  let result;
+  let result,attemptHistory=[];
   if(prev?.fetchMode==='paged')result=await fetchPaged(pk);
-  else{result=await fetchSingle(pk);if(!result.loc)result=await fetchPaged(pk)}
-  if(!result.loc){failures++;failureRows.push({pk,error:result.error||'fetch_failed',pages:result.pages??null});continue}
+  else{
+    result=await fetchSingle(pk);attemptHistory=result.diagnostics||[];
+    if(!result.loc)result=await fetchPaged(pk);
+  }
+  if(!result.loc){
+    failures++;
+    failureRows.push({pk,error:result.error||'fetch_failed',pages:result.pages??null,
+      diagnostics:boundedTrace([...attemptHistory,...(result.diagnostics||[])])});
+    continue;
+  }
   if(result.mode==='paged')pagedUsed++;
   applyLocation(pk,result.loc,result.mode||'single',result.pages??null);
 }
@@ -167,5 +180,14 @@ manifest.generatedAt=new Date().toISOString();manifest.totalStations=totalStatio
 manifest.lastIncrementalRefresh={runAt:manifest.generatedAt,method:'hybrid-full-query-batch5x2-single-paged-fallback',selected:selected.length,new:newCount,changed,unchanged,failures,pagedUsed,batchRequests,fallbackRequests,httpRequests:requests,elapsedSeconds:Number(((performance.now()-t0)/1000).toFixed(2))};
 await replaceJsonFile(MANIFEST,JSON.stringify(manifest,null,2)+'\n');
 await replaceJsonFile('reports/electroverse/hybrid-refresh-failures.json',JSON.stringify({generatedAt:new Date().toISOString(),failures:failureRows},null,2)+'\n');
+if(failureRows.length){
+  let history={schemaVersion:1,events:[]};
+  try{history=JSON.parse(await fs.readFile(FAILURE_DIAGNOSTICS,'utf8'))}
+  catch(error){if(error.code!=='ENOENT')throw error}
+  if(history.schemaVersion!==1||!Array.isArray(history.events))throw Error('Invalid failure diagnostics history');
+  history.events.push({collectedAt:new Date().toISOString(),runId:process.env.GITHUB_RUN_ID||null,
+    source:'FR:electroverse_full',failures:failureRows});
+  await replaceJsonFile(FAILURE_DIAGNOSTICS,JSON.stringify(history,null,2)+'\n');
+}
 console.log(JSON.stringify({...manifest.lastIncrementalRefresh,totalStations,maxShardBytes},null,2));
 if(failures)process.exitCode=2;
