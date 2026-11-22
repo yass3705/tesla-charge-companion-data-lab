@@ -299,6 +299,20 @@ def main() -> None:
     resumed = validate_partial(work)
     if resumed["verified_locations"] != partial["verified_locations"]:
         raise ValueError("Validated checkpoint was not preserved during isolated staging")
+    # Keep per-station 429 counters within this run's sweep/recovery only.
+    # A new authorized GitHub run obtains a new allowance for every PK.
+    # This edits the isolated working copy, never the immutable source artifact.
+    cleared = 0
+    for index in range(PARTITION_COUNT):
+        path = part_path(work, index)
+        if path.is_file():
+            old_part = read_json(path)
+            if "station429WaitSeconds" in old_part:
+                old_part.pop("station429WaitSeconds")
+                path.write_text(json.dumps(old_part, indent=2) + "\n")
+                cleared += 1
+    print(json.dumps({"event": "new_run_station_budgets_reset",
+                      "partitionsReset": cleared}))
     resume_from = {"run": args.checkpoint_run, "artifact": args.checkpoint_artifact,
                    "filesetSha256": args.checkpoint_fileset,
                    "verifiedLocations": partial["verified_locations"]}
