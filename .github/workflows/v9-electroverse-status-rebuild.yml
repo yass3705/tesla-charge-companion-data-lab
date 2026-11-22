@@ -121,6 +121,63 @@ jobs:
                       target.write_bytes(archive.read(m))
           print('Pinned immutable parent ZIP safely restored:',len(seen),'entries')
           PY
+      - name: Confirm exact status checkpoint run and immutable artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_RUN: ${{ steps.mode.outputs.checkpointRun }}
+          CHECKPOINT_ARTIFACT: ${{ steps.mode.outputs.checkpointArtifact }}
+          CHECKPOINT_SHA: ${{ steps.mode.outputs.checkpointZipSha256 }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, subprocess
+          repo=os.environ['GITHUB_REPOSITORY']
+          run_id=os.environ['CHECKPOINT_RUN']
+          artifact_id=os.environ['CHECKPOINT_ARTIFACT']
+          run=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/runs/{run_id}']))
+          artifact=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/artifacts/{artifact_id}']))
+          if (run.get('status')!='completed' or run.get('conclusion')!='success'
+                  or run.get('head_branch')!='rebuild/v9-20261020'
+                  or artifact.get('expired') is not False
+                  or artifact.get('name')!='tcc-v9-electroverse-status-checkpoint'
+                  or artifact.get('digest')!='sha256:'+os.environ['CHECKPOINT_SHA']
+                  or (artifact.get('workflow_run') or {}).get('id')!=int(run_id)):
+              raise SystemExit('Pinned status artifact is missing, expired or has wrong provenance')
+          print('Pinned status checkpoint GitHub run and artifact: OK')
+          PY
+      - name: Recover exact status checkpoint safely (no supplier requests)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_ARTIFACT: ${{ steps.mode.outputs.checkpointArtifact }}
+          CHECKPOINT_SHA: ${{ steps.mode.outputs.checkpointZipSha256 }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$CHECKPOINT_ARTIFACT/zip" > "$RUNNER_TEMP/status-checkpoint.zip"
+          echo "$CHECKPOINT_SHA  $RUNNER_TEMP/status-checkpoint.zip" | sha256sum -c -
+          python - <<'PY'
+          import os, stat, zipfile
+          from pathlib import Path
+          src=Path(os.environ['RUNNER_TEMP'])/'status-checkpoint.zip'
+          dst=Path(os.environ['RUNNER_TEMP'])/'status-checkpoint'
+          dst.mkdir()
+          with zipfile.ZipFile(src) as archive:
+              seen=set()
+              for m in archive.infolist():
+                  path=Path(m.filename)
+                  if (path.is_absolute() or not path.parts or '..' in path.parts
+                          or m.filename in seen or (stat.S_IFMT(m.external_attr >> 16)==stat.S_IFLNK)):
+                      raise SystemExit('Invalid status checkpoint ZIP member')
+                  seen.add(m.filename)
+                  target=(dst/path).resolve()
+                  if not target.is_relative_to(dst.resolve()):
+                      raise SystemExit('Status checkpoint ZIP escapes isolated directory')
+                  if m.is_dir():
+                      target.mkdir(parents=True,exist_ok=True)
+                  else:
+                      target.parent.mkdir(parents=True,exist_ok=True)
+                      target.write_bytes(archive.read(m))
+          print('Pinned status checkpoint ZIP recovered:',len(seen),'entries')
+          PY
       - name: Verify source only or run the guarded 16-part census
         id: census
         env:
@@ -132,7 +189,17 @@ jobs:
           ELECTROVERSE_STATUS_ATTEMPTS: '2'
         run: |
           set -euo pipefail
-          python scripts/pilot_v9_electroverse_status.py --bundle "$RUNNER_TEMP/status-tariff-parent" --out "$RUNNER_TEMP/tcc-v9-status-census" --mode "${{ steps.mode.outputs.mode }}" --budget-seconds 18000
+          python scripts/pilot_v9_electroverse_status.py \
+            --bundle "$RUNNER_TEMP/status-tariff-parent" \
+            --checkpoint "$RUNNER_TEMP/status-checkpoint" \
+            --checkpoint-fileset "${{ steps.mode.outputs.checkpointFilesetSha256 }}" \
+            --checkpoint-run "${{ steps.mode.outputs.checkpointRun }}" \
+            --checkpoint-artifact "${{ steps.mode.outputs.checkpointArtifact }}" \
+            --checkpoint-verified "${{ steps.mode.outputs.checkpointVerifiedLocations }}" \
+            --checkpoint-errors "${{ steps.mode.outputs.checkpointErrorCount }}" \
+            --checkpoint-partitions "${{ steps.mode.outputs.checkpointPartitionCount }}" \
+            --out "$RUNNER_TEMP/tcc-v9-status-census" \
+            --mode "${{ steps.mode.outputs.mode }}" --budget-seconds 18000
       - name: Upload only fully validated national statuses
         if: steps.census.outputs.collection_state == 'complete'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
