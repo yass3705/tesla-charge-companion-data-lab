@@ -16,7 +16,7 @@ function simulated(replies,{budget=480}={}){
   pause:async ms=>paused.push(ms),
   onRateLimit:async event=>events.push(event),
   now:()=>Date.UTC(2026,10,22,17,0,0),
-  maxTotalWaitSeconds:budget,
+  maxSecondsPerStation:budget,
  });
  return {api,sent,paused,events};
 }
@@ -29,7 +29,7 @@ for(const [n,replyCount,pauses] of [
  test('status 429 recovery succeeds after '+n+' consecutive refusal(s)',async()=>{
   const good={status:200,json:{data:{done:true}}};
   const t=simulated([...Array(replyCount)].map(()=>limited()).concat([good]));
-  const result=await t.api.request('fixture-query',{pk:'300'},'status_single');
+  const result=await t.api.request('fixture-query',{pk:'300'},'status_single',['300']);
   assert.equal(result,good);
   assert.deepEqual(t.paused,pauses);
   assert.equal(t.sent.length,replyCount+1);
@@ -43,7 +43,7 @@ for(const [n,replyCount,pauses] of [
 
 test('fourth consecutive 429 stops, after exactly three waits totaling eight minutes',async()=>{
  const t=simulated([limited(),limited(),limited(),limited(),{status:200}]);
- await assert.rejects(()=>t.api.request('same-query',{pk:'p'},'status_batch'),error=>{
+ await assert.rejects(()=>t.api.request('same-query',{pk:'p'},'status_batch',['p']),error=>{
   assert.ok(error instanceof Status429Exhausted);
   assert.equal(error.rateLimit.consecutive429,4);
   assert.equal(error.rateLimit.retriesUsed,3);
@@ -56,12 +56,14 @@ test('fourth consecutive 429 stops, after exactly three waits totaling eight min
  assert.equal(t.events.length,4);
  assert.equal(t.events.at(-1).reason,'fourth_consecutive_429');
  assert.equal(t.api.stats().totalWaitSeconds,480);
+ assert.equal(t.api.stats().maxStationWaitSeconds,480);
+ assert.equal(t.api.stats().budgetScope,'station_pk');
 });
 
 test('success resets the consecutive-429 sequence',async()=>{
  const t=simulated([limited(),{status:200},limited(),{status:200}]);
- assert.equal((await t.api.request('a',{},'status_batch')).status,200);
- assert.equal((await t.api.request('b',{},'status_single')).status,200);
+ assert.equal((await t.api.request('a',{},'status_batch',['A'])).status,200);
+ assert.equal((await t.api.request('b',{},'status_single',['B'])).status,200);
  assert.deepEqual(t.paused,[60000,60000]);
  assert.equal(t.api.stats().recoveredSeries,2);
  assert.equal(t.api.stats().observed429,2);
@@ -69,14 +71,14 @@ test('success resets the consecutive-429 sequence',async()=>{
 
 test('explicit Retry-After longer than minute is respected within limit',async()=>{
  const t=simulated([limited('180'),{status:200}]);
- assert.equal((await t.api.request('q',{},'status_page')).status,200);
+ assert.equal((await t.api.request('q',{},'status_page',['Q'])).status,200);
  assert.deepEqual(t.paused,[180000]);
  assert.equal(t.events[0].retryAfterProvided,true);
 });
 
 test('large Retry-After refuses unsafe early retry and saves checkpoint event',async()=>{
  const t=simulated([limited('600'),{status:200}]);
- await assert.rejects(()=>t.api.request('q',{},'status_page'),error=>{
+ await assert.rejects(()=>t.api.request('q',{},'status_page',['Q']),error=>{
   assert.ok(error instanceof Status429Exhausted);
   assert.equal(error.rateLimit.stopReason,'retry_after_exceeds_single_wait_limit');
   return true;
@@ -86,21 +88,61 @@ test('large Retry-After refuses unsafe early retry and saves checkpoint event',a
  assert.equal(t.events[0].reason,'retry_after_exceeds_single_wait_limit');
 });
 
-test('run-level wait budget prevents repeated isolated throttling from becoming endless',async()=>{
+test('same station has cumulative wait limit across distinct calls',async()=>{
  const t=simulated([limited(),{status:200},limited(),{status:200}],{budget:60});
- assert.equal((await t.api.request('a',{},'status_batch')).status,200);
- await assert.rejects(()=>t.api.request('b',{},'status_batch'),error=>{
-  assert.equal(error.rateLimit.stopReason,'run_wait_budget_exhausted');
+ assert.equal((await t.api.request('a',{},'status_batch',['A'])).status,200);
+ await assert.rejects(()=>t.api.request('b',{},'status_batch',['A']),error=>{
+  assert.equal(error.rateLimit.stopReason,'station_wait_budget_exhausted');
   return true;
  });
  assert.deepEqual(t.paused,[60000]);
  assert.equal(t.sent.length,3);
 });
 
+test('different stations keep independent 480s caps even across partitions',async()=>{
+ const t=simulated([
+  limited(),limited(),limited(),{status:200},
+  limited(),{status:200},
+ ]);
+ assert.equal((await t.api.request('station-a',{},'status_single',['A'])).status,200);
+ assert.equal(t.api.stationWaitSeconds('A'),480);
+ assert.equal((await t.api.request('station-b',{},'status_single',['B'])).status,200);
+ assert.equal(t.api.stationWaitSeconds('B'),60);
+ assert.deepEqual(t.paused,[60000,120000,300000,60000]);
+ assert.equal(t.api.stats().totalWaitSeconds,540,'Physical wait is only diagnostic; can exceed 480 across different PKs');
+ assert.equal(t.api.stats().maxStationWaitSeconds,480);
+});
+
+test('paged requests consume the same station budget as a previously throttled batch',async()=>{
+ const t=simulated([limited(),{status:200},limited(),{status:200},limited(),{status:200}]);
+ await t.api.request('batch',{},'status_batch',['A','B']);
+ await t.api.request('page',{},'status_page',['B']);
+ await t.api.request('single',{},'status_single',['B']);
+ assert.equal(t.api.stationWaitSeconds('A'),60);
+ assert.equal(t.api.stationWaitSeconds('B'),180);
+ assert.deepEqual(t.paused,[60000,60000,60000]);
+ t.api.completeStations(['A']);
+ assert.equal(t.api.stationWaitSeconds('A'),0);
+ assert.equal(t.api.stationWaitSeconds('B'),180,'Clearing one PK must not reset another');
+});
+
+test('batch stops if any involved PK has already exhausted its own allowance',async()=>{
+ const t=simulated([limited(),limited(),limited(),{status:200},limited(),{status:200}]);
+ await t.api.request('a',{},'status_single',['A']);
+ assert.equal(t.api.stationWaitSeconds('A'),480);
+ await assert.rejects(()=>t.api.request('batch',{},'status_batch',['A','B']),error=>{
+  assert.equal(error.rateLimit.stopReason,'station_wait_budget_exhausted');
+  assert.equal(error.rateLimit.budgetScope,'station_pk');
+  return true;
+ });
+ assert.deepEqual(t.paused,[60000,120000,300000]);
+ assert.equal(t.api.stationWaitSeconds('B'),0);
+});
+
 test('GraphQL throttling on HTTP 200 uses the same safe retry sequence',async()=>{
  const graphite={status:200,json:{errors:[{extensions:{code:'THROTTLED'}}]}};
  const t=simulated([graphite,{status:200,json:{data:{ok:true}}}]);
- const result=await t.api.request('q',{},'status_batch');
+ const result=await t.api.request('q',{},'status_batch',['Q']);
  assert.equal(result.json.data.ok,true);
  assert.deepEqual(t.paused,[60000]);
 });
@@ -108,7 +150,7 @@ test('GraphQL throttling on HTTP 200 uses the same safe retry sequence',async()=
 test('ordinary provider errors are not mistaken for a 429',async()=>{
  const r={status:500,json:null};
  const t=simulated([r]);
- assert.equal(await t.api.request('q',{},'status_batch'),r);
+ assert.equal(await t.api.request('q',{},'status_batch',['Q']),r);
  assert.equal(t.sent.length,1);
  assert.deepEqual(t.paused,[]);
 });
