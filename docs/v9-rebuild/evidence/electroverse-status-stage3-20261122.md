@@ -25,3 +25,12 @@ The rate-limit policy remains 60s, 120s, 300s waits, then stop on fourth consecu
 ## Operational next steps
 
 Inspect the second offline verification logs, checksum/pins and security gate. Only if PASS: update request to mode=collect with explicitProviderAuthorization=true, exact immutable parent status artifact 14766791724, no publication, and inspect the resulting GitHub run. Do not launch a second concurrent run, nor update Data Lab main, Production, Stable or Updater Test.
+
+
+## Preflight PASS and authorized live execution
+
+The corrected offline verification [run 45057927160](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45057927160), job 137317204092, completed/success at 2026-11-22T18:59:17Z. Exactly 29 Python tests and 20 Node tests passed; public_safety_check.py PASS. SupplierCalls=0; verified status checkpoint run 45053244431 / artifact 14766791724, 1423 verified locations, 4 failures, sourceFingerprint 3365025ffc1f0f57ac4b48101e4e78517797a8cbb5a8b2a72fea60bce1cd12b4, resumeEligible=true. Immutable complete tariff parent 45024846774 / 14760747281 verified separately. No completed national statuses and no publication.
+
+After checking the branch and confirming no other status run active, the user-authorized provider request changed from verify to collect in commit 7f1696d3566517db992101e235396e0c3217f36d. Request pins: checkpointRun=45053244431, checkpointArtifact=14766791724, checkpointZipSha256=ccffa65c09b54afed7e5792911d60a65fdd08ea8af1418414b0c9c46ec2169b4, checkpointFilesetSha256=5d2c7008c3ebd9d405245279e1dbe09b36dc48b95f5f1a4c756572b735685f42, checkpointVerifiedLocations=1423, checkpointErrorCount=4, checkpointPartitionCount=1, statusPartitionProcessing=sweep_then_deferred_recovery, deferredRecoveryPasses=1, continueOnIndividualErrors=true, explicitProviderAuthorization=true, automaticPublication=false.
+
+New provider [run 45058177243](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45058177243), created at 2026-11-22T18:59:44Z and initially in_progress. Its actual outcome, 429 behavior and new artifacts are NOT YET verified. It is a single permitted run; do not infer progress from GitHub success, do not launch another concurrent run. Next read-only check: examine jobs, logs (per-partition phases), source and archive digests, 1423 non-replayed successful PK, all failed PKs, deferred queue, and absence of national promotion if incomplete. The 16-hour status freshness gate still applies; no artificial timestamp extension.
