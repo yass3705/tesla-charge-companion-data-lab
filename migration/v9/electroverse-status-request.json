@@ -1,6 +1,6 @@
 {
   "source": "FR:electroverse_status",
-  "mode": "collect",
+  "mode": "verify",
   "basisRun": 45024846774,
   "basisArtifact": 14760747281,
   "basisZipSha256": "0d3abcc15dc4762b360c5816b6e783accdcafa664442c8ce99b7c0500743a5fe",
@@ -9,17 +9,24 @@
   "partitionCount": 16,
   "budgetSeconds": 18000,
   "automaticPublication": false,
-  "providerRetries": 0,
-  "operation": "resume_verified_429_checkpoint_reuse_667_existing_statuses",
-  "reason": "User explicitly authorized continuing Electroverse status collection on 2026-11-22 after successful offline verification run 45048950087. Resume only exact checkpoint 14763184200, preserving 667 verified status locations and 5 recorded errors; respect existing 16-hour freshness and 429 cooldown, stop at first new HTTP/GraphQL 429, save intermediate results, no retry of rate-limited response, no automatic publication, no overlay.",
+  "providerRetries": 3,
+  "operation": "verify_status_429_60_120_300_fourth_stop_checkpoint_979",
+  "reason": "User explicitly authorized 60 seconds then 2 minutes then 5 minutes after sequential HTTP/GraphQL 429; fourth 429 stops. Offline preflight first, no supplier calls in this verify run. Validate checkpoint #14765227405 with 979 successful statuses and 2 failures, rate limit recovery tests and SHA checks; no production publication.",
   "previousOfflineAttempt": 45045047597,
   "verifiedOfflineRun": 45048950087,
-  "checkpointRun": 45045530435,
-  "checkpointArtifact": 14763184200,
-  "checkpointZipSha256": "1439fbde2f8670bf45eef872dda1fba10f9c253dce1001e0c4622b1a694b748d",
-  "checkpointFilesetSha256": "86d5253d27e34b29e38fc985851aa06417f1375a25f0fcb235d74158cd277925",
-  "checkpointVerifiedLocations": 667,
-  "checkpointErrorCount": 5,
+  "checkpointRun": 45049654722,
+  "checkpointArtifact": 14765227405,
+  "checkpointZipSha256": "e36719c21b03551539f8a2fbc352dfd66ce7821b0fb4677b2feb213e54e47075",
+  "checkpointFilesetSha256": "fcc91b40e3aa376983225b24b232b36e6a97c410c56a63bf90d2bd37f158c478",
+  "checkpointVerifiedLocations": 979,
+  "checkpointErrorCount": 2,
   "checkpointPartitionCount": 1,
-  "explicitProviderAuthorization": true
+  "explicitProviderAuthorization": false,
+  "status429WaitSeconds": [
+    60,
+    120,
+    300
+  ],
+  "status429WaitBudgetSeconds": 480,
+  "stopOnFourthConsecutive429": true
 }
