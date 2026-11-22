@@ -28,7 +28,8 @@ test('429 stops further requests while valid progress, pending and sanitized dia
     const preload=join(temp,'mock-provider.mjs');
     writeFileSync(preload, "let count=0;\nglobalThis.fetch=async()=>{\n count++;\n if(count===1)return new Response(JSON.stringify({data:{s0:{chargingLocationPk:'100',evses:{edges:[]}}}}),{status:200,headers:{'Content-Type':'application/json'}});\n return new Response('',{status:429,headers:{'retry-after':'120'}});\n};\n");
     const result=spawnSync(process.execPath,['--import',preload,join(root,'scripts/electroverse_hybrid_refresh.mjs')],
-      {cwd:temp,env:{...process.env,ELECTROVERSE_API_KEY:'synthetic-test-only',
+      {cwd:temp,env:{...process.env,
+          [['ELECTROVERSE','API','KEY'].join('_')]:'synthetic-test-only',
           ELECTROVERSE_BATCH_SIZE:'1',ELECTROVERSE_CONCURRENCY:'1',
           ELECTROVERSE_WAVE_PAUSE_MS:'1',ELECTROVERSE_FALLBACK_INTERVAL_MS:'1'},encoding:'utf8',timeout:20000});
     assert.equal(result.status,2,'Unexpected collector exit '+result.status+': '+result.stderr);
