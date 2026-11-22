@@ -14,8 +14,6 @@ import {isRateLimited,rateLimitPlan} from './electroverse_rate_limit_guard.mjs';
 
 export const STATUS_429_PAUSES_SECONDS=Object.freeze([60,120,300]);
 export const STATUS_429_MAX_SECONDS_PER_STATION=480;
-// Backward-compatible constant name for existing offline readers; scope is per PK.
-export const STATUS_429_MAX_TOTAL_WAIT_SECONDS=STATUS_429_MAX_SECONDS_PER_STATION;
 
 export class Status429Exhausted extends Error {
  constructor(detail){
