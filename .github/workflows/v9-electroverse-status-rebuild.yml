@@ -60,6 +60,8 @@ jobs:
               raise SystemExit('Status operation not explicitly pinned to the complete audited tariff generation')
           if request.get('mode') not in ('verify','collect'):
               raise SystemExit('Unapproved status request mode')
+          if request.get('checkpointKind','full') not in ('full','segmented_delta'):
+              raise SystemExit('Unknown status checkpoint artifact kind')
           import re
           pin_keys=('checkpointRun','checkpointArtifact','checkpointZipSha256',
                     'checkpointFilesetSha256','checkpointVerifiedLocations',
@@ -77,6 +79,7 @@ jobs:
               print('mode='+request['mode'],file=stream)
               for key in pin_keys:
                   print(key+'='+str(request[key]),file=stream)
+              print('checkpointKind='+request.get('checkpointKind','full'),file=stream)
           print('Approved status source and exact checkpoint pins: OK')
           PY
       - name: Confirm exact successful parent run and immutable artifact
@@ -135,19 +138,28 @@ jobs:
           CHECKPOINT_RUN: ${{ steps.mode.outputs.checkpointRun }}
           CHECKPOINT_ARTIFACT: ${{ steps.mode.outputs.checkpointArtifact }}
           CHECKPOINT_SHA: ${{ steps.mode.outputs.checkpointZipSha256 }}
+          CHECKPOINT_KIND: ${{ steps.mode.outputs.checkpointKind }}
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json, os, subprocess
+          import json, os, re, subprocess
           repo=os.environ['GITHUB_REPOSITORY']
           run_id=os.environ['CHECKPOINT_RUN']
           artifact_id=os.environ['CHECKPOINT_ARTIFACT']
           run=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/runs/{run_id}']))
           artifact=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/artifacts/{artifact_id}']))
-          if (run.get('status')!='completed' or run.get('conclusion')!='success'
+          kind=os.environ['CHECKPOINT_KIND']
+          artifact_name=artifact.get('name') or ''
+          approved_name=(artifact_name=='tcc-v9-electroverse-status-checkpoint'
+              if kind=='full' else
+              bool(re.fullmatch(r'tcc-v9-electroverse-status-stage-(?:sweep|recovery)-(?:0[0-9]|1[0-5])',artifact_name)))
+          approved_outcome=(run.get('conclusion')=='success'
+              if kind=='full' else
+              run.get('conclusion') in ('success','failure','cancelled','timed_out'))
+          if (run.get('status')!='completed' or not approved_outcome
                   or run.get('head_branch')!='rebuild/v9-20261020'
                   or artifact.get('expired') is not False
-                  or artifact.get('name')!='tcc-v9-electroverse-status-checkpoint'
+                  or not approved_name
                   or artifact.get('digest')!='sha256:'+os.environ['CHECKPOINT_SHA']
                   or (artifact.get('workflow_run') or {}).get('id')!=int(run_id)):
               raise SystemExit('Pinned status artifact is missing, expired or has wrong provenance')
@@ -186,6 +198,22 @@ jobs:
                       target.write_bytes(archive.read(m))
           print('Pinned status checkpoint ZIP recovered:',len(seen),'entries')
           PY
+      - name: Reconstruct and validate immutable segmented checkpoint
+        if: ${{ steps.mode.outputs.checkpointKind == 'segmented_delta' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          python scripts/resilient_v9_electroverse_status.py rehydrate \
+            --bundle "$RUNNER_TEMP/status-tariff-parent" \
+            --delta "$RUNNER_TEMP/status-checkpoint" \
+            --out "$RUNNER_TEMP/status-checkpoint-canonical"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'status-checkpoint-canonical/checkpoint-manifest.json'
+          print('Reconstituted verified fileset SHA256:',json.loads(p.read_text())['sha256'])
+          PY
       - name: Verify source only; supplier disabled
         if: ${{ steps.mode.outputs.mode == 'verify' }}
         env:
@@ -194,7 +222,7 @@ jobs:
           set -euo pipefail
           python scripts/pilot_v9_electroverse_status.py \
             --bundle "$RUNNER_TEMP/status-tariff-parent" \
-            --checkpoint "$RUNNER_TEMP/status-checkpoint" \
+            --checkpoint "$RUNNER_TEMP/${{ steps.mode.outputs.checkpointKind == 'segmented_delta' && 'status-checkpoint-canonical' || 'status-checkpoint' }}" \
             --checkpoint-fileset "${{ steps.mode.outputs.checkpointFilesetSha256 }}" \
             --checkpoint-run "${{ steps.mode.outputs.checkpointRun }}" \
             --checkpoint-artifact "${{ steps.mode.outputs.checkpointArtifact }}" \
@@ -212,7 +240,7 @@ jobs:
           set -euo pipefail
           python scripts/resilient_v9_electroverse_status.py prepare \
             --bundle "$RUNNER_TEMP/status-tariff-parent" \
-            --checkpoint "$RUNNER_TEMP/status-checkpoint" \
+            --checkpoint "$RUNNER_TEMP/${{ steps.mode.outputs.checkpointKind == 'segmented_delta' && 'status-checkpoint-canonical' || 'status-checkpoint' }}" \
             --checkpoint-fileset "${{ steps.mode.outputs.checkpointFilesetSha256 }}" \
             --checkpoint-run "${{ steps.mode.outputs.checkpointRun }}" \
             --checkpoint-artifact "${{ steps.mode.outputs.checkpointArtifact }}" \
