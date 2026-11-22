@@ -890,6 +890,17 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
     source_dir = out_root / "objects" / source_id.replace(":", "_")
     source_dir.mkdir(parents=True, exist_ok=True)
     electroverse_module = spec["module"] == "electroverse"
+    # Explicitly user-authorized one-run completion of the remaining France
+    # Electroverse chunks. Ordinary collectors retain their 40-minute limit.
+    # The child has a 4h30 budget; leave 15min for process cleanup and
+    # checkpoint preservation, and keep well below the 5h Node child timeout.
+    if spec.get("finish_remaining_chunks"):
+        if (not electroverse_module or source_id != "FR:electroverse_full"
+                or spec.get("mode") != "full"
+                or spec.get("window_budget_seconds") != 16200
+                or attempts != 1):
+            raise ValueError("Unapproved Electroverse full-completion scope")
+        timeout_s = 17100
     status_module = spec["module"] == "electroverse_status"
     overlay_module = spec["module"] == "electroverse_overlay"
     belib_module = spec["module"] == "belib_chain"
@@ -1226,7 +1237,10 @@ def run_source(spec: dict, out_root: Path, *, root: Path = ROOT, attempts: int =
             if source_id == "CH:ecarup_coordinate":
                 command.extend(["--source", str(owner_state)])
             if electroverse_module and spec["mode"] == "full":
-                command.extend(["--max-chunks", "1"])
+                # Only the explicit guarded completion run can cross the
+                # remaining 6000-PK boundary within the same subprocess.
+                if not spec.get("finish_remaining_chunks"):
+                    command.extend(["--max-chunks", "1"])
                 if spec.get("window_budget_seconds") is not None:
                     budget = spec["window_budget_seconds"]
                     if type(budget) is not int or not 0 < budget < timeout_s:
