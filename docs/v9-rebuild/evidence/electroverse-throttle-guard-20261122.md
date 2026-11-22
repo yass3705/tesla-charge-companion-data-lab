@@ -28,3 +28,23 @@ Comparaison indépendante complète, en lecture seule, de deux ZIP : mapping et 
 `hybrid-refresh-failures.json` signale **0 échec courant** ; aucun HTTP 429 de ce nouveau run. L'unique événement historique `failure-diagnostics.json` provient du précédent run et **ne constitue pas un échec actuel**. Le manifeste nouveau est `partial_failure` pour la seule raison technique `collector_window_budget`, et `completeSnapshotValidated=false` : attendu pour l'arrêt volontaire d'une fenêtre partielle. Cela ne prouve pas que la limitation fournisseur a disparu à grande échelle ; seuls 200 contrôles sont observés dans ces conditions réduites.
 
 **GO limité obtenu :** une fenêtre de collecte prudente réussie, checkpoint intact, anti-429 non déclenché cette fois. **NO-GO pour promotion** et pour une relance en série non supervisée. Étape suivante possible uniquement après nouvel accord/pilotage : repartir de l'artefact `14749803005` (à sélectionner par le sélecteur comme dernier `-window`, qui domine les échecs antérieurs), revérifier son SHA et procéder à une nouvelle fenêtre surveillée. Aucune autre collecte lancée dans cet audit.
+
+## Deuxième fenêtre fournisseur contrôlée — audit final (22 novembre 2026, 11 h 30 CET)
+
+**Reprise autorisée explicitement par l’utilisateur** ; périmètre exclusif Data Lab `rebuild/v9-20261020`, sans modification de `main` ni de Production, ni mise à jour des tarifs/liaisons hors acquisitions sources.
+
+**Validation préalable sans fournisseur :** [run `45011861850`](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45011861850), commit `06eda4d511a7f96e3f7ae8f963f49ef66789881d`, `completed/success`, 14 tests Python, 7 tests Node unitaires + 1 intégration, `Public safety scan: OK`. Sélecteur : `state=checkpoint`, artefact `14749803005`, run parent `45010546128`, SHA ZIP `11a47057a7cade7f6fec50735027222e3f390aa9dd734b6905189c62f88f37e8`; intégrité du checkpoint vérifiée ; étape fournisseur `skipped`.
+
+**Exécution fournisseur :** [run `45012004902`](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45012004902), job `137176147909`, commit de demande `7def0a44c54a15daec5252388422a3dd253c83ee`. `completed/success` à 10:30:09 UTC, acquisition `checkpointed` avec `chunks=4`. Paramètres historiques anti-429 conservés : `ELECTROVERSE_BATCH_SIZE=5`, concurrence `1`, pauses de `3000 ms`, `--window-budget-seconds 300`, `--max-provider-windows 1`. Aucun autre run fournisseur déclenché.
+
+**Nouvel artefact :** [`14749539699`](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45012004902/artifacts/14749539699), `tcc-v9-electroverse-window`, créé 2026-11-22 10:30:05 UTC, taille 13 229 647 octets, ZIP SHA-256 GitHub et archive téléchargée `01a676c23aabd5e54e7538ffbf9d66be742124ffd78d3b0709d75099ba6b1d4d`, fileset SHA-256 `4bcc98dc454cfcea0c323598b7de1b7776e20b9518752f8091b101f61d8c8a9f`, **137/137 fichiers du manifeste** validés, 139 entrées ZIP uniques, 128 shards. Expiration GitHub `2026-12-22T10:30:01Z`. Note : malgré un identifiant numérique inférieur à celui du précédent artefact, le nouveau est **plus récent selon created_at**, et son run/sha sont vérifiés explicitement.
+
+**Comparaison indépendante complète du ZIP parent `14749803005` au ZIP enfant `14749539699` :**
+- Inventaire et mapping national France identiques octet pour octet, **22 818 localisations** sans création ni suppression.
+- Curseur `completed=[0,6000]`, `pending.offset=12000` constants, `pending.pks 2106 → 1906`; exactement **200 identifiants retirés** du pending, aucun ajouté.
+- Dans `checked-at.json`, exactement **200** horodatages correspondants progressent strictement, aucun autre changement.
+- Audit des 128 shards : seules les **200** PK traitées ont bougé ; **146** `tariffHash` changés, **54** inchangés ; aucune mutation hors fenêtre. Total **15 894 → 16 094 / 22 818 (70,53 %)**, **6 724** restant.
+- `reports/electroverse/hybrid-refresh-failures.json` : **`failures=[]`**, `lastIncrementalRefresh.rateLimit=null` : **aucun 429 observé sur cette fenêtre**. L’historique d’échecs de l’ancienne fenêtre reste séparé.
+- `manifest.json.status=partial_failure` pour `collector_window_budget` ; `checkpoint-manifest.json.completeSnapshotValidated=false`. Ce checkpoint **ne constitue pas** une génération complète et ne doit pas être promu en Production.
+
+**GO/NO-GO :** GO pour reconnaître cette seule fenêtre de collecte comme progression validée. **NO-GO pour publication et relance automatique de longue durée.** Reprendre uniquement depuis le nouvel artefact de SHA connu, en revalidant sa filiation et les gardes anti-429 avant toute fenêtre supplémentaire. Aucun nouveau run en cours/queued sur cette branche lors de la clôture de l’audit.
