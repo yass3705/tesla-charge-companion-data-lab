@@ -1,3 +1,7 @@
+## 2026-11-22 — Electroverse France : reprise live autorisée depuis checkpoint après contrôle de fraîcheur
+
+SHA de demande `c5d76615e2033a876006759fd2df6d1f11aa11f2`, branche Data Lab `rebuild/v9-20261020`. Réutilisation épinglée du checkpoint `14763184200` depuis run 45045530435, ZIP `1439fbde2f8670bf45eef872dda1fba10f9c253dce1001e0c4622b1a694b748d` ; 667 résultats, 5 erreurs, parent tarifaire complet inchangé. HTTP 429 précédent refroidi, période de fraîcheur historique respectée. [Run #45049654722](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45049654722) en cours au constat initial, job 137291747535 ; nouvelle progression non démontrée. Aucun changement de prix, jointure, public ou Production. Pas de publication ni réexécution concurrente ; audit du nouveau run requis. Détails : [rapport de statuts](../docs/v9-rebuild/evidence/electroverse-status-stage2-20261122.md).
+
 ## 22 novembre 2026 — Electroverse FR : reprise du checkpoint 429 validée sans fournisseur
 
 **Fait nouveau vérifié :** run statuts [45045530435](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45045530435) completed/success **mais checkpointed** après un HTTP 429 réel le 22/11 à 16:58:07 UTC ; 667/22 818 localisations vérifiées, 5 erreurs conservées, partition 00 incomplète. Artefact 14763184200, ZIP SHA-256 1439fbde2f8670bf45eef872dda1fba10f9c253dce1001e0c4622b1a694b748d, fileset 86d5253d27e34b29e38fc985851aa06417f1375a25f0fcb235d74158cd277925, parent tarifaire 14760747281 inchangé. Pas de status national ni d'overlay.
