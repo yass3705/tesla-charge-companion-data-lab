@@ -115,6 +115,12 @@ Conserver la chaîne Electroverse daily/full (128 shards et checkpoints), status
 
 **Exécution en cours non modifiée par cette décision :** le run statuts déjà autorisé [45049654722](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45049654722) peut poursuivre son exécution bornée et sauvegarder ses checkpoints, sans priorité supplémentaire, relance parallèle ni promotion. L'objectif immédiat reste la fiabilisation du renouvellement des données ; la couverture de disponibilité live complète est reportée après cette fiabilisation. Ce texte est une décision de priorisation et de critères, **pas une implémentation déjà testée du découplage**.
 
+### Décision utilisateur du 22 novembre 2026 — budget 429 par station, jamais par partition/run
+
+Pour la collecte des statuts live Electroverse, la temporisation cumulée **maximum 480 secondes est propre à chaque station identifiée par son ChargingLocation PK**, et ne doit **jamais** être accumulée sur toute une partition, sur plusieurs partitions ou à l'échelle du run GitHub. L'acquisition d'une station comprend potentiellement une requête groupée avec une autre station, ses pages supplémentaires et des appels individuels de secours ; les pauses 429 imputables à ces appels sont décomptées de **chaque station impliquée**, pas des autres. Une fois la station entièrement validée et sauvegardée, libérer son compteur. Les autres stations doivent conserver leurs propres budgets, même si le temps global cumulé d'attente dépasse 480 secondes.
+
+Conserver la règle : **429 → attendre 60 secondes → nouvelle tentative ; nouveau 429 consécutif → 120 secondes ; troisième 429 consécutif → 300 secondes ; quatrième 429 consécutif → arrêt du run et checkpoint**, sans retraitement des succès. Le `Retry-After` explicite ne peut jamais être raccourci par cette politique ; s'il excède les bornes de sécurité, arrêter en sauvegardant. Le budget par station est distinct du **temps maximal du job GitHub**, de la politique de fraîcheur de 16 h et des règles de complétude. Les erreurs individuelles non-429 restent différées après le balayage des 16 partitions ; la publication nationale reste interdite tant que la couverture/fraîcheur stricte n'est pas vérifiée. Ceci ne constitue pas une autorisation de démarrer un run fournisseur.
+
 ### G5 — Jointures nationales, CPO, Electra, Electroverse
 
 ### Priorité de rapprochement base nationale ↔ Electroverse — décision utilisateur du 21 novembre 2026
