@@ -105,6 +105,16 @@ Conserver la chaîne Electroverse daily/full (128 shards et checkpoints), status
 
 **Porte PASS :** export/import reproductible sur plusieurs familles/pays, intégrité de tous fichiers, restauration d'un snapshot, isolation d'une source en échec, aucune modification du site public. Les vraies opérations GitHub non exécutées restent explicitement non vérifiées.
 
+### Décision utilisateur du 22 novembre 2026 — disponibilité live non bloquante
+
+**Priorité impérative : fiabiliser d'abord la chaîne d'actualisation technique des données Electroverse (tarifs, cache, incrémentalité, erreurs/HTTP 429, checkpoints, intégrité, provenance, import et mise à jour)**, puis poursuivre les autres volets TCC V9. **La disponibilité en temps réel d'une borne/EVSE ne constitue pas un prérequis ni une porte bloquante pour développer, tester et préparer les tarifs, les jointures nationales, le moteur de calcul, la carte, l'interface ou la préproduction.** Une collecte des 16 partitions de statuts incomplète, périmée ou ralentie par le fournisseur ne doit donc pas arrêter ces travaux.
+
+**Séparer deux produits de données :** (1) catalogue national/EVSE et statut administratif/technique fourni par la base nationale lorsqu'il existe, utiles à la politique des stations affichées ; (2) disponibilité instantanée Electroverse (par exemple AVAILABLE/CHARGING), facultative et mise à jour indépendamment. L'absence de la seconde ne doit ni supprimer une borne nationale valide, ni effacer les offres/tarifs, ni bloquer une recette d'affichage des prix. Ne jamais inférer AVAILABLE/CHARGING, prolonger artificiellement la fraîcheur, présenter un statut périmé comme actuel ou confondre disponibilité live et « en service » national : afficher **« Disponibilité non disponible »** ou ne pas afficher de statut live, avec date/provenance lorsque utile.
+
+**Découplage de l'overlay :** la préparation du rapprochement **tarifaire** Electroverse ↔ référentiel national (identité station/EVSE/prise, opérateur, adresse/GPS, portée et règles strictes d'attribution) peut avancer sur un cache tarifaire complet et vérifié **sans attendre le ledger national de statuts live**. L'enrichissement par les statuts live reste une tâche ultérieure distincte, non bloquante ; lorsqu'elle sera activée, elle exigera ses contrôles de fraîcheur, de provenance, de portée et une validation de ses 16 partitions. Cela **ne déclare pas une porte G2–G9 PASS** : tout livrable doit toujours réussir ses propres critères de sûreté et de qualité, mais aucune porte ne doit transformer la seule absence de disponibilité live en blocage général.
+
+**Exécution en cours non modifiée par cette décision :** le run statuts déjà autorisé [45049654722](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45049654722) peut poursuivre son exécution bornée et sauvegarder ses checkpoints, sans priorité supplémentaire, relance parallèle ni promotion. L'objectif immédiat reste la fiabilisation du renouvellement des données ; la couverture de disponibilité live complète est reportée après cette fiabilisation. Ce texte est une décision de priorisation et de critères, **pas une implémentation déjà testée du découplage**.
+
 ### G5 — Jointures nationales, CPO, Electra, Electroverse
 
 ### Priorité de rapprochement base nationale ↔ Electroverse — décision utilisateur du 21 novembre 2026
