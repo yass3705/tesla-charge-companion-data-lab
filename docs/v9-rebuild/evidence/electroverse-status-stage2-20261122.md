@@ -32,3 +32,22 @@ Sur instruction utilisateur, demande `mode=collect` `b2f3ff554f1f297421c00425232
 ## Suivi ponctuel programmé
 
 L'automatisation de **lecture et audit uniquement** `Automation_b2f956dcd33c8191b7fc6fce635451d5` est planifiée le **22 novembre 2026 à 21 h 47, heure de Paris**. Elle vérifiera l'issue du run `45045530435`, les fichiers et la qualité des partitions, sans relancer la collecte, modifier les dépôts ni promouvoir une sortie. Un run encore actif à cette échéance doit être déclaré actif, non artificiellement terminé.
+
+
+## 22 novembre 2026 — audit post-429 et validation réelle de la reprise sans fournisseur
+
+**Run statut :** [#45045530435](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45045530435), job 137279198848, completed/success mais **checkpointed, pas complete**. HTTP 429 réel à 2026-11-22T16:58:07.420Z (phase status_batch), sans Retry-After : arrêt provider_rate_limited, backoffSeconds 900, reprise indiquée au plus tôt à 2026-11-22T17:13:07.420Z. Partition 00 : 1 427 attendues, **667 entrées sauvegardées et 5 erreurs** single_paged_unavailable ; 760 restantes dans cette partition. Aucune partition nationale complète, aucun ledger ni overlay généré.
+
+**Artefact immuable :** [#14763184200](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45045530435/artifacts/14763184200) ; ZIP SHA-256 1439fbde2f8670bf45eef872dda1fba10f9c253dce1001e0c4622b1a694b748d ; fileset SHA-256 86d5253d27e34b29e38fc985851aa06417f1375a25f0fcb235d74158cd277925 ; 138 fichiers signés ; sourceFingerprint 3365025ffc1f0f57ac4b48101e4e78517797a8cbb5a8b2a72fea60bce1cd12b4. Parent tarifaire conservé : run 45024846774 / artefact 14760747281, 22 818 localisations et 128 shards.
+
+**Correctifs versionnés sur rebuild/v9-20261020 :**
+- 41bb1aa56975378334aebb710927955fc8260cc9 — scripts/pilot_v9_electroverse_status.py : contrôle du checkpoint et des SHA, provenance et mapping identiques à la source, entrées réussies conservées, refus de l'écrasement implicite, cooldown et limite de fraîcheur.
+- f15bcf66405edfee81d5193250864b2e3a8b37e7 — tests/test_v9_electroverse_status_checkpoint.py : cinq nouveaux tests de conservation, corruption, divergence de source, promotion factice, attente et péremption.
+- 3b55b7a5ea0c1e6659effbfdb31e5f327f288d41 et f104d98eac904178401a0ccf0f26c2573c9e688e — workflow v9-electroverse-status-rebuild.yml : autorisation fournisseur distincte, contrôle du run et du ZIP GitHub, extraction sécurisée du checkpoint, transmission des pins.
+- cef33ce18d6a9fd296aa1906f125c4128b8a70dd — migration/v9/electroverse-status-request.json : mode verify, explicitProviderAuthorization=false ; aucun run fournisseur demandé.
+
+**Preuve distante de l'étape 2 hors fournisseur :** [run #45048950087](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45048950087), job 137289595777, SHA cef33ce18d6a9fd296aa1906f125c4128b8a70dd, **completed/success**. 25 tests Python + 8 Node + public safety PASS ; parent tarifaire, manifeste, run d'origine, ZIP et file-set checkpoint validés. Le pilote a émis verified_status_checkpoint : 667 résultats, 5 erreurs, sourceFingerprint exact, resumeEligible=true ; puis result=verified_only, supplierCalls=0, checkpointValidated=true. Aucune sortie statut nouvelle publiée : les uploads complete, checkpoint et failure sont skipped en mode verify.
+
+**Fenêtre de fraîcheur à respecter :** partition 00 démarrée à 2026-11-22T16:46:58.837Z. Fraîcheur historique 16 h, expiration le **23 novembre 2026 à 08:46:58 UTC**, soit 09:46:58 Paris. Le nouveau garde refuse les reprises à moins de 10 minutes de ce terme, soit à partir d'environ **08:36:58 UTC / 09:36:58 Paris**. Le statut resumeEligible=true est un constat au moment du run de validation, pas une garantie future. Le cooldown de 15 min n'établit pas la durée exacte de rétablissement du quota fournisseur. Ne pas promettre la conservation de statuts frais hors de cette fenêtre.
+
+**Relais Codex CLI :** étapes 1 (correctif) et 2 (vérification sans fournisseur) PASS ; collecte nationale des 16 partitions toujours INCOMPLÈTE ; overlay étape 3 non démarré. Pour passer en mode collect : nouvelle autorisation utilisateur, demande versionnée explicitProviderAuthorization=true, contrôle de non-concurrence et fraîcheur du checkpoint, puis audit du nouveau résultat. Aucun changement Data Lab main, Production, Stable, Updater Test, Netlify, source prix ou règles de jointure.
