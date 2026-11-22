@@ -48,6 +48,7 @@ class DeferredSweepTests(unittest.TestCase):
         self.outcome = []
         self.stop_partition = None
         self.recovery_succeeds = True
+        self.fake_wait_by_partition = {}
 
     def mock_run(self, work: Path, *, source: Path, partition: int) -> None:
         phase = "recovery" if os.environ.get("ELECTROVERSE_STATUS_RECOVERY_ONLY") == "1" else "sweep"
@@ -81,10 +82,12 @@ class DeferredSweepTests(unittest.TestCase):
         write(work / STATUS_REPORT, {
             "partition": partition, "sourceFingerprint": self.fingerprint,
             "verifiedLocations": len(data["entries"]), "rateLimit": limit,
-            "rateLimitRecovery": {"totalWaitSeconds": 0,
-                                  "maxStationWaitSeconds": 0,
-                                  "maxSecondsPerStation": 480,
-                                  "budgetScope": "station_pk"},
+            "rateLimitRecovery": {
+                "totalWaitSeconds": self.fake_wait_by_partition.get(partition, 0),
+                "maxStationWaitSeconds": min(
+                    self.fake_wait_by_partition.get(partition, 0), 480),
+                "maxSecondsPerStation": 480,
+                "budgetScope": "station_pk"},
         })
         raise IncompleteStatus("fixture partition recorded")
 
@@ -142,6 +145,13 @@ class DeferredSweepTests(unittest.TestCase):
         queue = json.loads((work / "data/electroverse/live_statuses/deferred-failures.json").read_text())
         self.assertEqual(queue["partitionCount"], 4)
         self.assertGreaterEqual(queue["remainingLocations"], 1)
+
+    def test_waits_from_different_partitions_are_not_combined_as_a_global_limit(self):
+        # These are totals for different station PKs, not a shared 480s allowance.
+        self.fake_wait_by_partition = {1: 360, 2: 300, 3: 540}
+        self.execute()
+        self.assertEqual(self.seen, [("sweep", i) for i in range(16)] + [("recovery", 0)])
+        self.assertEqual(self.outcome[0][0], "complete")
 
     def test_report_can_refer_to_recovery_partition_not_the_last_partition(self):
         snapshot = {"fingerprint": self.fingerprint, "verified_locations": 1,
