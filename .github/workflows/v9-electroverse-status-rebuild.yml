@@ -109,6 +109,7 @@ jobs:
       - name: Verify source only or run the guarded 16-part census
         id: census
         env:
+          PYTHONPATH: ${{ github.workspace }}
           ELECTROVERSE_API_KEY: ${{ steps.mode.outputs.mode == 'collect' && secrets.ELECTROVERSE_API_KEY || '' }}
           ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
           ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
