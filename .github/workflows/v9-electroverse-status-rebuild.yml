@@ -28,7 +28,7 @@ jobs:
         id: mode
         run: |
           set -euo pipefail
-          python -m unittest tests.test_v9_electroverse_status tests.test_v9_electroverse tests.test_v9_electroverse_resume -q
+          python -m unittest tests.test_v9_electroverse_status tests.test_v9_electroverse tests.test_v9_electroverse_resume tests.test_v9_electroverse_status_checkpoint -q
           python -m py_compile scripts/pilot_v9_electroverse_status.py
           node --check scripts/electroverse_status_incremental.mjs
           node --test tests/electroverse_failure_diagnostics.test.mjs tests/electroverse_rate_limit_integration.test.mjs
@@ -52,9 +52,24 @@ jobs:
               raise SystemExit('Status operation not explicitly pinned to the complete audited tariff generation')
           if request.get('mode') not in ('verify','collect'):
               raise SystemExit('Unapproved status request mode')
+          import re
+          pin_keys=('checkpointRun','checkpointArtifact','checkpointZipSha256',
+                    'checkpointFilesetSha256','checkpointVerifiedLocations',
+                    'checkpointErrorCount','checkpointPartitionCount')
+          if (any(key not in request for key in pin_keys)
+                  or not all(type(request[k]) is int and request[k]>0 for k in
+                             ('checkpointRun','checkpointArtifact','checkpointVerifiedLocations','checkpointPartitionCount'))
+                  or type(request['checkpointErrorCount']) is not int or request['checkpointErrorCount']<0
+                  or not all(re.fullmatch('[0-9a-f]{64}',str(request[k])) for k in
+                             ('checkpointZipSha256','checkpointFilesetSha256'))):
+              raise SystemExit('Explicit immutable checkpoint pins required')
+          if request.get('explicitProviderAuthorization') is not (request['mode']=='collect'):
+              raise SystemExit('No authorization for live supplier status collection')
           with open(os.environ['GITHUB_OUTPUT'],'a') as stream:
               print('mode='+request['mode'],file=stream)
-          print('Approved status source and parent pins: OK')
+              for key in pin_keys:
+                  print(key+'='+str(request[key]),file=stream)
+          print('Approved status source and exact checkpoint pins: OK')
           PY
       - name: Confirm exact successful parent run and immutable artifact
         env:
