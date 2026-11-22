@@ -126,7 +126,12 @@ def main():
     p.add_argument("--expected-run", type=int)
     p.add_argument("--window-budget-seconds", type=int)
     p.add_argument("--max-provider-windows", type=int)
+    p.add_argument("--finish-remaining", action="store_true",
+                   help="One authorized long run across all remaining France chunks; stop at first failure")
     a = p.parse_args()
+    if a.finish_remaining and (a.window_budget_seconds != 16200 or a.max_provider_windows != 1
+                               or not a.incoming):
+        raise ValueError("Full completion requires a pinned parent, 16200s budget and exactly one process")
     out = a.out.resolve()
     if out.exists() or out == ROOT or ROOT in out.parents or os.environ.get("GITHUB_REF_NAME") != BRANCH:
         raise ValueError("New isolated pilot directory on reconstruction branch required")
@@ -139,6 +144,10 @@ def main():
     specs = [s for s in read_sources() if s["id"] == SOURCE]
     if a.window_budget_seconds is not None:
         specs = [dict(s, window_budget_seconds=a.window_budget_seconds) for s in specs]
+    if a.finish_remaining:
+        if len(specs) != 1 or specs[0]["id"] != SOURCE or specs[0]["module"] != "electroverse" or specs[0]["mode"] != "full":
+            raise ValueError("Unexpected Electroverse source for guarded full completion")
+        specs = [dict(specs[0], finish_remaining_chunks=True)]
     result = advance(out, specs=specs, chunk_count=chunks,
                      max_provider_windows=a.max_provider_windows)
     if os.environ.get("GITHUB_OUTPUT"):
