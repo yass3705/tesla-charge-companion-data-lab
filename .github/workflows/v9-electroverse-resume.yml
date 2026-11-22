@@ -29,6 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest tests.test_v9_tariff_chunk_pilot tests.test_v9_electroverse_resume -q
+          node --check scripts/electroverse_hybrid_refresh.mjs
           node --test tests/electroverse_failure_diagnostics.test.mjs
           python scripts/public_safety_check.py .
           python - <<'PY'
@@ -63,8 +64,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/14729002853/zip" > "$RUNNER_TEMP/confirmed-parent.zip"
-          echo "2e1c1b9c4a8feeb3049f99db8e4df9ef9a1a24cc890359d0ea2aa1bb1a42ecf7  $RUNNER_TEMP/confirmed-parent.zip" | sha256sum -c -
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/14730224631/zip" > "$RUNNER_TEMP/confirmed-parent.zip"
+          echo "92ffb6c827fdfe805518746aa0eba13730a8f26ef6254ef9b69e149de655e5c1  $RUNNER_TEMP/confirmed-parent.zip" | sha256sum -c -
           python scripts/verify_v9_electroverse_failed_parent.py --parent "$RUNNER_TEMP/confirmed-parent.zip" --failed "$RUNNER_TEMP/parent.zip"
       - name: Verify all retained files and unchanged original mapping
         if: (steps.parent.outputs.state == 'checkpoint' || steps.parent.outputs.state == 'recovered_failure')
@@ -90,10 +91,14 @@ jobs:
           ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
           PARENT_HEAD: ${{ steps.parent.outputs.head }}
           PARENT_RUN: ${{ steps.parent.outputs.run }}
+          ELECTROVERSE_BATCH_SIZE: '5'
+          ELECTROVERSE_CONCURRENCY: '1'
+          ELECTROVERSE_WAVE_PAUSE_MS: '3000'
+          ELECTROVERSE_FALLBACK_INTERVAL_MS: '3000'
         run: |
           set -euo pipefail
           PARENT_FILE_SHA="$(python -c 'import json,os; from pathlib import Path; print(json.loads((Path(os.environ["RUNNER_TEMP"])/"retained/checkpoint-manifest.json").read_text())["sha256"])')"
-          python scripts/pilot_v9_tariff_chunks.py --out "$RUNNER_TEMP/tcc-v9-electroverse-renewal" --incoming "$RUNNER_TEMP/retained" --expected-sha "$PARENT_FILE_SHA" --expected-head "$PARENT_HEAD" --expected-run "$PARENT_RUN" --window-budget-seconds 1800
+          python scripts/pilot_v9_tariff_chunks.py --out "$RUNNER_TEMP/tcc-v9-electroverse-renewal" --incoming "$RUNNER_TEMP/retained" --expected-sha "$PARENT_FILE_SHA" --expected-head "$PARENT_HEAD" --expected-run "$PARENT_RUN" --window-budget-seconds 300 --max-provider-windows 1
       - name: Retain partial checkpoint (never a Production input)
         if: steps.renewal.outcome == 'success' && steps.renewal.outputs.collection_state == 'checkpointed'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

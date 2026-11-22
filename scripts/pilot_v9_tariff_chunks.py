@@ -44,7 +44,8 @@ def restore_checkpoint(incoming, out, *, expected_sha, expected_head, expected_r
     shutil.copytree(state, out / "checkpoints/FR_electroverse_full")
 
 
-def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60, clock=time.monotonic):
+def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60, clock=time.monotonic,
+            max_provider_windows=None):
     # A new provider window needs 30 min, plus 5 min for artifact upload.
     reserve = 1800 + 300
     if budget_seconds < reserve:
@@ -56,7 +57,16 @@ def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60,
     if previous_completed != list(range(0, len(previous_completed) * CHUNK_SIZE, CHUNK_SIZE)):
         raise ValueError("Checkpoint chunk offsets are inconsistent")
     previous_cursor = None
+    completed_provider_windows = 0
+    if max_provider_windows is not None and max_provider_windows < 1:
+        raise ValueError("Maximum provider windows must be positive")
     while len(previous_completed) < chunk_count:
+        if max_provider_windows is not None and completed_provider_windows >= max_provider_windows:
+            if not (out / "checkpoint-manifest.json").is_file():
+                raise RuntimeError("No durable checkpoint for bounded provider stop")
+            validate_state(checkpoint, require_complete=False)
+            return {"status": "checkpointed", "reason": "pilot_provider_window_limit",
+                    "completeSnapshotValidated": False}
         if clock() - started > budget_seconds - reserve:
             if (out / "checkpoint-manifest.json").is_file():
                 validate_state(checkpoint, require_complete=False)
@@ -65,6 +75,7 @@ def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60,
             raise RuntimeError("Not enough time for first provider window")
         number = len(previous_completed)
         result = execute(specs, out, workers=1, attempts=1)
+        completed_provider_windows += 1
         if result.get("status") == "complete":
             return result
         validate_state(checkpoint, require_complete=False)
@@ -93,8 +104,10 @@ def advance(out, *, specs, chunk_count, execute=run_batch, budget_seconds=75*60,
         previous_cursor = cursor
         if (reason == "collector_window_budget" and state.get("mode") == "full"
                 and completed == previous_completed and pending is not None):
-            # Continue the same chunk in this job only if another complete
-            # bounded window fits before the archive/upload reserve.
+            # One audited diagnostic window per run until provider stability is demonstrated.
+            if max_provider_windows is not None and completed_provider_windows >= max_provider_windows:
+                return {"status": "checkpointed", "reason": "pilot_provider_window_limit",
+                        "completeSnapshotValidated": False}
             continue
         if (state.get("mode") != "full" or state.get("pending") is not None
                 or completed != [*previous_completed, number * CHUNK_SIZE]
@@ -112,6 +125,7 @@ def main():
     p.add_argument("--expected-head")
     p.add_argument("--expected-run", type=int)
     p.add_argument("--window-budget-seconds", type=int)
+    p.add_argument("--max-provider-windows", type=int)
     a = p.parse_args()
     out = a.out.resolve()
     if out.exists() or out == ROOT or ROOT in out.parents or os.environ.get("GITHUB_REF_NAME") != BRANCH:
@@ -125,7 +139,8 @@ def main():
     specs = [s for s in read_sources() if s["id"] == SOURCE]
     if a.window_budget_seconds is not None:
         specs = [dict(s, window_budget_seconds=a.window_budget_seconds) for s in specs]
-    result = advance(out, specs=specs, chunk_count=chunks)
+    result = advance(out, specs=specs, chunk_count=chunks,
+                     max_provider_windows=a.max_provider_windows)
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
             stream.write("collection_state=" + result["status"] + "\n")

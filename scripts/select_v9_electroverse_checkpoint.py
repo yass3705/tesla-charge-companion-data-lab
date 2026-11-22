@@ -18,10 +18,10 @@ COMPLETE = "tcc-v9-electroverse-complete"
 FAILURE = "tcc-v9-electroverse-failure"
 # No generic failed run is trusted. This one failed run was independently
 # compared with its parent across every mapped identity and shard.
-APPROVED_FAILURE_ID = 14730224631
-APPROVED_FAILURE_RUN = 44962339493
-APPROVED_FAILURE_HEAD = "5fffc5bbf931533d2b177d414484e9a9f6a78167"
-APPROVED_FAILURE_SHA = "92ffb6c827fdfe805518746aa0eba13730a8f26ef6254ef9b69e149de655e5c1"
+APPROVED_FAILURE_ID = 14734805610
+APPROVED_FAILURE_RUN = 44968499274
+APPROVED_FAILURE_HEAD = "1c8c6d1b377d266ab2f82b053326aeb5c3604b97"
+APPROVED_FAILURE_SHA = "60bbd578cc6a8193e5dbc6c3105bacc16407c06bd42f431bad2ae803f6099f01"
 
 
 def api(path):
