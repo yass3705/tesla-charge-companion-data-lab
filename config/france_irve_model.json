@@ -1,0 +1,43 @@
+{
+  "schema_version": "tcc.fr.irve.model.v1",
+  "country": "FR",
+  "inventory": {
+    "primary": "irve_static_national",
+    "exclude_cpos": ["tesla"],
+    "canonical_level": "pdc"
+  },
+  "status": {
+    "values": ["en_service", "hors_service", "inconnu"],
+    "ignore_occupation": true,
+    "priority": [
+      "operator_direct",
+      "irve_dynamic_national",
+      "inconnu"
+    ],
+    "notes": "IRVE dynamic is optional fallback only. Electroverse and Electra must not be used as status sources."
+  },
+  "tariffs": {
+    "parallel_offers": [
+      "operator_direct",
+      "operator_subscription",
+      "electroverse",
+      "electra"
+    ],
+    "fallback": "irve_static_tarification",
+    "fallback_policy": "use_only_when_no_structured_offer_and_parse_is_unambiguous",
+    "text_only_policy": "display_only_never_rank"
+  },
+  "matching": {
+    "priority": [
+      "id_pdc_itinerance",
+      "id_pdc_local",
+      "id_station_itinerance",
+      "id_station_local",
+      "geo_name_fallback"
+    ]
+  },
+  "publication": {
+    "mode": "parallel_until_validated",
+    "production_v8_unchanged": true
+  }
+}
