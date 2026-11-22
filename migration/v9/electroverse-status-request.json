@@ -10,8 +10,8 @@
   "budgetSeconds": 18000,
   "automaticPublication": false,
   "providerRetries": 3,
-  "operation": "offline_verify_lightweight_segment_delta_roundtrip_and_sha",
-  "reason": "Offline-only QA for restart-safe Electroverse status workflow after runner communication loss. Each of 16 sweep and up to 16 recovery bounded steps stages an authenticated checkpoint and uploads a tiny status-only delta artifact containing all updated partitions, report, provenance and hashes. Rehydration MUST reconstruct the exact canonical SHA-validated full checkpoint from the complete immutable tariff parent, reject tampering and never promote partial snapshots. Preserve original 3984 good / 31 deferred errors from status artifact 14770651817 and supplierCalls=0; no live collector authorization.",
+  "operation": "offline_verify_status_delta_full_restore_path_fix",
+  "reason": "Re-run offline after correcting delta export path to read source members from canonical checkpoints/FR_electroverse_status. Validate per-partition durable uploads, recovery from failed run artifacts, complete SHA-inventory matching, exact full-checkpoint reconstruction and rejection of tampering. Supplier calls forbidden; source checkpoint 14770651817 retains 3984 verified and 31 errors.",
   "previousOfflineAttempt": 45045047597,
   "verifiedOfflineRun": 45065751191,
   "checkpointRun": 45058177243,
@@ -32,5 +32,6 @@
   "deferredRecoveryPasses": 1,
   "continueOnIndividualErrors": true,
   "status429BudgetScope": "station_pk",
-  "status429MaxSecondsPerStation": 480
+  "status429MaxSecondsPerStation": 480,
+  "checkpointKind": "full"
 }
