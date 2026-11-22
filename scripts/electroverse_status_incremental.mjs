@@ -46,7 +46,7 @@ let rateLimit=null;
 let requests=0,pages=0;
 let saveCheckpointOn429=async()=>{};
 const rateLimitRecovery=createStatus429Recovery({
- maxTotalWaitSeconds:Number(process.env.ELECTROVERSE_STATUS_429_BUDGET_SECONDS ?? '480'),
+ maxSecondsPerStation:Number(process.env.ELECTROVERSE_STATUS_429_MAX_SECONDS_PER_STATION ?? '480'),
  send:async(query,variables,options)=>{
   // Count the actual provider HTTP requests, INCLUDING in-process 429 retries.
   requests++;
@@ -59,7 +59,7 @@ const rateLimitRecovery=createStatus429Recovery({
   console.log(JSON.stringify(event));
  },
 });
-const protectedRequest=(query,variables,phase)=>rateLimitRecovery.request(query,variables,phase);
+const protectedRequest=(query,variables,phase,stationIds)=>rateLimitRecovery.request(query,variables,phase,stationIds);
 const queryOne='query StatusOne($pk:String!,$after:String,$first:Int!){chargingLocation(pk:$pk){chargingLocationPk evses(first:$first,after:$after){edges{node{pk status}} pageInfo{hasNextPage endCursor}}}}';
 const queryBatch=ids=>'query Batch { '+ids.map((pk,i)=>'s'+i+':chargingLocation(pk:'+JSON.stringify(pk)+'){evses(first:10){edges{node{pk status}}pageInfo{hasNextPage endCursor}}}').join(' ')+' }';
 const normalized=loc=>(loc?.evses?.edges||[]).map(e=>e?.node).filter(x=>x?.pk!=null).map(e=>[String(e.pk),String(e.status||'UNKNOWN').toUpperCase()]);
@@ -71,7 +71,7 @@ async function fullPage(pk,first){
   if(!cursor||cursor===last)throw Error('pagination_stalled');
   last=cursor;
   pages++;
-  const r=await protectedRequest(queryOne,{pk,after:cursor,first:10},'status_page');
+  const r=await protectedRequest(queryOne,{pk,after:cursor,first:10},'status_page',[pk]);
   const x=r.json?.data?.chargingLocation;
   if(r.status!==200||!x?.evses)throw Error('page_failed:'+r.status);
   rows.push(...normalized(x));pi=x.evses.pageInfo||{};hasMore=pi.hasNextPage===true;cursor=pi.endCursor;
@@ -87,7 +87,7 @@ async function fullPage(pk,first){
 }
 async function one(pk){
  for(let attempt=1;attempt<=attempts;attempt++){
-  const r=await protectedRequest(queryOne,{pk,after:null,first:10},'status_single');
+  const r=await protectedRequest(queryOne,{pk,after:null,first:10},'status_single',[pk]);
   const loc=r.json?.data?.chargingLocation;
   if(loc?.evses){
    try{return{ok:true,statuses:await fullPage(pk,loc)}}catch(e){
@@ -130,7 +130,7 @@ const todo=expected.filter(pk=>!(pk in entries)&&(!deferFailed||!(pk in bad)));
   const group=todo.slice(cursor,cursor+2);cursor+=group.length;
   // Only two aliases per request. Broken aliases retry individually, never discard valid neighbors.
   batchRequests++;
-  const response=await protectedRequest(queryBatch(group),{},'status_batch');
+  const response=await protectedRequest(queryBatch(group),{},'status_batch',group);
   for(let n=0;n<group.length;n++){
    const pk=group[n];
    let outcome={ok:false,error:'batch_unavailable'};
@@ -141,6 +141,8 @@ const todo=expected.filter(pk=>!(pk in entries)&&(!deferFailed||!(pk in bad)));
    if(!outcome.ok){aliasesFallback++;outcome=await one(pk)}
    if(outcome.ok){
     entries[pk]=outcome.statuses;delete bad[pk];successful++;
+    // The station is complete; its 429 allowance must not affect any other PK.
+    rateLimitRecovery.completeStations([pk]);
    }else{
     const prior=bad[pk]?.attempts||0;
     bad[pk]={attempts:prior+1,error:outcome.error,at:new Date().toISOString()};
