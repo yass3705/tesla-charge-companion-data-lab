@@ -87,6 +87,59 @@ class TariffChunkPilotTests(unittest.TestCase):
             self.assertEqual(result["status"],"complete")
             self.assertEqual(len(calls),2)
 
+    def test_complete_remaining_can_checkpoint_after_crossing_a_chunk(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
+            out=Path(tmp);calls=[]
+            state=out / "checkpoints/FR_electroverse_full"
+            fixture(state,["a","b"])
+            save(state / "v9-electroverse-checkpoint.json",
+                 {"mode":"full","completed":[0,6000],"pending":{"offset":12000,"pks":["a","b"]}})
+            def execute(specs, folder, **kwargs):
+                calls.append(1)
+                save(state / "v9-electroverse-checkpoint.json",
+                     {"mode":"full","completed":[0,6000,12000],"pending":{"offset":18000,"pks":["b"]}})
+                return {"status":"partial_failure","sources":[{"reason":"collector_window_budget"}]}
+            result=advance(out,specs=[{"finish_remaining_chunks":True}],chunk_count=4,
+                           execute=execute,max_provider_windows=1)
+            self.assertEqual(result["status"],"checkpointed")
+            self.assertEqual(len(calls),1)
+            self.assertTrue((out / "checkpoint-manifest.json").is_file())
+
+    def test_complete_remaining_stops_first_failure_after_chunk_crossing(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
+            out=Path(tmp);calls=[]
+            state=out / "checkpoints/FR_electroverse_full"
+            fixture(state,["a","b"])
+            save(state / "v9-electroverse-checkpoint.json",
+                 {"mode":"full","completed":[0,6000],"pending":{"offset":12000,"pks":["a","b"]}})
+            def execute(specs, folder, **kwargs):
+                calls.append(1)
+                save(state / "v9-electroverse-checkpoint.json",
+                     {"mode":"full","completed":[0,6000,12000],"pending":{"offset":18000,"pks":["b"]}})
+                return {"status":"partial_failure","sources":[{"reason":"collector_exit_nonzero"}]}
+            with self.assertRaisesRegex(RuntimeError,"no automatic provider retry"):
+                advance(out,specs=[{"finish_remaining_chunks":True}],chunk_count=4,
+                        execute=execute,max_provider_windows=1)
+            self.assertEqual(len(calls),1)
+            self.assertTrue((out / "checkpoint-manifest.json").is_file())
+
+    def test_complete_remaining_rejects_cursor_regression(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
+            out=Path(tmp);calls=[]
+            state=out / "checkpoints/FR_electroverse_full"
+            fixture(state,["a","b"])
+            save(state / "v9-electroverse-checkpoint.json",
+                 {"mode":"full","completed":[0,6000],"pending":{"offset":12000,"pks":["a","b"]}})
+            def execute(specs, folder, **kwargs):
+                calls.append(1)
+                save(state / "v9-electroverse-checkpoint.json",
+                     {"mode":"full","completed":[0],"pending":{"offset":6000,"pks":["a"]}})
+                return {"status":"partial_failure","sources":[{"reason":"collector_window_budget"}]}
+            with self.assertRaisesRegex(RuntimeError,"lost its verified chunk lineage"):
+                advance(out,specs=[{"finish_remaining_chunks":True}],chunk_count=4,
+                        execute=execute,max_provider_windows=1)
+            self.assertEqual(len(calls),1)
+
     def test_no_progress_between_windows_fails_closed(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
             out=Path(tmp)
