@@ -100,5 +100,22 @@ class TariffChunkPilotTests(unittest.TestCase):
                 advance(out,specs=[],chunk_count=1,execute=execute,clock=lambda:0)
 
 
+    def test_one_provider_window_is_persisted_without_second_invocation(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, GITHUB_SHA="a"*40, GITHUB_RUN_ID="1"):
+            out=Path(tmp);calls=[]
+            def execute(specs, folder, **kwargs):
+                calls.append(1)
+                state=folder / "checkpoints/FR_electroverse_full"
+                fixture(state,["a","b"])
+                save(state / "v9-electroverse-checkpoint.json",
+                     {"mode":"full","completed":[],"pending":{"offset":0,"pks":["b"]}})
+                return {"status":"partial_failure","sources":[{"reason":"collector_window_budget"}]}
+            result=advance(out,specs=[],chunk_count=1,execute=execute,max_provider_windows=1)
+            self.assertEqual(result["status"],"checkpointed")
+            self.assertEqual(result["reason"],"pilot_provider_window_limit")
+            self.assertFalse(result["completeSnapshotValidated"])
+            self.assertEqual(len(calls),1)
+            self.assertTrue((out / "checkpoint-manifest.json").is_file())
+
 if __name__ == "__main__":
     unittest.main()
