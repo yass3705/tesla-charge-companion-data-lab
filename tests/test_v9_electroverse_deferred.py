@@ -49,6 +49,7 @@ class DeferredSweepTests(unittest.TestCase):
         self.stop_partition = None
         self.recovery_succeeds = True
         self.fake_wait_by_partition = {}
+        self.test_budget_handoff = False
 
     def mock_run(self, work: Path, *, source: Path, partition: int) -> None:
         phase = "recovery" if os.environ.get("ELECTROVERSE_STATUS_RECOVERY_ONLY") == "1" else "sweep"
@@ -61,6 +62,13 @@ class DeferredSweepTests(unittest.TestCase):
         else:
             assert os.environ["ELECTROVERSE_STATUS_DEFER_FAILED"] == "0"
         prior = json.loads(part_path(work, partition).read_text()) if part_path(work, partition).exists() else None
+        if partition == 0 and self.test_budget_handoff:
+            if phase == "sweep":
+                self.assertNotIn("station429WaitSeconds", prior,
+                                 "A fresh authorized run must reset the prior run budget")
+            else:
+                self.assertEqual(prior.get("station429WaitSeconds"), {"A": 60},
+                                 "Same-run deferred retry must retain the sweep budget")
         if partition == 0:
             if phase == "recovery" and self.recovery_succeeds:
                 data = part(0, self.fingerprint, {"A": {"EVSE-A": "AVAILABLE"}},
@@ -72,6 +80,8 @@ class DeferredSweepTests(unittest.TestCase):
                 }, started=prior["startedAt"], expected=1)
         else:
             data = part(partition, self.fingerprint, {}, expected=0)
+        if partition == 0 and phase == "sweep" and self.test_budget_handoff:
+            data["station429WaitSeconds"] = {"A": 60}
         write(part_path(work, partition), data)
         limit = None
         if partition == self.stop_partition:
@@ -152,6 +162,17 @@ class DeferredSweepTests(unittest.TestCase):
         self.execute()
         self.assertEqual(self.seen, [("sweep", i) for i in range(16)] + [("recovery", 0)])
         self.assertEqual(self.outcome[0][0], "complete")
+
+    def test_station_counter_resets_between_runs_but_persists_for_same_run_recovery(self):
+        existing = json.loads(part_path(self.checkpoint, 0).read_text())
+        existing["station429WaitSeconds"] = {"A": 480}
+        write(part_path(self.checkpoint, 0), existing)
+        self.initial_partial = validate_partial(self.checkpoint)
+        self.test_budget_handoff = True
+        self.execute()
+        self.assertEqual(self.outcome[0][0], "complete")
+        self.assertEqual(self.seen, [("sweep", i) for i in range(16)] +
+                         [("recovery", 0)])
 
     def test_report_can_refer_to_recovery_partition_not_the_last_partition(self):
         snapshot = {"fingerprint": self.fingerprint, "verified_locations": 1,
