@@ -237,6 +237,11 @@ class SegmentedStatusTests(unittest.TestCase):
                 self.assertIn(f"tcc-v9-electroverse-status-stage-{phase}-{idx}", workflow)
         self.assertEqual(workflow.count("/tcc-v9-status-census/stage-delta/"), 32)
         self.assertIn("if-no-files-found: error", workflow)
+        self.assertIn("checkpointKind", workflow)
+        self.assertIn("segmented_delta", workflow)
+        self.assertIn("Reconstruct and validate immutable segmented checkpoint", workflow)
+        self.assertIn("run.get('conclusion') in ('success','failure','cancelled','timed_out')", workflow)
+        self.assertIn("status-checkpoint-canonical", workflow)
         self.assertIn("steps.status_finish.outputs.collection_state == 'complete'", workflow)
 
 
