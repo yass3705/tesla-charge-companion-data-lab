@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "researchedAt": "2026-09-07",
+  "cpos": [
+    {
+      "canonicalOperator": "Mainzer Stadtwerke AG",
+      "aliases": ["Mainzer Stadtwerke", "Mainzer Energie"],
+      "status": "partial",
+      "prefixResolution": {
+        "prefix": "DE*ISE",
+        "authority": "shared platform prefix",
+        "confidence": "high for sampled physical EVSEs, not exclusive to operator"
+      },
+      "evidence": [
+        {
+          "type": "official",
+          "url": "https://www.mainzerenergie.de/elektromobilitaet/ladestationen-elektroauto",
+          "finding": "Official site states ad-hoc/direct payment is available via ePowerDirect/eCharge+ using credit card or PayPal, and explicitly says ad-hoc price can vary from station to station and is shown only after selecting the charge point. No Mainzer Stadtwerke autostrom tariff is offered for public stations."
+        },
+        {
+          "type": "official",
+          "url": "https://www.mainzer-stadtwerke.de/aktuelles/aktuelle-meldungen/2025/03/ladepunkte-e-autos",
+          "finding": "Mainzer Stadtwerke confirms operation of more than 164 charge points in the region and QR-code ad-hoc access without a contract."
+        },
+        {
+          "type": "bnetza-derived",
+          "url": "https://www.chargemyride.live/betreiber/mainzer-stadtwerke-ag",
+          "finding": "BNetzA-derived operator snapshot (28.07.2026) lists about 95 charging facilities / 182 charge points for Mainzer Stadtwerke AG."
+        },
+        {
+          "type": "station-level discovery",
+          "url": "https://www.e-stations.de/ladestationen/mainz/ladestation-24882",
+          "finding": "A current station attributed to Mainzer Stadtwerke AG at Rheinallee 41 exposes EVSE DE*ISE*E0005257, confirming that this physical operator uses the shared DE*ISE namespace on at least part of its estate."
+        },
+        {
+          "type": "station-level discovery",
+          "url": "https://adhocladen.de/betreiber/mainzer-stadtwerke-ag/",
+          "finding": "Current station-level observations show 0.63 EUR/kWh on many AC sites and 0.80 EUR/kWh on some DC sites, but these are discovery evidence only and cannot override the official statement that direct prices vary by station."
+        }
+      ],
+      "reason": "Official current information explicitly makes the ad-hoc price station-dependent. Sampled DE*ISE EVSEs and station-level current prices exist, but DE*ISE is already known to be a shared technical prefix used by multiple physical operators. No Mainzer-wide or DE*ISE-wide fallback is safe.",
+      "neededToComplete": "Resolve each Mainzer Stadtwerke physical EVSE to the public ePowerDirect/eCharge+ checkout and capture the exact current price plus any session/time/blocking component per EVSE; keep DE*ISE fail-closed by physical operator."
+    },
+    {
+      "canonicalOperator": "Erneuerbare für Marburg-Biedenkopf GmbH & Co. KG",
+      "aliases": ["EfMB", "Stadtwerke Marburg", "Stadtwerke Marburg GmbH"],
+      "status": "partial",
+      "prefixResolution": {
+        "prefix": null,
+        "authority": "not established",
+        "confidence": "none"
+      },
+      "evidence": [
+        {
+          "type": "official",
+          "url": "https://www.stadtwerke-marburg.de/verkehr/erdgas-und-elektrotankstellen/",
+          "finding": "Official current page states that since 01.01.2024 all public charging stations in Landkreis Marburg-Biedenkopf are operated through the 100%-owned subsidiary Erneuerbare für Marburg-Biedenkopf GmbH & Co. KG; ad-hoc activation remains supported and the page links the price sheet."
+        },
+        {
+          "type": "official",
+          "url": "https://www.stadtwerke-marburg.de/fileadmin/user_upload/Seiteninhalte/Erdgas-_und_Elektromobilit%C3%A4t/Preisblatt_E-Lades%C3%A4ulen.pdf",
+          "finding": "The official price sheet currently linked by the operator is dated valid from 01.01.2025 and states ad-hoc 0.45 EUR/kWh, 1.00 EUR start fee, and 0.05 EUR/min blocking fee between 08:00-18:00 starting 60 minutes after charging ends."
+        },
+        {
+          "type": "official",
+          "url": "https://www.stadtwerke-marburg.de/fileadmin/user_upload/Seiteninhalte/Service/Service_Magazin/2026/Service_Magazin_01-2026__web_.pdf",
+          "finding": "January 2026 official magazine states EfMB operates 51 public stations / 102 charge points in Marburg and 80 stations / 160 charge points across the district, confirming the subsidiary as the current physical operating identity."
+        },
+        {
+          "type": "bnetza-derived",
+          "url": "https://www.chargemyride.live/region/landkreis-marburg-biedenkopf",
+          "finding": "BNetzA-derived snapshot as of 28.07.2026 lists EfMB as the district's largest operator with 93 charging facilities."
+        },
+        {
+          "type": "station-level discovery",
+          "url": "https://www.ladeguru.de/ladestation/stadtwerke-marburg/35037-marburg/41928",
+          "finding": "Current third-party station observation shows 0.50 EUR/kWh plus 1.00 EUR start fee and 0.05 EUR/min blocking fee, conflicting with the still-linked official 2025 energy price of 0.45 EUR/kWh."
+        }
+      ],
+      "reason": "The current official site still links a 2025 price sheet while current station-level observations show a higher energy price. This creates a freshness conflict that prevents safely treating 0.45 or 0.50 EUR/kWh as the 2026 network-wide direct price. The current eMI3 prefix is also not authoritatively established from available BNetzA-derived records.",
+      "neededToComplete": "Obtain a current 2026 official price sheet or public ad-hoc checkout payload from EfMB/Stadtwerke Marburg, then map the exact tariff and eMI3 EVSE IDs to the 2026 BNetzA station inventory."
+    }
+  ],
+  "guardrails": [
+    "No third-party current observation is promoted over an official tariff without resolving the freshness conflict.",
+    "No DE*ISE-wide price is created because the prefix is shared by multiple physical operators.",
+    "No Marburg eMI3 prefix is invented in the absence of authoritative mapping."
+  ]
+}

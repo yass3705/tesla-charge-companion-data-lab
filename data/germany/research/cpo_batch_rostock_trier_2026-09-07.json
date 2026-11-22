@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "researchedAt": "2026-09-07",
+  "cpos": [
+    {
+      "canonicalName": "Stadtwerke Rostock AG",
+      "aliases": ["Stadtwerke Rostock", "SWR AG"],
+      "emi3Prefix": "DE*HRO",
+      "status": "partial",
+      "classificationReason": "Exact current guest/direct AC pricing is verifiable at multiple operator-backed m8mit EVSEs, but no equally authoritative current DC guest matrix was found; contract tariff is a separate channel and is not generalized.",
+      "verifiedDirectEvidence": {
+        "channel": "m8mit Direct Pay / guest tariff",
+        "ac": {
+          "energyEurPerKwh": 0.49,
+          "sessionFeeEur": 1.49,
+          "blockingEurPerMin": 0.10,
+          "blockingAfterMinutes": 240,
+          "blockingCapEur": 12.00
+        },
+        "sampleEvseIds": ["DE*HRO*E4214*02", "DE*HRO*E4236*02", "DE*HRO*E4258*02"]
+      },
+      "separateContractEvidence": {
+        "product": "OSTSEE-STROM MOBIL",
+        "monthlyFeeEur": 4.99,
+        "acEurPerKwh": 0.38,
+        "dcEurPerKwh": 0.48,
+        "note": "Official contract/customer tariff; not used as ad-hoc fallback."
+      },
+      "sources": [
+        "https://www.swrag.de/geschaeftskunden/oekomobilitaet/ostsee-strom-mobil",
+        "https://www.m8mit.de/station/hro/DE%2AHRO%2AE4214%2A02",
+        "https://www.m8mit.de/station/hro/DE%2AHRO%2AE4236%2A02",
+        "https://www.m8mit.de/station/hro/DE%2AHRO%2AE4258%2A02"
+      ],
+      "deferUntilAfterFirstTraversal": true,
+      "unblockNeed": "Authoritative current DC Direct-Pay/guest price for DE*HRO EVSEs, including any start/blocking fees."
+    },
+    {
+      "canonicalName": "SWT Stadtwerke Trier / SWT-AöR",
+      "aliases": ["Stadtwerke Trier", "SWT", "SWT-AöR Betreiber"],
+      "emi3Prefix": null,
+      "status": "partial",
+      "classificationReason": "Current network identity and many SWT-AöR stations are verifiable, and current SWT customer/roaming tariff evidence exists, but a universal authoritative ad-hoc/direct-payment tariff and authoritative eMI3 prefix were not found. No ladenetz or third-party value is generalized to SWT-owned stations.",
+      "verifiedOperatorEvidence": {
+        "network": "SWT-AöR",
+        "stationCountDiscovery": 96,
+        "note": "Station/network discovery only; not a tariff authority."
+      },
+      "currentTariffDiscovery": {
+        "standardTariffOwnNetworkAcEurPerKwh": 0.39,
+        "standardTariffOwnNetworkDcEurPerKwh": 0.59,
+        "blockingAcEurPerMin": 0.10,
+        "blockingAcAfterMinutes": 240,
+        "blockingDcEurPerMin": 0.10,
+        "blockingDcAfterMinutes": 60,
+        "note": "Contract/card tariff discovery; not used as direct-payment fallback."
+      },
+      "sources": [
+        "https://swt.test9.rdts.de/seite/id/9",
+        "https://chargesurfer.de/tarife/swt-standard-tarif",
+        "https://ladestatistik.de/trier"
+      ],
+      "deferUntilAfterFirstTraversal": true,
+      "unblockNeed": "Official/current direct-payment or QR checkout evidence per SWT-AöR EVSE plus authoritative eMI3 mapping."
+    }
+  ],
+  "guardrails": {
+    "prefixWideTariffExtrapolation": false,
+    "contractTariffUsedAsAdHoc": false,
+    "thirdPartyTariffUsedAsCanonical": false,
+    "previouslyDeferredCpoReaudited": false
+  }
+}

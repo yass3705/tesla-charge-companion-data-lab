@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-06",
+  "policy": "fail-closed; exact ad-hoc station/EVSE tariff only; subscription, roaming, historical or sampled prices are not generalized",
+  "cpos": [
+    {
+      "prefix": "DEDEP",
+      "alias": "NürnbergMesse GmbH / Ativo-backed ad-hoc",
+      "representedEvses": 184,
+      "representedSites": 2,
+      "status": "partial",
+      "reason": "NürnbergMesse officially documents more than 200 charging points and confirms ad-hoc activation by QR/NFC/web address through the Ativo backend, where the applicable tariff is displayed. The public current page does not expose the current numeric Ativo tariff. A 2022 NürnbergMesse PDF gave 0.3125 EUR/kWh + 1.25 EUR start fee, but it is historical and is not promoted to 2026.",
+      "neededToComplete": "Resolve the current Ativo public checkout payload for each canonical DEDEP EVSE and capture its displayed tariff; verify whether both canonical sites share the same current contract.",
+      "sources": ["https://www.nuernbergmesse.de/de-de/location-services/anreise-aufenthalt/emobilitaet", "https://www.nuernbergmesse.de/sites/default/files/documents/2022-03/Infoblatt-Strom-Tankstellen-DEU-04.22.pdf"]
+    },
+    {
+      "prefix": "DECCH",
+      "alias": "Comfortcharge GmbH",
+      "representedEvses": 182,
+      "representedSites": 69,
+      "status": "partial",
+      "reason": "Current station-level/AFIR-derived discovery data reports 0.53 EUR/kWh AC and 0.74 EUR/kWh HPC for Comfortcharge, but only 11.3% price coverage is reported and no primary exhaustive Comfortcharge tariff contract was found. These sampled values therefore cannot be generalized.",
+      "neededToComplete": "Enumerate DECCH EVSEs through AFIR/Mobilithek or public direct-payment payloads and attach exact per-EVSE prices, including blocking components; alternatively obtain a current primary Comfortcharge ad-hoc tariff proving network-wide scope.",
+      "sources": ["https://ladestatistik.de/betreiber/comfortcharge-gmbh"]
+    },
+    {
+      "prefix": "DEEWV",
+      "alias": "EWV Energie- und Wasser-Versorgung GmbH",
+      "representedEvses": 182,
+      "representedSites": 80,
+      "status": "partial",
+      "reason": "EWV officially confirms public ad-hoc charging by QR code at its stations. Its published card tariffs are 0.54 EUR/kWh AC and 0.69 EUR/kWh DC for the BASIS product, with 0.05 EUR/min from minute 241 AC / 91 DC during 09:00-21:00 capped at 20 EUR, but those values are explicitly EWV LADEKARTE product prices and are not assumed to equal ad-hoc QR pricing.",
+      "neededToComplete": "Capture the current QR/direct-payment tariff shown for canonical DEEWV EVSEs and prove whether it is homogeneous; keep EWV card/subscription prices separate.",
+      "sources": ["https://www.ewv.de/privatkunden/produkte-angebote/e-mobilitaet/laden-in-der-region", "https://www.ewv.de/emob"]
+    },
+    {
+      "prefix": "DEALN",
+      "alias": "ALDI Nord Deutschland Stiftung & Co. KG",
+      "representedEvses": 179,
+      "representedSites": 90,
+      "status": "partial",
+      "reason": "Current direct-payment observations for ALDI Nord are not uniform enough to infer a network rule from branding alone: a verified 150 kW site in Herbern is 0.44 EUR/kWh while a ladenetz-associated ALDI Nord site in Reinbek is 0.62 EUR/kWh. No current ALDI Nord primary page establishing one exhaustive national ad-hoc tariff matrix was found. Third-party claims resembling ALDI Süd's 0.29/0.44/0.47 matrix are not treated as authoritative for ALDI Nord.",
+      "neededToComplete": "Resolve each DEALN EVSE/site to its actual charging backend/operator and capture the public QR/card tariff, or obtain a current ALDI Nord primary tariff policy explicitly covering the canonical network.",
+      "sources": ["https://www.goingelectric.de/stromtankstellen/Deutschland/Herbern/ALDI-Nord-Muensterstrasse-29/107397/", "https://adhocladen.de/reinbek/ladenetz-aldi-nord-am-ladenzentrum/"]
+    }
+  ]
+}

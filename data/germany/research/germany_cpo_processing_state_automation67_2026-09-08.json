@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "updatedAt": "2026-09-08T07:52:00+01:00",
+  "frozenOperationalDenominator": 591,
+  "forwardFirstPass": {
+    "processed": 70,
+    "complete": 15,
+    "partialDeferred": 55,
+    "blocked": 0,
+    "remaining": 521,
+    "certified": true
+  },
+  "thisRun": {
+    "newFirstPasses": 3,
+    "complete": 3,
+    "partialDeferred": 0,
+    "blocked": 0,
+    "names": ["WEMAG AG", "SWE Energie GmbH", "Stadtwerke Schwerin GmbH (SWS)"],
+    "evidencePath": "data/germany/research/cpo_batch_wemag_erfurt_schwerin_2026-09-08.json"
+  },
+  "consistency": {
+    "reAuditedDeferredCpos": 0,
+    "duplicateAliasFindings": 0,
+    "identicalInvestigationOverTwoRuns": 0,
+    "prefixWideTariffExtrapolations": 0,
+    "counterArithmetic": "70 = 15 complete + 55 partial/deferred + 0 blocked; 591 - 70 = 521",
+    "denominatorCheck": "591 retained as frozen operational denominator; legacy 568 remains reference-only.",
+    "activePr": "yass3705/tesla-charge-companion-data-lab PR #73, branch feature/germany-national-base",
+    "stateDebt": {
+      "detected": true,
+      "issue": "A single cumulative nominative ledger containing every first-pass identity/classification since denominator freeze is still not reconstructed.",
+      "safeHandling": "Do not alter certified counters. Continue forward first passes while reconstructing names only from committed batch/checkpoint evidence; never infer identities from totals.",
+      "impact": "Forward counters and per-run nominative evidence are certified; cumulative nominative completeness remains pending."
+    },
+    "notes": [
+      "WEMAG: official current page publishes network-scoped ad-hoc AC 0.69 EUR/kWh, DC 0.79 EUR/kWh, zero start fee and zero blocking fee.",
+      "SWE Energie Erfurt: official consumer matrix valid from 2026-03-01 gives without-contract AC 0.54 EUR/kWh, DC 0.64 EUR/kWh and 0.10 EUR/min blocking fee after 240 minutes, 08:00-20:00, max 24 EUR/day.",
+      "Stadtwerke Schwerin: official site gives direct m8mit 0.702 EUR/kWh gross and 0.10 EUR/min after 4 h, max 12 EUR; BNetzA-derived current inventory matches the four documented public DC points.",
+      "No unverified eMI3 prefix was created for WEMAG or SWE Energie."
+    ]
+  },
+  "nextPolicy": "Continue only with identities absent from active PR first-pass evidence; prioritize official direct-payment/QR surfaces and BNetzA/AFIR station-scope validation. Continue cumulative ledger reconstruction strictly from committed evidence without changing the frozen denominator."
+}

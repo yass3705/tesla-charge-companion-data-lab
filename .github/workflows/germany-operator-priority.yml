@@ -1,0 +1,51 @@
+name: Germany CPO integration priority
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_operator_priority.py'
+      - '.github/workflows/germany-operator-priority.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  rank:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore latest staged national catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/germany
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-national-non-tesla-catalog-staging&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/germany-catalog.zip
+          unzip -q /tmp/germany-catalog.zip -d data/germany
+          test -s data/germany/germany_non_tesla_catalog_staging_tariff_classified.json.gz
+      - name: Rank operators
+        run: python scripts/germany_operator_priority.py
+      - name: Validate priority report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/operator_priority.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-cpo-integration-priority'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          assert len(d['topOperators']) >= 50
+          assert d['topOperators'][0]['sites'] > 1000
+          print('TCC_GERMANY_OPERATOR_PRIORITY_VALIDATED='+json.dumps(d['topOperators'][:20],ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-cpo-integration-priority
+          path: data/germany/operator_priority.json
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,59 @@
+name: Germany AFIR open static normalize
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["feature/germany-national-base"]
+    paths:
+      - "scripts/germany_afir_static_normalize.py"
+      - ".github/workflows/germany-afir-open-static-normalize.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: germany-afir-open-static-normalize
+  cancel-in-progress: true
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Normalize public anonymous AFIR static feeds
+        run: python scripts/germany_afir_static_normalize.py
+
+      - name: Validate staged artifact
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          path=Path('data/germany/afir_open_static_normalized.json.gz')
+          assert path.is_file()
+          with gzip.open(path,'rt',encoding='utf-8') as f:
+              p=json.load(f)
+          s=p['stats']
+          assert p['dataset']=='germany-afir-open-static-normalized'
+          assert p['scope']['stagedOnly'] is True
+          assert p['scope']['dynamicStatusIncluded'] is False
+          assert p['scope']['tariffsRankable'] is False
+          assert 14000 <= s['sites'] <= 17000, s
+          assert 40000 <= s['chargePoints'] <= 55000, s
+          assert s['sitesWithCoordinates'] >= int(s['sites']*.98), s
+          assert s['sitesWithOperator'] >= int(s['sites']*.95), s
+          assert s['uniqueEvseIds'] >= 20000, s
+          assert s['duplicateEvseIdsAcrossSites'] < 500, s
+          print('TCC_AFIR_VALIDATED=' + json.dumps(s,ensure_ascii=False,sort_keys=True))
+          for feed in p['feeds']:
+              print('TCC_AFIR_VALIDATED_FEED=' + json.dumps({'provider':feed['provider'],**feed['stats']},ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Upload normalized AFIR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: germany-afir-open-static-${{ github.run_id }}
+          path: data/germany/afir_open_static_normalized.json.gz
+          if-no-files-found: error
+          retention-days: 7

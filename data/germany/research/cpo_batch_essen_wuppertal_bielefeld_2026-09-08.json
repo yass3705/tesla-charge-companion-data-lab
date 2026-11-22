@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "researchedAt": "2026-09-08",
+  "cpos": [
+    {
+      "operator": "Stadtwerke Essen AG",
+      "aliases": ["Stadtwerke Essen", "SWE Essen"],
+      "classification": "partial",
+      "deferAfterFirstPass": true,
+      "evidence": [
+        {
+          "type": "station-level-current",
+          "source": "Ladeguru",
+          "url": "https://www.ladeguru.de/ladestation/stadtwerke-essen-ag/45355-essen/13762",
+          "observed": "Huelsmannstrasse 92, Essen: direct card payment without contract at 0.61 EUR/kWh on both 11 kW AC points."
+        },
+        {
+          "type": "station-level-current",
+          "source": "Ladeguru",
+          "url": "https://www.ladeguru.de/ladestation/stadtwerke-essen-ag/45357-essen/32309",
+          "observed": "Bergheimer Strasse 120, Essen: direct card payment without contract at 0.61 EUR/kWh on both 11 kW AC points."
+        }
+      ],
+      "conclusion": "Multiple current station-level observations support 0.61 EUR/kWh direct card payment on sampled Stadtwerke Essen AC sites, but no current primary operator-wide direct-price contract or exhaustive EVSE matrix was found. Keep station-scoped only; do not generalize 0.61 EUR/kWh to the entire CPO."
+    },
+    {
+      "operator": "WSW Wuppertaler Stadtwerke GmbH",
+      "aliases": ["Wuppertaler Stadtwerke", "WSW", "WSW Energie & Wasser AG", "WSW eMobil"],
+      "classification": "partial",
+      "deferAfterFirstPass": true,
+      "evidence": [
+        {
+          "type": "current-operator-announcement-reported",
+          "source": "Wuppertaler Rundschau citing WSW",
+          "url": "https://www.wuppertaler-rundschau.de/lokales/geringerer-preis-an-den-e-ladesaeulen-der-wsw_aid-140020115",
+          "observed": "From 2026-01-01 WSW own-network card tariff: 0.35 EUR/kWh AC, 0.299 EUR/kWh AC when session starts 21:00-06:00, and 0.49 EUR/kWh at the two WSW fast-charging stations. The report explicitly says these reductions apply only to WSW eMobil card holders; it separately notes ad-hoc app users at WSW fast chargers already receive the reduced fast price."
+        },
+        {
+          "type": "current-secondary-detail",
+          "source": "electrive.net",
+          "url": "https://www.electrive.net/2025/12/03/wuppertaler-stadtwerke-senken-ladepreise-zum-jahreswechsel/",
+          "observed": "Reports unchanged blocking fees: 0.10 EUR/min from minute 241 on WSW AC/DC during 08:00-18:00, and from minute 46 at DC >50 kW regardless of time; also distinguishes WSW-own, roaming and card pricing."
+        }
+      ],
+      "conclusion": "Exact 2026 WSW own-network card tariffs are known and ad-hoc fast-charger pricing is partly evidenced, but the evidence does not establish a complete direct/ad-hoc matrix for all AC and DC EVSEs. Do not substitute the WSW eMobil subscriber/card tariff as universal ad-hoc pricing."
+    },
+    {
+      "operator": "Stadtwerke Bielefeld GmbH",
+      "aliases": ["Stadtwerke Bielefeld", "SWB Bielefeld", "meinLadestrom"],
+      "classification": "partial",
+      "deferAfterFirstPass": true,
+      "evidence": [
+        {
+          "type": "official-contract-tariff-historical-currently-indexed",
+          "source": "Stadtwerke Bielefeld",
+          "url": "https://www.stadtwerke-bielefeld.de/fileadmin/content/documents/Stadtwerke/09_Dokumente_zu_Tarifen/1_Rechtliche_Dokumente/Preisblatt_2024_04.pdf",
+          "observed": "meinLadestrom price sheet effective 2024-04-01: 4 EUR/month, 0.45 EUR/kWh AC and 0.65 EUR/kWh DC for Stadtwerke/roaming points. This is a contract tariff and is not treated as 2026 ad-hoc pricing."
+        },
+        {
+          "type": "station-level-current",
+          "source": "Ladeguru",
+          "url": "https://www.ladeguru.de/ladestation/stadtwerke-bielefeld-gmbh/33615-bielefeld/49310",
+          "observed": "Merianstrasse 11, Bielefeld: direct card payment without contract at 0.65 EUR/kWh on an 11 kW AC charge point."
+        },
+        {
+          "type": "station-level-current",
+          "source": "Ladeguru",
+          "url": "https://www.ladeguru.de/ladestation/stadtwerke-bielefeld-gmbh/33602-bielefeld/49800",
+          "observed": "August-Bebel-Strasse 91, Bielefeld: direct card payment without contract at 0.65 EUR/kWh on an 11 kW AC charge point."
+        }
+      ],
+      "conclusion": "Current station-level evidence supports 0.65 EUR/kWh direct payment on sampled Bielefeld AC stations, while the official indexed price sheet is an older contract tariff. No exhaustive current direct-payment matrix is established, so retain only station-scoped evidence and keep the CPO partial."
+    }
+  ],
+  "guardrails": [
+    "No third-party station sample is generalized to an operator-wide tariff.",
+    "No contract/subscriber price is substituted for ad-hoc/direct pricing.",
+    "No eMI3 prefix is invented without authoritative mapping."
+  ]
+}

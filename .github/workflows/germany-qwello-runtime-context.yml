@@ -1,0 +1,39 @@
+name: Germany Qwello runtime context
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_qwello_runtime_context.py'
+      - '.github/workflows/germany-qwello-runtime-context.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect current Qwello runtime
+        run: python scripts/germany_qwello_runtime_context.py
+      - name: Validate runtime capture
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/qwello_runtime_context.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-qwello-runtime-context'
+          assert d['shell']['status']==200
+          assert d['scriptUrls'], d
+          assert all(b['meta']['status']==200 for b in d['bundles'])
+          print('TCC_QWELLO_RUNTIME_CAPTURE_VALIDATED='+json.dumps({'scripts':d['scriptUrls'],'bundles':[{'url':b['meta']['url'],'bytes':b['meta']['bytes'],'contextKeys':list(b['contexts'])} for b in d['bundles']]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-qwello-runtime-context
+          path: data/germany/qwello_runtime_context.json
+          if-no-files-found: error
+          retention-days: 30

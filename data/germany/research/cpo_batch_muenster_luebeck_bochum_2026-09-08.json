@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "runDate": "2026-09-08",
+  "purpose": "First-pass CPO tariff audit; exact direct/ad-hoc pricing only, fail-closed otherwise.",
+  "operators": [
+    {
+      "canonicalName": "Stadtwerke Münster GmbH",
+      "aliases": ["Stadtwerke Münster", "SW Münster", "Momente Strom-Tanken"],
+      "status": "complete",
+      "officialEvidence": {
+        "url": "https://www.stadtwerke-muenster.de/unterwegs/e-mobilitaet/elektroauto-laden",
+        "validFrom": "2026-04-01",
+        "payment": "QR-code direct payment by credit card",
+        "adHocTariff": {
+          "AC": {"energyEurPerKwh": 0.47, "timeEurPerMinute": 0.05, "timeThresholdMinutes": 240, "chargedHours": "06:00-22:00"},
+          "DC": {"energyEurPerKwh": 0.52, "timeEurPerMinute": 0.05, "timeThresholdMinutes": 60, "chargedHours": "06:00-22:00"}
+        },
+        "notes": [
+          "Official page explicitly labels the credit-card column as Kreditkarte/Ad-Hoc-Ladung.",
+          "For parking garages and Park & Ride sites the AC standing-component threshold is 480 minutes instead of the ordinary 240-minute threshold.",
+          "Between 22:00 and 06:00 standing minutes continue to count but the standing-component cost is waived."
+        ]
+      },
+      "guardrail": "Momente Card and roaming tariffs remain distinct products and are not substituted for ad-hoc pricing."
+    },
+    {
+      "canonicalName": "Stadtwerke Lübeck Energie GmbH",
+      "aliases": ["Stadtwerke Lübeck", "SWL", "Stadtwerke Lübeck Energie"],
+      "status": "complete",
+      "officialEvidence": {
+        "url": "https://www.swhl.de/energie/emobil/ladesaeulen-luebeck/",
+        "payment": "Contract-free payment by Girocard, QR code, or debit/credit card where a payment terminal is installed",
+        "adHocTariff": {
+          "AC": {"energyEurPerKwh": 0.55, "timeEurPerMinute": 0.10, "timeThresholdMinutes": 241, "standingFeeWaivedHours": "20:00-08:00"},
+          "DC": {"energyEurPerKwh": 0.65, "timeEurPerMinute": 0.10, "timeThresholdMinutes": 181, "standingFeeWaivedHours": "20:00-08:00"}
+        },
+        "notes": ["Official operator page warns that tariffs may differ at semi-public charging stations; those sites must keep station-level overrides/fail-closed behavior where applicable."]
+      },
+      "guardrail": "Do not apply the standard grid to semi-public sites carrying an explicitly different tariff."
+    },
+    {
+      "canonicalName": "Stadtwerke Bochum Holding GmbH",
+      "aliases": ["Stadtwerke Bochum", "Stadtwerkedrive", "StadtwerkeDrive"],
+      "status": "partial/deferred",
+      "officialEvidence": {
+        "networkScale": "427 public charge points reported by the operator on 2026-06-25, around 100 DC fast-charge points",
+        "networkSource": "https://www.stadtwerke-bochum.de/privatkunden/ihre-stadtwerke/presse-medien/pressemeldung/neue-stadtwerke-schnelllader-am-castroper-hellweg",
+        "tariffSource": "https://www.stadtwerke-bochum.de/geschaeftskunden/elektromobilitaet/tarife-und-ladekarte",
+        "ownCardTariff": {
+          "AC": {"energyEurPerKwh": 0.50, "timeEurPerMinute": 0.05, "timeThresholdMinutes": 240},
+          "DC": {"energyEurPerKwh": 0.50, "timeEurPerMinute": 0.05, "timeThresholdMinutes": 120},
+          "nightAC": {"energyEurPerKwh": 0.40, "timeEurPerMinute": 0.05, "timeThresholdMinutes": 720, "startWindow": "20:00-24:00"}
+        },
+        "adHoc": "Official page confirms ad-hoc charging is available but does not publish an unambiguous numeric direct-payment tariff; it says third-party/ad-hoc prices may differ from Stadtwerkedrive tariffs."
+      },
+      "blockingReason": "No primary numeric ad-hoc/contract-free price authority verified for the direct-payment path.",
+      "neededToComplete": "Official ad-hoc checkout payload/QR page or current operator price sheet explicitly binding a numeric tariff to contract-free payment.",
+      "guardrail": "Do not generalize the 0.50/0.40 EUR per kWh Stadtwerkedrive card tariffs to ad-hoc sessions."
+    }
+  ],
+  "consistency": {
+    "newFirstPasses": 3,
+    "complete": 2,
+    "partialOrDeferred": 1,
+    "blocked": 0,
+    "reAuditedDeferredCpos": 0,
+    "duplicateAliasFindings": 0,
+    "prefixWideTariffExtrapolations": 0,
+    "identicalInvestigationOverTwoRuns": 0
+  }
+}

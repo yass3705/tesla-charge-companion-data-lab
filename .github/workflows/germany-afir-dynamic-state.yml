@@ -1,0 +1,72 @@
+name: Germany AFIR dynamic persistent state
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_afir_dynamic_state.py'
+      - '.github/workflows/germany-afir-dynamic-state.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  state:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build current normalized dynamic events
+        run: python scripts/germany_afir_dynamic_normalize.py
+
+      - name: Restore previous persistent state if available
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/germany/previous
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" --jq '.artifacts[] | select(.name == "germany-afir-dynamic-state") | select(.expired == false) | .id' | head -n 1)"
+          if [ -n "$ARTIFACT_ID" ]; then
+            echo "Restoring prior state artifact $ARTIFACT_ID"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/previous-state.zip
+            unzip -q /tmp/previous-state.zip -d data/germany/previous
+          else
+            echo "No previous dynamic state artifact found; initializing state."
+          fi
+
+      - name: Merge current events into persistent state
+        run: python scripts/germany_afir_dynamic_state.py
+
+      - name: Validate persistent state
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          p=Path('data/germany/afir_dynamic_state.json.gz')
+          with gzip.open(p,'rt',encoding='utf-8') as f:
+              d=json.load(f)
+          assert d['dataset']=='germany-afir-dynamic-persistent-state'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          assert d['scope']['tariffsRankable'] is False
+          assert d['scope']['unknownIsNeverAssumedOperational'] is True
+          q=d['providerStats']['qwello']
+          e=d['providerStats']['eround']
+          assert q['mode']=='snapshot' and q['knownCoveragePct'] > 95, q
+          assert q['knownPointsAfterMerge'] <= q['staticPoints'], q
+          assert e['mode']=='delta', e
+          assert e['knownPointsAfterMerge'] >= e['currentActionableEvents'], e
+          assert e['knownPointsAfterMerge'] >= e['previousKnownPoints'], e
+          assert d['stats']['currentUnjoinedEvents'] >= 0
+          print('TCC_AFIR_DYNAMIC_STATE_VALIDATED='+json.dumps(d['providerStats'],sort_keys=True))
+          PY
+
+      - name: Upload persistent dynamic state
+        uses: actions/upload-artifact@v4
+        with:
+          name: germany-afir-dynamic-state
+          path: data/germany/afir_dynamic_state.json.gz
+          if-no-files-found: error
+          retention-days: 30

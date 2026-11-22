@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "auditedAt": "2026-09-09",
+  "firstPassOnly": true,
+  "policy": {
+    "finishAllCposBeforeFineTuning": true,
+    "failClosedOnUnverifiedTariffs": true,
+    "noSubscriptionOrRoamingTariffGeneralization": true,
+    "noInventedEmi3Prefix": true
+  },
+  "cpos": [
+    {
+      "operator": "Mark-E Aktiengesellschaft / ENERVIE Gruppe",
+      "aliases": ["Mark-E", "ENERVIE", "ENERVIE Gruppe", "Mark-E Hagen"],
+      "classification": "partial",
+      "deferAfterFirstPass": true,
+      "authoritativePrefix": null,
+      "evidence": [
+        {
+          "type": "official-current-network-and-card-tariff",
+          "url": "https://www.mark-e.de/de/elektromobilitaet/drivecard",
+          "observed": "Current official page publishes Mobilstrom Unterwegs card/app pricing on Mark-E stations: AC <=22 kW 0.45 EUR/kWh and DC >=50 kW 0.61 EUR/kWh, with 0.50 EUR per 15 minutes blocking fee from the started fifth hour AC and started second hour DC. It also explicitly documents ad-hoc charging by QR code with a 75 EUR temporary credit-card reservation, but does not bind the published DriveCard energy prices to the anonymous QR checkout."
+        },
+        {
+          "type": "official-current-operator-scope",
+          "url": "https://www.enervie-gruppe.de/Home/medien/Aktuelles/ausbau-der-ladeinfrastruktur-fuer-e-mobilitaet-in-hagen-mark-e-nimmt-neue-schnellladesaeule-am-emilienplatz-in-betrieb.aspx",
+          "observed": "On 2026-04-01 Mark-E stated it operated 133 public charging points at 58 stations in Hagen."
+        }
+      ],
+      "reason": "The operator and direct QR payment channel are current and verified, but the exact anonymous ad-hoc energy tariff is not explicitly equated to the DriveCard/app contract tariff. Do not reuse subscriber/card prices for QR ad-hoc without an authoritative checkout or station-level tariff payload.",
+      "neededToComplete": "Capture the public Mark-E QR checkout or another official/AFIR/Mobilithek station-level direct-price feed for representative Mark-E EVSEs and prove whether the anonymous price equals or differs from Mobilstrom Unterwegs; preserve blocking rules and any station-specific exceptions."
+    },
+    {
+      "operator": "NEW AG / NEW Niederrhein Energie und Wasser GmbH",
+      "aliases": ["NEW AG", "NEW", "NEW Energie", "NEW Niederrhein"],
+      "classification": "partial",
+      "deferAfterFirstPass": true,
+      "authoritativePrefix": null,
+      "evidence": [
+        {
+          "type": "official-current-corporate",
+          "url": "https://www.new.de/",
+          "observed": "Current NEW corporate surface confirms the active NEW group and energy business in the Mönchengladbach/Niederrhein region, but no current anonymous public charging price grid was exposed on the indexed official surface during this first pass."
+        }
+      ],
+      "reason": "No authoritative current station/EVSE-level ad-hoc tariff was recovered in the first pass. Platform/roaming references to NEW are not sufficient to assign a physical-CPO price.",
+      "neededToComplete": "Resolve NEW-operated public EVSE identities from BNetzA/AFIR/Mobilithek and capture their official QR/app/direct-payment tariff or equivalent station-level authoritative payload."
+    },
+    {
+      "operator": "Emscher Lippe Energie GmbH (ELE)",
+      "aliases": ["ELE", "Emscher Lippe Energie", "ELE Gelsenkirchen", "ELE Bottrop", "ELE Gladbeck"],
+      "classification": "partial",
+      "deferAfterFirstPass": true,
+      "authoritativePrefix": null,
+      "evidence": [
+        {
+          "type": "official-current-app",
+          "url": "https://www.ele.de/de/fuer-unternehmen/elektromobilitaet/ele_ladezubehoer_und_eservices/eChargeplusApp.html",
+          "observed": "Current official ELE surface exposes eCharge+ as the charging app used for electromobility services, but the indexed page does not publish a current numeric ad-hoc tariff."
+        },
+        {
+          "type": "official-current-network",
+          "url": "https://www.ele.de/de/fuer-zuhause/elektromobilitaet/ELE-Ladesaeulenplan.html",
+          "observed": "ELE maintains a current public charging-station map; no exact station-level anonymous price matrix was exposed in the indexed page during this first pass."
+        }
+      ],
+      "reason": "Public operator and access surfaces are verified, but exact current direct/ad-hoc numeric pricing is not available from the indexed official pages. No tariff is inferred from eCharge+ or partner networks.",
+      "neededToComplete": "Resolve exact ELE EVSEs and query the public eCharge+/QR/direct-payment station tariff or authoritative AFIR/Mobilithek payload, including any energy, time, blocking or parking component."
+    }
+  ],
+  "runSummary": {
+    "newFirstPasses": 3,
+    "complete": 0,
+    "partial": 3,
+    "blocked": 0,
+    "completed": [],
+    "deferredAfterFirstPass": ["Mark-E Aktiengesellschaft / ENERVIE Gruppe", "NEW AG / NEW Niederrhein Energie und Wasser GmbH", "Emscher Lippe Energie GmbH (ELE)"],
+    "aliasesResolved": {
+      "Mark-E Aktiengesellschaft / ENERVIE Gruppe": ["Mark-E", "ENERVIE", "ENERVIE Gruppe", "Mark-E Hagen"],
+      "NEW AG / NEW Niederrhein Energie und Wasser GmbH": ["NEW AG", "NEW", "NEW Energie", "NEW Niederrhein"],
+      "Emscher Lippe Energie GmbH (ELE)": ["ELE", "Emscher Lippe Energie", "ELE Gelsenkirchen", "ELE Bottrop", "ELE Gladbeck"]
+    }
+  },
+  "consistency": {
+    "reAuditedDeferredCpos": 0,
+    "identicalInvestigationOverTwoRuns": 0,
+    "duplicateAliasFindings": 0,
+    "tariffScopeExtrapolations": 0,
+    "registryPrecheck": {
+      "Mark-E Aktiengesellschaft / ENERVIE Gruppe": "absent from active PR first-pass evidence before this pass",
+      "NEW AG / NEW Niederrhein Energie und Wasser GmbH": "no individual NEW CPO first-pass entry found in active PR evidence before this pass; incidental shared-platform mention is not counted",
+      "Emscher Lippe Energie GmbH (ELE)": "absent from active PR first-pass evidence before this pass"
+    },
+    "result": "OK"
+  }
+}

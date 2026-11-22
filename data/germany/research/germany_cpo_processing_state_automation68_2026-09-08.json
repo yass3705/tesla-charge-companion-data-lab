@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "updatedAt": "2026-09-08T11:50:00+01:00",
+  "frozenOperationalDenominator": 591,
+  "forwardFirstPass": {
+    "processed": 74,
+    "complete": 16,
+    "partialDeferred": 58,
+    "blocked": 0,
+    "remaining": 517,
+    "certified": true
+  },
+  "thisRun": {
+    "newFirstPasses": 4,
+    "complete": 1,
+    "partialDeferred": 3,
+    "blocked": 0,
+    "names": [
+      "Stadtwerke Wertheim GmbH",
+      "Stadtwerke Bad Hersfeld GmbH",
+      "Stadtwerke Bamberg Energie- und Wasserversorgungs GmbH",
+      "Stadtwerke Konstanz Mobil GmbH"
+    ],
+    "evidencePath": "data/germany/research/cpo_batch_wertheim_hersfeld_bamberg_konstanz_2026-09-08.json"
+  },
+  "consistency": {
+    "reAuditedDeferredCpos": 0,
+    "duplicateAliasFindings": 0,
+    "identicalInvestigationOverTwoRuns": 0,
+    "prefixWideTariffExtrapolations": 0,
+    "counterArithmetic": "74 = 16 complete + 58 partial/deferred + 0 blocked; 591 - 74 = 517",
+    "denominatorCheck": "591 retained as frozen operational denominator; legacy 568 remains reference-only.",
+    "activePr": "yass3705/tesla-charge-companion-data-lab PR #73, branch feature/germany-national-base",
+    "referenceCorrection": "Validated that PR #73 in tesla-charge-companion-data-lab is the authoritative forward-first-pass workstream. tesla-charge-companion-stable PR #69 is a separate pre-integration and must not replace these counters.",
+    "stateDebt": {
+      "detected": true,
+      "issue": "A single cumulative nominative ledger containing every first-pass identity/classification since denominator freeze is still not reconstructed.",
+      "safeHandling": "Do not alter certified counters. Continue forward first passes while reconstructing names only from committed batch/checkpoint evidence; never infer identities from totals.",
+      "impact": "Forward counters and per-run nominative evidence are certified; cumulative nominative completeness remains pending."
+    },
+    "notes": [
+      "Stadtwerke Wertheim: current official page gives ad-hoc QR AC 0.69 EUR/kWh and DC 0.86 EUR/kWh; DC blocking 0.10 EUR/min after 45 minutes.",
+      "Bad Hersfeld: current official page gives AC ad-hoc 0.62 EUR/kWh with exact location-dependent AC blocking fees, while DC directs users to the app and remains deferred.",
+      "Bamberg: own-network/public scope is confirmed, but the current page publishes the registered LadeVerbundPlus provider price rather than an exact current ad-hoc price; no historic/generic ad-hoc value was substituted.",
+      "Konstanz: current own-network charging-card price is 0.44 EUR/kWh, but no current ad-hoc tariff is exposed; the 2025 transfer to Stadtwerke Konstanz Mobil GmbH is recorded as a legal alias.",
+      "No unverified eMI3 prefix was created in this run."
+    ]
+  },
+  "nextPolicy": "Continue only with identities absent from active PR first-pass evidence; prioritize official direct-payment/QR surfaces and exact station-level fee applicability. Continue cumulative ledger reconstruction strictly from committed evidence without changing the frozen denominator."
+}

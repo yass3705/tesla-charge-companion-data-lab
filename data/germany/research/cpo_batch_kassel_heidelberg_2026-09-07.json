@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "researchedAt": "2026-09-07",
+  "cpos": [
+    {
+      "canonicalName": "Städtische Werke AG Kassel",
+      "aliases": ["Städtische Werke Kassel", "Städtische Werke AG", "STW Kassel"],
+      "emi3Prefix": "DE*KSL",
+      "status": "partial",
+      "deferred": true,
+      "findings": {
+        "officialCurrentTariff": "From 2026-09-01 the official Städtische Werke tariff page/press release states 0.49 EUR/kWh AC and 0.59 EUR/kWh DC for Ladenetz customers, with 0.09 EUR/min idle fee after 120 min AC / 60 min DC and no idle fee 22:00-06:00. For users outside Ladenetz it states 0.53 EUR/kWh AC or 0.65 EUR/kWh DC plus 4 EUR start fee.",
+        "adHocConflict": "An official station announcement for Frankfurter Straße explicitly states QR ad-hoc at 0.59 EUR/kWh AC while the Städtische-Werke card price there is 0.53 EUR/kWh. This is not safely equivalent to the generic outside-Ladenetz matrix, so no network-wide ad-hoc fallback is created.",
+        "prefixEvidence": "BNetzA/Mobilithek-derived station records show EVSEs such as DE*KSL*E005007 and normalized DEKSLE003401 / DEKSLE005601, consistent with DE*KSL."
+      },
+      "sources": [
+        "https://www.sw-kassel.de/gewerbekunden/unternehmen/aktuelles/einzelansicht/guenstiger-elektrisch-mobil-staedtische-werke-senken-ladetarife",
+        "https://www.sw-kassel.de/privatkunden/energie/e-mobilitaet/",
+        "https://www.sw-kassel.de/ueber-uns/kommunikation/aktuelles/einzelansicht/elektromobilitaet-alltagstauglich-acht-neue-oeffentliche-ladepunkte-an-der-frankfurter-strasse",
+        "https://www.goingelectric.de/stromtankstellen/Deutschland/Kassel/Auestadion-Damaschke-Strasse-35/67309/",
+        "https://www.automatenwegweiser.de/automat/staedtische-werke-ag/kassel/staedtische-werke-friedrichsplatz-3-kassel"
+      ],
+      "blockingReason": "Official sources expose conflicting channel/scope semantics for direct charging (generic non-Ladenetz matrix versus station-specific QR ad-hoc price). Exact station/EVSE prices can be used where directly evidenced, but no universal ad-hoc rule is safe yet.",
+      "neededToComplete": "Authoritative direct-payment/QR tariff matrix or checkout evidence that explicitly defines whether the generic non-Ladenetz tariff applies to all DE*KSL ad-hoc sessions, including exceptions."
+    },
+    {
+      "canonicalName": "Stadtwerke Heidelberg Energie GmbH",
+      "aliases": ["Stadtwerke Heidelberg", "SWH Energie", "heidelberg EMOBIL"],
+      "emi3Prefix": "DE*1HD",
+      "status": "partial",
+      "deferred": true,
+      "findings": {
+        "officialAccess": "The official Stadtwerke Heidelberg app pages confirm that their own stations can be selected, started and paid through the fuer dich / heidelbergEMOBIL ecosystem; chargecloud is the app technology provider.",
+        "stationLevelOpenData": "BNetzA/Mobilithek-derived records confirm operator ownership and EVSEs such as DE*1HD*ESWH29*001/002 and DE*1HD*ESWH85*001/002, with credit-card/NFC and app/RFID payment capabilities.",
+        "pricing": "No authoritative current 2026 universal direct-payment/QR price matrix was found. Third-party discovery sources suggest station-level prices around 0.36 EUR/kWh and an App Store review mentions 0.475 EUR/kWh plus a time fee, but neither is authoritative enough for ingestion."
+      },
+      "sources": [
+        "https://www.swhd.de/fuerdich",
+        "https://apps.apple.com/de/app/heidelbergemobil/id1549817826",
+        "https://www.automatenwegweiser.de/automat/stadtwerke-heidelberg-energie-gmbh/heidelberg/jellinekstrasse",
+        "https://www.automatenwegweiser.de/automat/stadtwerke-heidelberg-energie-gmbh/heidelberg/handschuhsheimer-landstrasse",
+        "https://www.chargecloud.com/es/casos-de-exito/stadtwerke-heidelberg"
+      ],
+      "blockingReason": "Operator and EVSE namespace are authoritative, but current ad-hoc/direct tariff values are not published in a sufficiently authoritative station-level or network-level source accessible without login.",
+      "neededToComplete": "Public QR checkout/direct-payment response, official tariff document, or authoritative chargecloud endpoint exposing current price components per DE*1HD EVSE."
+    }
+  ],
+  "guardrails": [
+    "No third-party or user-review price is ingested as authoritative.",
+    "No tariff is generalized beyond the source scope.",
+    "Previously deferred CPOs were not re-audited in this pass."
+  ]
+}

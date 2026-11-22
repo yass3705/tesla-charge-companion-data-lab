@@ -1,0 +1,55 @@
+name: Germany TEAG direct app tariff
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_teag_direct_tariff.py'
+      - '.github/workflows/germany-teag-direct-tariff.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract official TEAG app tariff and active promotion
+        run: python scripts/germany_teag_direct_tariff.py
+      - name: Validate TEAG tariff artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/teag_direct_app_tariff.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-teag-direct-app-tariff'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          assert d['scope']['appOnly'] is True
+          assert d['scope']['adHocFallbackSafe'] is False
+          assert d['scope']['requiresEnergyVolumeTierBilling'] is True
+          assert d['operator']['bnetzaExactOperators']==['TEAG Mobil GmbH']
+          assert d['operator']['evsePartyPrefixes']==['DETMO']
+          assert d['normalAppTariff']=={
+              'currency':'EUR','eurPerKwh':0.49,'monthlyFeeEur':0.0,
+              'networkScope':'TEAG Mobil-Ladepunkte'
+          }
+          p=d['activePromotion']
+          assert p['validFrom']=='2026-07-23' and p['validThrough']=='2026-09-30'
+          assert p['taxIncluded'] is True
+          assert p['energyTiers']==[
+              {'fromKwhInclusive':0.0,'toKwhInclusive':28.0,'eurPerKwh':0.49},
+              {'fromKwhExclusive':28.0,'eurPerKwh':0.29},
+          ]
+          assert p['otherPaymentMethodsUseStationOrBillingSystemDisplayedTariff'] is True
+          print('TCC_TEAG_DIRECT_APP_TARIFF_VALIDATED='+json.dumps(p,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-teag-direct-app-tariff
+          path: data/germany/teag_direct_app_tariff.json
+          if-no-files-found: error
+          retention-days: 30

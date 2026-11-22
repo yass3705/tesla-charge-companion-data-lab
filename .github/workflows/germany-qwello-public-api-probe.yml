@@ -1,0 +1,40 @@
+name: Germany Qwello public API probe
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_qwello_public_api_probe.py'
+      - '.github/workflows/germany-qwello-public-api-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe anonymous Qwello public endpoints
+        run: python scripts/germany_qwello_public_api_probe.py
+      - name: Validate discovery artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/qwello_public_api_probe.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-qwello-public-api-probe'
+          assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
+          assert len(d['responses'])==2
+          web=next(x for x in d['responses'] if x['requestedUrl'].endswith('/us/public/web'))
+          assert web['status'] in (200,204,400,401,403,404,405), web
+          print('TCC_QWELLO_PUBLIC_API_PROBE_VALIDATED='+json.dumps(d['responses'],ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-qwello-public-api-probe
+          path: data/germany/qwello_public_api_probe.json
+          if-no-files-found: error
+          retention-days: 30

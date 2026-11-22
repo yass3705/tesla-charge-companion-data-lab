@@ -1,0 +1,54 @@
+name: Germany AFIR dynamic normalize
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_afir_dynamic_normalize.py'
+      - 'scripts/germany_afir_static_normalize.py'
+      - '.github/workflows/germany-afir-dynamic-normalize.yml'
+  workflow_dispatch:
+
+jobs:
+  normalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Normalize dynamic AFIR and join static EVSE
+        run: python scripts/germany_afir_dynamic_normalize.py
+
+      - name: Validate staged dynamic artifact
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          p=Path('data/germany/afir_open_dynamic_normalized.json.gz')
+          assert p.is_file()
+          with gzip.open(p,'rt',encoding='utf-8') as f:
+              data=json.load(f)
+          s=data['stats']
+          assert data['dataset']=='germany-afir-open-dynamic-normalized'
+          assert data['scope']['stagedOnly'] is True
+          assert data['scope']['publishesToTcc'] is False
+          assert data['scope']['dynamicStatusIncluded'] is True
+          assert data['scope']['tariffsRankable'] is False
+          assert s['dynamicPoints'] > 1500, s
+          assert s['staticJoinRatePct'] > 90, s
+          assert s['canonicalEvseRatePct'] > 85, s
+          assert set(s['serviceStateDistribution']).issubset({'operational','out_of_service','unknown'}), s
+          providers={x['provider']:x['stats'] for x in data['feeds']}
+          assert providers['qwello']['dynamicPoints'] > 1500, providers
+          assert providers['qwello']['staticJoinRatePct'] > 95, providers
+          assert providers['eround']['dynamicPoints'] > 0, providers
+          print('TCC_AFIR_DYNAMIC_VALIDATED='+json.dumps(s,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Upload normalized dynamic AFIR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: germany-afir-dynamic-normalized-${{ github.run_id }}
+          path: data/germany/afir_open_dynamic_normalized.json.gz
+          if-no-files-found: error
+          retention-days: 7

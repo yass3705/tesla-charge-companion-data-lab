@@ -1,0 +1,64 @@
+{
+  "date": "2026-09-08",
+  "scope": "Germany V9 first-pass CPO tariff audit",
+  "guardrails": [
+    "No tariff generalized beyond the explicit official source scope.",
+    "Third-party station data is discovery/supporting evidence only unless the official CPO source confirms the tariff.",
+    "Previously deferred CPOs are not re-audited without new evidence."
+  ],
+  "cpos": [
+    {
+      "canonical_name": "Stadtwerke Speyer GmbH / VBS",
+      "aliases": ["Stadtwerke Speyer", "SWS Speyer", "VBS", "Verkehrsbetriebe Speyer"],
+      "status": "complete",
+      "direct_payment": "Spontanes Laden via Kreditkarte oder PayPal; standard tariff for e-mobilists without active SWS electricity contract.",
+      "tariff": {
+        "energy_eur_per_kwh": 0.64,
+        "start_fee_eur": 0.0,
+        "blocking_fee": "none"
+      },
+      "scope_note": "Official page states the standard tariff applies at public VBS charging stations in Speyer and surroundings; no start or blocking fee.",
+      "sources": [
+        "https://www.stadtwerke-speyer.de/e-mobilitaet"
+      ]
+    },
+    {
+      "canonical_name": "Stadtwerke Schweinfurt GmbH",
+      "aliases": ["Stadtwerke Schweinfurt", "SW Schweinfurt"],
+      "status": "complete",
+      "direct_payment": "charge-it-easy app without prior registration and credit-card payment; official ad-hoc credit-card route also documented.",
+      "tariff": {
+        "standard_energy_eur_per_kwh": 0.55,
+        "blocking_fee_eur_per_30min_after_full_charge": 0.50,
+        "minimum_charge_eur": 0.50
+      },
+      "scope_note": "Official current CPO page labels 0.55 EUR/kWh as Standardtarif for Stadtwerke card / charge-it-easy and separately confirms no-registration credit-card charging through charge-it-easy. Sessions below 0.50 EUR are rounded to 0.50 EUR. Roaming prices are explicitly excluded.",
+      "sources": [
+        "https://www.stadtwerke-sw.de/mobilitaet/e-mobilitaet",
+        "https://www.stadtwerke-sw.de/mobilitaet/e-mobilitaet/laden-in-schweinfurt"
+      ]
+    },
+    {
+      "canonical_name": "Stadtwerke Landshut",
+      "aliases": ["Stadtwerke Landshut GmbH", "SW Landshut"],
+      "status": "partial_deferred",
+      "direct_payment": "Public ladenetz stations expose ad-hoc/direct payment by app/web according to current station-level discovery sources.",
+      "tariff": null,
+      "reason": "No current official Stadtwerke Landshut surface or authoritative EVSE-to-tariff feed exposing the exact direct/ad-hoc price was found. Current public station evidence confirms ad-hoc availability but leaves the direct price unknown. Household electricity tariffs and roaming/card offers are not substitutes.",
+      "unlock_needed": "Official checkout/QR page for a Stadtwerke Landshut EVSE, or an official/open-data EVSE-to-direct-tariff field that can be tied to the operator's stations.",
+      "sources": [
+        "https://www.goingelectric.de/stromtankstellen/Deutschland/Landshut/Karlstrasse-Karlstrasse-52/71428/",
+        "https://www.goingelectric.de/stromtankstellen/Deutschland/Landshut/Stadtpark-Staudenrausstrasse-11/64120/"
+      ]
+    }
+  ],
+  "consistency": {
+    "new_identities": 3,
+    "complete_delta": 2,
+    "partial_delta": 1,
+    "blocked_delta": 0,
+    "duplicate_first_pass_detected": false,
+    "re_audit_of_deferred_without_new_evidence": false,
+    "identical_investigation_over_2_runs": false
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "date": "2026-09-08",
+  "scope": "Germany V9 first-pass CPO tariff audit",
+  "guardrails": [
+    "No tariff generalized beyond the explicit official source scope.",
+    "Third-party station data is discovery/supporting evidence only unless the official CPO source confirms the tariff.",
+    "Previously deferred CPOs are not re-audited without new evidence."
+  ],
+  "cpos": [
+    {
+      "canonical_name": "Stadtwerke Heilbronn GmbH",
+      "aliases": ["Stadtwerke Heilbronn", "SWHN", "SWHN Laden"],
+      "status": "complete",
+      "direct_payment": "Official adhocLADEN tariff published for the Stadtwerke Heilbronn charging network.",
+      "tariff": {
+        "energy_eur_per_kwh": 0.69,
+        "ac_blocking_fee_eur_per_min_after_240min": 0.10,
+        "dc_blocking_fee_eur_per_min_after_120min": 0.10,
+        "blocking_fee_max_eur": 12.0,
+        "blocking_fee_max_eur_at_swhn_paid_locations": 4.0
+      },
+      "scope_note": "Official SWHN e-mobility page explicitly labels the tariff adhocLADEN and separates it from the dauerLADEN subscriber tariff. The published blocking-fee caps are preserved exactly.",
+      "sources": [
+        "https://www.stadtwerke-heilbronn.de/swh/e-energie/e_mobilitaet.php"
+      ]
+    },
+    {
+      "canonical_name": "öPA Verkehrsgesellschaft mbH / Stadtwerke Troisdorf charging network",
+      "aliases": ["Stadtwerke Troisdorf", "SWT Troisdorf", "eTro", "öPA Verkehrsgesellschaft mbH"],
+      "status": "complete",
+      "direct_payment": "Official Troisdorf charging page publishes ad-hoc AC and DC prices. Since 2026 the sister company öPA Verkehrsgesellschaft mbH operates the public and commercial charging infrastructure; the service/tariff surface remains the Stadtwerke Troisdorf e-mobility page.",
+      "tariff": {
+        "ac_energy_eur_per_kwh": 0.55,
+        "dc_energy_eur_per_kwh": 0.69,
+        "time_fee_eur_per_min_from_minute_61": 0.10
+      },
+      "scope_note": "The official station page labels the prices as Ad-Hoc Laden for Troisdorf stations and warns that stations outside Troisdorf can have different operator prices. No out-of-area price is generalized. The 2026 operator transfer to öPA is retained as a canonical alias/authority transition rather than treated as a second tariff identity.",
+      "sources": [
+        "https://www.stadtwerke-troisdorf.de/zusatzleistungen/elektromobilitaet/e-ladestationen-in-troisdorf",
+        "https://www.stadtwerke-troisdorf.de/zusatzleistungen/elektromobilitaet"
+      ]
+    },
+    {
+      "canonical_name": "Stadtwerke Unna GmbH",
+      "aliases": ["Stadtwerke Unna", "SWU Unna", "MobilWatt"],
+      "status": "partial_deferred",
+      "direct_payment": "Current official surface found for MobilWatt card/app charging, but not a current no-contract ad-hoc checkout tariff.",
+      "tariff": null,
+      "reason": "The official MobilWatt page publishes contract/card prices and still labels the displayed charging tariff as valid from 2022. It does not establish that those values are the current spontaneous/direct ad-hoc tariff in 2026. Household electricity prices are unrelated and are not substituted.",
+      "unlock_needed": "Official public QR/web checkout for a Stadtwerke Unna EVSE, or an authoritative station-level direct-payment tariff feed with current validity and blocking conditions.",
+      "sources": [
+        "https://www.sw-unna.de/elektrisch-fahren-und-laden/fahrstromtarif"
+      ]
+    }
+  ],
+  "consistency": {
+    "new_identities": 3,
+    "complete_delta": 2,
+    "partial_delta": 1,
+    "blocked_delta": 0,
+    "duplicate_first_pass_detected": false,
+    "re_audit_of_deferred_without_new_evidence": false,
+    "identical_investigation_over_2_runs": false
+  }
+}

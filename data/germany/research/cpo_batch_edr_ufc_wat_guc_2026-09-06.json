@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "researchedAt": "2026-09-06",
+  "prefixes": {
+    "DEEDR": {
+      "operator": "E.ON Drive Germany GmbH",
+      "classification": "partial",
+      "findings": [
+        "Multiple current public station observations identify DE*EDR EVSEs as E.ON Drive Germany GmbH.",
+        "Current station-level observations show 0.52 EUR/kWh on AC and 0.69 EUR/kWh on DC/HPC, with 0.10 EUR/min time fees after 240 minutes AC or 45 minutes DC at sampled sites.",
+        "The exact current direct/ad-hoc contract could not be established from an official E.ON public tariff page for every DEEDR EVSE; sampled third-party prices must not be promoted network-wide."
+      ],
+      "sources": [
+        "https://app.pumpapp.co/de/ladestation-eon-drive-germany-gmbh-bahnhofstrasse-286-wilburgstetten/372ccad2-f766-11ec-9385-27091335a57b",
+        "https://app.pumpapp.co/de/ladestation-eon-drive-germany-gmbh-ratinger-str-20-beelitz/792a5e60-571d-11eb-8aac-59a746dfe586",
+        "https://www.eon-drive.de/de/produkte/business.html"
+      ],
+      "neededToComplete": "Resolve E.ON's official public direct-payment/app station tariff payload or AFIR/Mobilithek exact tariff mapping for every DEEDR EVSE, including time/blocking rules and validity."
+    },
+    "DEUFC": {
+      "operator": "shared/legacy prefix; E.ON Drive Infrastructure plus other physical operators",
+      "classification": "partial",
+      "findings": [
+        "DE*UFC is not safe as a single physical-CPO tariff key. A 2026 station in Heilbronn is identified as E.ON Drive Infrastructure, while DE*UFC*E01269*1/2 are identified as Stadtwerke Geldern GmbH.",
+        "Current station-level prices also differ by physical operator: sampled E.ON Drive HPC points are reported at 0.69 EUR/kWh, whereas the Stadtwerke Geldern DEUFC site is reported at 0.59 EUR/kWh plus 0.07 EUR/min blocking fee.",
+        "Therefore no DEUFC-wide tariff may be inferred; physical-operator and EVSE-level resolution is mandatory."
+      ],
+      "sources": [
+        "https://www.automatenwegweiser.de/automat/e-on-drive-infrastructure/heilbronn/ladestation-lise-meitner-str-10-heilbronn",
+        "https://www.automatenwegweiser.de/automat/stadtwerke-geldern-gmbh/geldern/ladestation-stadtwerke-geldern-gmbh-nordwall-2-geldern",
+        "https://ladestau.de/oberviechtach/eon-drive-am-bahnhof-4/"
+      ],
+      "neededToComplete": "Resolve every DEUFC EVSE to its physical CPO from BNetzA/AFIR/Mobilithek and attach only that operator's exact station tariff, including blocking fees."
+    },
+    "DEWAT": {
+      "operator": "Wattif Europe GmbH / Wattif Germany",
+      "classification": "partial",
+      "findings": [
+        "BNetzA/Mobilithek-derived station pages consistently identify DE*WAT EVSEs as Wattif Europe GmbH / Wattif Germany.",
+        "Wattif's official German site exposes a charger map and describes itself as operating and billing charging infrastructure rather than publishing one universal driver tariff.",
+        "Public station evidence shows at least one Wattif site with a 0.65 EUR/kWh ad-hoc price, but this is insufficient to extrapolate across the DEWAT catalog."
+      ],
+      "sources": [
+        "https://wattifev.com/de/",
+        "https://wattifev.com/de/info-und-support/ladestationfinden/",
+        "https://www.automatenwegweiser.de/automat/wattif-europe-gmbh/landshut/wattif-europe-buergermeister-zeiler-str-1-landshut",
+        "https://www.goingelectric.de/stromtankstellen/Deutschland/Leer/Borromaeus-Hospital-Steinburgsgang-/108529/"
+      ],
+      "neededToComplete": "Harvest the exact Wattif app/QR/direct-payment tariff for each DEWAT site/EVSE or obtain an official station-level feed; preserve any site-set energy, time, parking or blocking components."
+    },
+    "DEGUC": {
+      "operator": "Grid & Co. GmbH / Gridware platform; multiple physical operators",
+      "classification": "partial",
+      "findings": [
+        "Grid & Co. officially describes Gridware as a multi-tenant software platform for CPOs and EMPs, so DE*GUC must not be assumed to represent one retail tariff authority.",
+        "DE*GUC EVSE identifiers embed multiple downstream operator codes, including RWG (REWAG/Stadtwerke Kelheim context), EAM and BEC, confirming shared-platform behavior.",
+        "REWAG officially publishes its own direct-payment tariffs (0.50 EUR/kWh below 50 kW and 0.55 EUR/kWh from 50 kW, with defined blocking fees), while other DEGUC sub-operators require their own exact pricing."
+      ],
+      "sources": [
+        "https://www.gridundco.de/ladeinfrastruktur-einfach-managen-grid-co/gridware-welt/",
+        "https://www.rewag.de/e-mobilitaet/ladestrom-tarif",
+        "https://www.rewag.de/e-mobilitaet/ladekarte",
+        "https://app.pumpapp.co/de/ladestation-grid-co-gmbh-am-schwindgraben-na-obertraubling/3545b738-9195-11ee-b9f0-25886f71f362",
+        "https://app.pumpapp.co/de/ladestation-grid-co-gmbh-walkmuhlenweg-7-schwalmstadt-treysa/e5c7df55-e2a0-11ee-81cd-1f2a3d944b90"
+      ],
+      "neededToComplete": "Resolve each DEGUC EVSE to its physical CPO/sub-operator and apply only exact operator/site tariffs from official QR/app surfaces or AFIR/Mobilithek station-level data. Never use a DEGUC-wide fallback."
+    }
+  },
+  "guardrails": [
+    "No sampled aggregator tariff is promoted to a network-wide tariff.",
+    "Shared platform prefixes are resolved by physical operator and EVSE before pricing.",
+    "Unknown station-level direct prices remain fail-closed."
+  ]
+}

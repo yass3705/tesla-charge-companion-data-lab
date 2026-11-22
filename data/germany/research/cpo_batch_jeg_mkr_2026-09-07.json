@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "runDate": "2026-09-07",
+  "purpose": "First-pass exact-pricing research for previously undocumented German CPO prefixes; fail-closed and no prefix-wide extrapolation unless supported by current official evidence.",
+  "cpos": [
+    {
+      "canonicalPrefix": "DEJEG",
+      "evsePrefix": "DE*JEG",
+      "operator": "Jolt Energy GmbH",
+      "status": "partial",
+      "firstPassComplete": true,
+      "sampleEvseIds": ["DE*JEG*ED009001", "DE*JEG*ED009002"],
+      "pricingEvidence": {
+        "officialCurrentDirectTariff": {
+          "name": "Express",
+          "energyPriceEurPerKwh": 0.79,
+          "timeWindow": "00:00-24:00",
+          "payment": ["credit card terminal", "QR direct payment", "Visa", "Mastercard", "Apple Pay", "Google Pay"],
+          "scope": "JOLT charging stations",
+          "sources": [
+            "https://jolt.energy/de-de/preise/",
+            "https://jolt.energy/de-de/drivers/",
+            "https://jolt.energy/de-de/bezahlung-an-ladesaeulen-welche-moeglichkeiten-gibt-es/"
+          ]
+        },
+        "stationIdentityEvidence": {
+          "site": "Weyerstrasse 293, Solingen",
+          "powerKw": 300,
+          "evseIds": ["DE*JEG*ED009001", "DE*JEG*ED009002"],
+          "source": "https://www.preisstation.de/ladestation/97984-jolt-energy-gmbh-solingen/"
+        }
+      },
+      "reasonNotComplete": "The current dedicated official tariff surfaces consistently publish Express ad-hoc at 0.79 EUR/kWh for JOLT stations, but other legacy/general JOLT pages still expose stale conflicting ad-hoc values. No explicit current official statement about the absence/presence of any ancillary blocking/time fee was found in this pass. Keep fail-closed rather than certifying an energy-only prefix-wide total-cost rule.",
+      "neededToComplete": "Confirm from current JOLT terms/payment checkout that Express 0.79 EUR/kWh is the complete direct charge for all DEJEG EVSEs and whether any blocking/time/session component exists; then attach validity metadata."
+    },
+    {
+      "canonicalPrefix": "DEMKR",
+      "evsePrefix": "DE*MKR",
+      "operator": "Minera Kraftstoffe - Mineraloelwerk Rempel GmbH",
+      "status": "partial",
+      "firstPassComplete": true,
+      "sampleEvseIds": [
+        "DE*MKR*E0000002*001",
+        "DE*MKR*E0000002*002",
+        "DE*MKR*E0000002*003",
+        "DE*MKR*E0000002*004",
+        "DE*MKR*E0000004*001",
+        "DE*MKR*E0000004*002",
+        "DE*MKR*E000011*001",
+        "DE*MKR*E000011*002",
+        "DE*MKR*E000012*001",
+        "DE*MKR*E000012*002",
+        "DE*MKR*E000012*003"
+      ],
+      "pricingEvidence": {
+        "currentStationLevel": [
+          {"evseGroup": "DE*MKR*E0000002*00x", "dcEurPerKwh": 0.65, "sourceType": "chargecloud-derived live/station data"},
+          {"evseGroup": "DE*MKR*E000011*00x", "dcHpcEurPerKwh": 0.65, "sourceType": "chargecloud-derived live/station data"},
+          {"evseGroup": "DE*MKR*E000012*00x", "dcEurPerKwh": 0.65, "acEurPerKwh": 0.59, "sourceType": "live/station data"}
+        ],
+        "bnetzaIdentityEvidence": {
+          "site": "Dossenheimer Landstrasse 55a, Heidelberg",
+          "evseIds": ["DE*MKR*E0000004*001", "DE*MKR*E0000004*002"],
+          "payment": ["credit card reader"]
+        },
+        "sources": [
+          "https://www.preisstation.de/ladestation/14614-dossenheimer-landstrasse-55a-69121-heidelberg-heidelberg/",
+          "https://ladestau.de/schwetzingen/minera-kraftstoffe-mineraloelwerk-rempel-bodelschwingstrasse-grn-klinik-parkplatz/",
+          "https://ladestau.de/ketsch/minera-kraftstoffe-mineraloelwerk-rempel-l599-pm-parkpl/",
+          "https://ladestau.de/ketsch/minera-kraftstoffe-mineraloelwerk-rempel-im-bruch-3/"
+        ]
+      },
+      "conflictingEvidence": "Older PUMP observations for DE*MKR*E0000002 showed 0.80 EUR/kWh plus 0.11 EUR/min after 60 minutes, while current chargecloud-derived station evidence shows 0.65 EUR/kWh. This demonstrates time/version sensitivity and prevents promotion of a sampled price to a timeless network tariff.",
+      "reasonNotComplete": "No current official Minera station/EVSE tariff matrix or public checkout contract was found. Current sampled values are useful station-level evidence but do not prove exhaustive pricing or blocking rules for every DEMKR EVSE.",
+      "neededToComplete": "Resolve Minera's public card/QR checkout or official AFIR/Mobilithek/DATEX tariff publication for every DEMKR EVSE, with validity interval and blocking/time components."
+    }
+  ],
+  "policy": {
+    "noTariffExtrapolation": true,
+    "deferAfterFirstPass": true,
+    "canonicalRebuildRetried": false
+  }
+}

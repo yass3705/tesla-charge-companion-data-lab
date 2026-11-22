@@ -1,0 +1,38 @@
+name: Germany Qwello chunk discovery
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_qwello_chunk_discovery.py'
+      - '.github/workflows/germany-qwello-chunk-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public Qwello lazy chunks
+        run: python scripts/germany_qwello_chunk_discovery.py
+      - name: Validate chunk discovery
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/qwello_chunk_discovery.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-qwello-chunk-discovery'
+          assert d['pairCount'] >= 10, d
+          assert d['reachableChunkCount'] >= 5, d
+          print('TCC_QWELLO_CHUNK_DISCOVERY_VALIDATED='+json.dumps({'pairCount':d['pairCount'],'reachable':d['reachableChunkCount'],'tokenChunkCounts':d['tokenChunkCounts']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-qwello-chunk-discovery
+          path: data/germany/qwello_chunk_discovery.json
+          if-no-files-found: error
+          retention-days: 30
