@@ -167,7 +167,10 @@ def export_delta(staging: Path, destination: Path) -> None:
                     *delta_paths(staging)]
     records = []
     for relative in sorted(source_files):
-        src = staging / relative
+        # The canonical artifact stores source members under checkpoints/...
+        src = (staging / relative if relative in
+               (Path("manifest.json"), Path("checkpoint-manifest.json"))
+               else staging / "checkpoints/FR_electroverse_status" / relative)
         if src.is_symlink() or not src.is_file():
             raise ValueError("Unsafe status checkpoint delta member")
         target = destination / relative
