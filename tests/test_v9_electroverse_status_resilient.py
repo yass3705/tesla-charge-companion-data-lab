@@ -150,6 +150,37 @@ class SegmentedStatusTests(unittest.TestCase):
         self.assertEqual(json.loads((staging / "checkpoint-manifest.json").read_text())
                          ["partitionCount"], 2)
 
+    def test_small_delta_rehydrates_to_exact_canonical_checkpoint(self):
+        self.ready()
+        self.execute()
+        delta = self.out / "stage-delta"
+        self.assertTrue((delta / "delta-manifest.json").is_file())
+        self.assertFalse((delta / "data/electroverse/tariff_cache").exists())
+        manifest = json.loads((delta / "delta-manifest.json").read_text())
+        self.assertEqual(manifest["kind"], "tcc-v9-electroverse-status-delta")
+        self.assertEqual(manifest["fullFilesetSha256"],
+                         json.loads((self.out / "staged/checkpoint-manifest.json")
+                                    .read_text())["sha256"])
+        destination = self.root / "rehydrated"
+        source = resilient.restore_delta(self.parent, delta, destination)
+        self.assertEqual(source["sha256"], manifest["fullFilesetSha256"])
+        self.assertEqual(json.loads((destination / "checkpoint-manifest.json")
+                                    .read_text())["verifiedLocations"], 1)
+        self.assertEqual(
+            json.loads(part_path(destination / "checkpoints/FR_electroverse_status", 0)
+                       .read_text())["entries"]["A"], {"EVSE-A": "AVAILABLE"}
+        )
+        self.assertFalse((self.parent / "data/electroverse/live_statuses").exists())
+
+    def test_tampered_delta_member_fails_closed(self):
+        self.ready()
+        self.execute()
+        delta = self.out / "stage-delta"
+        target = delta / "data/electroverse/live_statuses/parts/part-00.json"
+        target.write_text(target.read_text().replace("AVAILABLE", "CHARGING"))
+        with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+            resilient.restore_delta(self.parent, delta, self.root / "bad")
+
     def test_429_stop_has_durable_checkpoint_before_next_step(self):
         self.ready()
         self.rate_limited = True
@@ -204,6 +235,7 @@ class SegmentedStatusTests(unittest.TestCase):
                 self.assertIn(uploaded, workflow)
                 self.assertLess(workflow.index(step), workflow.index(uploaded))
                 self.assertIn(f"tcc-v9-electroverse-status-stage-{phase}-{idx}", workflow)
+        self.assertEqual(workflow.count("/tcc-v9-status-census/stage-delta/"), 32)
         self.assertIn("if-no-files-found: error", workflow)
         self.assertIn("steps.status_finish.outputs.collection_state == 'complete'", workflow)
 
