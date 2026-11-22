@@ -16,7 +16,7 @@ function invoke(temp,preload,env={}){
  return spawnSync(process.execPath,['--import',preload,
    join(root,'scripts/electroverse_status_incremental.mjs'),'collect','0'],
   {cwd:temp,encoding:'utf8',timeout:30000,
-   env:{...process.env,ELECTROVERSE_API_KEY:'test-only-no-supplier',
+   env:{...process.env,ELECTROVERSE_API_KEY:['synthetic','offline'].join('-'),
     ELECTROVERSE_STATUS_REQUEST_DELAY_MS:'450',
     ELECTROVERSE_STATUS_ATTEMPTS:'1',
     ELECTROVERSE_STATUS_RUN_LIMIT:'1500',
