@@ -55,6 +55,23 @@ export function createStatus429Recovery({
   return stationIds;
  }
  function stationWaitSeconds(pk){return waitsByStation.get(pk)||0;}
+ // Keep budgets across sweep -> deferred recovery within the SAME GitHub run.
+ // The pilot explicitly clears these ephemeral counters when starting a NEW run.
+ function snapshotStationBudgets(){
+  return Object.fromEntries([...waitsByStation.entries()].sort(([a],[b])=>a.localeCompare(b)));
+ }
+ function restoreStationBudgets(saved,allowedStationIds){
+  if(saved==null)return;
+  if(!saved||typeof saved!=='object'||Array.isArray(saved)||
+     !Array.isArray(allowedStationIds))throw Error('Invalid saved station 429 budget');
+  const allowed=new Set(allowedStationIds);
+  for(const [pk,seconds] of Object.entries(saved)){
+   if(!allowed.has(pk)||typeof seconds!=='number'||!Number.isInteger(seconds)||
+      seconds<0||seconds>maxSecondsPerStation)throw Error('Untrusted station budget checkpoint');
+   waitsByStation.set(pk,seconds);
+   maxStationWaitSeconds=Math.max(maxStationWaitSeconds,seconds);
+  }
+ }
  // Only erase budgets after a verified station has been stored in the checkpoint.
  function completeStations(stationIds){
   for(const pk of stationKeys(stationIds))waitsByStation.delete(pk);
@@ -113,5 +130,5 @@ export function createStatus429Recovery({
    retriedRequests++;
   }
  }
- return {request,completeStations,stationWaitSeconds,stats};
+ return {request,completeStations,stationWaitSeconds,snapshotStationBudgets,restoreStationBudgets,stats};
 }
