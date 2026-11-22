@@ -31,9 +31,10 @@ export function createStatus429Recovery({
     typeof now!=='function'||!Number.isFinite(maxTotalWaitSeconds)||maxTotalWaitSeconds<0)
   throw Error('Invalid Electroverse status 429 recovery configuration');
  let observed429=0, retriedRequests=0, recoveredSeries=0, totalWaitSeconds=0;
+ const recentEvents=[];
  const stats=()=>({policy:'60s_120s_300s_then_stop',
   observed429,retriedRequests,recoveredSeries,totalWaitSeconds,
-  maxTotalWaitSeconds});
+  maxTotalWaitSeconds,recentEvents:[...recentEvents]});
  async function request(query,variables,phase){
   let consecutive429=0;
   while(true){
@@ -57,7 +58,10 @@ export function createStatus429Recovery({
     nextWaitSeconds:reason?null:seconds,
     reason:reason||'retry_scheduled',
     totalWaitSeconds, // elapsed waiting during this execution, not earlier runs
-    resumeNotBeforeUtc:plan.resumeNotBeforeUtc};
+    retryAtUtc:reason?null:new Date(now()+seconds*1000).toISOString(),
+    providerResumeNotBeforeUtc:plan.retryAfterProvided?plan.resumeNotBeforeUtc:null};
+   recentEvents.push(event);
+   if(recentEvents.length>16)recentEvents.shift();
    // Flush valid partition rows BEFORE any delay or terminal 429 decision.
    await onRateLimit(event);
    if(reason){
