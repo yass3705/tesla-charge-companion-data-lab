@@ -12,14 +12,14 @@ import json
 import os
 import shutil
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from v9_rebuild.electroverse import CACHE, read_json, validate_state
 from v9_rebuild.electroverse_status import (
-    PARTITION_COUNT, STATUS, STATUS_REPORT, IncompleteStatus, cache_fingerprint,
-    is_fresh_complete, part_path, run, stage, validate_complete, validate_part,
-    validate_partial,
+    FRESH_SECONDS, PARTITION_COUNT, STATUS, STATUS_REPORT, IncompleteStatus,
+    cache_fingerprint, is_fresh_complete, part_path, run, stage, validate_complete,
+    validate_part, validate_partial,
 )
 from v9_rebuild.orchestrator import artifact_digest, sha256, validated_dependency
 
@@ -50,7 +50,100 @@ def checked_source(bundle: Path) -> Path:
     return root
 
 
-def finish_checkpoint(work: Path, out: Path, reason: str, last_report: dict | None) -> None:
+
+def checked_status_checkpoint(
+    bundle: Path, parent: Path, *, fileset_sha: str,
+    verified_locations: int, error_count: int, partition_count: int,
+) -> tuple[Path, dict, dict]:
+    """Validate an explicitly pinned checkpoint before any supplier call."""
+    metadata = read_json(bundle / "checkpoint-manifest.json")
+    collection = read_json(bundle / "manifest.json")
+    root = bundle / "checkpoints/FR_electroverse_status"
+    if (metadata.get("schemaVersion") != 1 or
+            metadata.get("source") != "FR:electroverse_status" or
+            metadata.get("branch") != BRANCH or
+            metadata.get("state") != "partial_checkpoint" or
+            metadata.get("completeSnapshotValidated") is not False or
+            metadata.get("parentRun") != SOURCE_RUN or
+            metadata.get("parentArtifact") != SOURCE_ARTIFACT or
+            metadata.get("parentZipSha256") != SOURCE_ZIP_SHA or
+            metadata.get("sha256") != fileset_sha or
+            metadata.get("verifiedLocations") != verified_locations or
+            metadata.get("partitionCount") != partition_count):
+        raise ValueError("Status checkpoint provenance or declared counts mismatch")
+    if (collection.get("schema_version") != 1 or
+            collection.get("status") != "partial_failure" or
+            len(collection.get("sources", [])) != 1 or
+            collection["sources"][0].get("source") != "FR:electroverse_status" or
+            collection["sources"][0].get("status") != "failed" or
+            collection["sources"][0].get("reason") != metadata.get("reason")):
+        raise ValueError("Status checkpoint must remain unpromotable")
+    if not root.is_dir() or root.is_symlink():
+        raise ValueError("Missing or unsafe status checkpoint root")
+    digest, files = artifact_digest(root)
+    if digest != fileset_sha or files != metadata.get("files"):
+        raise ValueError("Status checkpoint file inventory or SHA-256 mismatch")
+    # Every national mapping, inventory, tariff shard and source report must
+    # remain byte-identical to the separately verified COMPLETE tariff parent.
+    # Only status partitions and their report may differ.
+    for record in files:
+        relative = Path(record["path"])
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("Unsafe status checkpoint member")
+        if relative.parts[:3] == ("data", "electroverse", "live_statuses"):
+            continue
+        if relative == STATUS_REPORT:
+            continue
+        original = parent / relative
+        if (not original.is_file() or original.stat().st_size != record["bytes"]
+                or sha256(original) != record["sha256"]):
+            raise ValueError("Checkpoint unexpectedly modified its tariff parent: " + str(relative))
+    partial = validate_partial(root)
+    if (partial["fingerprint"] != cache_fingerprint(parent) or
+            partial["fingerprint"] != metadata.get("sourceFingerprint") or
+            partial["verified_locations"] != verified_locations or
+            len(partial["partitions"]) != partition_count or
+            sum(len(p["errors"]) for p in partial["partitions"]) != error_count):
+        raise ValueError("Status partition coverage, failures or source fingerprint mismatch")
+    if ((root / STATUS / "manifest.json").exists() or
+            (root / STATUS / "evses.json.gz").exists()):
+        raise ValueError("Partial status checkpoint cannot include national publication")
+    report = read_json(root / STATUS_REPORT)
+    recorded = collection["sources"][0].get("lastPartitionReport")
+    if (report != recorded or
+            report.get("sourceFingerprint") != partial["fingerprint"] or
+            report.get("verifiedLocations") != len(partial["partitions"][-1]["entries"]) or
+            report.get("partition") != partial["partitions"][-1]["partition"]):
+        raise ValueError("Status checkpoint report differs from retained partitions")
+    if metadata.get("reason") == "provider_rate_limited":
+        limit = report.get("rateLimit") or {}
+        if (limit.get("httpStatus") != 429 or not limit.get("resumeNotBeforeUtc")):
+            raise ValueError("Rate-limited checkpoint lacks a verified cooldown")
+    return root, partial, report
+
+
+def resume_eligibility(partial: dict, report: dict, now: datetime) -> tuple[bool, str]:
+    """Never silently discard good rows when the 16-hour freshness gate has expired."""
+    for partition in partial["partitions"]:
+        try:
+            started = datetime.fromisoformat(partition["startedAt"].replace("Z", "+00:00"))
+            age = (now - started).total_seconds()
+        except (KeyError, TypeError, ValueError):
+            return False, "invalid_partition_start"
+        if not 0 <= age < FRESH_SECONDS - 600:
+            return False, "checkpoint_stale_or_near_expiry"
+    limit = report.get("rateLimit") or {}
+    if limit.get("resumeNotBeforeUtc"):
+        try:
+            resume_at = datetime.fromisoformat(limit["resumeNotBeforeUtc"].replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return False, "invalid_rate_limit_cooldown"
+        if now < resume_at:
+            return False, "provider_cooldown_active"
+    return True, "fresh_and_cooldown_satisfied"
+
+def finish_checkpoint(work: Path, out: Path, reason: str, last_report: dict | None,
+                      resume_from: dict | None = None) -> None:
     state = validate_partial(work)
     digest, files = artifact_digest(work)
     checkpoint = out / "checkpoints/FR_electroverse_status"
@@ -67,6 +160,7 @@ def finish_checkpoint(work: Path, out: Path, reason: str, last_report: dict | No
         "sha256": digest, "files": files, "verifiedLocations": state["verified_locations"],
         "partitionCount": len(state["partitions"]),
         "reason": reason, "completeSnapshotValidated": False,
+        "resumedFrom": resume_from,
     }
     (out / "checkpoint-manifest.json").write_text(json.dumps(metadata, indent=2) + "\n")
     (out / "manifest.json").write_text(json.dumps({
@@ -75,14 +169,14 @@ def finish_checkpoint(work: Path, out: Path, reason: str, last_report: dict | No
                      "status": "failed", "reason": reason,
                      "verifiedLocations": state["verified_locations"],
                      "sourceFingerprint": state["fingerprint"],
-                     "lastPartitionReport": last_report}],
+                     "lastPartitionReport": last_report, "resumedFrom": resume_from}],
     }, indent=2) + "\n")
     print(json.dumps({"result": "checkpointed", "reason": reason,
                       "verifiedLocations": state["verified_locations"],
                       "partitions": len(state["partitions"])}))
 
 
-def finish_complete(work: Path, out: Path) -> None:
+def finish_complete(work: Path, out: Path, resume_from: dict | None = None) -> None:
     full = validate_complete(work)
     digest, files = artifact_digest(work)
     target = out / "objects/FR_electroverse_status" / digest
@@ -103,6 +197,7 @@ def finish_complete(work: Path, out: Path) -> None:
         "status": "complete", "sources": [source],
         "tariffParent": {"run": SOURCE_RUN, "artifact": SOURCE_ARTIFACT,
                          "zipSha256": SOURCE_ZIP_SHA},
+        "resumedFrom": resume_from,
     }, indent=2) + "\n")
     validated_dependency(out, "FR:electroverse_status", "electroverse_status")
     print(json.dumps({"result": "complete", "completedLocations": full["completedLocations"],
@@ -115,6 +210,13 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--mode", choices=("verify", "collect"), required=True)
     ap.add_argument("--budget-seconds", type=int, default=18000)
+    ap.add_argument("--checkpoint", type=Path)
+    ap.add_argument("--checkpoint-fileset", type=str)
+    ap.add_argument("--checkpoint-run", type=int)
+    ap.add_argument("--checkpoint-artifact", type=int)
+    ap.add_argument("--checkpoint-verified", type=int)
+    ap.add_argument("--checkpoint-errors", type=int)
+    ap.add_argument("--checkpoint-partitions", type=int)
     args = ap.parse_args()
     root = Path(__file__).resolve().parents[1]
     out = args.out.resolve()
@@ -127,14 +229,40 @@ def main() -> None:
     print(json.dumps({"event": "verified_tariff_parent", "run": SOURCE_RUN,
                       "artifact": SOURCE_ARTIFACT, "fileSet": SOURCE_FILESET,
                       "locations": SOURCE_COUNT}))
+    required = (args.checkpoint, args.checkpoint_fileset, args.checkpoint_run,
+                args.checkpoint_artifact, args.checkpoint_verified,
+                args.checkpoint_errors, args.checkpoint_partitions)
+    if any(item is None for item in required):
+        raise ValueError("An exact previously audited status checkpoint is required")
+    checkpoint_root, partial, report = checked_status_checkpoint(
+        args.checkpoint.resolve(), parent, fileset_sha=args.checkpoint_fileset,
+        verified_locations=args.checkpoint_verified, error_count=args.checkpoint_errors,
+        partition_count=args.checkpoint_partitions,
+    )
+    eligible, eligibility_reason = resume_eligibility(partial, report, datetime.now(timezone.utc))
+    print(json.dumps({"event": "verified_status_checkpoint",
+                      "run": args.checkpoint_run, "artifact": args.checkpoint_artifact,
+                      "verifiedLocations": partial["verified_locations"],
+                      "errors": sum(len(p["errors"]) for p in partial["partitions"]),
+                      "sourceFingerprint": partial["fingerprint"],
+                      "resumeEligible": eligible, "eligibilityReason": eligibility_reason}))
     if args.mode == "verify":
-        print(json.dumps({"result": "verified_only", "supplierCalls": 0}))
+        print(json.dumps({"result": "verified_only", "supplierCalls": 0,
+                          "checkpointValidated": True, "resumeEligible": eligible}))
         return
+    if not eligible:
+        raise ValueError("Refusing supplier requests and unsafe replay: " + eligibility_reason)
     if not os.environ.get("ELECTROVERSE_API_KEY"):
         raise ValueError("Missing status API credential; cannot collect")
     out.mkdir(parents=True, exist_ok=False)
     work = out / "work"
-    stage(parent, work)
+    shutil.copytree(checkpoint_root, work)
+    resumed = validate_partial(work)
+    if resumed["verified_locations"] != partial["verified_locations"]:
+        raise ValueError("Validated checkpoint was not preserved during isolated staging")
+    resume_from = {"run": args.checkpoint_run, "artifact": args.checkpoint_artifact,
+                   "filesetSha256": args.checkpoint_fileset,
+                   "verifiedLocations": partial["verified_locations"]}
     started = time.monotonic()
     reason = "all_partitions_complete"
     last_report = None
@@ -144,12 +272,19 @@ def main() -> None:
         if time.monotonic() - started > args.budget_seconds - 4200:
             reason = "runner_budget_reserve"
             break
+        existing_path = part_path(work, i)
+        existing = read_json(existing_path) if existing_path.is_file() else None
+        if existing and not resume_eligibility({"partitions": [existing]}, {}, datetime.now(timezone.utc))[0]:
+            raise ValueError("Existing status partition became stale: refusing silent replay")
+        before = dict(existing["entries"]) if existing else {}
         try:
             run(work, source=parent, partition=i)
         except IncompleteStatus:
             pass
         last_report = read_json(work / STATUS_REPORT)
         part = validate_part(work, i)
+        if any(part["entries"].get(pk) != statuses for pk, statuses in before.items()):
+            raise ValueError("A previously verified status row was replayed or replaced")
         remaining = part["expectedLocations"] - len(part["entries"])
         print(json.dumps({"event": "partition_result", "partition": i,
                           "expected": part["expectedLocations"],
@@ -167,14 +302,14 @@ def main() -> None:
             break
     if reason == "all_partitions_complete":
         try:
-            finish_complete(work, out)
+            finish_complete(work, out, resume_from)
             state = "complete"
         except (IncompleteStatus, FileNotFoundError):
             reason = "national_finalize_incomplete"
-            finish_checkpoint(work, out, reason, last_report)
+            finish_checkpoint(work, out, reason, last_report, resume_from)
             state = "checkpointed"
     else:
-        finish_checkpoint(work, out, reason, last_report)
+        finish_checkpoint(work, out, reason, last_report, resume_from)
         state = "checkpointed"
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
