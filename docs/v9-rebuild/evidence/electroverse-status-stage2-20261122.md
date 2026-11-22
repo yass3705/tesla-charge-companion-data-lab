@@ -28,3 +28,7 @@ Sur instruction utilisateur, demande `mode=collect` `b2f3ff554f1f297421c00425232
 4. Aucun statut live ne doit être inventé ; ne pas confondre la liste des EVSE dans le cache tarifaire avec la disponibilité réelle. L'étape 3 (overlay) reste **non démarrée** et exige un artefact de statuts national validé.
 
 **Traçabilité :** cette note est un état de lancement, **pas** un rapport de succès. Tout changement ultérieur doit être accompagné du SHA et des preuves du run, puis synchronisé dans `memory/CURRENT.md` / `memory/V9_REBUILD_PROGRESS.md` / `memory/HISTORY.md`.
+
+## Suivi ponctuel programmé
+
+L'automatisation de **lecture et audit uniquement** `Automation_b2f956dcd33c8191b7fc6fce635451d5` est planifiée le **22 novembre 2026 à 21 h 47, heure de Paris**. Elle vérifiera l'issue du run `45045530435`, les fichiers et la qualité des partitions, sans relancer la collecte, modifier les dépôts ni promouvoir une sortie. Un run encore actif à cette échéance doit être déclaré actif, non artificiellement terminé.
