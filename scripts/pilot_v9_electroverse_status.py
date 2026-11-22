@@ -112,9 +112,16 @@ def checked_status_checkpoint(
     recorded = collection["sources"][0].get("lastPartitionReport")
     if (report != recorded or
             report.get("sourceFingerprint") != partial["fingerprint"] or
-            report.get("verifiedLocations") != len(partial["partitions"][-1]["entries"]) or
-            report.get("partition") != partial["partitions"][-1]["partition"]):
+            not report_matches_partition(partial, report)):
         raise ValueError("Status checkpoint report differs from retained partitions")
+    deferred_file = root / STATUS / "deferred-failures.json"
+    if deferred_file.is_file():
+        deferred = read_json(deferred_file)
+        actual = deferred_failure_summary(partial)
+        if any(deferred.get(k) != actual[k] for k in
+               ("sourceFingerprint", "verifiedLocations", "partitionCount",
+                "remainingLocations", "errorCount", "partitionDetails")):
+            raise ValueError("Deferred-error queue does not match source partitions")
     if metadata.get("reason") == "provider_rate_limited":
         limit = report.get("rateLimit") or {}
         if (limit.get("httpStatus") != 429 or not limit.get("resumeNotBeforeUtc")):
@@ -141,6 +148,38 @@ def resume_eligibility(partial: dict, report: dict, now: datetime) -> tuple[bool
         if now < resume_at:
             return False, "provider_cooldown_active"
     return True, "fresh_and_cooldown_satisfied"
+
+def report_matches_partition(partial: dict, report: dict) -> bool:
+    """Recovery may end at any partition; the latest report need not be partition 15."""
+    selected = next((p for p in partial["partitions"]
+                     if p["partition"] == report.get("partition")), None)
+    return selected is not None and report.get("verifiedLocations") == len(selected["entries"])
+
+
+def deferred_failure_summary(partial: dict) -> dict:
+    """Audit-only queue: no invented statuses, no promotion of incomplete data."""
+    details = []
+    for part in sorted(partial["partitions"], key=lambda p: p["partition"]):
+        errors = [{"pk": pk, "error": str(problem.get("error", "unknown"))}
+                  for pk, problem in sorted(part["errors"].items())]
+        missing = part["expectedLocations"] - len(part["entries"])
+        if missing < len(errors):
+            raise ValueError("More recorded failures than unresolved locations")
+        details.append({
+            "partition": part["partition"], "verified": len(part["entries"]),
+            "remaining": missing, "errors": errors,
+            "unvisited": missing - len(errors),
+        })
+    return {
+        "schemaVersion": 1,
+        "sourceFingerprint": partial["fingerprint"],
+        "partitionCount": len(details),
+        "verifiedLocations": partial["verified_locations"],
+        "remainingLocations": sum(p["remaining"] for p in details),
+        "errorCount": sum(len(p["errors"]) for p in details),
+        "partitionDetails": details,
+    }
+
 
 def finish_checkpoint(work: Path, out: Path, reason: str, last_report: dict | None,
                       resume_from: dict | None = None) -> None:
@@ -267,19 +306,24 @@ def main() -> None:
     reason = "all_partitions_complete"
     last_report = None
     remaining_429_wait_seconds = 480
-    for i in range(PARTITION_COUNT):
-        # The historical per-partition subprocess can use up to 3600s.
-        # Reserve a full partition timeout and 10 min for checkpoint upload.
-        if time.monotonic() - started > args.budget_seconds - 4200:
-            reason = "runner_budget_reserve"
-            break
+    attempted = []
+
+    def budget_available() -> bool:
+        # Leave up to 70 min for a partition subprocess and uploading evidence.
+        return time.monotonic() - started <= args.budget_seconds - 4200
+
+    def attempt_partition(i: int, phase: str) -> bool:
+        nonlocal last_report, remaining_429_wait_seconds
         existing_path = part_path(work, i)
         existing = read_json(existing_path) if existing_path.is_file() else None
-        if existing and not resume_eligibility({"partitions": [existing]}, {}, datetime.now(timezone.utc))[0]:
+        if existing and not resume_eligibility(
+                {"partitions": [existing]}, {}, datetime.now(timezone.utc))[0]:
             raise ValueError("Existing status partition became stale: refusing silent replay")
         before = dict(existing["entries"]) if existing else {}
-        # Cap cumulative 429 waiting across ALL 16 partition subprocesses.
+        # Protect cumulative waiting across all sweep and recovery subprocesses.
         os.environ["ELECTROVERSE_STATUS_429_BUDGET_SECONDS"] = str(remaining_429_wait_seconds)
+        os.environ["ELECTROVERSE_STATUS_DEFER_FAILED"] = "1" if phase == "sweep" else "0"
+        os.environ["ELECTROVERSE_STATUS_RECOVERY_ONLY"] = "1" if phase == "recovery" else "0"
         try:
             run(work, source=parent, partition=i)
         except IncompleteStatus:
@@ -292,26 +336,68 @@ def main() -> None:
             raise ValueError("Status 429 recovery wait budget report is missing or invalid")
         remaining_429_wait_seconds -= used_wait
         print(json.dumps({"event": "status_429_run_budget", "partition": i,
-                          "waitedSeconds": used_wait,
+                          "phase": phase, "waitedSeconds": used_wait,
                           "remainingSeconds": remaining_429_wait_seconds}))
         part = validate_part(work, i)
         if any(part["entries"].get(pk) != statuses for pk, statuses in before.items()):
             raise ValueError("A previously verified status row was replayed or replaced")
+        if (last_report.get("partition") != i
+                or last_report.get("sourceFingerprint") != cache_fingerprint(work)
+                or last_report.get("verifiedLocations") != len(part["entries"])):
+            raise ValueError("Status report is not from the selected partition")
         remaining = part["expectedLocations"] - len(part["entries"])
-        print(json.dumps({"event": "partition_result", "partition": i,
-                          "expected": part["expectedLocations"],
+        attempted.append((phase, i))
+        print(json.dumps({"event": "partition_result", "phase": phase,
+                          "partition": i, "expected": part["expectedLocations"],
                           "verified": len(part["entries"]), "remaining": remaining,
                           "errors": len(part["errors"]),
                           "rateLimit": last_report.get("rateLimit")}))
-        if (last_report.get("partition") != i
-                or last_report.get("sourceFingerprint") != cache_fingerprint(work)):
-            raise ValueError("Status report is not from the selected partition")
-        if last_report.get("rateLimit"):
+        return not bool(last_report.get("rateLimit"))
+
+    # Sweep every national partition first. Individual errors do not stop the loop.
+    for i in range(PARTITION_COUNT):
+        if not budget_available():
+            reason = "runner_budget_reserve"
+            break
+        if not attempt_partition(i, "sweep"):
             reason = "provider_rate_limited"
             break
-        if not is_fresh_complete(part, datetime.now(timezone.utc)):
-            reason = "partition_incomplete_or_stale"
-            break
+
+    # Only after all 16 partitions have been visited, revisit outstanding
+    # individuals and any unvisited PK from a previous partition's failure budget.
+    if reason == "all_partitions_complete":
+        initial = validate_partial(work)
+        if len(initial["partitions"]) != PARTITION_COUNT:
+            raise ValueError("Sweep did not retain all sixteen status partitions")
+        pending = [p["partition"] for p in initial["partitions"]
+                   if len(p["entries"]) < p["expectedLocations"]]
+        print(json.dumps({"event": "deferred_recovery_plan",
+                          "partitions": pending, "count": len(pending),
+                          "errors": sum(len(p["errors"]) for p in initial["partitions"])}))
+        for i in pending:
+            if not budget_available():
+                reason = "runner_budget_reserve"
+                break
+            if not attempt_partition(i, "recovery"):
+                reason = "provider_rate_limited"
+                break
+
+    final_partial = validate_partial(work)
+    summary = deferred_failure_summary(final_partial)
+    queue_file = work / STATUS / "deferred-failures.json"
+    if summary["remainingLocations"]:
+        queue_file.parent.mkdir(parents=True, exist_ok=True)
+        queue_file.write_text(json.dumps(summary, indent=2) + "\n")
+    else:
+        queue_file.unlink(missing_ok=True)
+    print(json.dumps({"event": "deferred_queue_final",
+                      "partitionsVisited": len(final_partial["partitions"]),
+                      "attempts": len(attempted),
+                      "verifiedLocations": summary["verifiedLocations"],
+                      "remainingLocations": summary["remainingLocations"],
+                      "errorCount": summary["errorCount"]}))
+    if reason == "all_partitions_complete" and summary["remainingLocations"]:
+        reason = "deferred_errors_remaining"
     if reason == "all_partitions_complete":
         try:
             finish_complete(work, out, resume_from)
