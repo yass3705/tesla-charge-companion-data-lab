@@ -112,8 +112,12 @@ async function collect(i){
  const bad=existing?.errors||{};
  const started=new Date().toISOString();
  let successful=0,failed=0,batchRequests=0,aliasesFallback=0;
- const todo=expected.filter(pk=>!(pk in entries));
- console.log(JSON.stringify({event:'start',partition:i,sourceLocations:expected.length,previousGood:Object.keys(entries).length,previousErrors:Object.keys(bad).length,remaining:todo.length,runLimit:maxPerRun}));
+ // Initial sweep defers pre-existing failures; final recovery revisits unresolved PKs.
+const deferFailed=process.env.ELECTROVERSE_STATUS_DEFER_FAILED==='1';
+const recoveryOnly=process.env.ELECTROVERSE_STATUS_RECOVERY_ONLY==='1';
+if(deferFailed&&recoveryOnly)throw Error('Incompatible status sweep and recovery modes');
+const todo=expected.filter(pk=>!(pk in entries)&&(!deferFailed||!(pk in bad)));
+ console.log(JSON.stringify({event:'start',partition:i,sourceLocations:expected.length,previousGood:Object.keys(entries).length,previousErrors:Object.keys(bad).length,remaining:todo.length,runLimit:maxPerRun,phase:recoveryOnly?'deferred_recovery':'initial_sweep',deferredBefore:Object.keys(bad).length}));
  let cursor=0;
  async function checkpoint(){
   await fs.writeFile(filename(i),JSON.stringify({schemaVersion:1,partition:i,partitionCount:count,sourceFingerprint:cacheFingerprint,
@@ -159,7 +163,7 @@ async function collect(i){
  expectedLocations:expected.length,verifiedLocations:Object.keys(entries).length,
  newSuccessful:successful,newFailed:failed,persistentErrors:Object.keys(bad).length,
  remaining,requests,batchRequests,pages,aliasesFallback,rateLimitRecovery:rateLimitRecovery.stats(),failureBudgetReached:failed>=failBudget,
- complete:remaining===0,rateLimit,output:filename(i)};
+ complete:remaining===0,rateLimit,phase:recoveryOnly?'deferred_recovery':'initial_sweep',deferredFailures:Object.keys(bad).length,output:filename(i)};
  await fs.mkdir('reports/electroverse',{recursive:true});
  await fs.writeFile('reports/electroverse/status-partition-latest.json',JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({event:'RESULT',...report}));
