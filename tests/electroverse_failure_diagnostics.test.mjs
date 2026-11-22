@@ -24,3 +24,25 @@ test('trace truncation keeps first and final attempts',()=>{
  const r=boundedTrace(Array.from({length:90},(_,i)=>i+1),10);
  assert.equal(r.omitted,80);assert.deepEqual(r.attempts,[1,2,3,4,5,86,87,88,89,90]);
 });
+
+import {isRateLimited,rateLimitPlan,deferUnresolved} from '../scripts/lib/electroverse_rate_limit_guard.mjs';
+test('HTTP 429 opens breaker and uses bounded Retry-After seconds',()=>{
+ const r={status:429,responseHeaders:{retryAfter:'120'}};
+ assert.equal(isRateLimited(r),true);
+ const plan=rateLimitPlan(r,'batch',1000000000000);
+ assert.equal(plan.backoffSeconds,120);
+ assert.equal(Date.parse(plan.resumeNotBeforeUtc)-Date.parse(plan.detectedAtUtc),120000);
+});
+test('missing Retry-After enforces 15 minute cooldown and GraphQL throttling trips breaker',()=>{
+ const r={status:200,json:{errors:[{extensions:{code:'RATE_LIMITED'},message:'PRIVATE'}]}};
+ assert.equal(isRateLimited(r),true);
+ const p=rateLimitPlan(r,'fallback',1000000000000);
+ assert.equal(p.backoffSeconds,900);
+ assert.ok(!JSON.stringify(p).includes('PRIVATE'));
+});
+test('unresolved preservation never skips or repeats a PK',()=>{
+ const selected=['a','b','c','d'];
+ assert.deepEqual(deferUnresolved(selected,new Set(['a']),[{pk:'c',error:'rate_limited'}]),['b','d']);
+ assert.throws(()=>deferUnresolved(selected,new Set(['a']),[{pk:'a'}]),/invalid/);
+ assert.throws(()=>deferUnresolved(selected,new Set(['a']),[{pk:'c'},{pk:'c'}]),/Duplicate/);
+});

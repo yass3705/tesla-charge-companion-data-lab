@@ -4,6 +4,7 @@ import { performance } from 'node:perf_hooks';
 import { DirectElectroverseClient, aliasBatchQuery, SINGLE_LOCATION_QUERY, PAGED_LOCATION_QUERY } from './lib/electroverse_direct_client.mjs';
 import { completeLocation } from './lib/electroverse_response_integrity.mjs';
 import {summarizeAttempt,boundedTrace} from './lib/electroverse_failure_diagnostics.mjs';
+import {isRateLimited, rateLimitPlan, deferUnresolved} from './lib/electroverse_rate_limit_guard.mjs';
 
 const API_KEY=process.env.ELECTROVERSE_API_KEY;
 const BATCH_SIZE=Number(process.env.ELECTROVERSE_BATCH_SIZE||5);
@@ -72,23 +73,36 @@ for(const i of neededShards){
 
 const client=new DirectElectroverseClient({apiKey:API_KEY});
 let requests=0,newCount=0,changed=0,unchanged=0,failures=0,pagedUsed=0,batchRequests=0,fallbackRequests=0;
-const failureRows=[],t0=performance.now(), fallbackPks=[];
-let fallbackNext=performance.now();
+const failureRows=[],t0=performance.now(),fallbackPks=[],succeeded=new Set(),batchAttempts=new Map(),batchLimited=new Set();
+let fallbackNext=performance.now(),rateLimit=null;
+
+try {
+  const previous=JSON.parse(await fs.readFile(FAILURE_DIAGNOSTICS,'utf8'));
+  if(previous.schemaVersion!==1||!Array.isArray(previous.events))throw Error('Invalid Electroverse diagnostic history');
+  const until=previous.events.at(-1)?.rateLimit?.resumeNotBeforeUtc;
+  if(until && Number.isFinite(Date.parse(until)) && Date.parse(until)>Date.now()){
+    rateLimit={...previous.events.at(-1).rateLimit,phase:'checkpoint_cooldown'};
+    console.log('Electroverse cooling down from earlier provider response; zero provider requests');
+  }
+} catch(error){if(error.code!=='ENOENT')throw error}
 
 function applyLocation(pk,loc,mode='batch',pages=null){
-  const m=byPk.get(pk); if(!m){failures++;failureRows.push({pk,error:'missing_mapping'});return false}
-  const sh=shardData.get(shardFor(pk)), prev=sh.stations[pk]||null;
-  const tariff=tariffProjection(loc), tariffHash=hash(tariff), nowIso=new Date().toISOString();
+  const m=byPk.get(pk);if(!m){failures++;failureRows.push({pk,error:'missing_mapping'});return false}
+  const sh=shardData.get(shardFor(pk)),prev=sh.stations[pk]||null;
+  const tariff=tariffProjection(loc),tariffHash=hash(tariff),nowIso=new Date().toISOString();
   checkedState.checkedAt[pk]=nowIso;
+  succeeded.add(pk);
   if(!prev)newCount++;
   else if(prev.tariffHash===tariffHash){unchanged++;return true}
   else changed++;
-  sh.stations[pk]={electroverseLocationPk:pk,irveStationId:m.irveStationId,irvePdcIds:m.irvePdcIds||[],matchConfidence:m.confidence||null,tariffHash,fetchedAt:nowIso,fetchMode:mode,pagedPages:pages,tariff};
-  dirtyShards.add(shardFor(pk)); return true;
+  sh.stations[pk]={electroverseLocationPk:pk,irveStationId:m.irveStationId,irvePdcIds:m.irvePdcIds||[],
+    matchConfidence:m.confidence||null,tariffHash,fetchedAt:nowIso,fetchMode:mode,pagedPages:pages,tariff};
+  dirtyShards.add(shardFor(pk));return true;
 }
 
 async function fallbackPaced(query,vars){
-  const now=performance.now(),wait=Math.max(0,fallbackNext-now);if(wait)await sleep(wait);
+  const now=performance.now(),wait=Math.max(0,fallbackNext-now);
+  if(wait)await sleep(wait);
   fallbackNext=Math.max(fallbackNext,performance.now())+FALLBACK_INTERVAL_MS;
   requests++;fallbackRequests++;return client.request(query,vars,{attempts:1});
 }
@@ -99,9 +113,10 @@ async function fetchSingle(pk){
     last=await fallbackPaced(SINGLE_LOCATION_QUERY,{pk});
     const loc=completeLocation(last,'chargingLocation',pk);
     diagnostics.push(summarizeAttempt(last,{phase:'single',attempt,page:1,complete:!!loc}));
-    if(loc)return{loc,mode:'single',attempts:attempt,diagnostics};
+    if(loc)return {loc,mode:'single',attempts:attempt,diagnostics};
+    if(isRateLimited(last))return {loc:null,last,error:'rate_limited',rateLimited:true,diagnostics};
   }
-  return{loc:null,last,diagnostics};
+  return {loc:null,last,diagnostics};
 }
 async function fetchPaged(pk){
   const edges=[],cursors=new Set(),evseIds=new Set(),diagnostics=[];let after=null,meta=null,pages=0;
@@ -112,57 +127,95 @@ async function fetchPaged(pk){
       last=await fallbackPaced(PAGED_LOCATION_QUERY,{pk,first:5,after});
       loc=completeLocation(last,'chargingLocation',pk,{paged:true});
       diagnostics.push(summarizeAttempt(last,{phase:'paged',attempt,page,complete:!!loc}));
+      if(!loc&&isRateLimited(last))return {loc:null,pages,last,error:'rate_limited',rateLimited:true,diagnostics};
     }
-    if(!loc?.evses)return{loc:null,pages,last,diagnostics};
+    if(!loc?.evses)return {loc:null,pages,last,diagnostics};
     for(const edge of loc.evses.edges){
-      if(edge.node.pk!=null){const id=String(edge.node.pk);if(evseIds.has(id))return{loc:null,pages,error:'duplicate_evse_across_pages',diagnostics};evseIds.add(id);}
+      if(edge.node.pk!=null){
+        const id=String(edge.node.pk);
+        if(evseIds.has(id))return {loc:null,pages,error:'duplicate_evse_across_pages',diagnostics};
+        evseIds.add(id);
+      }
     }
     meta??=loc;edges.push(...loc.evses.edges);const pi=loc.evses.pageInfo;
-    if(!pi.hasNextPage)return{loc:{...meta,evses:{edges,pageInfo:pi}},pages,mode:'paged',diagnostics};
-    if(cursors.has(pi.endCursor))return{loc:null,pages,error:'cursor_not_advancing',diagnostics};
+    if(!pi.hasNextPage)return {loc:{...meta,evses:{edges,pageInfo:pi}},pages,mode:'paged',diagnostics};
+    if(cursors.has(pi.endCursor))return {loc:null,pages,error:'cursor_not_advancing',diagnostics};
     cursors.add(pi.endCursor);after=pi.endCursor;
   }
-  return{loc:null,pages,error:'page_limit',diagnostics};
+  return {loc:null,pages,error:'page_limit',diagnostics};
 }
 
-const batchCandidates=[], knownPaged=[];
+const batchCandidates=[],knownPaged=[];
 for(const pk of selected){
   const prev=shardData.get(shardFor(pk))?.stations?.[pk];
   if(prev?.fetchMode==='paged')knownPaged.push(pk);else batchCandidates.push(pk);
 }
 const groups=[];for(let i=0;i<batchCandidates.length;i+=BATCH_SIZE)groups.push(batchCandidates.slice(i,i+BATCH_SIZE));
-for(let i=0;i<groups.length;i+=CONCURRENCY){
-  const wave=groups.slice(i,i+CONCURRENCY);
-  const rs=await Promise.all(wave.map(async g=>{
-    requests++;batchRequests++;
-    const r=await client.request(aliasBatchQuery(g),{}, {attempts:1});
-    for(let k=0;k<g.length;k++){
-      const loc=completeLocation(r,'s'+k,g[k]);
-      if(loc)applyLocation(g[k],loc,'batch',null);else fallbackPks.push(g[k]);
+if(!rateLimit){
+  for(let i=0;i<groups.length;i+=CONCURRENCY){
+    const wave=groups.slice(i,i+CONCURRENCY);
+    const responses=await Promise.all(wave.map(async g=>{
+      requests++;batchRequests++;
+      const r=await client.request(aliasBatchQuery(g),{}, {attempts:1});
+      for(let k=0;k<g.length;k++){
+        const pk=g[k],loc=completeLocation(r,'s'+k,pk);
+        if(loc)applyLocation(pk,loc,'batch',null);
+        else{
+          fallbackPks.push(pk);
+          batchAttempts.set(pk,[summarizeAttempt(r,{phase:'batch',attempt:1,page:1,complete:false})]);
+          if(isRateLimited(r))batchLimited.add(pk);
+        }
+      }
+      return r;
+    }));
+    const firstLimited=responses.find(isRateLimited);
+    if(firstLimited){
+      rateLimit=rateLimitPlan(firstLimited,'batch');
+      console.log('Electroverse circuit breaker: rate limit during batch; remaining requests deferred');
+      break;
     }
-    return {status:r.status,errors:r.json?.errors?.length||0};
-  }));
-  if((i/BATCH_SIZE)%10===0)console.log(`batchWave=${Math.floor(i/CONCURRENCY)+1}/${Math.ceil(groups.length/CONCURRENCY)} fallbackQueued=${fallbackPks.length} requests=${requests}`);
-  await sleep(WAVE_PAUSE_MS);
-}
-fallbackPks.push(...knownPaged);
-for(let i=0;i<fallbackPks.length;i++){
-  const pk=fallbackPks[i], prev=shardData.get(shardFor(pk))?.stations?.[pk];
-  let result,attemptHistory=[];
-  if(prev?.fetchMode==='paged')result=await fetchPaged(pk);
-  else{
-    result=await fetchSingle(pk);attemptHistory=result.diagnostics||[];
-    if(!result.loc)result=await fetchPaged(pk);
+    if((i/CONCURRENCY)%10===0)console.log('batchWave='+Math.floor(i/CONCURRENCY+1)+'/'+Math.ceil(groups.length/CONCURRENCY)+' requests='+requests);
+    await sleep(WAVE_PAUSE_MS);
   }
-  if(!result.loc){
+}
+if(!rateLimit){
+  fallbackPks.push(...knownPaged);
+  for(const pk of fallbackPks){
+    const prev=shardData.get(shardFor(pk))?.stations?.[pk];
+    let result,history=batchAttempts.get(pk)||[];
+    if(prev?.fetchMode==='paged')result=await fetchPaged(pk);
+    else{
+      result=await fetchSingle(pk);
+      history=[...history,...(result.diagnostics||[])];
+      if(!result.loc&&!result.rateLimited)result=await fetchPaged(pk);
+    }
+    if(!result.loc){
+      failures++;
+      failureRows.push({pk,error:result.error||'fetch_failed',pages:result.pages??null,
+        diagnostics:boundedTrace([...history,...(result.diagnostics||[])])});
+      if(result.rateLimited){
+        rateLimit=rateLimitPlan(result.last,prev?.fetchMode==='paged'?'paged':'fallback');
+        console.log('Electroverse circuit breaker: rate limit during fallback; remaining requests deferred');
+        break;
+      }
+      continue;
+    }
+    if(result.mode==='paged')pagedUsed++;
+    applyLocation(pk,result.loc,result.mode||'single',result.pages??null);
+  }
+}
+if(rateLimit){
+  const already=new Set(failureRows.map(x=>x.pk));
+  for(const pk of selected){
+    if(succeeded.has(pk)||already.has(pk))continue;
     failures++;
-    failureRows.push({pk,error:result.error||'fetch_failed',pages:result.pages??null,
-      diagnostics:boundedTrace([...attemptHistory,...(result.diagnostics||[])])});
-    continue;
+    failureRows.push({pk,error:batchLimited.has(pk)?'rate_limited':'deferred_due_to_rate_limit',
+      pages:null,diagnostics:boundedTrace(batchAttempts.get(pk)||[])});
   }
-  if(result.mode==='paged')pagedUsed++;
-  applyLocation(pk,result.loc,result.mode||'single',result.pages??null);
+  const unresolved=deferUnresolved(selected,succeeded,failureRows);
+  if(unresolved.length!==0)throw Error('Untracked Electroverse rate-limited identity');
 }
+if(failures!==failureRows.length)throw Error('Electroverse failure count mismatch');
 
 for(const i of dirtyShards){
   const data=shardData.get(i);data.generatedAt=new Date().toISOString();
@@ -177,7 +230,7 @@ for(let i=0;i<128;i++){
   totalStations+=count;maxShardBytes=Math.max(maxShardBytes,sizeBytes);updatedMeta.push({shard:i,file:shardName(i),count,sizeBytes});
 }
 manifest.generatedAt=new Date().toISOString();manifest.totalStations=totalStations;manifest.maxShardBytes=maxShardBytes;manifest.shards=updatedMeta;
-manifest.lastIncrementalRefresh={runAt:manifest.generatedAt,method:'hybrid-full-query-batch5x2-single-paged-fallback',selected:selected.length,new:newCount,changed,unchanged,failures,pagedUsed,batchRequests,fallbackRequests,httpRequests:requests,elapsedSeconds:Number(((performance.now()-t0)/1000).toFixed(2))};
+manifest.lastIncrementalRefresh={runAt:manifest.generatedAt,method:'hybrid-full-query-batch5x2-single-paged-fallback',selected:selected.length,new:newCount,changed,unchanged,failures,pagedUsed,batchRequests,fallbackRequests,httpRequests:requests,elapsedSeconds:Number(((performance.now()-t0)/1000).toFixed(2)),rateLimit};
 await replaceJsonFile(MANIFEST,JSON.stringify(manifest,null,2)+'\n');
 await replaceJsonFile('reports/electroverse/hybrid-refresh-failures.json',JSON.stringify({generatedAt:new Date().toISOString(),failures:failureRows},null,2)+'\n');
 if(failureRows.length){
@@ -186,7 +239,7 @@ if(failureRows.length){
   catch(error){if(error.code!=='ENOENT')throw error}
   if(history.schemaVersion!==1||!Array.isArray(history.events))throw Error('Invalid failure diagnostics history');
   history.events.push({collectedAt:new Date().toISOString(),runId:process.env.GITHUB_RUN_ID||null,
-    source:'FR:electroverse_full',failures:failureRows});
+    source:'FR:electroverse_full',rateLimit,failures:failureRows});
   await replaceJsonFile(FAILURE_DIAGNOSTICS,JSON.stringify(history,null,2)+'\n');
 }
 console.log(JSON.stringify({...manifest.lastIncrementalRefresh,totalStations,maxShardBytes},null,2));
