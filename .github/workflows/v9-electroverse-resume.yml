@@ -13,7 +13,7 @@ jobs:
   resume:
     if: github.ref == 'refs/heads/rebuild/v9-20261020'
     runs-on: ubuntu-24.04
-    timeout-minutes: 85
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -39,13 +39,25 @@ jobs:
           if request.get('source') != 'FR:electroverse_full' or request.get('mode') not in ('verify', 'collect'):
               raise SystemExit('Electroverse resume request is not explicitly scoped')
           budget = request.get('windowBudgetSeconds')
-          if type(budget) is not int or budget not in (300, 600, 900, 1800):
+          finish = request.get('finishRemaining', False)
+          if type(finish) is not bool:
+              raise SystemExit('Malformed Electroverse finish-remaining flag')
+          if finish:
+              if (budget != 16200 or request.get('providerWindowLimit') != 1
+                      or request.get('basisRun') != 45019468889
+                      or request.get('basisArtifact') != 14754262864
+                      or request.get('basisZipSha256') != 'd8782e866628a23cffebb5bcfaa00ffb19541e1893edc934a7d21b8bdd3fa6ca'
+                      or request.get('basisVerifiedLocations') != 17794
+                      or request.get('remainingLocations') != 5024):
+                  raise SystemExit('Guarded Electroverse full completion is not pinned to the approved parent')
+          elif type(budget) is not int or budget not in (300, 600, 900, 1800):
               raise SystemExit('Unapproved Electroverse provider window budget')
           if request.get('providerWindowLimit') != 1:
               raise SystemExit('Electroverse provider run must remain exactly one window')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
               print('requested_mode=' + request['mode'], file=stream)
               print('window_budget_seconds=' + str(budget), file=stream)
+              print('finish_remaining=' + str(finish).lower(), file=stream)
           PY
       - name: Select the latest validated branch checkpoint
         id: parent
@@ -120,7 +132,11 @@ jobs:
         run: |
           set -euo pipefail
           PARENT_FILE_SHA="$(python -c 'import json,os; from pathlib import Path; print(json.loads((Path(os.environ["RUNNER_TEMP"])/"retained/checkpoint-manifest.json").read_text())["sha256"])')"
-          python scripts/pilot_v9_tariff_chunks.py --out "$RUNNER_TEMP/tcc-v9-electroverse-renewal" --incoming "$RUNNER_TEMP/retained" --expected-sha "$PARENT_FILE_SHA" --expected-head "$PARENT_HEAD" --expected-run "$PARENT_RUN" --window-budget-seconds "${{ steps.mode.outputs.window_budget_seconds }}" --max-provider-windows 1
+          EXTRA_ARGS=()
+          if [[ "${{ steps.mode.outputs.finish_remaining }}" == "true" ]]; then
+            EXTRA_ARGS+=(--finish-remaining)
+          fi
+          python scripts/pilot_v9_tariff_chunks.py --out "$RUNNER_TEMP/tcc-v9-electroverse-renewal" --incoming "$RUNNER_TEMP/retained" --expected-sha "$PARENT_FILE_SHA" --expected-head "$PARENT_HEAD" --expected-run "$PARENT_RUN" --window-budget-seconds "${{ steps.mode.outputs.window_budget_seconds }}" --max-provider-windows 1 "${EXTRA_ARGS[@]}"
       - name: Retain partial checkpoint (never a Production input)
         if: steps.renewal.outcome == 'success' && steps.renewal.outputs.collection_state == 'checkpointed'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
