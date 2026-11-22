@@ -1,0 +1,13 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';
+import {appendBatch,recoverBatches} from './generation_store.mjs';
+const dir=()=>fs.mkdtemp(path.join(os.tmpdir(),'electroverse-v2-'));
+const batch=(index,pk)=>({sourceHash:'fixture-hash',index,records:[{electroverseLocationPk:pk,tariff:{sample:true}}]});
+test('one atomic batch commit is recoverable after crash',async()=>{const d=await dir();await appendBatch(d,batch(0,'a'));assert.deepEqual((await recoverBatches(d,{sourceHash:'fixture-hash'})).completed,[0]);await appendBatch(d,batch(1,'b'));assert.equal((await recoverBatches(d,{sourceHash:'fixture-hash'})).records.length,2)});
+test('identical replay does not rewrite',async()=>{const d=await dir();await appendBatch(d,batch(0,'a'));assert.equal((await appendBatch(d,batch(0,'a'))).reused,true)});
+test('conflicting batch is refused',async()=>{const d=await dir();await appendBatch(d,batch(0,'a'));await assert.rejects(appendBatch(d,batch(0,'z')),/conflicting/)});
+test('corrupted batch fails closed',async()=>{const d=await dir();await appendBatch(d,batch(0,'a'));await fs.writeFile(path.join(d,'batch-0000000.json'),'{}');await assert.rejects(recoverBatches(d,{sourceHash:'fixture-hash'}),/untrusted/)});
+test('incomplete uncommitted temp file ignored',async()=>{const d=await dir();await appendBatch(d,batch(0,'a'));await fs.writeFile(path.join(d,'.tmp-interrupted'),'{bad');assert.equal((await recoverBatches(d,{sourceHash:'fixture-hash'})).completed.length,1)});
+test('gaps fail closed',async()=>{const d=await dir();await appendBatch(d,batch(1,'b'));await assert.rejects(recoverBatches(d,{sourceHash:'fixture-hash'}),/noncontiguous/)});
+test('source mismatch fails closed',async()=>{const d=await dir();await appendBatch(d,batch(0,'a'));await assert.rejects(recoverBatches(d,{sourceHash:'other'}),/untrusted/)});
+test('duplicate cross batch fails closed',async()=>{const d=await dir();await appendBatch(d,batch(0,'a'));await appendBatch(d,batch(1,'a'));await assert.rejects(recoverBatches(d,{sourceHash:'fixture-hash'}),/duplicate PK/)});
+test('cannot access canonical paths',async()=>{await assert.rejects(appendBatch('/tmp/canonical',{sourceHash:'x',index:0,records:[]}),/unsafe/)});
