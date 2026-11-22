@@ -13,7 +13,7 @@ import fs from 'node:fs/promises';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import {DirectElectroverseClient} from './lib/electroverse_direct_client.mjs';
-import {isRateLimited,rateLimitPlan} from './lib/electroverse_rate_limit_guard.mjs';
+import {createStatus429Recovery,Status429Exhausted} from './lib/electroverse_status_429_recovery.mjs';
 
 const CACHE='data/electroverse/tariff_cache';
 const OUTPUT='data/electroverse/live_statuses';
@@ -42,19 +42,25 @@ const sourceTotal=[...refs.values()].reduce((a,s)=>a+s.size,0);
 const filename=i=>PARTS+'/part-'+String(i).padStart(2,'0')+'.json';
 const fetchPart=async i=>{try{return JSON.parse(await fs.readFile(filename(i),'utf8'))}catch(e){if(e.code==='ENOENT')return null;throw e}};
 const client=new DirectElectroverseClient({timeoutMs:19000});
-class RateLimitStopped extends Error { constructor(){super('electroverse_status_rate_limit');this.name='RateLimitStopped';} }
 let rateLimit=null;
-async function protectedRequest(query,variables,phase){
- const result=await client.request(query,variables,{attempts:1});
- if(isRateLimited(result)){
-  rateLimit=rateLimitPlan(result,phase);
-  throw new RateLimitStopped();
- }
- return result;
-}
+let requests=0,pages=0;
+let saveCheckpointOn429=async()=>{};
+const rateLimitRecovery=createStatus429Recovery({
+ send:async(query,variables,options)=>{
+  // Count the actual provider HTTP requests, INCLUDING in-process 429 retries.
+  requests++;
+  return client.request(query,variables,options);
+ },
+ pause:sleep,
+ onRateLimit:async event=>{
+  // Persist all fully verified rows before EACH 429 delay or final stop.
+  await saveCheckpointOn429();
+  console.log(JSON.stringify(event));
+ },
+});
+const protectedRequest=(query,variables,phase)=>rateLimitRecovery.request(query,variables,phase);
 const queryOne='query StatusOne($pk:String!,$after:String,$first:Int!){chargingLocation(pk:$pk){chargingLocationPk evses(first:$first,after:$after){edges{node{pk status}} pageInfo{hasNextPage endCursor}}}}';
 const queryBatch=ids=>'query Batch { '+ids.map((pk,i)=>'s'+i+':chargingLocation(pk:'+JSON.stringify(pk)+'){evses(first:10){edges{node{pk status}}pageInfo{hasNextPage endCursor}}}').join(' ')+' }';
-let requests=0,pages=0;
 const normalized=loc=>(loc?.evses?.edges||[]).map(e=>e?.node).filter(x=>x?.pk!=null).map(e=>[String(e.pk),String(e.status||'UNKNOWN').toUpperCase()]);
 async function fullPage(pk,first){
  let rows=normalized(first);
@@ -63,7 +69,7 @@ async function fullPage(pk,first){
  for(let page=1;hasMore&&page<=100;page++){
   if(!cursor||cursor===last)throw Error('pagination_stalled');
   last=cursor;
-  pages++;requests++;
+  pages++;
   const r=await protectedRequest(queryOne,{pk,after:cursor,first:10},'status_page');
   const x=r.json?.data?.chargingLocation;
   if(r.status!==200||!x?.evses)throw Error('page_failed:'+r.status);
@@ -80,12 +86,11 @@ async function fullPage(pk,first){
 }
 async function one(pk){
  for(let attempt=1;attempt<=attempts;attempt++){
-  requests++;
   const r=await protectedRequest(queryOne,{pk,after:null,first:10},'status_single');
   const loc=r.json?.data?.chargingLocation;
   if(loc?.evses){
    try{return{ok:true,statuses:await fullPage(pk,loc)}}catch(e){
-    if(e instanceof RateLimitStopped)throw e;
+    if(e instanceof Status429Exhausted)throw e;
     if(attempt===attempts)return{ok:false,error:'pagination:'+String(e?.message||e)};
    }
   }
@@ -114,18 +119,19 @@ async function collect(i){
    sourceCacheDate:manifest.generatedAt,startedAt:existing?.startedAt||started,updatedAt:new Date().toISOString(),
    expectedLocations:expected.length,entries,errors:bad},null,2)+'\n');
  }
+ saveCheckpointOn429=checkpoint;
  try {
  while(cursor<todo.length&&successful+failed<maxPerRun){
   const group=todo.slice(cursor,cursor+2);cursor+=group.length;
   // Only two aliases per request. Broken aliases retry individually, never discard valid neighbors.
-  batchRequests++;requests++;
+  batchRequests++;
   const response=await protectedRequest(queryBatch(group),{},'status_batch');
   for(let n=0;n<group.length;n++){
    const pk=group[n];
    let outcome={ok:false,error:'batch_unavailable'};
    const loc=response.json?.data?.['s'+n];
    if(loc?.evses){
-    try{outcome={ok:true,statuses:await fullPage(pk,loc)}}catch(e){if(e instanceof RateLimitStopped)throw e;outcome={ok:false,error:'paged_batch:'+String(e?.message||e)}}
+    try{outcome={ok:true,statuses:await fullPage(pk,loc)}}catch(e){if(e instanceof Status429Exhausted)throw e;outcome={ok:false,error:'paged_batch:'+String(e?.message||e)}}
    }
    if(!outcome.ok){aliasesFallback++;outcome=await one(pk)}
    if(outcome.ok){
@@ -142,15 +148,16 @@ async function collect(i){
   await sleep(delay);
  }
  } catch(error) {
-  if(!(error instanceof RateLimitStopped))throw error;
-  console.log(JSON.stringify({event:'RATE_LIMIT_STOP',partition:i,rateLimit}));
+  if(!(error instanceof Status429Exhausted))throw error;
+  rateLimit=error.rateLimit;
+  console.log(JSON.stringify({event:'RATE_LIMIT_STOP',partition:i,rateLimit,recovery:rateLimitRecovery.stats()}));
  }
  await checkpoint();
  const remaining=expected.length-Object.keys(entries).length;
  const report={partition:i,sourceFingerprint:cacheFingerprint,at:new Date().toISOString(),startedAt:existing?.startedAt||started,
  expectedLocations:expected.length,verifiedLocations:Object.keys(entries).length,
  newSuccessful:successful,newFailed:failed,persistentErrors:Object.keys(bad).length,
- remaining,requests,batchRequests,pages,aliasesFallback,failureBudgetReached:failed>=failBudget,
+ remaining,requests,batchRequests,pages,aliasesFallback,rateLimitRecovery:rateLimitRecovery.stats(),failureBudgetReached:failed>=failBudget,
  complete:remaining===0,rateLimit,output:filename(i)};
  await fs.mkdir('reports/electroverse',{recursive:true});
  await fs.writeFile('reports/electroverse/status-partition-latest.json',JSON.stringify(report,null,2)+'\n');
