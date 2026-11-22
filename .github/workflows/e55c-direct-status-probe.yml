@@ -1,0 +1,120 @@
+name: E55C official direct status probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/e55c-direct-status-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download E55C official dynamic publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          # data.gouv resource 514d529a-c961-4862-9d20-49fdf499a9aa redirects
+          # to this public Google Sheet maintained by Electric 55 Charging.
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://docs.google.com/spreadsheets/d/19K-XzPFnAI96Bmkbp7gCQBIa_jUOaiIhev6CeSK1t88/export?format=csv&gid=0' \
+            -o /tmp/e55c_dynamic.csv
+          test -s /tmp/e55c_dynamic.csv
+
+      - name: Download current national IRVE static snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://www.data.gouv.fr/api/1/datasets/r/4ca78c71-4ea4-475d-bd3a-d4aef88f7bf8' \
+            -o /tmp/irve.csv
+          test -s /tmp/irve.csv
+
+      - name: Audit direct feed schema and exact canonical matches
+        shell: bash
+        run: |
+          python - <<'PY'
+          import csv, json
+          from collections import Counter
+
+          def clean(v):
+              return str(v or '').strip().upper()
+
+          canonical=set()
+          with open('/tmp/irve.csv', encoding='utf-8-sig', newline='') as f:
+              for row in csv.DictReader(f, delimiter=';'):
+                  pdc=clean(row.get('id_pdc_itinerance'))
+                  if pdc:
+                      canonical.add(pdc)
+
+          with open('/tmp/e55c_dynamic.csv', encoding='utf-8-sig', newline='') as f:
+              reader=csv.DictReader(f)
+              fields=reader.fieldnames or []
+              required={'id_pdc_itinerance','etat_pdc','occupation_pdc','horodatage'}
+              print('fields=', json.dumps(fields, ensure_ascii=False))
+              missing=sorted(required-set(fields))
+              if missing:
+                  raise SystemExit('missing required dynamic fields: '+','.join(missing))
+
+              rows=0
+              matched=0
+              unmatched=[]
+              empty_id=0
+              duplicate=0
+              seen=set()
+              states=Counter()
+              occupations=Counter()
+              timestamps=Counter()
+              for row in reader:
+                  rows += 1
+                  pdc=clean(row.get('id_pdc_itinerance'))
+                  state=str(row.get('etat_pdc') or '').strip().lower()
+                  occ=str(row.get('occupation_pdc') or '').strip().lower()
+                  ts=str(row.get('horodatage') or '').strip()
+                  states[state or '<empty>'] += 1
+                  occupations[occ or '<empty>'] += 1
+                  if ts: timestamps[ts] += 1
+                  if not pdc:
+                      empty_id += 1
+                      continue
+                  if pdc in seen: duplicate += 1
+                  seen.add(pdc)
+                  if pdc in canonical:
+                      matched += 1
+                  elif len(unmatched) < 20:
+                      unmatched.append(pdc)
+
+          result={
+              'rows': rows,
+              'uniquePdc': len(seen),
+              'emptyId': empty_id,
+              'duplicateRows': duplicate,
+              'exactCanonicalMatches': matched,
+              'unmatchedCount': len(seen)-matched,
+              'states': dict(states),
+              'occupations': dict(occupations),
+              'distinctTimestamps': len(timestamps),
+              'unmatchedSample': unmatched,
+          }
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+
+          allowed={'en_service','hors_service','inconnu'}
+          unexpected={k:v for k,v in states.items() if k not in allowed}
+          if unexpected:
+              raise SystemExit('unexpected E55C state values: '+json.dumps(unexpected))
+
+          usable=(
+              rows >= 50
+              and matched >= 50
+              and matched / max(1, len(seen)) >= 0.90
+          )
+          print('RESULT e55cOfficialDirectStatusUsable='+str(usable))
+          if not usable:
+              print('INFO official E55C dynamic publication is schema-valid but too sparse/unmatched for canonical enrichment; IRVE dynamic fallback remains active.')
+          PY
