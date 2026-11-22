@@ -1,0 +1,152 @@
+name: V9 Electroverse France status 16-part reconstruction
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/electroverse-status-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-status-rebuild-exclusive
+  cancel-in-progress: false
+jobs:
+  rebuild-statuses:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Offline status, checkpoint and source-safety tests
+        id: mode
+        run: |
+          set -euo pipefail
+          python -m unittest tests.test_v9_electroverse_status tests.test_v9_electroverse tests.test_v9_electroverse_resume -q
+          python -m py_compile scripts/pilot_v9_electroverse_status.py
+          node --check scripts/electroverse_status_incremental.mjs
+          node --test tests/electroverse_failure_diagnostics.test.mjs tests/electroverse_rate_limit_integration.test.mjs
+          python scripts/public_safety_check.py .
+          python - <<'PY'
+          import json, os
+          request=json.load(open('migration/v9/electroverse-status-request.json'))
+          approved={
+              'source':'FR:electroverse_status',
+              'basisRun':45024846774,
+              'basisArtifact':14760747281,
+              'basisZipSha256':'0d3abcc15dc4762b360c5816b6e783accdcafa664442c8ce99b7c0500743a5fe',
+              'basisFilesetSha256':'c06886fec4b9117e920d7ee50af66d5fb0ebfa00944c452012d771a033a9b965',
+              'expectedLocations':22818,
+              'partitionCount':16,
+              'budgetSeconds':18000,
+              'automaticPublication':False,
+              'providerRetries':0,
+          }
+          if not isinstance(request,dict) or any(request.get(k)!=v for k,v in approved.items()):
+              raise SystemExit('Status operation not explicitly pinned to the complete audited tariff generation')
+          if request.get('mode') not in ('verify','collect'):
+              raise SystemExit('Unapproved status request mode')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as stream:
+              print('mode='+request['mode'],file=stream)
+          print('Approved status source and parent pins: OK')
+          PY
+      - name: Confirm exact successful parent run and immutable artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, subprocess
+          run=json.loads(subprocess.check_output(['gh','api','repos/'+__import__('os').environ['GITHUB_REPOSITORY']+'/actions/runs/45024846774']))
+          artifact=json.loads(subprocess.check_output(['gh','api','repos/'+__import__('os').environ['GITHUB_REPOSITORY']+'/actions/artifacts/14760747281']))
+          if (run.get('status')!='completed' or run.get('conclusion')!='success'
+                  or run.get('head_branch')!='rebuild/v9-20261020'
+                  or run.get('head_sha')!='67ba3287bfceeaf463c43ddc15ed4658e212cc8c'
+                  or artifact.get('name')!='tcc-v9-electroverse-complete'
+                  or artifact.get('expired') is not False
+                  or artifact.get('digest')!='sha256:0d3abcc15dc4762b360c5816b6e783accdcafa664442c8ce99b7c0500743a5fe'
+                  or (artifact.get('workflow_run') or {}).get('id')!=45024846774):
+              raise SystemExit('Pinned Electroverse tariff source did not pass immutable upstream verification')
+          print('Pinned parent run, artifact ID, GitHub SHA and digest: OK')
+          PY
+      - name: Recover verified tariff source without publishing anything
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/14760747281/zip" > "$RUNNER_TEMP/status-tariff-parent.zip"
+          echo "0d3abcc15dc4762b360c5816b6e783accdcafa664442c8ce99b7c0500743a5fe  $RUNNER_TEMP/status-tariff-parent.zip" | sha256sum -c -
+          python - <<'PY'
+          import os, stat, zipfile
+          from pathlib import Path
+          src=Path(os.environ['RUNNER_TEMP'])/'status-tariff-parent.zip'
+          dst=Path(os.environ['RUNNER_TEMP'])/'status-tariff-parent'
+          dst.mkdir()
+          with zipfile.ZipFile(src) as archive:
+              seen=set()
+              for m in archive.infolist():
+                  path=Path(m.filename)
+                  if (path.is_absolute() or not path.parts or '..' in path.parts
+                          or m.filename in seen or (stat.S_IFMT(m.external_attr >> 16)==stat.S_IFLNK)):
+                      raise SystemExit('Invalid or duplicate ZIP member')
+                  seen.add(m.filename)
+                  target=(dst/path).resolve()
+                  if not target.is_relative_to(dst.resolve()):
+                      raise SystemExit('ZIP member escapes isolated parent')
+                  if m.is_dir():
+                      target.mkdir(parents=True,exist_ok=True)
+                  else:
+                      target.parent.mkdir(parents=True,exist_ok=True)
+                      target.write_bytes(archive.read(m))
+          print('Pinned immutable parent ZIP safely restored:',len(seen),'entries')
+          PY
+      - name: Verify source only or run the guarded 16-part census
+        id: census
+        env:
+          ELECTROVERSE_API_KEY: ${{ steps.mode.outputs.mode == 'collect' && secrets.ELECTROVERSE_API_KEY || '' }}
+          ELECTROVERSE_STATUS_REQUEST_DELAY_MS: '800'
+          ELECTROVERSE_STATUS_FAILURE_BUDGET: '48'
+          ELECTROVERSE_STATUS_RUN_LIMIT: '1500'
+          ELECTROVERSE_STATUS_ATTEMPTS: '2'
+        run: |
+          set -euo pipefail
+          python scripts/pilot_v9_electroverse_status.py --bundle "$RUNNER_TEMP/status-tariff-parent" --out "$RUNNER_TEMP/tcc-v9-status-census" --mode "${{ steps.mode.outputs.mode }}" --budget-seconds 18000
+      - name: Upload only fully validated national statuses
+        if: steps.census.outputs.collection_state == 'complete'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-complete
+          path: |
+            ${{ runner.temp }}/tcc-v9-status-census/manifest.json
+            ${{ runner.temp }}/tcc-v9-status-census/objects
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain partial statuses and fingerprinted checkpoint
+        if: steps.census.outputs.collection_state == 'checkpointed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-checkpoint
+          path: |
+            ${{ runner.temp }}/tcc-v9-status-census/manifest.json
+            ${{ runner.temp }}/tcc-v9-status-census/checkpoint-manifest.json
+            ${{ runner.temp }}/tcc-v9-status-census/checkpoints
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain isolated failure diagnostics, never promote
+        if: failure() && steps.mode.outputs.mode == 'collect'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-status-failure
+          path: |
+            ${{ runner.temp }}/tcc-v9-status-census/manifest.json
+            ${{ runner.temp }}/tcc-v9-status-census/checkpoint-manifest.json
+            ${{ runner.temp }}/tcc-v9-status-census/work/data/electroverse/live_statuses/parts
+            ${{ runner.temp }}/tcc-v9-status-census/work/reports/electroverse/status-partition-latest.json
+          if-no-files-found: ignore
+          retention-days: 30
