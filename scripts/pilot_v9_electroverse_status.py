@@ -266,6 +266,7 @@ def main() -> None:
     started = time.monotonic()
     reason = "all_partitions_complete"
     last_report = None
+    remaining_429_wait_seconds = 480
     for i in range(PARTITION_COUNT):
         # The historical per-partition subprocess can use up to 3600s.
         # Reserve a full partition timeout and 10 min for checkpoint upload.
@@ -277,11 +278,22 @@ def main() -> None:
         if existing and not resume_eligibility({"partitions": [existing]}, {}, datetime.now(timezone.utc))[0]:
             raise ValueError("Existing status partition became stale: refusing silent replay")
         before = dict(existing["entries"]) if existing else {}
+        # Cap cumulative 429 waiting across ALL 16 partition subprocesses.
+        os.environ["ELECTROVERSE_STATUS_429_BUDGET_SECONDS"] = str(remaining_429_wait_seconds)
         try:
             run(work, source=parent, partition=i)
         except IncompleteStatus:
             pass
         last_report = read_json(work / STATUS_REPORT)
+        recovery = last_report.get("rateLimitRecovery")
+        used_wait = recovery.get("totalWaitSeconds") if isinstance(recovery, dict) else None
+        if (isinstance(used_wait, bool) or not isinstance(used_wait, (int, float))
+                or not 0 <= used_wait <= remaining_429_wait_seconds):
+            raise ValueError("Status 429 recovery wait budget report is missing or invalid")
+        remaining_429_wait_seconds -= used_wait
+        print(json.dumps({"event": "status_429_run_budget", "partition": i,
+                          "waitedSeconds": used_wait,
+                          "remainingSeconds": remaining_429_wait_seconds}))
         part = validate_part(work, i)
         if any(part["entries"].get(pk) != statuses for pk, statuses in before.items()):
             raise ValueError("A previously verified status row was replayed or replaced")
