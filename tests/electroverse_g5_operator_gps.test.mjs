@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {classifyG5Evidence,auditG5OperatorGps,normG5Id,normG5Name}
+import {classifyG5Evidence,auditG5OperatorGps,screenG5HighDistanceWithoutProof,normG5Id,normG5Name}
   from '../scripts/lib/electroverse_g5_operator_gps.mjs';
 
 const mappings=[
@@ -100,4 +100,33 @@ test('missing source inventory, wrong power, or wrong CPO does not legitimize in
  assert.equal(classifyG5Evidence({...input,metadata:{...input.metadata,operator:'OTHER'}},map,
    new Map([['FRPD1ETARGET',{powerKw:100,plugs:['CCS']}]]))
   .officialTechnicalIdentityProved,false);
+});
+
+test('G5 high-distance screen quarantines only indirect unproved tariff, never raw source',()=>{
+ const official=[{evseId:'FRPD1ETARGET',powerKw:100,plugs:['CCS']}];
+ const exact=offer('exact','S1','exact_unique_national_irve_pdc','FRLDLE1','FRLDLE1');
+ const documented=offer('official','S2','strict_pd1_official_technical_homogeneous_group',
+  'FRPD1ETARGET',null,{operator:'PD1',powerKwClass:100,plugTypes:['CCS'],
+  source:'Electroverse tariff cache + Powerdot official technical inventory'});
+ const uncertain=offer('uncertain','S2','strict_station_homogeneous_price_broadcast',
+  'FRPD1EUNPROVEN','other');
+ const close=offer('close','S3','strict_station_homogeneous_price_broadcast',
+  'FRLDLE2','other');
+ const originals=new Map([['tile',[exact,documented,uncertain,close]]]);
+ const result=screenG5HighDistanceWithoutProof(originals,mappings,official);
+ assert.deepEqual(result.tiles.get('tile'),[exact,documented,close]);
+ assert.equal(result.report.quarantinedOffers,1);
+ assert.equal(result.report.exactPreservedBeyond10m,1);
+ assert.equal(result.report.officialTechnicalPreservedBeyond10m,1);
+ assert.equal(result.report.quarantine[0].proposedResult,'Tarif incalculable');
+ assert.deepEqual(originals.get('tile'),[exact,documented,uncertain,close]);
+});
+test('bad independent technical evidence does not rescue ambiguous price at 14m',()=>{
+ const input=offer('bad','S2','strict_pd1_official_technical_homogeneous_group',
+  'FRPD1ETARGET',null,{operator:'PD1',powerKwClass:100,plugTypes:['CCS'],
+  source:'Electroverse tariff cache + Powerdot official technical inventory'});
+ const result=screenG5HighDistanceWithoutProof(new Map([['x',[input]]]),
+  mappings,[{evseId:'FRPD1ETARGET',powerKw:50,plugs:['CHA']}]);
+ assert.equal(result.report.quarantinedOffers,1);
+ assert.equal(result.report.retainedOffers,0);
 });
