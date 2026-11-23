@@ -15,16 +15,19 @@ const faultCheckedAtMs=Date.now();
 let statusData={locations:{},observedAtByLocation:{},generatedAt:null};
 let statusEvidence='unavailable_or_unverified';
 let statusEvidenceIssue=null;
+let statusEvidenceSha256=null;
 try {
   const manifest=JSON.parse(await fs.readFile(STATUS_DIR+'/manifest.json','utf8'));
   if (manifest?.completeness?.locations===true && manifest.failedLocations===0 &&
       manifest.statusRole==='historical_nonblocking_observations' &&
       typeof manifest.ledger==='string' && manifest.ledger==='evses.json.gz') {
-    const doc=JSON.parse(zlib.gunzipSync(await fs.readFile(STATUS_DIR+'/'+manifest.ledger)).toString('utf8'));
+    const snapshotBytes=await fs.readFile(STATUS_DIR+'/'+manifest.ledger);
+    const doc=JSON.parse(zlib.gunzipSync(snapshotBytes).toString('utf8'));
     if (doc && typeof doc.locations==='object' && doc.locations &&
         doc.observedAtByLocation && typeof doc.observedAtByLocation==='object' &&
         manifest.sourceFingerprint===doc.sourceFingerprint) {
       statusData=doc;
+      statusEvidenceSha256=crypto.createHash('sha256').update(snapshotBytes).digest('hex');
       statusEvidence='validated_optional_historical_snapshot';
     } else statusEvidenceIssue='invalid_snapshot_provenance_or_timestamps';
   } else statusEvidenceIssue='historical_snapshot_not_fully_verified';
@@ -3051,6 +3054,7 @@ const out={
     confirmedPowerSplitRefs:reviewedPriceDisputes.chargezyPowerVariants?.length||0,
     quarantine:reviewedQuarantine},
   statusGate:{generatedAt:statusData.generatedAt,statusEvidence,statusEvidenceIssue,
+    statusEvidenceSha256,faultCheckedAt:new Date(faultCheckedAtMs).toISOString(),
     role:'optional_historical_technical_fault_screening',policy:FAULT_POLICY,
     faultMaxAgeHours:DEFAULT_FAULT_MAX_AGE_MS/3600000,
     excludedStatuses:statusExcluded.byStatus,excludedByStationCount:Object.keys(statusExcluded.byStation).length,
