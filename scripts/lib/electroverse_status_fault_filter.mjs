@@ -60,7 +60,8 @@ export function screenElectroverseOffer(offer, snapshot, {
   const removedPrimary = primary.filter(pk => !keepPrimary.includes(pk));
   const removedAliases = aliases.filter(pk => !keepAliases.includes(pk));
   const hasFault = removedPrimary.length > 0 || removedAliases.length > 0;
-  const keep = !hasFault || keepPrimary.length + keepAliases.length > 0;
+  // An alias cannot rescue an offer whose proved primary source EVSEs all failed.
+  const keep = !hasFault || (primary.length > 0 ? keepPrimary.length > 0 : keepAliases.length > 0);
   if (!hasFault) {
     return { keep: true, offer, removedPrimary, removedAliases, reason: 'no_confirmed_hard_fault' };
   }
