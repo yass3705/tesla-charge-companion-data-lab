@@ -13,6 +13,12 @@ const mapPath=process.argv[3]||'data/electroverse/irve_location_mapping.json';
 const manifest=JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8'));
 const raw=await fs.readFile(mapPath);
 const mapping=JSON.parse(raw.toString('utf8'));
+const officialTechnicalPath='data/operator_direct/powerdot_evse_technical_inventory.json';
+const officialTechnicalRaw=await fs.readFile(officialTechnicalPath);
+const officialTechnical=JSON.parse(officialTechnicalRaw.toString('utf8'));
+if(officialTechnical.dataset!=='powerdot-official-france-technical-inventory' ||
+   !Array.isArray(officialTechnical.evses) || officialTechnical.evses.length<6000)
+ throw Error('Missing authoritative dated Powerdot identity/technical inventory');
 if(!Array.isArray(mapping?.mappings))throw Error('Cannot audit missing original national location mapping');
 const offers=[];
 for(const tile of manifest.tiles||[]){
@@ -24,7 +30,7 @@ for(const tile of manifest.tiles||[]){
  if(rows.length!==tile.count)throw Error('Invalid offer count: '+tile.file);
  offers.push(...rows);
 }
-const result=auditG5OperatorGps(offers,mapping.mappings);
+const result=auditG5OperatorGps(offers,mapping.mappings,officialTechnical.evses);
 if(result.missingMappingOffers!==0 || result.overallOfferCount!==manifest.stats?.publishedOffers)
  throw Error('G5 operator/GPS evidence must reconcile with built overlay');
 const proof={
@@ -32,6 +38,9 @@ const proof={
  overlayManifestSha256:crypto.createHash('sha256').update(
    await fs.readFile(path.join(root,'manifest.json'))).digest('hex'),
  originalNationalMappingSha256:crypto.createHash('sha256').update(raw).digest('hex'),
+ officialTechnicalInventorySha256:crypto.createHash('sha256').update(officialTechnicalRaw).digest('hex'),
+ officialTechnicalInventorySource:officialTechnical.source,
+ officialTechnicalPublisherUpdatedAt:officialTechnical.publisherLastUpdateKnown,
  artifactProvider:'Electroverse',country:'FR',status:'AUDIT_ONLY_G5_PARTIAL',
  ...result,
 };
@@ -43,6 +52,8 @@ console.log('ELECTROVERSE_G5_OPERATOR_GPS '+JSON.stringify({
  outlierOffers:result.distanceOutlierOfferCount,
  exactSourceIds:result.exactSourceIdOutlierOfferCount,
  indirectOffers:result.indirectOutlierOfferCount,
+ technicallyCorroborated:result.technicallyCorroboratedOutlierOffers,
+ stillUnprovedIndirect:result.indirectStillUnprovedOutlierOffers,
  operatorIdLabelConflicts:result.supplierIdsWithSeveralNationalOperatorLabels,
  operatorVerified:false,
  publication:false,
