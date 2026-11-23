@@ -232,7 +232,7 @@ async function aggregate(){
   console.log(JSON.stringify({event:'FINALIZATION_WAITING',summary}));return;
  }
  await fs.mkdir(OUTPUT,{recursive:true});
- const bytes=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:2,generatedAt:summary.generatedAt,locations,observedAtByLocation})),{level:6});
+ const bytes=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:2,sourceFingerprint:cacheFingerprint,generatedAt:summary.generatedAt,locations,observedAtByLocation})),{level:6});
  await fs.writeFile(OUTPUT+'/evses.json.gz',bytes);
  await fs.writeFile(OUTPUT+'/manifest.json',JSON.stringify({...summary,ledger:'evses.json.gz',compressedBytes:bytes.length},null,2)+'\n');
  console.log(JSON.stringify({event:'FINALIZATION_COMPLETE',summary,compressedBytes:bytes.length}));
