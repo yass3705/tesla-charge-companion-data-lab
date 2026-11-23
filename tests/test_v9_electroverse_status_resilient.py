@@ -199,25 +199,33 @@ class SegmentedStatusTests(unittest.TestCase):
                 out=self.out, partition=1, phase="sweep"))
         self.assertEqual(self.calls, [0])
 
-    def test_stale_partition_refuses_supplier_but_saves_checkpoint(self):
+    def test_aged_partition_preserves_verified_rows_and_can_resume(self):
         self.ready()
         old = json.loads(part_path(self.out / "work", 0).read_text())
         old["startedAt"] = (datetime.now(timezone.utc) -
                             timedelta(hours=17)).isoformat()
         write(part_path(self.out / "work", 0), old)
-        with patch.dict(os.environ, {
-            "GITHUB_REF_NAME": resilient.BRANCH,
-            "ELECTROVERSE_API_KEY": "offline-simulation",
-            "GITHUB_ENV": str(self.env_file),
-            "GITHUB_OUTPUT": str(self.output_file),
-        }):
-            resilient.collect_segment(SimpleNamespace(
-                out=self.out, partition=0, phase="sweep"))
+        self.execute()
+        self.assertEqual(self.calls, [0])
+        self.assertFalse(resilient.read_progress(self.out)["halted"])
+        after = json.loads(part_path(self.out / "work", 0).read_text())
+        self.assertEqual(after["startedAt"], old["startedAt"])
+        self.assertEqual(after["entries"]["A"], old["entries"]["A"])
+        self.assertTrue((self.out / "staged/checkpoint-manifest.json").is_file())
+
+    def test_runner_budget_stops_before_next_partition_without_supplier_call(self):
+        self.ready()
+        state = resilient.read_progress(self.out)
+        state["preparedUtc"] = (datetime.now(timezone.utc) -
+                                timedelta(hours=4)).isoformat()
+        resilient.write_json(resilient.progress_path(self.out), state)
+        self.execute()
         self.assertEqual(self.calls, [])
         self.assertTrue(resilient.read_progress(self.out)["halted"])
         self.assertEqual(resilient.read_progress(self.out)["stopReason"],
-                         "checkpoint_stale_or_near_expiry")
-        self.assertTrue((self.out / "staged/checkpoint-manifest.json").is_file())
+                         "runner_time_budget_reserve")
+        self.assertIn("STATUS_HALT=true", self.env_file.read_text())
+        self.assertTrue((self.out / "stage-delta/delta-manifest.json").is_file())
 
     def test_workflow_places_durable_upload_after_every_unit(self):
         workflow = (Path(__file__).resolve().parents[1] /
