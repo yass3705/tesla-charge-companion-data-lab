@@ -68,3 +68,35 @@ test('missing source station and duplicate map location are not treated as proof
  assert.equal(r.missingMappingOffers,1);
  assert.throws(()=>auditG5OperatorGps([],mappings.concat(mappings[0])),/duplicate or missing/);
 });
+
+test('dated official technical inventory corroborates EVSE/power/plug, never supplier operator identity',()=>{
+ const official=[{evseId:'FRPD1ETARGET',powerKw:100,plugs:['CCS'],publisherUpdatedAt:'2025-09-14'}];
+ const input=offer('o4','S2','strict_pd1_official_technical_homogeneous_group',
+   'FRPD1ETARGET',null,{
+     source:'Electroverse tariff cache + Powerdot official technical inventory',
+     operator:'PD1',powerKwClass:100,plugTypes:['CCS'],
+     physicalReferences:['RMC571-1'],
+   });
+ const row=classifyG5Evidence(input,new Map(mappings.map(x=>[x.electroverseLocationPk,x])),
+   new Map(official.map(x=>[x.evseId,x])));
+ assert.equal(row.officialTechnicalIdentityProved,true);
+ assert.equal(row.identityEvidence,'official_powerdot_inventory_target_power_and_plug');
+ assert.equal(row.operatorEquivalence,'NOT_INDEPENDENTLY_PROVED');
+ const summary=auditG5OperatorGps([input],mappings,official);
+ assert.equal(summary.technicallyCorroboratedOutlierOffers,1);
+ assert.equal(summary.indirectStillUnprovedOutlierOffers,0);
+});
+test('missing source inventory, wrong power, or wrong CPO does not legitimize indirect high-distance target',()=>{
+ const input=offer('o5','S2','strict_pd1_official_technical_homogeneous_group',
+   'FRPD1ETARGET',null,{
+     source:'Electroverse tariff cache + Powerdot official technical inventory',
+     operator:'PD1',powerKwClass:100,plugTypes:['CCS'],
+   });
+ const official=new Map([['FRPD1ETARGET',{evseId:'FRPD1ETARGET',powerKw:50,plugs:['CHA']}]]);
+ const map=new Map(mappings.map(x=>[x.electroverseLocationPk,x]));
+ assert.equal(classifyG5Evidence(input,map,official).officialTechnicalIdentityProved,false);
+ assert.equal(classifyG5Evidence(input,map).officialTechnicalIdentityProved,false);
+ assert.equal(classifyG5Evidence({...input,metadata:{...input.metadata,operator:'OTHER'}},map,
+   new Map([['FRPD1ETARGET',{powerKw:100,plugs:['CCS']}]]))
+  .officialTechnicalIdentityProved,false);
+});
