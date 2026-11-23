@@ -185,3 +185,73 @@ export function auditG5OperatorGps(offers, mappings, officialTechnicalRows=[]) {
     g5Overall:'PARTIAL_OPERATOR_EQUIVALENCE_AND_NONEXACT_DISTANCE_EVIDENCE_NOT_PROVEN',
   };
 }
+
+/**
+ * Reversible G5 fail-closed *tariff overlay* projection. For source mappings
+ * older than the G5 10m policy, do not publish an INDIRECT supplier price
+ * without an independently corroborating source→national EVSE technical identity.
+ * Exact supplier EVSE IDs and officially corroborated Powerdot target+power+plug
+ * can be retained, subject to the still-open separate operator proof gate.
+ *
+ * The raw tariff cache and national base are NEVER changed. Preserve every
+ * quarantined offer's target/reason in the manifest for a future
+ * "Tarif incalculable" diagnostic and reversible reinstatement.
+ */
+export function screenG5HighDistanceWithoutProof(tiles,mappings,officialTechnicalRows=[]) {
+  if(!(tiles instanceof Map)||!Array.isArray(mappings))
+    throw Error('G5 overlay tiles and immutable national map required');
+  const map=new Map();
+  for(const row of mappings) {
+    const loc=String(row?.electroverseLocationPk??'');
+    if(!loc||map.has(loc))throw Error('G5 duplicate source location '+loc);
+    map.set(loc,row);
+  }
+  const technical=new Map(officialTechnicalRows.map(x=>[normG5Id(x.evseId),x]));
+  const kept=new Map(),quarantined=[],byIdentityMode={};
+  let checked=0,exactPreservedBeyond10m=0,officialTechnicalPreservedBeyond10m=0;
+  for(const [tile,offers] of tiles) {
+    const keep=[];
+    for(const offer of offers) {
+      const decision=classifyG5Evidence(offer,map,technical);
+      checked++;
+      if(decision.status==='missing_source_location')
+        throw Error('G5 missing national source location in high-distance screen: '+decision.locationPk);
+      const lacksProof=decision.beyond10m &&
+        !decision.exactSourcePdc && !decision.officialTechnicalIdentityProved;
+      if(lacksProof){
+        byIdentityMode[decision.identityMode]=(byIdentityMode[decision.identityMode]||0)+1;
+        quarantined.push({
+          offerId:decision.offerId,locationPk:decision.locationPk,
+          nationalStationId:decision.stationId,distanceM:decision.distanceM,
+          targetPdcIds:decision.evseTargets,identityMode:decision.identityMode,
+          supplierOperatorId:decision.supplierOperatorId,
+          nationalOperator:decision.nationalOperator,
+          reason:'distance_over_10m_without_independent_source_evse_proof',
+          proposedResult:'Tarif incalculable',
+        });
+      }else{
+        keep.push(offer);
+        if(decision.beyond10m){
+          if(decision.exactSourcePdc)exactPreservedBeyond10m++;
+          else if(decision.officialTechnicalIdentityProved)officialTechnicalPreservedBeyond10m++;
+        }
+      }
+    }
+    kept.set(tile,keep);
+  }
+  return {
+    tiles:kept,
+    report:{
+      checkedOffers:checked,retainedOffers:checked-quarantined.length,
+      quarantinedOffers:quarantined.length,
+      quarantinedLocations:new Set(quarantined.map(x=>x.locationPk)).size,
+      byIdentityMode,
+      exactPreservedBeyond10m,
+      officialTechnicalPreservedBeyond10m,
+      quarantine:quarantined,
+      independentlyVerifiedOperatorCrosswalk:false,
+      status:'G5_PARTIAL_OPERATOR_EQUIVALENCE_UNVERIFIED',
+      policy:'Excludes only indirect >10m offers without official target identity+power+plug; raw/national master unchanged',
+    },
+  };
+}
