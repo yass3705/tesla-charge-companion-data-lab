@@ -12,7 +12,7 @@ export const normG5Name = value => String(value ?? '')
   .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
   .replace(/[^A-Z0-9]/g, '');
 
-export function classifyG5Evidence(offer, mapping) {
+export function classifyG5Evidence(offer, mapping, officialTechnical=new Map()) {
   const md=offer?.metadata || {};
   const locationPk=String(md.electroverseLocationPk ?? '');
   const row=mapping?.get(locationPk);
@@ -27,9 +27,23 @@ export function classifyG5Evidence(offer, mapping) {
   const nationalOperator=String(row.irve?.operator??'');
   // An exact source EVSE ID can establish the target regardless of an older
   // GPS-to-station tolerance, but it does not validate the supplier CPO ID.
+  const isDocumentedPD1Group=md.identityMode==='strict_pd1_official_technical_homogeneous_group' &&
+    normG5Name(row.irve?.operator)==='POWERDOTFRANCE' && md.operator==='PD1' &&
+    String(md.source??'').includes('Powerdot official technical inventory');
+  const metadataPlugTypes=(Array.isArray(md.plugTypes)?md.plugTypes:[]).map(normG5Id);
+  const officialTechnicalIdentityProved=!exactSourcePdc && isDocumentedPD1Group &&
+    targets.length>0 && metadataPlugTypes.length>0 &&
+    Number.isFinite(Number(md.powerKwClass)) &&
+    targets.every(t=>{
+      const row=officialTechnical.get(t);
+      return row && Number(row.powerKw)===Number(md.powerKwClass) &&
+        Array.isArray(row.plugs) &&
+        row.plugs.map(normG5Id).some(p=>metadataPlugTypes.includes(p));
+    });
   const identityEvidence=exactSourcePdc?'exact_source_pdc_id':
-    (String(md.source??'').includes('official technical inventory')?
-      'claimed_official_technical_group_needs_independent_review':'indirect_method_needs_review');
+    officialTechnicalIdentityProved?'official_powerdot_inventory_target_power_and_plug':
+    isDocumentedPD1Group?'claimed_official_technical_group_needs_independent_review':
+    'indirect_method_needs_review';
   return {
     locationPk,
     distanceM:typeof distance==='number'?distance:null,
@@ -41,6 +55,7 @@ export function classifyG5Evidence(offer, mapping) {
     nationalOperator,
     nationalOperatorPresent:!!normG5Name(nationalOperator),
     exactSourcePdc,
+    officialTechnicalIdentityProved,
     identityEvidence,
     identityMode:md.identityMode??'UNKNOWN',
     offerId:String(offer.id??''),
@@ -55,7 +70,7 @@ export function classifyG5Evidence(offer, mapping) {
   };
 }
 
-export function auditG5OperatorGps(offers, mappings) {
+export function auditG5OperatorGps(offers, mappings, officialTechnicalRows=[]) {
   if(!Array.isArray(mappings)||!Array.isArray(offers))
     throw Error('G5 audit requires source mappings and final offers');
   const map=new Map();
@@ -64,12 +79,14 @@ export function auditG5OperatorGps(offers, mappings) {
     if(!key||map.has(key))throw Error('G5 duplicate or missing source location mapping '+key);
     map.set(key,row);
   }
+  const technical=new Map(officialTechnicalRows.map(x=>[normG5Id(x.evseId),x]));
   const byOperatorId=new Map(),locationReviews=new Map(),modes={};
   const bad=[],pairCounts=new Map();
   let outlierOfferCount=0,exactOutlierOfferCount=0,indirectOutlierOfferCount=0;
+  let technicallyCorroboratedOutlierOffers=0,indirectStillUnprovedOutlierOffers=0;
   let missingSupplierOperatorId=0,missingNationalOperator=0;
   for(const offer of offers){
-    const evidence=classifyG5Evidence(offer,map);
+    const evidence=classifyG5Evidence(offer,map,technical);
     if(evidence.status==='missing_source_location'){bad.push(evidence);continue;}
     if(!evidence.supplierOperatorId)missingSupplierOperatorId++;
     if(!evidence.nationalOperatorPresent)missingNationalOperator++;
@@ -83,7 +100,11 @@ export function auditG5OperatorGps(offers, mappings) {
     if(!evidence.beyond10m)continue;
     outlierOfferCount++;
     if(evidence.exactSourcePdc)exactOutlierOfferCount++;
-    else indirectOutlierOfferCount++;
+    else {
+      indirectOutlierOfferCount++;
+      if(evidence.officialTechnicalIdentityProved)technicallyCorroboratedOutlierOffers++;
+      else indirectStillUnprovedOutlierOffers++;
+    }
     modes[evidence.identityMode]=(modes[evidence.identityMode]||0)+1;
     let l=locationReviews.get(evidence.locationPk);
     if(!l){
@@ -94,6 +115,7 @@ export function auditG5OperatorGps(offers, mappings) {
         supplierOperatorId:evidence.supplierOperatorId,
         nationalOperator:evidence.nationalOperator,
         offers:0,exactPdcOffers:0,indirectOffers:0,
+        corroboratedTechnicalOffers:0,indirectUnprovenOffers:0,
         identityModes:{},
         sampleIndirectOffers:[],
         proofGate:'G5_OPERATOR_PROOF_REQUIRED',
@@ -104,6 +126,8 @@ export function auditG5OperatorGps(offers, mappings) {
     if(evidence.exactSourcePdc)l.exactPdcOffers++;
     else {
       l.indirectOffers++;
+      if(evidence.officialTechnicalIdentityProved)l.corroboratedTechnicalOffers++;
+      else l.indirectUnprovenOffers++;
       if(l.sampleIndirectOffers.length<4)l.sampleIndirectOffers.push({
         id:evidence.offerId,targets:evidence.evseTargets,
         physicalReferences:evidence.sourcePhysicalReferences,
@@ -147,6 +171,9 @@ export function auditG5OperatorGps(offers, mappings) {
     distanceOutlierOfferCount:outlierOfferCount,
     exactSourceIdOutlierOfferCount:exactOutlierOfferCount,
     indirectOutlierOfferCount:indirectOutlierOfferCount,
+    technicallyCorroboratedOutlierOffers,
+    indirectStillUnprovedOutlierOffers,
+    locationsWithIndirectStillUnproven:review.filter(x=>x.indirectUnprovenOffers>0).length,
     locationsAllExactSourcePdc:review.filter(x=>x.indirectOffers===0).length,
     locationsWithIndirectUnprovenOffers:review.filter(x=>x.indirectOffers>0).length,
     outlierLocationsWithMultiLabelSupplierId:outliersWithMixedOperatorLabels.length,
