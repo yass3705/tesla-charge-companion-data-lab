@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from tests.test_v9_electroverse import fixture as cache_fixture, save
+from v9_rebuild.electroverse import CACHE, shard_index
 from v9_rebuild.electroverse_status import (
     FINAL_REPORT, PARTITION_COUNT, PARTS, STATUS, STATUS_REPORT, IncompleteStatus,
     cache_fingerprint, choose_partition, merge_partitions, part_path, run,
@@ -142,6 +143,24 @@ class ElectroverseStatusTests(unittest.TestCase):
                 os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
             source, out = Path(temp) / "source", Path(temp) / "out"
             fixture(source, ["A", "B"])
+            # The generic cache fixture starts with zero stations: add two
+            # source ChargingLocation rows before staging the 16 partitions.
+            manifest_path = source / CACHE / "manifest.json"
+            source_manifest = json.loads(manifest_path.read_text())
+            for location in ("A", "B"):
+                index = shard_index(location)
+                shard_path = source / CACHE / f"shard-{index:03d}.json"
+                shard = json.loads(shard_path.read_text())
+                shard["stations"][location] = {
+                    "electroverseLocationPk": location,
+                    "tariffHash": "synthetic-shared-identity",
+                    "tariff": {"evses": [{"pk": "SHARED-EVSE"}]},
+                }
+                save(shard_path, shard)
+                source_manifest["shards"][index]["count"] = len(shard["stations"])
+                source_manifest["shards"][index]["sizeBytes"] = shard_path.stat().st_size
+            source_manifest["totalStations"] = 2
+            save(manifest_path, source_manifest)
             fingerprint = cache_fingerprint(source)
             for i in range(PARTITION_COUNT):
                 if i == 0:
