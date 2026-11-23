@@ -186,6 +186,7 @@ const todo=expected.filter(pk=>!(pk in entries)&&(!deferFailed||!(pk in bad)));
 }
 async function aggregate(){
  const statuses={},locations={},issues=[],ts=[],observedAtByLocation={};
+ const firstSourceEvse=new Map(),duplicateSourceEvsePks=new Set(),conflictingSourceEvsePks=new Set();
  let allPartitionsFresh=true;
  for(let i=0;i<count;i++){
   const p=await fetchPart(i);
@@ -209,7 +210,14 @@ async function aggregate(){
      issues.push({partition:i,pk,reason:'invalid_individual_observation_timestamp'});
     else observedAtByLocation[pk]=observed;
    }
-   for(const st of Object.values(found))statuses[st]=(statuses[st]||0)+1;
+   for(const [evsePk,st] of Object.entries(found)){
+    statuses[st]=(statuses[st]||0)+1;
+    const prior=firstSourceEvse.get(evsePk);
+    if(prior && prior.location!==pk){
+     duplicateSourceEvsePks.add(evsePk);
+     if(prior.status!==st)conflictingSourceEvsePks.add(evsePk);
+    } else if(!prior)firstSourceEvse.set(evsePk,{location:pk,status:st});
+   }
   }
  }
  const covered=Object.keys(locations).length,expected=all.length;
@@ -221,6 +229,8 @@ async function aggregate(){
  statusRole:'historical_nonblocking_observations',freshnessModel:'per_location_timestamp_no_global_age_gate',
  exactObservationTimestamps:Object.keys(observedAtByLocation).length,
  legacyObservationTimesUnspecified:covered-Object.keys(observedAtByLocation).length,
+ sourceEvsePkDuplicatedAcrossLocations:duplicateSourceEvsePks.size,
+ sourceEvsePkStatusConflictsAcrossLocations:conflictingSourceEvsePks.size,
  partitionCount:count,partitionUpdatedAtMin:ts.sort()[0]||null,partitionUpdatedAtMax:ts.sort().at(-1)||null,
  completeness:{locations:covered===expected,allPartitionsObserved:issues.length===0,allPartitionsFresh,
   missingCachedSourceEvses:sourceTotal-Object.values(locations).reduce((a,l)=>a+Object.keys(l).length,0)},
