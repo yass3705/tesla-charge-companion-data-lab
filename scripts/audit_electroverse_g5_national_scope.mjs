@@ -18,6 +18,7 @@ const mapPath=process.argv[3]||'data/electroverse/irve_location_mapping.json';
 const manifest=JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8'));
 const national=JSON.parse(await fs.readFile(mapPath,'utf8'));
 const byLocation=buildElectroverseNationalScopeIndex(national.mappings);
+const sourceRowsByLocation=new Map(national.mappings.map(x=>[String(x.electroverseLocationPk),x]));
 const bad=[],samples=[],byMode={},nationalStations=new Set(),pdcs=new Set(),distanceOver10=new Set();
 let total=0,operatorNamed=0,metadataOperator=0,verified=0,unknownPowerCount=0;
 const idSeen=new Set(),duplicates=[];
@@ -40,7 +41,7 @@ for(const tile of manifest.tiles||[]){
    bad.push({id:offer.id,reason:'offer_contract_or_country_invalid'});continue;
   }
   const mapped=byLocation.get(decision.locationPk);
-  const sourceRow=(national.mappings||[]).find(x=>String(x.electroverseLocationPk)===decision.locationPk);
+  const sourceRow=sourceRowsByLocation.get(decision.locationPk);
   const distance=sourceRow?.evidence?.distanceM;
   if(typeof distance==='number' && distance>10)distanceOver10.add(decision.locationPk);
   if(mapped.operator)operatorNamed++;
