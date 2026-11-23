@@ -32,7 +32,9 @@ jobs:
           node --check scripts/lib/electroverse_offer_identity_guard.mjs
           node --check scripts/lib/electroverse_g5_national_scope.mjs
           node --check scripts/audit_electroverse_g5_national_scope.mjs
-          node --test tests/electroverse_status_fault_filter.test.mjs tests/electroverse_offer_identity_guard.test.mjs tests/electroverse_g5_national_scope.test.mjs
+          node --check scripts/audit_electroverse_g5_operator_gps.mjs
+          node --check scripts/lib/electroverse_g5_operator_gps.mjs
+          node --test tests/electroverse_status_fault_filter.test.mjs tests/electroverse_offer_identity_guard.test.mjs tests/electroverse_g5_national_scope.test.mjs tests/electroverse_g5_operator_gps.test.mjs
           python scripts/public_safety_check.py .
       - name: Verify immutable exact tariff/status artifacts and extract safely
         env:
@@ -143,12 +145,16 @@ jobs:
           ln -s "$OUT" "$WORK/data/platforms/electroverse/france-evse"
           node "$GITHUB_WORKSPACE/scripts/audit_electroverse_status_gate_postbuild.mjs"
           node "$GITHUB_WORKSPACE/scripts/audit_electroverse_g5_national_scope.mjs" "$OUT"
+          node "$GITHUB_WORKSPACE/scripts/audit_electroverse_g5_operator_gps.mjs" "$OUT"
           python - <<'PY'
           import json, os, pathlib, hashlib
           root=pathlib.Path(os.environ['RUNNER_TEMP'])/'electroverse-overlay-offline'
           result=json.loads((root/'output/manifest.json').read_text())
           report=json.loads((root/'work/reports/electroverse/status-gate-postbuild.json').read_text())
           g5=json.loads((root/'work/reports/electroverse/g5-national-scope.json').read_text())
+          opgps=json.loads((root/'work/reports/electroverse/g5-operator-gps.json').read_text())
+          if opgps.get('overallOfferCount')!=g5.get('offers') or opgps.get('missingMappingOffers')!=0:
+            raise SystemExit('Independent operator/GPS evidence inventory inconsistent with overlay')
           if g5.get('offers') != g5.get('verifiedOffers') or g5.get('strictSourceLocationPdcExceptions')!=0 or g5.get('duplicateOfferIds')!=0:
             raise SystemExit('G5 national location-PDC scope audit failed')
           if result.get('nationalScopeGate',{}).get('quarantinedOffers',0)<1:
@@ -166,6 +172,15 @@ jobs:
            'faultScreen':gate,
            'postbuildAudit':report,
            'g5NationalScopeAudit':g5,
+           'g5OperatorGpsEvidenceAudit':{
+             'operatorIndependentCrosswalkValidated':opgps['operatorIndependentCrosswalkValidated'],
+             'distanceOutlierLocationCount':opgps['distanceOutlierLocationCount'],
+             'distanceOutlierOfferCount':opgps['distanceOutlierOfferCount'],
+             'exactSourceIdOutlierOfferCount':opgps['exactSourceIdOutlierOfferCount'],
+             'indirectOutlierOfferCount':opgps['indirectOutlierOfferCount'],
+             'supplierIdsWithSeveralNationalOperatorLabels':opgps['supplierIdsWithSeveralNationalOperatorLabels'],
+             'g5Overall':opgps['g5Overall'],
+           },
            'g5Status':'PARTIAL_OPERATOR_AND_GPS_FALLBACK_UNVALIDATED',
            'noPublication':True,'supplierCalls':0,
           }
@@ -300,6 +315,7 @@ jobs:
             ${{ runner.temp }}/electroverse-overlay-offline/baseline-output/manifest.json
             ${{ runner.temp }}/electroverse-overlay-offline/work/reports/electroverse/status-gate-postbuild.json
             ${{ runner.temp }}/electroverse-overlay-offline/work/reports/electroverse/g5-national-scope.json
+            ${{ runner.temp }}/electroverse-overlay-offline/work/reports/electroverse/g5-operator-gps.json
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
