@@ -29,7 +29,8 @@ jobs:
           set -euo pipefail
           node --check scripts/build_electroverse_france_evse_overlay.mjs
           node --check scripts/audit_electroverse_status_gate_postbuild.mjs
-          node --test tests/electroverse_status_fault_filter.test.mjs
+          node --check scripts/lib/electroverse_offer_identity_guard.mjs
+          node --test tests/electroverse_status_fault_filter.test.mjs tests/electroverse_offer_identity_guard.test.mjs
           python scripts/public_safety_check.py .
       - name: Verify immutable exact tariff/status artifacts and extract safely
         env:
