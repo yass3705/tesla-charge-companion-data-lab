@@ -168,6 +168,80 @@ jobs:
              'supplierCalls':0,'noPublication':True,
           }))
           PY
+      - name: Build isolated unfiltered control and compare exact overlay offers
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/electroverse-overlay-offline"
+          WORK="$ROOT/work"
+          BACK="$WORK/data/electroverse/live_statuses/manifest.json"
+          mv "$BACK" "$BACK.offline_control"
+          trap 'if [ -f "$BACK.offline_control" ]; then mv "$BACK.offline_control" "$BACK"; fi' EXIT
+          ( cd "$WORK"; node "$GITHUB_WORKSPACE/scripts/build_electroverse_france_evse_overlay.mjs" "$ROOT/baseline-output" > "$ROOT/control-builder.log" )
+          mv "$BACK.offline_control" "$BACK"
+          trap - EXIT
+          python - <<'PY'
+          import json, os, pathlib, gzip, hashlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'electroverse-overlay-offline'
+          def inspect(label):
+            src=root/label
+            manifest=json.loads((src/'manifest.json').read_text())
+            names={}
+            duplications=[]
+            for tile in manifest.get('tiles',[]):
+              doc=json.loads(gzip.decompress((src/tile['file']).read_bytes()))
+              for offer in doc.get('emspOffers',[]):
+                key=offer.get('id')
+                if not isinstance(key,str) or not key:
+                  raise SystemExit('Missing source offer ID in '+label)
+                if key in names:
+                  duplications.append(key)
+                canonical=json.dumps({'price':offer.get('pricing'),
+                     'evseIds':offer.get('evseIds'),
+                     'scope':offer.get('verifiedScope')},sort_keys=True,separators=(',',':'))
+                names[key]=hashlib.sha256(canonical.encode()).hexdigest()
+            return manifest,names,duplications
+          filtered,filtered_ids,filtered_dups=inspect('output')
+          control,control_ids,control_dups=inspect('baseline-output')
+          if filtered_dups or control_dups:
+            raise SystemExit('Duplicate offer IDs in offline A/B overlay comparison')
+          cf=control.get('statusGate',{})
+          if cf.get('statusEvidence')=='validated_optional_historical_snapshot' or cf.get('excludedEvseCount')!=0:
+            raise SystemExit('Control reconstruction unexpectedly consumed live statuses')
+          sc=filtered.get('statusGate',{})
+          if sc.get('statusEvidence')!='validated_optional_historical_snapshot':
+            raise SystemExit('Filtered reconstruction lost original status evidence')
+          common=set(control_ids)&set(filtered_ids)
+          removed=set(control_ids)-set(filtered_ids)
+          added=set(filtered_ids)-set(control_ids)
+          changed=[key for key in common if control_ids[key]!=filtered_ids[key]]
+          report={
+            'sourceTariffRun':45024846774,'sourceStatusRun':45214188791,
+            'statusRole':'technical_fault_screening_only',
+            'controlOffers':len(control_ids),'filteredOffers':len(filtered_ids),
+            'removedOfferCount':len(removed),'addedOfferCount':len(added),
+            'sameOfferIds':len(common),'sameOfferPricingOrScopeChanged':len(changed),
+            'removedOfferIdSample':sorted(removed)[:40],
+            'addedOfferIdSample':sorted(added)[:40],
+            'changedOfferIdSample':sorted(changed)[:40],
+            'controlTileCount':control.get('tileCount'),
+            'filteredTileCount':filtered.get('tileCount'),
+            'controlTileGzipBytes':sum(x['bytes'] for x in control.get('tiles',[])),
+            'filteredTileGzipBytes':sum(x['bytes'] for x in filtered.get('tiles',[])),
+            'controlManifestBytes':(root/'baseline-output/manifest.json').stat().st_size,
+            'filteredManifestBytes':(root/'output/manifest.json').stat().st_size,
+            'cacheFaultEvseExcluded':sc.get('excludedEvseCount'),
+            'postbuildFaultReferencesTrimmed':sc.get('postbuildFaultGate',{}),
+            'noProviderCalls':True,'noProductionPublication':True,
+          }
+          (root/'offline-overlay-ab-comparison.json').write_text(json.dumps(report,indent=2)+'\n')
+          proof=root/'offline-overlay-audit.json'
+          main=json.loads(proof.read_text());main['abComparison']=report
+          proof.write_text(json.dumps(main,indent=2)+'\n')
+          print('OFFLINE_OVERLAY_AB_COMPLETE '+json.dumps({k:report[k] for k in (
+            'controlOffers','filteredOffers','removedOfferCount','addedOfferCount',
+            'sameOfferPricingOrScopeChanged','controlTileGzipBytes',
+            'filteredTileGzipBytes','cacheFaultEvseExcluded')}))
+          PY
       - name: Upload isolated, validated overlay with provenance (not Production)
         if: ${{ success() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -177,6 +251,8 @@ jobs:
             ${{ runner.temp }}/electroverse-overlay-offline/output/
             ${{ runner.temp }}/electroverse-overlay-offline/offline-overlay-audit.json
             ${{ runner.temp }}/electroverse-overlay-offline/source-proof.json
+            ${{ runner.temp }}/electroverse-overlay-offline/offline-overlay-ab-comparison.json
+            ${{ runner.temp }}/electroverse-overlay-offline/baseline-output/manifest.json
             ${{ runner.temp }}/electroverse-overlay-offline/work/reports/electroverse/status-gate-postbuild.json
           if-no-files-found: error
           retention-days: 30
