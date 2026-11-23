@@ -186,7 +186,9 @@ def validate_complete(out: Path, *, require_fresh_parts: bool = False) -> dict:
         raise ValueError("National status manifest is incomplete")
     with gzip.open(out / STATUS / manifest["ledger"], "rt", encoding="utf-8") as handle:
         ledger = json.load(handle)
-    locations = ledger.get("locations") if isinstance(ledger, dict) else None
+    if not isinstance(ledger, dict) or ledger.get("sourceFingerprint") != partial["fingerprint"]:
+        raise ValueError("Historical status ledger source fingerprint mismatch")
+    locations = ledger.get("locations")
     if not isinstance(locations, dict) or set(locations) != {key for part in partial["partitions"] for key in part["entries"]}:
         raise ValueError("Status ledger differs from partition entries")
     exact = ledger.get("observedAtByLocation") if isinstance(ledger, dict) else None
@@ -199,16 +201,28 @@ def validate_complete(out: Path, *, require_fresh_parts: bool = False) -> dict:
     if (manifest.get("exactObservationTimestamps") != len(exact)
             or manifest.get("legacyObservationTimesUnspecified") != len(locations) - len(exact)):
         raise ValueError("Inconsistent exact versus legacy observation timestamps")
-    source_evse_pks: dict[str, str] = {}
+    source_evse_pks: dict[str, tuple[str, str]] = {}
+    duplicated: set[str] = set()
+    conflicting: set[str] = set()
+    expected_by_location = {location: statuses for part in partial["partitions"]
+                            for location, statuses in part["entries"].items()}
     for location, statuses in locations.items():
-        if not isinstance(statuses, dict):
-            raise ValueError("Invalid status ledger row")
+        if not isinstance(statuses, dict) or statuses != expected_by_location[location]:
+            raise ValueError("Status ledger values differ from partition")
         for pk, status in statuses.items():
-            if pk in source_evse_pks and source_evse_pks[pk] != location:
-                raise ValueError(f"Duplicate source EVSE PK across locations: {pk}")
-            source_evse_pks[pk] = location
-            if status != next(part["entries"][location][pk] for part in partial["partitions"] if location in part["entries"]):
-                raise ValueError("Status ledger value differs from partition")
+            prior = source_evse_pks.get(pk)
+            if prior is not None and prior[0] != location:
+                duplicated.add(pk)
+                if prior[1] != status:
+                    conflicting.add(pk)
+            else:
+                source_evse_pks[pk] = (location, status)
+    # Electroverse can reuse a source EVSE PK under another ChargingLocation PK.
+    # This is an identity ambiguity for any downstream *global-PK* join, not
+    # evidence that the two location-scoped observations should be discarded.
+    if (manifest.get("sourceEvsePkDuplicatedAcrossLocations") != len(duplicated)
+            or manifest.get("sourceEvsePkStatusConflictsAcrossLocations") != len(conflicting)):
+        raise ValueError("Missing or inconsistent cross-location EVSE conflict audit")
     return manifest
 
 
