@@ -61,6 +61,9 @@ export function buildElectroverseNationalScopeIndex(mappings, extensions=[]) {
         throw Error('Supplemental PDC already owned by another mapping: '+pdc);
       row.targetIds.add(pdc);
       row.approvedSupplementalPdcIds.add(pdc);
+      const newOwners=baseOwners.get(pdc)||new Set();
+      newOwners.add(location);
+      baseOwners.set(pdc,newOwners);
     }
   }
   return byLocation;
