@@ -6,6 +6,7 @@ import {
   assessElectroverseFault, screenElectroverseOffer, DEFAULT_FAULT_MAX_AGE_MS,
 } from './lib/electroverse_status_fault_filter.mjs';
 import {quarantineDuplicateOfferIds} from './lib/electroverse_offer_identity_guard.mjs';
+import {screenElectroverseG5NationalOffers} from './lib/electroverse_g5_national_scope.mjs';
 
 const CACHE='data/electroverse/tariff_cache';
 const STATUS_DIR='data/electroverse/live_statuses';
@@ -3022,6 +3023,15 @@ const offerIdentityGate={
   policy:'All duplicate source offer IDs fail closed until power/connector scope is proved',
 };
 
+// G5 second fail-closed check: an offer belongs to its mapped national EVSE.
+// Exclude confirmed foreign Belgian sites from this France-only overlay and
+// quarantine targets absent from this source location's national PDC list.
+// Never transfer prices to an alternative EVSE or erase source records.
+// The independent operator-name/GPS fallback audit remains an OPEN G5 gate.
+const g5NationalDecision=screenElectroverseG5NationalOffers(tiles,mapping.mappings);
+for(const [tileKey,offers] of g5NationalDecision.tiles)tiles.set(tileKey,offers);
+const nationalScopeGate=g5NationalDecision.report;
+
 // Recompute final published KPIs after dedupe/fail-closed conflict removal.
 const finalOffers=[...tiles.values()].flat();
 stats.publishedEvses=finalOffers.length;
@@ -3105,6 +3115,7 @@ const out={
     confirmedPowerSplitRefs:reviewedPriceDisputes.chargezyPowerVariants?.length||0,
     quarantine:reviewedQuarantine},
   offerIdentityGate,
+  nationalScopeGate,
   statusGate:{generatedAt:statusData.generatedAt,statusEvidence,statusEvidenceIssue,
     statusEvidenceSha256,faultCheckedAt:new Date(faultCheckedAtMs).toISOString(),
     role:'optional_historical_technical_fault_screening',policy:FAULT_POLICY,
