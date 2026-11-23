@@ -76,3 +76,15 @@ test('supplement without station-lock, date, or source cannot invent official PD
  assert.throws(()=>buildElectroverseNationalScopeIndex(mappings,[{
   ...base,irveStationId:'FRGYMP735550',evidence:{observed:'2026-10-02'}}]),/dated evidence/);
 });
+
+test('a national PDC claimed by two source locations is quarantined, even if one offer remains',()=>{
+ const row={electroverseLocationPk:'SECOND-SITE',irveStationId:'FRTWOP1234',
+  irvePdcIds:['FR*MEL*E001'],irve:{lat:48.3,lon:2.1,operator:'Other Operator'}};
+ const index=buildElectroverseNationalScopeIndex([...mappings,row]);
+ const a=classifyElectroverseNationalOffer(offer('a','FR-A','FR*MEL*E001'),index);
+ const b=classifyElectroverseNationalOffer(offer('b','SECOND-SITE','FR*MEL*E001'),index);
+ assert.equal(a.reason,'national_pdc_claimed_by_multiple_electroverse_locations');
+ assert.equal(b.reason,'national_pdc_claimed_by_multiple_electroverse_locations');
+ assert.equal(a.ok,false);
+ assert.equal(b.ok,false);
+});
