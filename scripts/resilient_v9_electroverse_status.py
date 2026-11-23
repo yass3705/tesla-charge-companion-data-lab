@@ -26,7 +26,7 @@ from v9_rebuild.electroverse import read_json
 from v9_rebuild.orchestrator import artifact_digest, sha256
 from v9_rebuild.electroverse_status import (
     PARTITION_COUNT, STATUS, STATUS_REPORT, IncompleteStatus, cache_fingerprint,
-    is_fresh_complete, part_path, run, validate_complete, validate_part,
+    part_path, run, validate_complete, validate_part,
     validate_partial,
 )
 
@@ -89,7 +89,7 @@ def prepare(args: argparse.Namespace) -> None:
                       "partitions": len(partial["partitions"]),
                       "resumeEligible": eligible, "reason": why}))
     if not eligible:
-        raise ValueError("Refusing unsafe/stale status resumption: " + why)
+        raise ValueError("Refusing invalid historical status resumption: " + why)
     if not os.environ.get("ELECTROVERSE_API_KEY"):
         raise ValueError("Electroverse credential missing")
     out.mkdir(parents=True)
@@ -129,11 +129,12 @@ def prepare(args: argparse.Namespace) -> None:
                       "stationWaitBudgetsReset": cleared, "supplierCalls": 0}))
 
 
-def require_fresh(work: Path) -> None:
+def require_resumable(work: Path) -> None:
+    """Check immutable provenance and timestamp sanity, not a 16h age window."""
     partial = validate_partial(work)
     eligible, reason = resume_eligibility(partial, {}, datetime.now(timezone.utc))
     if not eligible:
-        raise IncompleteStatus("checkpoint_stale_or_near_expiry:" + reason)
+        raise IncompleteStatus("invalid_checkpoint_observation_times:" + reason)
 
 
 def delta_paths(staging: Path) -> list[Path]:
@@ -339,11 +340,27 @@ def collect_segment(args: argparse.Namespace) -> None:
     if not os.environ.get("ELECTROVERSE_API_KEY"):
         raise ValueError("Missing status API credential")
     work = out / "work"
+    prepared = datetime.fromisoformat(state["preparedUtc"])
+    if prepared.tzinfo is None:
+        raise ValueError("Untrusted status job preparation timestamp")
+    # Allow up to 60min for the next partition and reserve time to upload
+    # the checkpoint before GitHub's 300min hosted job timeout.
+    if (datetime.now(timezone.utc) - prepared).total_seconds() >= 13000:
+        state["halted"] = True
+        state["stopReason"] = "runner_time_budget_reserve"
+        state["lastSegment"] = {"phase": phase, "partition": index, "supplierCalls": 0}
+        write_json(progress_path(out), state)
+        make_checkpoint(out, state)
+        send_output(checkpoint_ready=True, continue_collecting=False)
+        if os.environ.get("GITHUB_ENV"):
+            with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+                handle.write("STATUS_HALT=true\n")
+        return
     try:
-        require_fresh(work)
+        require_resumable(work)
     except IncompleteStatus:
         state["halted"] = True
-        state["stopReason"] = "checkpoint_stale_or_near_expiry"
+        state["stopReason"] = "invalid_checkpoint_observation_times"
         state["lastSegment"] = {"phase": phase, "partition": index, "supplierCalls": 0}
         write_json(progress_path(out), state)
         make_checkpoint(out, state)
