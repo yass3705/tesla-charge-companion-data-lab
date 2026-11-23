@@ -116,7 +116,26 @@ class ElectroverseStatusTests(unittest.TestCase):
             part_path(root, 1).unlink()
             old = (datetime.now(timezone.utc) - timedelta(hours=17)).isoformat()
             save(part_path(root, 0), part(0, fingerprint, {"A": {"EVSE-A": "AVAILABLE"}}, started=old))
-            self.assertEqual(choose_partition(root), 0)
+            self.assertEqual(choose_partition(root), 1)  # Aged complete observations are not replayed
+
+    def test_old_complete_census_finalizes_without_current_availability_claim(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+                os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
+            source, out = Path(temp) / "source", Path(temp) / "out"
+            fixture(source, [])
+            fingerprint = cache_fingerprint(source)
+            previous = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
+            for index in range(PARTITION_COUNT):
+                save(part_path(source, index),
+                     part(index, fingerprint, {}, started=previous, expected=0))
+            runner = FixtureRunner()
+            run(out, source=source, runner=runner)
+            manifest = validate_complete(out)
+            self.assertEqual(runner.seen, [])
+            self.assertTrue(manifest["completeness"]["allPartitionsObserved"])
+            self.assertFalse(manifest["completeness"]["allPartitionsFresh"])
+            self.assertEqual(manifest["statusRole"],
+                             "historical_nonblocking_observations")
 
     def test_historical_merge_preserves_good_rows_and_rejects_wrong_fingerprint(self):
         with tempfile.TemporaryDirectory() as temp:
