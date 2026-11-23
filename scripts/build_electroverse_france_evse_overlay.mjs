@@ -302,6 +302,9 @@ function pricingSig(p){return JSON.stringify(p);}
 function tileId(lat,lon){return `t_${Math.floor(lat/TILE)}_${Math.floor(lon/TILE)}`;}
 
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
+// Keep the immutable original national map independent from the two previously
+// approved station-locked supplements applied to the builder working copy.
+const originalNationalMappings=structuredClone(mapping.mappings||[]);
 const manifest=JSON.parse(await fs.readFile(MANIFEST,'utf8'));
 const driveco=JSON.parse(await fs.readFile(DRIVECO,'utf8'));
 const powerdotTech=JSON.parse(await fs.readFile(POWERDOT_TECH,'utf8'));
@@ -3028,7 +3031,11 @@ const offerIdentityGate={
 // quarantine targets absent from this source location's national PDC list.
 // Never transfer prices to an alternative EVSE or erase source records.
 // The independent operator-name/GPS fallback audit remains an OPEN G5 gate.
-const g5NationalDecision=screenElectroverseG5NationalOffers(tiles,mapping.mappings);
+const g5NationalDecision=screenElectroverseG5NationalOffers(
+  tiles,originalNationalMappings,[
+    ...(validatedCustomGyPdcExtensions.extensions||[]),
+    ...(validatedBPdcExtensions.extensions||[]),
+  ]);
 for(const [tileKey,offers] of g5NationalDecision.tiles)tiles.set(tileKey,offers);
 const nationalScopeGate=g5NationalDecision.report;
 
