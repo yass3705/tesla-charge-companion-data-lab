@@ -1,0 +1,183 @@
+name: V9 Electroverse offline overlay rebuild and sizing
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/electroverse-overlay-audit-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-overlay-offline-audit
+  cancel-in-progress: false
+jobs:
+  build-overlay-offline:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Local syntax, identity policy, and public safety
+        run: |
+          set -euo pipefail
+          node --check scripts/build_electroverse_france_evse_overlay.mjs
+          node --check scripts/audit_electroverse_status_gate_postbuild.mjs
+          node --test tests/electroverse_status_fault_filter.test.mjs
+          python scripts/public_safety_check.py .
+      - name: Verify immutable exact tariff/status artifacts and extract safely
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, pathlib, subprocess, hashlib, zipfile, stat
+          from v9_rebuild.orchestrator import validated_dependency
+          repo=os.environ['GITHUB_REPOSITORY']
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'electroverse-overlay-offline'
+          root.mkdir(parents=True,exist_ok=False)
+          req=json.load(open('migration/v9/electroverse-overlay-audit-request.json'))
+          expected={
+            'purpose':'offline_rebuild_electroverse_tariff_overlay_only',
+            'tariffRun':45024846774,
+            'tariffArtifact':14760747281,
+            'tariffZipSha256':'0d3abcc15dc4762b360c5816b6e783accdcafa664442c8ce99b7c0500743a5fe',
+            'statusRun':45214188791,
+            'statusArtifact':14838028097,
+            'statusZipSha256':'740d68469cc34db0ea166542a6d2585d3ee6060aed28a72f732dad6f513c5d77',
+            'automaticPublication':False,
+            'providerCalls':False,
+          }
+          if req!=expected:
+            raise SystemExit('Unapproved source pins or publication/provider flags in offline overlay request')
+          def fetch(tag,run_id,artifact_id,digest):
+            run=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/runs/{run_id}']))
+            art=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/artifacts/{artifact_id}']))
+            if (run['status']!='completed' or run['conclusion']!='success' or
+                run.get('head_branch')!='rebuild/v9-20261020' or
+                art.get('expired') is not False or
+                art.get('digest')!='sha256:'+digest or
+                (art.get('workflow_run') or {}).get('id')!=run_id):
+              raise SystemExit('Invalid immutable source: '+tag)
+            output=root/(tag+'.zip')
+            with output.open('wb') as stream:
+              subprocess.run(['gh','api',f'repos/{repo}/actions/artifacts/{artifact_id}/zip'],
+                             stdout=stream,check=True)
+            if hashlib.sha256(output.read_bytes()).hexdigest()!=digest:
+              raise SystemExit('SHA256 mismatch: '+tag)
+            destination=root/tag
+            destination.mkdir()
+            with zipfile.ZipFile(output) as archive:
+              seen=set()
+              for entry in archive.infolist():
+                path=pathlib.PurePosixPath(entry.filename)
+                if (path.is_absolute() or '..' in path.parts or
+                    not path.parts or entry.filename in seen or
+                    stat.S_IFMT(entry.external_attr >> 16)==stat.S_IFLNK):
+                  raise SystemExit('Untrusted ZIP member: '+tag)
+                seen.add(entry.filename)
+                dest=destination.joinpath(*path.parts)
+                if not dest.resolve().is_relative_to(destination.resolve()):
+                  raise SystemExit('ZIP path escaped: '+tag)
+                if entry.is_dir():dest.mkdir(parents=True,exist_ok=True)
+                else:
+                  dest.parent.mkdir(parents=True,exist_ok=True)
+                  dest.write_bytes(archive.read(entry))
+            return destination
+          tariffs=fetch('tariff',req['tariffRun'],req['tariffArtifact'],req['tariffZipSha256'])
+          statuses=fetch('status',req['statusRun'],req['statusArtifact'],req['statusZipSha256'])
+          tariff_root=validated_dependency(tariffs,'FR:electroverse_full','electroverse')
+          status_root=validated_dependency(statuses,'FR:electroverse_status','electroverse_status')
+          tariff_manifest=json.loads((tariff_root/'data/electroverse/tariff_cache/manifest.json').read_text())
+          status_manifest=json.loads((status_root/'data/electroverse/live_statuses/manifest.json').read_text())
+          if not (tariff_manifest['totalStations']==status_manifest['completedLocations']==22818 and
+                  status_manifest['failedLocations']==0 and
+                  status_manifest['statusRole']=='historical_nonblocking_observations' and
+                  status_manifest['completeness']['locations']==True):
+            raise SystemExit('Not a complete and historically validated national status census')
+          workspace=root/'work'
+          (workspace/'data/electroverse').mkdir(parents=True)
+          import shutil
+          shutil.copytree(tariff_root/'data/electroverse/tariff_cache',
+                          workspace/'data/electroverse/tariff_cache')
+          shutil.copy2(tariff_root/'data/electroverse/irve_location_mapping.json',
+                       workspace/'data/electroverse/irve_location_mapping.json')
+          shutil.copytree(status_root/'data/electroverse/live_statuses',
+                          workspace/'data/electroverse/live_statuses')
+          (workspace/'data/platforms/electroverse').mkdir(parents=True)
+          (workspace/'data/operator_direct').symlink_to(
+             pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'data/operator_direct',
+             target_is_directory=True)
+          (workspace/'data/platforms/electroverse/validated-mappings').symlink_to(
+             pathlib.Path(os.environ['GITHUB_WORKSPACE'])/
+               'data/platforms/electroverse/validated-mappings',target_is_directory=True)
+          provenance={
+           'tariffRun':req['tariffRun'],'statusRun':req['statusRun'],
+           'sourceTotal':tariff_manifest['totalStations'],
+           'completedLocations':status_manifest['completedLocations'],
+           'failedLocations':status_manifest['failedLocations'],
+           'statusManifest':status_manifest,
+           'automaticPublication':False,'supplierCalls':0,
+          }
+          (root/'source-proof.json').write_text(json.dumps(provenance,indent=2)+'\n')
+          print('Immutable Electroverse overlay sources verified, supplier calls=0, publication disabled')
+          PY
+      - name: Build real overlay in isolated runner directory (no supplier calls)
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/electroverse-overlay-offline"
+          WORK="$ROOT/work"
+          OUT="$ROOT/output"
+          cd "$WORK"
+          node "$GITHUB_WORKSPACE/scripts/build_electroverse_france_evse_overlay.mjs" "$OUT"
+          ln -s "$OUT" "$WORK/data/platforms/electroverse/france-evse"
+          node "$GITHUB_WORKSPACE/scripts/audit_electroverse_status_gate_postbuild.mjs"
+          python - <<'PY'
+          import json, os, pathlib, hashlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'electroverse-overlay-offline'
+          result=json.loads((root/'output/manifest.json').read_text())
+          report=json.loads((root/'work/reports/electroverse/status-gate-postbuild.json').read_text())
+          gate=result.get('statusGate',{})
+          if gate.get('role')!='optional_historical_technical_fault_screening':
+            raise SystemExit('Incorrect optional status policy')
+          if report.get('confirmedFaultsStillPublished')!=0 or report.get('missingProvenanceOffers')!=0:
+            raise SystemExit('Unresolved source EVSE fault/provenance in built overlay')
+          record={
+           'source':json.loads((root/'source-proof.json').read_text()),
+           'overlayManifestSha256':hashlib.sha256((root/'output/manifest.json').read_bytes()).hexdigest(),
+           'overlayTileCount':len(result.get('tiles',[])),
+           'overlayStats':result.get('stats'),
+           'faultScreen':gate,
+           'postbuildAudit':report,
+           'noPublication':True,'supplierCalls':0,
+          }
+          (root/'offline-overlay-audit.json').write_text(json.dumps(record,indent=2)+'\n')
+          print('OFFLINE_OVERLAY_AUDIT_PASS '+json.dumps({
+             'tiles':record['overlayTileCount'],
+             'excludedEvse':gate.get('excludedEvseCount'),
+             'sourceEvse':gate.get('sourceEvseCount'),
+             'offers':report.get('offers'),
+             'unknownOffers':report.get('missingProvenanceOffers'),
+             'supplierCalls':0,'noPublication':True,
+          }))
+          PY
+      - name: Upload isolated, validated overlay with provenance (not Production)
+        if: ${{ success() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-france-offline-overlay-audit
+          path: |
+            ${{ runner.temp }}/electroverse-overlay-offline/output/
+            ${{ runner.temp }}/electroverse-overlay-offline/offline-overlay-audit.json
+            ${{ runner.temp }}/electroverse-overlay-offline/source-proof.json
+            ${{ runner.temp }}/electroverse-overlay-offline/work/reports/electroverse/status-gate-postbuild.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
