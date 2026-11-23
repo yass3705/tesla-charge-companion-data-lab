@@ -1,0 +1,33 @@
+# TCC V9 — Electroverse status census run #45154568008: 22 816/22 818, fault-screen follow-up
+
+## Référence d'exécution et intégrité
+
+- Data Lab, branche `rebuild/v9-20261020`, run fournisseur [#45154568008](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45154568008), job **137624103599**, SHA exécuté `545d5bf7c1fdd9eedf1bb1d6726a7d7cafbfcbd7`.
+- Démarrage 23/11/2026 10:16:22Z ; GitHub `completed/success` à 13:43:03Z (14:43 Paris), mais résultat **`checkpointed/deferred_errors_or_missing_parts`**, et **`noNationalPublication=true`**. Ne pas confondre succès job et inventaire complet.
+- **16/16 unités sweep et 16/16 unités recovery** success, 32 sauvegardes SHA, aucune publication nationale ni Production ; étape finale de promotion complète `skipped`. L'ancien plafonnement 16 h ne bloque plus la reprise ; les durées d'observation réelles demeurent intactes.
+- **Dernier artefact durable :** `tcc-v9-electroverse-status-stage-recovery-15`, **14823132773**, créé 13:42:58Z, expiration annoncée **30/11/2026 13:42:58Z**.
+- ZIP de 565 774 octets, sha256 `3e3a6e6ddf413f8397485bdcd6a9f36643c815327ae49892c65a3060aa384756`, CRC ZIP PASS ; 21 membres, 20 fichiers déclarés avec SHA256 et taille tous vérifiés. Digest delta `fc6bf412995072fe8bc2a7be41d424ea79e6bbe2ef5277d7564e5260c8d40d2e`, **fileset complet reconstructible SHA256 `1f778814df2431f64b9dd7d78043e51eb39bdc9c35125dc2939b04465b5514e1`**, sourceFingerprint inchangé `3365025ffc1f0f57ac4b48101e4e78517797a8cbb5a8b2a72fea60bce1cd12b4`.
+- État : **22 816 ChargingLocation PK vérifiés sur 22 818**, +8 725 depuis le checkpoint 14 091, soit 99,9912 %. Les deux seuls PK non vérifiés sont **2591827** (partition 06, `single_paged_unavailable`, 2 tentatives inscrites) et **2925141** (partition 07, `pagination:page_failed:200`, 2 tentatives inscrites). Pas de requête fournisseur additionnelle déclenchée par l'audit.
+- Le dernier segment recovery-15 signale 0 HTTP 429, aucune attente ni reprise 429 ; ceci **n'établit pas** le total 429 sur les autres segments.
+
+## Inventaire technique Electroverse (checkpoint, non publié)
+
+Le ZIP contient **93 473 occurrences de statut EVSE** : AVAILABLE 69 591 ; CHARGING 9 466 ; OUTOFORDER 7 999 ; UNKNOWN 5 778 ; INOPERATIVE 528 ; BLOCKED 103 ; RESERVED 8. **8 527 occurrences** OUTOFORDER+INOPERATIVE sont des candidates à l'exclusion de la *vue tarifaire active* selon la règle utilisateur ; elles ne sont **pas** des suppressions réelles ni toutes actuellement vérifiables en tant que pannes récentes.
+
+Sur 93 473 occurrences, 37 100 disposent d'un `observedAtByLocation` nouveau et exact dans le checkpoint, et 56 373 proviennent de l'historique sans timestamp individuel : conserver les bornes réelles de la partition sans inventer de date. Parmi les pannes candidates, **3 319 sont datées individuellement** (3 066 OUTOFORDER +253 INOPERATIVE) et **5 208 sont historiques sans instant propre** (4 933 OUTOFORDER +275 INOPERATIVE). Une fenêtre locale conservatrice de **24h pour l'exclusion de panne** s'applique aux seules observations horodatées explicitement ; **ce n'est PAS un retour au veto global 16h sur la collecte**. Les historiques non horodatés restent disponibles à l'audit sans provoquer de retrait automatique.
+
+### Identifiants réutilisés / portée
+
+**124 source EVSE PK distincts** apparaissent sous deux ChargingLocation PK différents : 89 entre (4253702,4349466), 33 entre (4233945,4637021), 2 entre (2550614,426222). **56** de ces identifiants partagés présentent des valeurs de statut divergentes. Le bon index est donc impérativement **(chargingLocationPk, sourceEvsePk)**, et *jamais* sourceEvsePk seul. Les 124 collisions sont des alertes de portée, non 124 stations à supprimer. Des offres avec identité ambiguë ne doivent pas être attribuées à un EVSE IRVE sans preuve d'unicité.
+
+## Code préparé après fin du run, sans nouvelle collecte
+
+- `scripts/lib/electroverse_status_fault_filter.mjs` : garde active à 24h pour `OUTOFORDER`/`INOPERATIVE` explicitement datés et rattachés à la station+EVSE ; `CHARGING`, `BLOCKED`, `RESERVED`, `UNKNOWN`, absence, date absente/ancienne/future = aucune exclusion. Source et registre national jamais supprimés.
+- `scripts/build_electroverse_france_evse_overlay.mjs` : le snapshot historique devient **facultatif et non bloquant pour les tarifs** ; exclusions uniquement par la fonction ci-dessus, rapport de filtrage avec horodatage et SHA du ledger consulté. Si l'inventaire complet est absent, la projection ne retire rien sur cette base, plutôt que bloquer les tarifs.
+- `scripts/audit_electroverse_status_gate_postbuild.mjs` : contrôle de l'absence d'offres publiées sous statut de panne récent, index par location+EVSE, provenance snapshot SHA, horaires et évitement de la confusion d'EVSE global.
+- `scripts/electroverse_status_incremental.mjs` et `v9_rebuild/electroverse_status.py` : le ledger portera désormais son fingerprint et les indicateurs de réutilisation du source EVSE PK entre stations. Les collisions sont auditées sans les traiter comme des statuts identiques, ni invalider toute l'observation nationale.
+- Tests : 5 tests Node de filtrage isolé PASS localement ; nouveau test Python de réutilisation du PK source entre deux stations. La validation GitHub n'est pas encore déclarée PASS dans ce registre à la rédaction initiale ; vérifier le run `mode=verify` épinglé sur le dernier artefact.
+
+## Périmètre et prochaine étape
+
+Nouveau recensement fournisseur **non lancé** après cet audit ; `migration/v9/electroverse-status-request.json` en `mode=verify`, `explicitProviderAuthorization=false`. Pas de changement main/Production/Updater Test et aucune URL TCC nouvelle démontrée. Corriger les éventuelles erreurs de préflight, garder le checkpoint 14823132773 comme parent immutable et préparer un essai ciblé pour PK 2591827 et 2925141 seulement, sans interroger à nouveau les succès. Aucune projection filtrée servie à l'utilisateur tant que les contrôles d'identité/horodatage et l'import ne sont pas validés bout en bout.
