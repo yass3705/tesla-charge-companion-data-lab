@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   assessElectroverseFault, screenElectroverseOffer, DEFAULT_FAULT_MAX_AGE_MS,
 } from './lib/electroverse_status_fault_filter.mjs';
+import {quarantineDuplicateOfferIds} from './lib/electroverse_offer_identity_guard.mjs';
 
 const CACHE='data/electroverse/tariff_cache';
 const STATUS_DIR='data/electroverse/live_statuses';
@@ -3004,6 +3005,18 @@ for(const [tileKey,offers] of tiles.entries()){
   tiles.set(tileKey,screened);
 }
 
+// A distinct power/pricing variant must have a distinct and proven ID/scope.
+// Unknown collisions cannot be arbitrarily assigned a price: quarantine all
+// source offers sharing that identity, keep the national master untouched.
+const offerIdentityDecision=quarantineDuplicateOfferIds(tiles);
+for(const [tileKey,offers] of offerIdentityDecision.tiles)tiles.set(tileKey,offers);
+const offerIdentityGate={
+  duplicateIdsQuarantined:offerIdentityDecision.duplicateIds.length,
+  quarantinedOfferRows:offerIdentityDecision.quarantinedRows,
+  conflictingIds:offerIdentityDecision.duplicateIds.slice(0,100),
+  policy:'All duplicate source offer IDs fail closed until power/connector scope is proved',
+};
+
 // Recompute final published KPIs after dedupe/fail-closed conflict removal.
 const finalOffers=[...tiles.values()].flat();
 stats.publishedEvses=finalOffers.length;
@@ -3086,6 +3099,7 @@ const out={
     originalSamePowerRefs:reviewedPriceDisputes.samePowerDisputes?.length||0,
     confirmedPowerSplitRefs:reviewedPriceDisputes.chargezyPowerVariants?.length||0,
     quarantine:reviewedQuarantine},
+  offerIdentityGate,
   statusGate:{generatedAt:statusData.generatedAt,statusEvidence,statusEvidenceIssue,
     statusEvidenceSha256,faultCheckedAt:new Date(faultCheckedAtMs).toISOString(),
     role:'optional_historical_technical_fault_screening',policy:FAULT_POLICY,
