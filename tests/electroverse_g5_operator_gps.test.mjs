@@ -40,6 +40,7 @@ test('nonexact PD1 group beyond 10m must not be promoted to proven GPS/operator 
   'strict_pd1_official_technical_homogeneous_group',
   'FRPD1ETARGET',null,{
    source:'Electroverse tariff cache + Powerdot official technical inventory',
+   operator:'PD1',powerKwClass:100,plugTypes:['CCS'],
    physicalReferences:['RMC571-1','RMC571-2'],
   }),map);
  assert.equal(x.exactSourcePdc,false);
