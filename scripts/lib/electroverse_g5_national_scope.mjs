@@ -66,6 +66,12 @@ export function buildElectroverseNationalScopeIndex(mappings, extensions=[]) {
       baseOwners.set(pdc,newOwners);
     }
   }
+  // A target claimed by multiple Electroverse source locations has no proven
+  // unique provenance. Even if just one offer survived other filters, that
+  // does not resolve ownership of the physical national PDC.
+  for(const row of byLocation.values())
+    row.ambiguousTargetIds=new Set([...row.targetIds].filter(
+      pdc=>(baseOwners.get(pdc)?.size||0)>1));
   return byLocation;
 }
 
@@ -82,6 +88,10 @@ export function classifyElectroverseNationalOffer(offer,index) {
   if(badTargets.length)
     return {ok:false,reason:'target_not_in_source_location_national_pdcs',locationPk,
       targets:badTargets,stationId:row.stationId};
+  const ambiguousTargets=targets.filter(t=>row.ambiguousTargetIds.has(nationalNorm(t)));
+  if(ambiguousTargets.length)
+    return {ok:false,reason:'national_pdc_claimed_by_multiple_electroverse_locations',
+      locationPk,targets:ambiguousTargets,stationId:row.stationId};
   const supplemental=targets.filter(t=>row.approvedSupplementalPdcIds.has(nationalNorm(t)));
   return {ok:true,reason:'source_location_target_membership_confirmed',
     locationPk,stationId:row.stationId,
