@@ -6,7 +6,8 @@
  *   node scripts/electroverse_status_incremental.mjs validate
  *
  * Each partition is persisted independently; no national ledger until all
- * partitions are recent, have matching tariff-cache provenance and satisfy QA.
+ * partitions are complete, match tariff-cache provenance and satisfy QA.
+ * Observations are historical metadata, never live tariff eligibility.
  * API failures are never interpreted as AVAILABLE/CHARGING.
  */
 import fs from 'node:fs/promises';
@@ -103,13 +104,18 @@ async function collect(i){
  if(!Number.isInteger(i)||i<0||i>=count)throw Error('Partition must be 0..15');
  await fs.mkdir(PARTS,{recursive:true});
  const expected=partitions[i],old=await fetchPart(i);
- // A checkpoint may only be resumed inside its observation window.
- // Re-scan the partition next night rather than bumping the timestamp of stale EVSE statuses.
- const observedAt=Date.parse(old?.startedAt||'');
- const observationFresh=Number.isFinite(observedAt)&&Date.now()-observedAt<16*3600_000;
- const existing=old?.sourceFingerprint===cacheFingerprint&&old?.expectedLocations===expected.length&&observationFresh?old:null;
- const entries=existing?.entries||{};
- const bad=existing?.errors||{};
+ // Retain verified station observations regardless of age. A 16-hour age
+ // limit is not meaningful for tariff comparison, nor an API requirement.
+ // Fail closed on impossible timestamps, never invent current availability.
+ const existing=old?.sourceFingerprint===cacheFingerprint&&old?.expectedLocations===expected.length?old:null;
+ if(existing){
+  const start=Date.parse(existing.startedAt),updated=Date.parse(existing.updatedAt);
+  if(!Number.isFinite(start)||!Number.isFinite(updated)||start>Date.now()+300000||updated>Date.now()+300000||updated<start)
+   throw Error('Untrusted status checkpoint observation timestamps');
+ }
+ const entries={...(existing?.entries||{})};
+ const bad={...(existing?.errors||{})};
+ const observedAtByLocation={...(existing?.observedAtByLocation||{})};
  // Preserve the same station's wait budget between sweep and final retry.
  // A new pilot run clears these ephemeral counters after validating its source.
  rateLimitRecovery.restoreStationBudgets(existing?.station429WaitSeconds,
@@ -126,7 +132,7 @@ const todo=expected.filter(pk=>!(pk in entries)&&(!deferFailed||!(pk in bad)));
  async function checkpoint(){
   await fs.writeFile(filename(i),JSON.stringify({schemaVersion:1,partition:i,partitionCount:count,sourceFingerprint:cacheFingerprint,
    sourceCacheDate:manifest.generatedAt,startedAt:existing?.startedAt||started,updatedAt:new Date().toISOString(),
-   expectedLocations:expected.length,entries,errors:bad,
+   expectedLocations:expected.length,entries,errors:bad,observedAtByLocation,
    station429WaitSeconds:rateLimitRecovery.snapshotStationBudgets()},null,2)+'\n');
  }
  saveCheckpointOn429=checkpoint;
@@ -145,7 +151,7 @@ const todo=expected.filter(pk=>!(pk in entries)&&(!deferFailed||!(pk in bad)));
    }
    if(!outcome.ok){aliasesFallback++;outcome=await one(pk)}
    if(outcome.ok){
-    entries[pk]=outcome.statuses;delete bad[pk];successful++;
+    entries[pk]=outcome.statuses;observedAtByLocation[pk]=new Date().toISOString();delete bad[pk];successful++;
     // The station is complete; its 429 allowance must not affect any other PK.
     rateLimitRecovery.completeStations([pk]);
    }else{
@@ -179,20 +185,30 @@ const todo=expected.filter(pk=>!(pk in entries)&&(!deferFailed||!(pk in bad)));
  else if(!successful&&failed)process.exitCode=2;
 }
 async function aggregate(){
- const statuses={},locations={},issues=[],ts=[];
+ const statuses={},locations={},issues=[],ts=[],observedAtByLocation={};
+ let allPartitionsFresh=true;
  for(let i=0;i<count;i++){
   const p=await fetchPart(i);
   if(!p||p.sourceFingerprint!==cacheFingerprint||p.expectedLocations!==partitions[i].length){
    issues.push({partition:i,reason:'missing_or_old_checkpoint'});continue;
   }
-  const observedSince=Date.parse(p.startedAt);
-  const age=Date.now()-observedSince;
-  if(!Number.isFinite(age)||age>16*3600000)issues.push({partition:i,reason:'stale_partition',startedAt:p.startedAt});
+  const observedSince=Date.parse(p.startedAt),updated=Date.parse(p.updatedAt);
+  if(!Number.isFinite(observedSince)||!Number.isFinite(updated)||updated<observedSince||updated>Date.now()+300000||observedSince>Date.now()+300000)
+   issues.push({partition:i,reason:'invalid_observation_timestamp'});
+  if(Number.isFinite(observedSince)&&Date.now()-observedSince>=16*3600000)
+   allPartitionsFresh=false; // Diagnostic only; never gates the tariff census.
   ts.push(p.updatedAt);
   for(const pk of partitions[i]){
    const found=p.entries?.[pk];
    if(!found){issues.push({partition:i,pk,reason:'unverified_location'});continue;}
    locations[pk]=found;
+   const observed=p.observedAtByLocation?.[pk];
+   if(observed!==undefined){
+    const instant=Date.parse(observed);
+    if(!Number.isFinite(instant)||instant>Date.now()+300000||instant<observedSince)
+     issues.push({partition:i,pk,reason:'invalid_individual_observation_timestamp'});
+    else observedAtByLocation[pk]=observed;
+   }
    for(const st of Object.values(found))statuses[st]=(statuses[st]||0)+1;
   }
  }
@@ -202,8 +218,12 @@ async function aggregate(){
  expectedLocations:expected,completedLocations:covered,failedLocations:expected-covered,
  expectedCachedSourceEvses:sourceTotal,observedEvses:Object.values(statuses).reduce((a,b)=>a+b,0),
  allowedStatuses:['AVAILABLE','CHARGING'],statuses,
+ statusRole:'historical_nonblocking_observations',freshnessModel:'per_location_timestamp_no_global_age_gate',
+ exactObservationTimestamps:Object.keys(observedAtByLocation).length,
+ legacyObservationTimesUnspecified:covered-Object.keys(observedAtByLocation).length,
  partitionCount:count,partitionUpdatedAtMin:ts.sort()[0]||null,partitionUpdatedAtMax:ts.sort().at(-1)||null,
- completeness:{locations:covered===expected,allPartitionsFresh:issues.every(x=>x.reason!=='stale_partition'),missingCachedSourceEvses:sourceTotal-Object.values(locations).reduce((a,l)=>a+Object.keys(l).length,0)},
+ completeness:{locations:covered===expected,allPartitionsObserved:issues.length===0,allPartitionsFresh,
+  missingCachedSourceEvses:sourceTotal-Object.values(locations).reduce((a,l)=>a+Object.keys(l).length,0)},
  issueCount:issues.length,examples:issues.slice(0,25)
  };
  await fs.mkdir('reports/electroverse',{recursive:true});
@@ -212,7 +232,7 @@ async function aggregate(){
   console.log(JSON.stringify({event:'FINALIZATION_WAITING',summary}));return;
  }
  await fs.mkdir(OUTPUT,{recursive:true});
- const bytes=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:2,generatedAt:summary.generatedAt,locations})),{level:6});
+ const bytes=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:2,generatedAt:summary.generatedAt,locations,observedAtByLocation})),{level:6});
  await fs.writeFile(OUTPUT+'/evses.json.gz',bytes);
  await fs.writeFile(OUTPUT+'/manifest.json',JSON.stringify({...summary,ledger:'evses.json.gz',compressedBytes:bytes.length},null,2)+'\n');
  console.log(JSON.stringify({event:'FINALIZATION_COMPLETE',summary,compressedBytes:bytes.length}));
@@ -221,7 +241,7 @@ if(mode==='collect')await collect(partNum);
 else if(mode==='finalize')await aggregate();
 else if(mode==='validate'){
  const m=JSON.parse(await fs.readFile(OUTPUT+'/manifest.json','utf8'));
- if(m.sourceFingerprint!==cacheFingerprint||m.completedLocations!==all.length||!m.completeness.locations||!m.completeness.allPartitionsFresh)
+ if(m.sourceFingerprint!==cacheFingerprint||m.completedLocations!==all.length||!m.completeness.locations||!m.completeness.allPartitionsObserved||m.statusRole!=='historical_nonblocking_observations')
   throw Error('status national evidence invalid');
  console.log(JSON.stringify({valid:true,generatedAt:m.generatedAt,completedLocations:m.completedLocations,statuses:m.statuses}));
 }else throw Error('Unknown mode '+mode);
