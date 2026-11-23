@@ -56,3 +56,23 @@ test('duplicate mappings or invalid PDC arrays fail closed',()=>{
  assert.throws(()=>buildElectroverseNationalScopeIndex([...mappings,mappings[0]]),/Duplicate/);
  assert.throws(()=>buildElectroverseNationalScopeIndex([{electroverseLocationPk:'X'}]),/Invalid/);
 });
+
+test('documented national PDC supplement remains scoped to its exact station and dated source',()=>{
+ const supplement=[{electroverseLocationPk:'FR-PAIR',irveStationId:'FRGYMP735550',
+  addedPdcs:[{pdc:'FRGYMEC12403042',kilowatts:150}],
+  evidence:{source:'published IRVE-derived inventory',observed:'2026-10-02'}}];
+ const index=buildElectroverseNationalScopeIndex(mappings,supplement);
+ const e=classifyElectroverseNationalOffer(offer('a','FR-PAIR','FRGYMEC12403042'),index);
+ assert.equal(e.ok,true);
+ assert.deepEqual(e.supplementalApprovedTargets,['FRGYMEC12403042']);
+ assert.deepEqual(mappings[4].irvePdcIds,['FRGYMEC12403041']);
+});
+
+test('supplement without station-lock, date, or source cannot invent official PDC',()=>{
+ const base={electroverseLocationPk:'FR-PAIR',irveStationId:'ANOTHER-STATION',
+  addedPdcs:[{pdc:'FRGYMEC12403042'}],
+  evidence:{source:'IRVE evidence',observed:'2026-10-02'}};
+ assert.throws(()=>buildElectroverseNationalScopeIndex(mappings,[base]),/station locking/);
+ assert.throws(()=>buildElectroverseNationalScopeIndex(mappings,[{
+  ...base,irveStationId:'FRGYMP735550',evidence:{observed:'2026-10-02'}}]),/dated evidence/);
+});
