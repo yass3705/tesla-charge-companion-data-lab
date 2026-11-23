@@ -7,6 +7,7 @@ import {
 } from './lib/electroverse_status_fault_filter.mjs';
 import {quarantineDuplicateOfferIds} from './lib/electroverse_offer_identity_guard.mjs';
 import {screenElectroverseG5NationalOffers} from './lib/electroverse_g5_national_scope.mjs';
+import {screenG5HighDistanceWithoutProof} from './lib/electroverse_g5_operator_gps.mjs';
 
 const CACHE='data/electroverse/tariff_cache';
 const STATUS_DIR='data/electroverse/live_statuses';
@@ -3039,6 +3040,17 @@ const g5NationalDecision=screenElectroverseG5NationalOffers(
 for(const [tileKey,offers] of g5NationalDecision.tiles)tiles.set(tileKey,offers);
 const nationalScopeGate=g5NationalDecision.report;
 
+// A spatial mapping up to 15m is not sufficient where the G5 contract
+// requires 5–10m. Exclude only INDIRECT >10m offers with neither an exact
+// original supplier EVSE ID nor independent official technical evidence.
+// Preserve all source identities and the national master; the full list of
+// quarantined offers remains available for "Tarif incalculable" diagnostics.
+// This does NOT prove operatorId/national-operator equivalence.
+const g5OperatorGpsDecision=screenG5HighDistanceWithoutProof(
+  tiles,originalNationalMappings,powerdotTech.evses||[]);
+for(const [tileKey,offers] of g5OperatorGpsDecision.tiles)tiles.set(tileKey,offers);
+const g5OperatorGpsGate=g5OperatorGpsDecision.report;
+
 // Recompute final published KPIs after dedupe/fail-closed conflict removal.
 const finalOffers=[...tiles.values()].flat();
 stats.publishedEvses=finalOffers.length;
@@ -3123,6 +3135,7 @@ const out={
     quarantine:reviewedQuarantine},
   offerIdentityGate,
   nationalScopeGate,
+  g5OperatorGpsGate,
   statusGate:{generatedAt:statusData.generatedAt,statusEvidence,statusEvidenceIssue,
     statusEvidenceSha256,faultCheckedAt:new Date(faultCheckedAtMs).toISOString(),
     role:'optional_historical_technical_fault_screening',policy:FAULT_POLICY,
