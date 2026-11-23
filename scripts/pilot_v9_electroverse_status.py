@@ -3,7 +3,7 @@
 
 Offline verification never calls the supplier. In collect mode, each historical
 partition is acquired at most once per job. A 429, incomplete partition, loss of
-freshness or runner-budget reserve yields a non-promotable checkpoint.
+invalid provenance or runner-budget reserve yields a non-promotable checkpoint.
 """
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ from pathlib import Path
 
 from v9_rebuild.electroverse import CACHE, read_json, validate_state
 from v9_rebuild.electroverse_status import (
-    FRESH_SECONDS, PARTITION_COUNT, STATUS, STATUS_REPORT, IncompleteStatus,
-    cache_fingerprint, is_fresh_complete, part_path, run, stage, validate_complete,
+    PARTITION_COUNT, STATUS, STATUS_REPORT, IncompleteStatus,
+    cache_fingerprint, part_path, run, stage, validate_complete,
     validate_part, validate_partial,
 )
 from v9_rebuild.orchestrator import artifact_digest, sha256, validated_dependency
@@ -130,15 +130,18 @@ def checked_status_checkpoint(
 
 
 def resume_eligibility(partial: dict, report: dict, now: datetime) -> tuple[bool, str]:
-    """Never silently discard good rows when the 16-hour freshness gate has expired."""
+    """Preserve historical successes irrespective of age; reject false timestamps."""
     for partition in partial["partitions"]:
         try:
             started = datetime.fromisoformat(partition["startedAt"].replace("Z", "+00:00"))
-            age = (now - started).total_seconds()
+            updated = datetime.fromisoformat(partition["updatedAt"].replace("Z", "+00:00"))
         except (KeyError, TypeError, ValueError):
-            return False, "invalid_partition_start"
-        if not 0 <= age < FRESH_SECONDS - 600:
-            return False, "checkpoint_stale_or_near_expiry"
+            return False, "invalid_partition_timestamps"
+        if (started.tzinfo is None or updated.tzinfo is None
+                or started > now + timedelta(minutes=5)
+                or updated > now + timedelta(minutes=5)
+                or updated < started):
+            return False, "invalid_partition_timestamps"
     limit = report.get("rateLimit") or {}
     if limit.get("resumeNotBeforeUtc"):
         try:
@@ -147,7 +150,7 @@ def resume_eligibility(partial: dict, report: dict, now: datetime) -> tuple[bool
             return False, "invalid_rate_limit_cooldown"
         if now < resume_at:
             return False, "provider_cooldown_active"
-    return True, "fresh_and_cooldown_satisfied"
+    return True, "historical_checkpoint_and_cooldown_satisfied"
 
 def report_matches_partition(partial: dict, report: dict) -> bool:
     """Recovery may end at any partition; the latest report need not be partition 15."""
@@ -331,7 +334,7 @@ def main() -> None:
         existing = read_json(existing_path) if existing_path.is_file() else None
         if existing and not resume_eligibility(
                 {"partitions": [existing]}, {}, datetime.now(timezone.utc))[0]:
-            raise ValueError("Existing status partition became stale: refusing silent replay")
+            raise ValueError("Invalid historical status checkpoint timestamps: refusing unsafe replay")
         before = dict(existing["entries"]) if existing else {}
         # Each charging-location PK has its own 480s 429 budget.
         # No carryover of waits from other PKs, partitions or subprocesses.
