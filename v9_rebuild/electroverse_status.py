@@ -10,7 +10,7 @@ import json
 import os
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from v9_rebuild.electroverse import CACHE, ROOT, read_json, stage_state, validate_state
@@ -58,6 +58,22 @@ def validate_part(root: Path, index: int, *, fingerprint: str | None = None) -> 
     for location, statuses in part["entries"].items():
         if not location or not isinstance(statuses, dict) or any(not pk or not isinstance(value, str) for pk, value in statuses.items()):
             raise ValueError(f"Invalid EVSE status row in partition {index}")
+    observed = part.get("observedAtByLocation", {})
+    if not isinstance(observed, dict) or not set(observed).issubset(part["entries"]):
+        raise ValueError(f"Invalid individual status observation inventory in partition {index}")
+    try:
+        start = datetime.fromisoformat(part["startedAt"].replace("Z", "+00:00"))
+        updated = datetime.fromisoformat(part["updatedAt"].replace("Z", "+00:00"))
+        when = [datetime.fromisoformat(value.replace("Z", "+00:00"))
+                for value in observed.values()]
+    except (KeyError, TypeError, AttributeError, ValueError) as exc:
+        raise ValueError(f"Invalid status observation timestamps in partition {index}") from exc
+    ceiling = datetime.now(timezone.utc)
+    if (start.tzinfo is None or updated.tzinfo is None or start > ceiling + timedelta(minutes=5)
+            or updated > ceiling + timedelta(minutes=5) or updated < start
+            or any(value.tzinfo is None or value < start or value > ceiling + timedelta(minutes=5)
+                   for value in when)):
+        raise ValueError(f"Untrusted status observation timestamps in partition {index}")
     return part
 
 
@@ -180,6 +196,9 @@ def validate_complete(out: Path, *, require_fresh_parts: bool = False) -> dict:
                       for pk, when in part.get("observedAtByLocation", {}).items()}
     if exact != expected_exact or not set(exact).issubset(locations):
         raise ValueError("Individual status observation timestamps differ from partitions")
+    if (manifest.get("exactObservationTimestamps") != len(exact)
+            or manifest.get("legacyObservationTimesUnspecified") != len(locations) - len(exact)):
+        raise ValueError("Inconsistent exact versus legacy observation timestamps")
     source_evse_pks: dict[str, str] = {}
     for location, statuses in locations.items():
         if not isinstance(statuses, dict):
