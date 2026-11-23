@@ -30,7 +30,9 @@ jobs:
           node --check scripts/build_electroverse_france_evse_overlay.mjs
           node --check scripts/audit_electroverse_status_gate_postbuild.mjs
           node --check scripts/lib/electroverse_offer_identity_guard.mjs
-          node --test tests/electroverse_status_fault_filter.test.mjs tests/electroverse_offer_identity_guard.test.mjs
+          node --check scripts/lib/electroverse_g5_national_scope.mjs
+          node --check scripts/audit_electroverse_g5_national_scope.mjs
+          node --test tests/electroverse_status_fault_filter.test.mjs tests/electroverse_offer_identity_guard.test.mjs tests/electroverse_g5_national_scope.test.mjs
           python scripts/public_safety_check.py .
       - name: Verify immutable exact tariff/status artifacts and extract safely
         env:
@@ -140,11 +142,17 @@ jobs:
           node "$GITHUB_WORKSPACE/scripts/build_electroverse_france_evse_overlay.mjs" "$OUT"
           ln -s "$OUT" "$WORK/data/platforms/electroverse/france-evse"
           node "$GITHUB_WORKSPACE/scripts/audit_electroverse_status_gate_postbuild.mjs"
+          node "$GITHUB_WORKSPACE/scripts/audit_electroverse_g5_national_scope.mjs" "$OUT"
           python - <<'PY'
           import json, os, pathlib, hashlib
           root=pathlib.Path(os.environ['RUNNER_TEMP'])/'electroverse-overlay-offline'
           result=json.loads((root/'output/manifest.json').read_text())
           report=json.loads((root/'work/reports/electroverse/status-gate-postbuild.json').read_text())
+          g5=json.loads((root/'work/reports/electroverse/g5-national-scope.json').read_text())
+          if g5.get('offers') != g5.get('verifiedOffers') or g5.get('strictSourceLocationPdcExceptions')!=0 or g5.get('duplicateOfferIds')!=0:
+            raise SystemExit('G5 national location-PDC scope audit failed')
+          if result.get('nationalScopeGate',{}).get('quarantinedOffers',0)<1:
+            raise SystemExit('Missing safety quarantine of G5 foreign/unmapped candidates')
           gate=result.get('statusGate',{})
           if gate.get('role')!='optional_historical_technical_fault_screening':
             raise SystemExit('Incorrect optional status policy')
@@ -157,6 +165,8 @@ jobs:
            'overlayStats':result.get('stats'),
            'faultScreen':gate,
            'postbuildAudit':report,
+           'g5NationalScopeAudit':g5,
+           'g5Status':'PARTIAL_OPERATOR_AND_GPS_FALLBACK_UNVALIDATED',
            'noPublication':True,'supplierCalls':0,
           }
           (root/'offline-overlay-audit.json').write_text(json.dumps(record,indent=2)+'\n')
@@ -289,6 +299,7 @@ jobs:
             ${{ runner.temp }}/electroverse-overlay-offline/offline-overlay-ab-comparison.json
             ${{ runner.temp }}/electroverse-overlay-offline/baseline-output/manifest.json
             ${{ runner.temp }}/electroverse-overlay-offline/work/reports/electroverse/status-gate-postbuild.json
+            ${{ runner.temp }}/electroverse-overlay-offline/work/reports/electroverse/g5-national-scope.json
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
