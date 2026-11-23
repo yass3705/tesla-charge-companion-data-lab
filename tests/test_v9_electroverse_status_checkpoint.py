@@ -122,7 +122,7 @@ class CheckpointRecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unpromotable"):
             self.check()
 
-    def test_cooldown_and_expiry_fail_closed(self):
+    def test_cooldown_blocks_but_age_does_not_discard_verified_checkpoint(self):
         checkpoint, partial, report = self.check()
         now = datetime.now(timezone.utc)
         waiting = dict(report)
@@ -135,7 +135,12 @@ class CheckpointRecoveryTests(unittest.TestCase):
         stale_part["startedAt"] = (now - timedelta(hours=17)).isoformat()
         stale["partitions"] = [stale_part]
         self.assertEqual(resume_eligibility(stale, report, now),
-                         (False, "checkpoint_stale_or_near_expiry"))
+                         (True, "historical_checkpoint_and_cooldown_satisfied"))
+        bad = dict(stale_part)
+        bad["startedAt"] = "not-a-real-timestamp"
+        self.assertEqual(resume_eligibility(
+            {**stale, "partitions": [bad]}, report, now),
+            (False, "invalid_partition_timestamps"))
 
 
 if __name__ == "__main__":
