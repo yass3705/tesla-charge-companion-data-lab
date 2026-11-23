@@ -1,3 +1,25 @@
+## 2026-11-23 22:19 UTC — G5 : hiérarchie opérateur et rapprochement EVSE testée hors ligne, preuves CPO encore absentes — PARTIAL
+
+Commits sur rebuild/v9-20261020 : e30c80d131327c1d6a002c8038b8a747a433ba59 et c7b965349ddf6d6eeece807c3082c9cd3cf75b08.
+
+Validation GitHub : run https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45278131994 ; job 138055161888 ; SHA exécuté c7b965349ddf6d6eeece807c3082c9cd3cf75b08 ; completed/success 2026-11-23T22:19:09Z.
+
+38 tests Node sur 38 PASS, public_safety_check PASS, artefacts source tarifs/statuts immuables contrôlés, reconstruction et comparaison A/B PASS, aucun appel fournisseur, aucune publication.
+
+Artefact 14867028669 : sha256:8af82171fd8af09ecba8ecfc951644261fe5e2fc905bb9951c2bdb83aedab7ae ; 4 255 802 octets ; expiration 2026-12-23T22:19:05Z.
+
+81 700 offres en 318 tuiles inchangées ; 93 stations à distance >10 m avec 446 offres techniquement justifiées (411 identifiants source exacts, 35 Powerdot), aucune offre indirecte >10 m sans preuve ; 157 quarantaines GPS et 28 nationales conservées.
+
+Le nouveau diagnostic indépendant recense zéro paire supplierOperatorId Electroverse ↔ CPO national approuvée ; les 81 700 offres restent non certifiées quant à cette équivalence, SANS être déclarées fausses ni exclues à nouveau. Le registre validé est volontairement vide.
+
+Les nouvelles règles testées sur fixtures exigent d'abord identité exacte EVSE et opérateur prouvé ; à défaut seulement adresse ou GPS <=10 m avec opérateur prouvé, unicité station, pays et preuve de la portée par prise/puissance/type. Les tests synthétiques ne constituent pas des preuves fournisseur.
+
+G5 global reste PARTIAL, G4/G6/G8/G9 non validés par cette étape ; aucune modification du constructeur tarifaire, du cache source, de la base nationale, de main, Production, Stable ou Updater Test.
+
+Prochaine action : chercher uniquement dans les sources déjà autorisées une preuve explicite et indépendante reliant un code numérique fournisseur au CPO national ; examiner les 33 codes multi-libellés et 326 offres sans libellé national sans inférence par majorité. Ne pas approuver de paire ou fallback non démontré ; exiger identité/portée par EVSE et revalider hors ligne avant tout import Production.
+
+Concurrence : aucun run actif au préflight ; la situation locale du Mac/Codex CLI n'est pas vérifiable via GitHub. Avant écriture ultérieure, comparer branches, statuts locaux et HEAD distant.
+
 ## 2026-11-23 — G5 Electroverse France : 136 GPS >10m audités, 157 tarifs indirects quarantainés, 81 700 offres. G5 global PARTIAL.
 
 **Source à date / périmètre** : après la réussite de l'inventaire tarif complet `45024846774/14760747281` et des statuts 22 818/22 818 `45214188791/14838028097`, overlay de travail `rebuild/v9-20261020` précédemment 81 857 offres (run G5 national #45253373553, artefact 14857208533), dont 28 exclusions géographiques/identitaires approuvées et 0 prix déplacé.
