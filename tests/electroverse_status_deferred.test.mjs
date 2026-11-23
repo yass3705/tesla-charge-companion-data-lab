@@ -27,7 +27,7 @@ test('sweep defers old failed PK, recovery calls only that PK and retains good r
  const temp=mkdtempSync(join(tmpdir(),'tcc-v9-status-deferred-'));
  try {
   const cache=join(temp,'data/electroverse/tariff_cache');
-  const time=new Date().toISOString();
+  const time=new Date(Date.now()-25*3600_000).toISOString(); // Historical: no forced reset after 16h
   const shards=[];
   for(let i=0;i<128;i++){
    const file='shard-'+String(i).padStart(3,'0')+'.json';
@@ -77,7 +77,10 @@ test('sweep defers old failed PK, recovery calls only that PK and retains good r
   const after=JSON.parse(readFileSync(partition));
   assert.deepEqual(after.entries['100'],{'EVSE-100':'AVAILABLE'});
   assert.deepEqual(after.errors,{});
-  assert.equal(after.startedAt,time,'Do not silently extend freshness when retrying');
+  assert.equal(after.startedAt,time,'Do not fabricate a new start time on recovery');
+  assert.ok(Number.isFinite(Date.parse(after.observedAtByLocation['100'])));
+  assert.ok(Date.parse(after.observedAtByLocation['100'])>Date.parse(time));
+  assert.equal(Object.keys(after.observedAtByLocation).length,1);
   const report=JSON.parse(readFileSync(join(temp,'reports/electroverse/status-partition-latest.json')));
   assert.equal(report.phase,'deferred_recovery');
   assert.equal(report.newSuccessful,1);
