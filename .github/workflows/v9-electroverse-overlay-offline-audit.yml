@@ -34,7 +34,8 @@ jobs:
           node --check scripts/audit_electroverse_g5_national_scope.mjs
           node --check scripts/audit_electroverse_g5_operator_gps.mjs
           node --check scripts/lib/electroverse_g5_operator_gps.mjs
-          node --test tests/electroverse_status_fault_filter.test.mjs tests/electroverse_offer_identity_guard.test.mjs tests/electroverse_g5_national_scope.test.mjs tests/electroverse_g5_operator_gps.test.mjs
+          node --check scripts/lib/electroverse_g5_matching_hierarchy.mjs
+          node --test tests/electroverse_status_fault_filter.test.mjs tests/electroverse_offer_identity_guard.test.mjs tests/electroverse_g5_national_scope.test.mjs tests/electroverse_g5_operator_gps.test.mjs tests/electroverse_g5_matching_hierarchy.test.mjs
           python scripts/public_safety_check.py .
       - name: Verify immutable exact tariff/status artifacts and extract safely
         env:
@@ -153,6 +154,12 @@ jobs:
           report=json.loads((root/'work/reports/electroverse/status-gate-postbuild.json').read_text())
           g5=json.loads((root/'work/reports/electroverse/g5-national-scope.json').read_text())
           opgps=json.loads((root/'work/reports/electroverse/g5-operator-gps.json').read_text())
+          hierarchy=opgps.get('g5MatchingHierarchy',{})
+          if (hierarchy.get('offersReviewed')!=opgps.get('overallOfferCount') or
+              hierarchy.get('status')!='AUDIT_ONLY_NO_PRICE_PROMOTION' or
+              hierarchy.get('automaticPublication') is not False or
+              hierarchy.get('providerCalls')!=0):
+            raise SystemExit('G5 hierarchy audit incomplete or non-audit mode')
           if opgps.get('overallOfferCount')!=g5.get('offers') or opgps.get('missingMappingOffers')!=0:
             raise SystemExit('Independent operator/GPS evidence inventory inconsistent with overlay')
           gps_gate=result.get('g5OperatorGpsGate',{})
@@ -199,6 +206,7 @@ jobs:
              'supplierIdsWithSeveralNationalOperatorLabels':opgps['supplierIdsWithSeveralNationalOperatorLabels'],
              'g5Overall':opgps['g5Overall'],
            },
+           'g5OperatorHierarchyDiagnostic':hierarchy,
            'g5Status':'PARTIAL_OPERATOR_AND_GPS_FALLBACK_UNVALIDATED',
            'noPublication':True,'supplierCalls':0,
           }

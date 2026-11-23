@@ -7,6 +7,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import {auditG5OperatorGps} from './lib/electroverse_g5_operator_gps.mjs';
+import {auditG5Hierarchy} from './lib/electroverse_g5_matching_hierarchy.mjs';
 
 const root=process.argv[2]||'data/platforms/electroverse/france-evse';
 const mapPath=process.argv[3]||'data/electroverse/irve_location_mapping.json';
@@ -31,6 +32,12 @@ for(const tile of manifest.tiles||[]){
  offers.push(...rows);
 }
 const result=auditG5OperatorGps(offers,mapping.mappings,officialTechnical.evses);
+const operatorReview=JSON.parse(await fs.readFile(
+  'data/platforms/electroverse/validated-mappings/g5-operator-crosswalk-review.json','utf8'));
+const hierarchy=auditG5Hierarchy(offers,mapping.mappings,operatorReview);
+if(hierarchy.offersReviewed!==result.overallOfferCount ||
+   hierarchy.status!=='AUDIT_ONLY_NO_PRICE_PROMOTION')
+ throw Error('Independent G5 matching hierarchy audit incomplete');
 if(result.missingMappingOffers!==0 || result.overallOfferCount!==manifest.stats?.publishedOffers)
  throw Error('G5 operator/GPS evidence must reconcile with built overlay');
 const proof={
@@ -42,6 +49,7 @@ const proof={
  officialTechnicalInventorySource:officialTechnical.source,
  officialTechnicalPublisherUpdatedAt:officialTechnical.publisherLastUpdateKnown,
  artifactProvider:'Electroverse',country:'FR',status:'AUDIT_ONLY_G5_PARTIAL',
+ g5MatchingHierarchy:hierarchy,
  ...result,
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
@@ -56,5 +64,7 @@ console.log('ELECTROVERSE_G5_OPERATOR_GPS '+JSON.stringify({
  stillUnprovedIndirect:result.indirectStillUnprovedOutlierOffers,
  operatorIdLabelConflicts:result.supplierIdsWithSeveralNationalOperatorLabels,
  operatorVerified:false,
+ hierarchyReviewedOperatorPairs:hierarchy.operatorPairsIndependentlyReviewed,
+ hierarchyUnresolvedOffers:hierarchy.offersReviewed-hierarchy.independentlyAssignableOffers,
  publication:false,
 }));
