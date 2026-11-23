@@ -21,7 +21,7 @@ PARTS = STATUS / "parts"
 STATUS_REPORT = Path("reports/electroverse/status-partition-latest.json")
 FINAL_REPORT = Path("reports/electroverse/status-national-finalization.json")
 PARTITION_COUNT = 16
-FRESH_SECONDS = 16 * 3600
+FRESH_SECONDS = 16 * 3600  # Historical reporting only; NOT a collection/price gate
 
 
 class IncompleteStatus(RuntimeError):
@@ -79,7 +79,13 @@ def validate_partial(root: Path) -> dict:
     return {"fingerprint": fingerprint, "partitions": parts, "verified_locations": len(seen)}
 
 
+def is_complete_partition(part: dict) -> bool:
+    """Census completeness does not expire; these are historical observations."""
+    return len(part["entries"]) == part["expectedLocations"] and not part["errors"]
+
+
 def is_fresh_complete(part: dict, now: datetime) -> bool:
+    """Diagnostic freshness only; never used to gate tariffs or retries."""
     try:
         started = datetime.fromisoformat(part["startedAt"].replace("Z", "+00:00"))
     except (KeyError, TypeError, ValueError):
@@ -96,7 +102,7 @@ def choose_partition(root: Path, now: datetime | None = None) -> int | None:
         if not path.is_file():
             return index
         part = validate_part(root, index, fingerprint=fingerprint)
-        if not is_fresh_complete(part, now):
+        if not is_complete_partition(part):
             return index
     return None
 
@@ -141,18 +147,22 @@ def stage(source: Path, out: Path, *, incoming: Path | None = None, runner=subpr
     validate_partial(out)
 
 
-def validate_complete(out: Path, *, require_fresh_parts: bool = True) -> dict:
+def validate_complete(out: Path, *, require_fresh_parts: bool = False) -> dict:
+    """Validate historical census; optionally enforce freshness for a separate live consumer."""
     partial = validate_partial(out)
     if len(partial["partitions"]) != PARTITION_COUNT:
         raise IncompleteStatus("Missing status partitions")
-    now = datetime.now(timezone.utc)
-    if require_fresh_parts and any(not is_fresh_complete(part, now) for part in partial["partitions"]):
-        raise IncompleteStatus("Status partitions are incomplete or stale")
+    if any(not is_complete_partition(part) for part in partial["partitions"]):
+        raise IncompleteStatus("Historical status census has unverified locations")
+    if require_fresh_parts and any(not is_fresh_complete(part, datetime.now(timezone.utc))
+                                   for part in partial["partitions"]):
+        raise IncompleteStatus("Live status freshness is insufficient")
     manifest = read_json(out / STATUS / "manifest.json")
     if (manifest.get("sourceFingerprint") != partial["fingerprint"]
             or manifest.get("partitionCount") != PARTITION_COUNT
             or manifest.get("completeness", {}).get("locations") is not True
-            or manifest.get("completeness", {}).get("allPartitionsFresh") is not True
+            or manifest.get("completeness", {}).get("allPartitionsObserved") is not True
+            or manifest.get("statusRole") != "historical_nonblocking_observations"
             or manifest.get("issueCount") != 0
             or manifest.get("failedLocations") != 0
             or manifest.get("completedLocations") != manifest.get("expectedLocations")
@@ -163,6 +173,13 @@ def validate_complete(out: Path, *, require_fresh_parts: bool = True) -> dict:
     locations = ledger.get("locations") if isinstance(ledger, dict) else None
     if not isinstance(locations, dict) or set(locations) != {key for part in partial["partitions"] for key in part["entries"]}:
         raise ValueError("Status ledger differs from partition entries")
+    exact = ledger.get("observedAtByLocation") if isinstance(ledger, dict) else None
+    if not isinstance(exact, dict):
+        raise ValueError("Missing individual observation timestamp inventory")
+    expected_exact = {pk: when for part in partial["partitions"]
+                      for pk, when in part.get("observedAtByLocation", {}).items()}
+    if exact != expected_exact or not set(exact).issubset(locations):
+        raise ValueError("Individual status observation timestamps differ from partitions")
     source_evse_pks: dict[str, str] = {}
     for location, statuses in locations.items():
         if not isinstance(statuses, dict):
