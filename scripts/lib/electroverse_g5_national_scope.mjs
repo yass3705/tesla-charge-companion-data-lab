@@ -21,7 +21,7 @@ const foreignBelgiumSource = row => {
     lat >= 49.45 && lat <= 51.65 && lon >= 2.5 && lon <= 6.5;
 };
 
-export function buildElectroverseNationalScopeIndex(mappings) {
+export function buildElectroverseNationalScopeIndex(mappings, extensions=[]) {
   if(!Array.isArray(mappings))throw Error('National mapping entries required');
   const byLocation=new Map();
   for(const row of mappings) {
@@ -34,8 +34,34 @@ export function buildElectroverseNationalScopeIndex(mappings) {
       operator:row?.irve?.operator ?? null,
       countryEvidence:foreignBelgiumSource(row)?'foreign_belgium':'not_independently_asserted',
       targetIds:new Set(pdcs.map(nationalNorm).filter(Boolean)),
+      approvedSupplementalPdcIds:new Set(),
       locationPk:key,
     });
+  }
+  const baseOwners=new Map();
+  for(const [location,row] of byLocation)
+    for(const pdc of row.targetIds){
+      const owners=baseOwners.get(pdc)||new Set();owners.add(location);baseOwners.set(pdc,owners);
+    }
+  for(const ext of extensions){
+    const location=String(ext?.electroverseLocationPk??'');
+    const row=byLocation.get(location);
+    const expected=String(ext?.irveStationId??ext?.primaryMappedStationId??'');
+    if(!row||!expected||expected!==String(row.stationId))
+      throw Error('Unverified supplemental national PDC station locking: '+location);
+    if(typeof ext?.evidence?.source!=='string'||!ext.evidence.source.trim()||
+       typeof ext?.evidence?.observed!=='string'||!/^\\d{4}-\\d{2}-\\d{2}$/.test(ext.evidence.observed)||
+       !Array.isArray(ext.addedPdcs)||!ext.addedPdcs.length)
+      throw Error('Supplemental national PDC missing source and dated evidence: '+location);
+    for(const supplement of ext.addedPdcs){
+      const pdc=nationalNorm(supplement?.pdc);
+      if(!pdc)throw Error('Invalid supplemental PDC: '+location);
+      const owners=baseOwners.get(pdc);
+      if(owners && (!owners.has(location)||owners.size>1))
+        throw Error('Supplemental PDC already owned by another mapping: '+pdc);
+      row.targetIds.add(pdc);
+      row.approvedSupplementalPdcIds.add(pdc);
+    }
   }
   return byLocation;
 }
@@ -53,16 +79,18 @@ export function classifyElectroverseNationalOffer(offer,index) {
   if(badTargets.length)
     return {ok:false,reason:'target_not_in_source_location_national_pdcs',locationPk,
       targets:badTargets,stationId:row.stationId};
+  const supplemental=targets.filter(t=>row.approvedSupplementalPdcIds.has(nationalNorm(t)));
   return {ok:true,reason:'source_location_target_membership_confirmed',
     locationPk,stationId:row.stationId,
+    supplementalApprovedTargets:supplemental,
     operatorProof:'requires_separate_operator_and_matching_method_audit'};
 }
 
-export function screenElectroverseG5NationalOffers(tileMap,mappings) {
+export function screenElectroverseG5NationalOffers(tileMap,mappings,extensions=[]) {
   if(!(tileMap instanceof Map))throw Error('Tile map required');
-  const index=buildElectroverseNationalScopeIndex(mappings);
+  const index=buildElectroverseNationalScopeIndex(mappings,extensions);
   const byReason={}, samples=[],filtered=new Map();
-  let reviewed=0,quarantined=0,withOperatorName=0;
+  let reviewed=0,quarantined=0,withOperatorName=0,approvedSupplementalOfferTargets=0;
   for(const [tile,offers] of tileMap) {
     if(!Array.isArray(offers))throw Error('Invalid offer tile: '+tile);
     const keep=[];
@@ -72,6 +100,7 @@ export function screenElectroverseG5NationalOffers(tileMap,mappings) {
       if(check.ok){
         keep.push(offer);
         if(index.get(check.locationPk).operator)withOperatorName++;
+        approvedSupplementalOfferTargets+=check.supplementalApprovedTargets.length;
       } else {
         quarantined++;
         byReason[check.reason]=(byReason[check.reason]||0)+1;
@@ -91,6 +120,7 @@ export function screenElectroverseG5NationalOffers(tileMap,mappings) {
       quarantinedOffers:quarantined,quarantinedByReason:byReason,
       quarantinedSamples:samples,
       retainedOffersWithMappedOperatorName:withOperatorName,
+      approvedSupplementalOfferTargets,
       operatorIndependentMatchVerified:false,
       fallbackGpsAddressOperatorVerified:false,
       scope:'France Electroverse overlay only; national master/raw intact',
