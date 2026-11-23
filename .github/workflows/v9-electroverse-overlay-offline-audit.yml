@@ -155,6 +155,14 @@ jobs:
           opgps=json.loads((root/'work/reports/electroverse/g5-operator-gps.json').read_text())
           if opgps.get('overallOfferCount')!=g5.get('offers') or opgps.get('missingMappingOffers')!=0:
             raise SystemExit('Independent operator/GPS evidence inventory inconsistent with overlay')
+          gps_gate=result.get('g5OperatorGpsGate',{})
+          if (opgps.get('indirectStillUnprovedOutlierOffers')!=0 or
+              gps_gate.get('retainedOffers')!=opgps.get('overallOfferCount') or
+              gps_gate.get('checkedOffers') != (
+                gps_gate.get('retainedOffers',0)+gps_gate.get('quarantinedOffers',0)) or
+              gps_gate.get('quarantinedOffers')!=len(gps_gate.get('quarantine',[])) or
+              gps_gate.get('checkedOffers')!=result.get('nationalScopeGate',{}).get('retainedOffers')):
+            raise SystemExit('G5 unproved >10m price quarantine or independent postbuild audit mismatch')
           if g5.get('offers') != g5.get('verifiedOffers') or g5.get('strictSourceLocationPdcExceptions')!=0 or g5.get('duplicateOfferIds')!=0:
             raise SystemExit('G5 national location-PDC scope audit failed')
           if result.get('nationalScopeGate',{}).get('quarantinedOffers',0)<1:
@@ -172,6 +180,13 @@ jobs:
            'faultScreen':gate,
            'postbuildAudit':report,
            'g5NationalScopeAudit':g5,
+           'g5OperatorGpsQuarantine':{
+             'quarantinedOffers':gps_gate['quarantinedOffers'],
+             'quarantinedLocations':gps_gate['quarantinedLocations'],
+             'exactPreservedBeyond10m':gps_gate['exactPreservedBeyond10m'],
+             'officialTechnicalPreservedBeyond10m':gps_gate['officialTechnicalPreservedBeyond10m'],
+             'status':gps_gate['status'],
+           },
            'g5OperatorGpsEvidenceAudit':{
              'operatorIndependentCrosswalkValidated':opgps['operatorIndependentCrosswalkValidated'],
              'distanceOutlierLocationCount':opgps['distanceOutlierLocationCount'],
