@@ -31,6 +31,8 @@ test('unique offers and distinct priced variants with distinct explicit IDs are 
 });
 
 test('blank or non-string identities fail the build instead of risking an ambiguous publication',()=>{
- assert.throws(()=>quarantineDuplicateOfferIds(new Map([['x',[{id:''}]])),/blank offer identity/);
- assert.throws(()=>quarantineDuplicateOfferIds(new Map([['x',[{id:17}]])),/blank offer identity/);
+ const blank = new Map([['x', [{id: ''}]]]);
+ const nonString = new Map([['x', [{id: 17}]]]);
+ assert.throws(() => quarantineDuplicateOfferIds(blank), /blank offer identity/);
+ assert.throws(() => quarantineDuplicateOfferIds(nonString), /blank offer identity/);
 });
