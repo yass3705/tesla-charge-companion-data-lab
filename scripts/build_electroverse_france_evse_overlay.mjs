@@ -2,31 +2,55 @@ import fs from 'node:fs/promises';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import path from 'node:path';
+import {
+  assessElectroverseFault, DEFAULT_FAULT_MAX_AGE_MS,
+} from './lib/electroverse_status_fault_filter.mjs';
 
 const CACHE='data/electroverse/tariff_cache';
 const STATUS_DIR='data/electroverse/live_statuses';
-const STATUS_ALLOWED=new Set(['AVAILABLE','CHARGING']);
-const statusManifest=JSON.parse(await fs.readFile(STATUS_DIR+'/manifest.json','utf8'));
-if(!statusManifest?.completeness?.locations||statusManifest.failedLocations!==0)
-  throw Error('Cannot publish Electroverse overlay: national EVSE status census incomplete');
-const statusData=JSON.parse(zlib.gunzipSync(await fs.readFile(STATUS_DIR+'/'+statusManifest.ledger)).toString('utf8'));
-const statusAt=Date.parse(statusData.generatedAt);
-if(!Number.isFinite(statusAt)||Date.now()-statusAt>72*3600_000)
-  throw Error('Cannot publish Electroverse overlay: live EVSE status census is older than 72 hours');
+const FAULT_POLICY='confirmed_recent_fault_by_location_and_evse_only';
+const faultCheckedAtMs=Date.now();
+// Electroverse status is optional enrichment. Never block tariff comparison
+// merely because an all-France live census is missing/incomplete/expired.
+let statusData={locations:{},observedAtByLocation:{},generatedAt:null};
+let statusEvidence='unavailable_or_unverified';
+let statusEvidenceIssue=null;
+try {
+  const manifest=JSON.parse(await fs.readFile(STATUS_DIR+'/manifest.json','utf8'));
+  if (manifest?.completeness?.locations===true && manifest.failedLocations===0 &&
+      manifest.statusRole==='historical_nonblocking_observations' &&
+      typeof manifest.ledger==='string' && manifest.ledger==='evses.json.gz') {
+    const doc=JSON.parse(zlib.gunzipSync(await fs.readFile(STATUS_DIR+'/'+manifest.ledger)).toString('utf8'));
+    if (doc && typeof doc.locations==='object' && doc.locations &&
+        doc.observedAtByLocation && typeof doc.observedAtByLocation==='object' &&
+        manifest.sourceFingerprint===doc.sourceFingerprint) {
+      statusData=doc;
+      statusEvidence='validated_optional_historical_snapshot';
+    } else statusEvidenceIssue='invalid_snapshot_provenance_or_timestamps';
+  } else statusEvidenceIssue='historical_snapshot_not_fully_verified';
+} catch(e) {
+  // A corrupt optional supplier status feed cannot erase known tariff offers.
+  statusEvidenceIssue=e?.code==='ENOENT'?'snapshot_missing':'optional_snapshot_unreadable';
+}
 const statusExcluded={byStatus:{},byStation:{},samples:[]};
 let statusAccepted=0,statusSourceTotal=0;
 function filterElectroverseRow(sourceRow,count=false){
   const locPk=String(sourceRow.electroverseLocationPk??'');
-  const known=statusData.locations?.[locPk]||{};
   const keep=[];
   for(const e of sourceRow.tariff?.evses||[]){
-    const status=String(known[String(e?.pk??'')]||'MISSING').toUpperCase();
+    const assessment=assessElectroverseFault(statusData,locPk,e?.pk,{
+      nowMs:faultCheckedAtMs,maxFaultAgeMs:DEFAULT_FAULT_MAX_AGE_MS,
+    });
     if(count)statusSourceTotal++;
-    if(STATUS_ALLOWED.has(status)){keep.push(e);if(count)statusAccepted++;}
+    if(!assessment.excludeFromActiveTariffs){keep.push(e);if(count)statusAccepted++;}
     else if(count){
+      const status=assessment.status;
       statusExcluded.byStatus[status]=(statusExcluded.byStatus[status]||0)+1;
       statusExcluded.byStation[locPk]=(statusExcluded.byStation[locPk]||0)+1;
-      if(statusExcluded.samples.length<60)statusExcluded.samples.push({locPk,evsePk:e?.pk??null,physicalReference:e?.physicalReference??null,status});
+      if(statusExcluded.samples.length<60)statusExcluded.samples.push({
+        locPk,evsePk:e?.pk??null,physicalReference:e?.physicalReference??null,
+        status,observedAt:assessment.observedAt,
+      });
     }
   }
   return {...sourceRow,tariff:{...sourceRow.tariff,evses:keep}};
@@ -3026,11 +3050,12 @@ const out={
     originalSamePowerRefs:reviewedPriceDisputes.samePowerDisputes?.length||0,
     confirmedPowerSplitRefs:reviewedPriceDisputes.chargezyPowerVariants?.length||0,
     quarantine:reviewedQuarantine},
-  statusGate:{generatedAt:statusData.generatedAt,allowedStatuses:[...STATUS_ALLOWED],
+  statusGate:{generatedAt:statusData.generatedAt,statusEvidence,statusEvidenceIssue,
+    role:'optional_historical_technical_fault_screening',policy:FAULT_POLICY,
+    faultMaxAgeHours:DEFAULT_FAULT_MAX_AGE_MS/3600000,
     excludedStatuses:statusExcluded.byStatus,excludedByStationCount:Object.keys(statusExcluded.byStation).length,
     excludedEvseCount:statusSourceTotal-statusAccepted,acceptedEvseCount:statusAccepted,
-    sourceEvseCount:statusSourceTotal,
-    excludedSamples:statusExcluded.samples},
+    sourceEvseCount:statusSourceTotal,excludedSamples:statusExcluded.samples},
   pricingDiagnostics,
   duplicateSamples,
   policy:{
