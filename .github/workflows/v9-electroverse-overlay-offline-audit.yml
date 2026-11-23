@@ -271,6 +271,11 @@ jobs:
             'controlOffers','filteredOffers','removedOfferCount','addedOfferCount',
             'sameOfferPricingOrScopeChanged','controlTileGzipBytes',
             'filteredTileGzipBytes','cacheFaultEvseExcluded')}))
+          # Screening a technical fault is allowed to REMOVE offers or trim
+          # faulty provenance, NEVER to create a new offer or to move any
+          # remaining price to another official national EVSE/connector.
+          if added or changed:
+            raise SystemExit('FAIL: status screening changed tariff identity/price/scope; no publication or artifact promotion')
           PY
       - name: Upload isolated, validated overlay with provenance (not Production)
         if: ${{ success() }}
