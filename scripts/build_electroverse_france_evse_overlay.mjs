@@ -3,7 +3,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import {
-  assessElectroverseFault, DEFAULT_FAULT_MAX_AGE_MS,
+  assessElectroverseFault, screenElectroverseOffer, DEFAULT_FAULT_MAX_AGE_MS,
 } from './lib/electroverse_status_fault_filter.mjs';
 
 const CACHE='data/electroverse/tariff_cache';
@@ -2971,6 +2971,39 @@ for(const [tileIdKey,offers] of tiles.entries()){
   tiles.set(tileIdKey,offers.filter(o=>!dropOfferIds.has(o.id)));
 }
 
+// Second protection after mapping/dedup/alias enrichment. Source PKs attached
+// late must not resurrect faulty EVSEs that were excluded from the initial cache.
+// Keep healthy sibling PKs and their prices when they remain independently
+// supported, otherwise omit the whole ambiguous/failed source offer.
+const postbuildFaultGate={
+  droppedOffers:0, trimmedPrimaryRefs:0, trimmedAliasRefs:0,
+  droppedByIdentityMode:{}, samples:[],
+};
+for(const [tileKey,offers] of tiles.entries()){
+  const screened=[];
+  for(const offer of offers){
+    const assessment=screenElectroverseOffer(offer,statusData,{
+      nowMs:faultCheckedAtMs,maxFaultAgeMs:DEFAULT_FAULT_MAX_AGE_MS,
+    });
+    postbuildFaultGate.trimmedPrimaryRefs+=assessment.removedPrimary.length;
+    postbuildFaultGate.trimmedAliasRefs+=assessment.removedAliases.length;
+    if(!assessment.keep){
+      postbuildFaultGate.droppedOffers++;
+      const identity=offer.metadata?.identityMode||'UNKNOWN';
+      postbuildFaultGate.droppedByIdentityMode[identity]=
+        (postbuildFaultGate.droppedByIdentityMode[identity]||0)+1;
+    }else screened.push(assessment.offer);
+    if((!assessment.keep||assessment.removedPrimary.length||assessment.removedAliases.length)
+        && postbuildFaultGate.samples.length<60)
+      postbuildFaultGate.samples.push({
+        offerId:offer.id,locationPk:offer.metadata?.electroverseLocationPk??null,
+        removedPrimary:assessment.removedPrimary,
+        removedAliases:assessment.removedAliases,reason:assessment.reason,
+      });
+  }
+  tiles.set(tileKey,screened);
+}
+
 // Recompute final published KPIs after dedupe/fail-closed conflict removal.
 const finalOffers=[...tiles.values()].flat();
 stats.publishedEvses=finalOffers.length;
@@ -3059,7 +3092,8 @@ const out={
     faultMaxAgeHours:DEFAULT_FAULT_MAX_AGE_MS/3600000,
     excludedStatuses:statusExcluded.byStatus,excludedByStationCount:Object.keys(statusExcluded.byStation).length,
     excludedEvseCount:statusSourceTotal-statusAccepted,acceptedEvseCount:statusAccepted,
-    sourceEvseCount:statusSourceTotal,excludedSamples:statusExcluded.samples},
+    sourceEvseCount:statusSourceTotal,excludedSamples:statusExcluded.samples,
+    postbuildFaultGate},
   pricingDiagnostics,
   duplicateSamples,
   policy:{
