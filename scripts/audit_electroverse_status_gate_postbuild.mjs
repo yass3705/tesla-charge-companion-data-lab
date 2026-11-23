@@ -38,11 +38,14 @@ if(snapshotValidated && maxAgeMs!==DEFAULT_FAULT_MAX_AGE_MS)
  throw Error('Unapproved EVSE fault screening age policy');
 
 const bad=[],unknownProvenance=[],covered={};
+const offerIds=new Set(),duplicateOfferIds=new Set();
 let offers=0,withPK=0,publishedSourcePkRefs=0;
 for(const tile of manifest.tiles||[]){
  const body=await gz(ROOT+'/'+tile.file);
  for(const offer of body.emspOffers||[]){
   offers++;
+  if(offerIds.has(offer.id))duplicateOfferIds.add(offer.id);
+  else offerIds.add(offer.id);
   const meta=offer.metadata||{};
   const loc=String(meta.electroverseLocationPk??'');
   const ids=[...new Set([
@@ -76,9 +79,12 @@ const report={
  offers,offersWithExplicitSourcePks:withPK,publishedSourcePkRefs,statusSummary:covered,
  confirmedFaultsStillPublished:bad.length,examples:bad.slice(0,100),
  missingProvenanceOffers:unknownProvenance.length,
+ duplicateOfferIdentities:duplicateOfferIds.size,
+ duplicateOfferSamples:[...duplicateOfferIds].slice(0,30),
+ identityQuarantinedByBuilder:manifest.offerIdentityGate?.quarantinedOfferRows??null,
  policy:'Only station-scoped, timestamped recent OUTOFORDER/INOPERATIVE may be filtered; UNKNOWN/BLOCKED/CHARGING and missing observations do not suppress prices',
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(OUTPUT,JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify(report));
-if(bad.length||unknownProvenance.length)process.exitCode=2;
+if(bad.length||unknownProvenance.length||duplicateOfferIds.size)process.exitCode=2;
