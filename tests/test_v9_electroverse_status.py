@@ -137,6 +137,26 @@ class ElectroverseStatusTests(unittest.TestCase):
             self.assertEqual(manifest["statusRole"],
                              "historical_nonblocking_observations")
 
+    def test_source_evse_id_reused_across_locations_is_scoped_and_audited(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(
+                os.environ, {"ELECTROVERSE_API_KEY": "fixture-only"}):
+            source, out = Path(temp) / "source", Path(temp) / "out"
+            fixture(source, ["A", "B"])
+            fingerprint = cache_fingerprint(source)
+            for i in range(PARTITION_COUNT):
+                if i == 0:
+                    entries = {"A": {"SHARED-EVSE": "AVAILABLE"}}
+                elif i == 1:
+                    entries = {"B": {"SHARED-EVSE": "OUTOFORDER"}}
+                else:
+                    entries = {}
+                save(part_path(source, i),
+                     part(i, fingerprint, entries, expected=len(entries)))
+            run(out, source=source, runner=FixtureRunner())
+            validated = validate_complete(out)
+            self.assertEqual(validated["sourceEvsePkDuplicatedAcrossLocations"], 1)
+            self.assertEqual(validated["sourceEvsePkStatusConflictsAcrossLocations"], 1)
+
     def test_historical_merge_preserves_good_rows_and_rejects_wrong_fingerprint(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
