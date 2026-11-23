@@ -50,7 +50,7 @@ export function buildElectroverseNationalScopeIndex(mappings, extensions=[]) {
     if(!row||!expected||expected!==String(row.stationId))
       throw Error('Unverified supplemental national PDC station locking: '+location);
     if(typeof ext?.evidence?.source!=='string'||!ext.evidence.source.trim()||
-       typeof ext?.evidence?.observed!=='string'||!/^\\d{4}-\\d{2}-\\d{2}$/.test(ext.evidence.observed)||
+       typeof ext?.evidence?.observed!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(ext.evidence.observed)||
        !Array.isArray(ext.addedPdcs)||!ext.addedPdcs.length)
       throw Error('Supplemental national PDC missing source and dated evidence: '+location);
     for(const supplement of ext.addedPdcs){
