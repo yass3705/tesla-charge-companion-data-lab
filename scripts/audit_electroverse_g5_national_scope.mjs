@@ -17,10 +17,16 @@ const root=process.argv[2]||'data/platforms/electroverse/france-evse';
 const mapPath=process.argv[3]||'data/electroverse/irve_location_mapping.json';
 const manifest=JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8'));
 const national=JSON.parse(await fs.readFile(mapPath,'utf8'));
-const byLocation=buildElectroverseNationalScopeIndex(national.mappings);
+const supplementPaths=[
+  'data/platforms/electroverse/validated-mappings/customgyevse-pdc-extensions.json',
+  'data/platforms/electroverse/validated-mappings/b-pdc-extensions.json',
+];
+const supplements=(await Promise.all(supplementPaths.map(p=>fs.readFile(p,'utf8'))))
+  .flatMap(doc=>JSON.parse(doc).extensions||[]);
+const byLocation=buildElectroverseNationalScopeIndex(national.mappings,supplements);
 const sourceRowsByLocation=new Map(national.mappings.map(x=>[String(x.electroverseLocationPk),x]));
 const bad=[],samples=[],byMode={},nationalStations=new Set(),pdcs=new Set(),distanceOver10=new Set();
-let total=0,operatorNamed=0,metadataOperator=0,verified=0,unknownPowerCount=0;
+let total=0,operatorNamed=0,metadataOperator=0,verified=0,unknownPowerCount=0,approvedSupplementalOfferTargets=0;
 const idSeen=new Set(),duplicates=[];
 for(const tile of manifest.tiles||[]){
  const bytes=await fs.readFile(path.join(root,tile.file));
@@ -45,6 +51,7 @@ for(const tile of manifest.tiles||[]){
   const distance=sourceRow?.evidence?.distanceM;
   if(typeof distance==='number' && distance>10)distanceOver10.add(decision.locationPk);
   if(mapped.operator)operatorNamed++;
+  approvedSupplementalOfferTargets+=decision.supplementalApprovedTargets.length;
   if(offer.metadata?.operator)metadataOperator++;
   verified++;
   byMode[offer.metadata?.identityMode||'UNKNOWN']=(byMode[offer.metadata?.identityMode||'UNKNOWN']||0)+1;
@@ -63,6 +70,7 @@ const report={
  uniqueOfferIds:idSeen.size,duplicateOfferIds:duplicates.length,
  mappedNationalStations:nationalStations.size,mappedNationalPdcTargets:pdcs.size,
  offersWithMappedOperatorName:operatorNamed,offersWithOperatorMetadata:metadataOperator,
+ approvedSupplementalOfferTargets,
  locationsMappedByDistanceOver10m:distanceOver10.size,
  longDistanceMappingSamples:samples,
  offersWithoutExplicitPowerMetadata:unknownPowerCount,
