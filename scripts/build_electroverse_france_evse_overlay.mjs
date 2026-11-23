@@ -38,16 +38,21 @@ try {
 }
 const statusExcluded={byStatus:{},byStation:{},samples:[]};
 let statusAccepted=0,statusSourceTotal=0;
-function filterElectroverseRow(sourceRow,count=false){
+function inspectElectroverseRow(sourceRow,count=false){
+  // Identity resolution MUST use the full supplier tariff catalogue, not the
+  // status-filtered subset: removing a faulty sibling upstream can shift an
+  // ordinal bijection to a different official national EVSE and misprice it.
+  // Capture technical-fault candidates as diagnostics, then screen FINAL offers
+  // only after all national matching, alias enrichment and deduplication.
+  if(!count)return sourceRow;
   const locPk=String(sourceRow.electroverseLocationPk??'');
-  const keep=[];
   for(const e of sourceRow.tariff?.evses||[]){
     const assessment=assessElectroverseFault(statusData,locPk,e?.pk,{
       nowMs:faultCheckedAtMs,maxFaultAgeMs:DEFAULT_FAULT_MAX_AGE_MS,
     });
-    if(count)statusSourceTotal++;
-    if(!assessment.excludeFromActiveTariffs){keep.push(e);if(count)statusAccepted++;}
-    else if(count){
+    statusSourceTotal++;
+    if(!assessment.excludeFromActiveTariffs)statusAccepted++;
+    else {
       const status=assessment.status;
       statusExcluded.byStatus[status]=(statusExcluded.byStatus[status]||0)+1;
       statusExcluded.byStation[locPk]=(statusExcluded.byStation[locPk]||0)+1;
@@ -57,7 +62,7 @@ function filterElectroverseRow(sourceRow,count=false){
       });
     }
   }
-  return {...sourceRow,tariff:{...sourceRow.tariff,evses:keep}};
+  return sourceRow;
 }
 const MANIFEST=CACHE+'/manifest.json';
 const MAP='data/electroverse/irve_location_mapping.json';
@@ -495,7 +500,7 @@ if(p01DonorPkSet.size){
   for(const sh of manifest.shards||[]){
     const d=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
     for(const sourceRow of Object.values(d.stations||{})){
-      const row=quarantineConflictingReviewedRows(filterElectroverseRow(sourceRow));
+      const row=quarantineConflictingReviewedRows(inspectElectroverseRow(sourceRow));
       for(const e of row?.tariff?.evses||[]){
         const pk=String(e?.pk??'');
         if(p01DonorPkSet.has(pk))p01DonorEvseByPk.set(pk,e);
@@ -617,7 +622,7 @@ function rej(k){rejected[k]=(rejected[k]||0)+1;}
 for(const sh of manifest.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
   for(const sourceRow of Object.values(data.stations||{})){
-    const row=quarantineConflictingReviewedRows(filterElectroverseRow(sourceRow,true),true);
+    const row=quarantineConflictingReviewedRows(inspectElectroverseRow(sourceRow,true),true);
     stats.cacheLocations++;
     for(const e0 of row.tariff?.evses||[]){
       if(debugNumericSourcePks.has(String(e0?.pk??''))){
@@ -3106,7 +3111,10 @@ const out={
     faultMaxAgeHours:DEFAULT_FAULT_MAX_AGE_MS/3600000,
     excludedStatuses:statusExcluded.byStatus,excludedByStationCount:Object.keys(statusExcluded.byStation).length,
     excludedEvseCount:statusSourceTotal-statusAccepted,acceptedEvseCount:statusAccepted,
-    sourceEvseCount:statusSourceTotal,excludedSamples:statusExcluded.samples,
+    sourceEvseCount:statusSourceTotal,
+    sourceFaultCandidateCount:statusSourceTotal-statusAccepted,
+    sourceFaultCandidateDefinition:'Recent hard fault among immutable tariff source EVSEs; identities always mapped before final offer filtering',
+    excludedSamples:statusExcluded.samples,
     postbuildFaultGate},
   pricingDiagnostics,
   duplicateSamples,
