@@ -32,7 +32,10 @@ jobs:
           python -m py_compile scripts/pilot_v9_electroverse_status.py scripts/resilient_v9_electroverse_status.py
           node --check scripts/electroverse_status_incremental.mjs
           node --check scripts/lib/electroverse_status_429_recovery.mjs
-          node --test tests/electroverse_failure_diagnostics.test.mjs tests/electroverse_rate_limit_integration.test.mjs tests/electroverse_status_429_recovery.test.mjs tests/electroverse_status_deferred.test.mjs
+          node --check scripts/lib/electroverse_status_fault_filter.mjs
+          node --check scripts/build_electroverse_france_evse_overlay.mjs
+          node --check scripts/audit_electroverse_status_gate_postbuild.mjs
+          node --test tests/electroverse_failure_diagnostics.test.mjs tests/electroverse_rate_limit_integration.test.mjs tests/electroverse_status_429_recovery.test.mjs tests/electroverse_status_deferred.test.mjs tests/electroverse_status_fault_filter.test.mjs
           python scripts/public_safety_check.py .
           python - <<'PY'
           import json, os
