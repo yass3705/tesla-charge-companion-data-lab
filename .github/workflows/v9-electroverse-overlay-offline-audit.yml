@@ -214,7 +214,32 @@ jobs:
           common=set(control_ids)&set(filtered_ids)
           removed=set(control_ids)-set(filtered_ids)
           added=set(filtered_ids)-set(control_ids)
-          changed=[key for key in common if control_ids[key]!=filtered_ids[key]]
+          changed=sorted(key for key in common if control_ids[key]!=filtered_ids[key])
+          def find_changed(label,ids):
+            result={}
+            for tile in json.loads((root/label/'manifest.json').read_text()).get('tiles',[]):
+              doc=json.loads(gzip.decompress((root/label/tile['file']).read_bytes()))
+              for offer in doc.get('emspOffers',[]):
+                if offer.get('id') not in ids:continue
+                metadata=offer.get('metadata') or {}
+                result[offer['id']]={
+                  'evseIds':offer.get('evseIds'),
+                  'verifiedScope':offer.get('verifiedScope'),
+                  'pricing':offer.get('pricing'),
+                  'identityMode':metadata.get('identityMode'),
+                  'sourceEvsePk':metadata.get('electroverseEvsePk'),
+                  'sourceEvsePks':metadata.get('electroverseEvsePks'),
+                  'sourceLocation':metadata.get('electroverseLocationPk'),
+                }
+            return result
+          controls=find_changed('baseline-output',set(changed))
+          filtered_details=find_changed('output',set(changed))
+          changed_evidence=[{
+            'id':key,'control':controls.get(key),'filtered':filtered_details.get(key),
+            'pricingChanged':controls.get(key,{}).get('pricing')!=filtered_details.get(key,{}).get('pricing'),
+            'targetChanged':controls.get(key,{}).get('evseIds')!=filtered_details.get(key,{}).get('evseIds'),
+            'scopeChanged':controls.get(key,{}).get('verifiedScope')!=filtered_details.get(key,{}).get('verifiedScope'),
+          } for key in changed]
           report={
             'sourceTariffRun':45024846774,'sourceStatusRun':45214188791,
             'statusRole':'technical_fault_screening_only',
@@ -223,7 +248,11 @@ jobs:
             'sameOfferIds':len(common),'sameOfferPricingOrScopeChanged':len(changed),
             'removedOfferIdSample':sorted(removed)[:40],
             'addedOfferIdSample':sorted(added)[:40],
-            'changedOfferIdSample':sorted(changed)[:40],
+            'changedOfferIdSample':changed[:40],
+            'changedOfferDetails':changed_evidence[:25],
+            'pricingChangesAmongCommonIds':sum(item['pricingChanged'] for item in changed_evidence),
+            'targetChangesAmongCommonIds':sum(item['targetChanged'] for item in changed_evidence),
+            'scopeChangesAmongCommonIds':sum(item['scopeChanged'] for item in changed_evidence),
             'controlTileCount':control.get('tileCount'),
             'filteredTileCount':filtered.get('tileCount'),
             'controlTileGzipBytes':sum(x['bytes'] for x in control.get('tiles',[])),
