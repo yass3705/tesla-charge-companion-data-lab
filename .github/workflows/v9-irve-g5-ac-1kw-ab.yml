@@ -1,0 +1,41 @@
+name: V9 G5 exact AC 1kW A B replay
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/irve-g5-ac-1kw-ab-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-overlay-offline-audit
+  cancel-in-progress: false
+jobs:
+  ac-1kw-ab:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Tests and public safety
+        run: |
+          python -m unittest discover -s tests -p test_electroverse_g5_real_matching.py
+          python -m unittest discover -s tests -p test_irve_g5_power_scope.py
+          python -m unittest discover -s tests -p test_irve_g5_power_scope_ab.py
+          python -m unittest discover -s tests -p test_irve_g5_ac_1kw_ab.py
+          python scripts/public_safety_check.py .
+      - name: Replay exact candidates from verified ledger and scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m scripts.audit_irve_g5_ac_1kw_ab migration/v9/irve-g5-ac-1kw-ab-request.json "$RUNNER_TEMP/g5-ac-1kw-ab"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-g5-irve-power-scope-ab
+          path: ${{ runner.temp }}/g5-ac-1kw-ab/results/
+          if-no-files-found: error
+          retention-days: 30
