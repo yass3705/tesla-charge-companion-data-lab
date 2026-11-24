@@ -186,20 +186,26 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--workspace",type=Path,required=True)
     parser.add_argument("--checkout",type=Path,required=True)
+    parser.add_argument("--national-root",type=Path,required=True)
+    parser.add_argument("--national-provenance",type=Path,required=True)
     parser.add_argument("--overlay",type=Path,required=True)
     parser.add_argument("--out",type=Path,required=True)
     args=parser.parse_args()
     work,repo,overlay,out=args.workspace,args.checkout,args.overlay,args.out
     out.mkdir(parents=True,exist_ok=False)
-    master=repo/"data/national/france-irve-static-v9"
+    national_root=args.national_root.resolve()
+    national_proof=read(args.national_provenance)
+    master=national_root/"data/national/france-irve-static-v9"
     mm=read(master/"manifest.json")
     if mm.get("allFile")!="all.json.gz" or sha(master/"all.json.gz")!=mm["allSha256"]:
         raise ValueError("Unverified national master file")
     national=gz(master/"all.json.gz")
     if len(national)!=mm["stationCount"]: raise ValueError("National station count mismatch")
-    dynamic_path=repo/"data/national/france-irve-dynamic-status-v9.json.gz"
+    dynamic_path=national_root/"data/national/france-irve-dynamic-status-v9.json.gz"
+    if mm["allSha256"]!=national_proof["nationalAllSha256"] or sha(dynamic_path)!=national_proof["nationalDynamicFileSha256"]:
+        raise ValueError("National pinned snapshot mismatch")
     dynamic=gz(dynamic_path)
-    source_report_path=repo/"reports/france/irve/irve-residual-crosswalk-latest.json"
+    source_report_path=national_root/"reports/france/irve/irve-residual-crosswalk-latest.json"
     active,all_owners,national_state=validate_national_projection(national,dynamic,mm,read(source_report_path)["sources"])
     global_owners=collections.defaultdict(set)
     for pdc,sid in all_owners.items():
@@ -466,6 +472,7 @@ def main():
     """)
     summary={"schemaVersion":1,"ruleVersion":RULE_VERSION,"country":"FR","mode":"AUDIT_ONLY_NO_PRICE_PROMOTION",
         "comparisonAt":dt.datetime.now(dt.timezone.utc).isoformat(),"codeSha":__import__("os").environ.get("GITHUB_SHA"),
+        "nationalArtifactProvenance":national_proof,
         "nationalManifestSha256":sha(master/"manifest.json"),"nationalAllSha256":mm["allSha256"],"nationalSourceDate":mm.get("sourceRetrievedAt"),
         "electroverseTariffArtifact":14760747281,"electroverseStatusArtifact":14838028097,
         "tariffManifestSha256":sha(cache/"manifest.json"),"mappingSha256":sha(map_path),

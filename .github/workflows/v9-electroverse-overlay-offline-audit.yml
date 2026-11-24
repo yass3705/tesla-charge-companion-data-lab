@@ -46,7 +46,8 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           import json, os, pathlib, subprocess, hashlib, zipfile, stat
-          from v9_rebuild.orchestrator import validated_dependency
+          from v9_rebuild.orchestrator import validated_dependency, artifact_digest, safe_relative, sha256
+          from v9_rebuild.france_irve import validate_output, STATIC, DYNAMIC, REPORT
           repo=os.environ['GITHUB_REPOSITORY']
           root=pathlib.Path(os.environ['RUNNER_TEMP'])/'electroverse-overlay-offline'
           root.mkdir(parents=True,exist_ok=False)
@@ -59,6 +60,13 @@ jobs:
             'statusRun':45214188791,
             'statusArtifact':14838028097,
             'statusZipSha256':'740d68469cc34db0ea166542a6d2585d3ee6060aed28a72f732dad6f513c5d77',
+            'nationalRun':45429451268,
+            'nationalArtifact':14937133575,
+            'nationalZipSha256':'b538f0b420e046dcd597f5c3b32fd5a2ff76451a9ad6ff97f2ea66892a9f3719',
+            'nationalCodeSha':'c6d0f037b3d3de324da5d490e9506afcff9f5250',
+            'nationalArtifactSetSha256':'11793e0425b15327737543b1b68f0cd00033c2c74bb430083665651516d1071d',
+            'nationalAllSha256':'e721014651a59570fd4a8602a8d284f3ee5990c41b4d82f18099926a3478d567',
+            'nationalDynamicFileSha256':'d7ad73c88e359f4823481e2ec969b4da53cf671cb4f590c040e580b22ae46286',
             'automaticPublication':False,
             'providerCalls':False,
           }
@@ -100,6 +108,34 @@ jobs:
             return destination
           tariffs=fetch('tariff',req['tariffRun'],req['tariffArtifact'],req['tariffZipSha256'])
           statuses=fetch('status',req['statusRun'],req['statusArtifact'],req['statusZipSha256'])
+          national=fetch('national',req['nationalRun'],req['nationalArtifact'],req['nationalZipSha256'])
+          national_run=json.loads(subprocess.check_output(['gh','api',f"repos/{repo}/actions/runs/{req['nationalRun']}"]))
+          if national_run.get('head_sha')!=req['nationalCodeSha']:
+            raise SystemExit('National source code SHA mismatch')
+          nm=json.loads((national/'manifest.json').read_text())
+          if nm.get('schema_version')!=1 or nm.get('status')!='complete' or len(nm.get('sources',[]))!=1:
+            raise SystemExit('Incomplete national manifest')
+          row=nm['sources'][0]
+          if row.get('source')!='FR:irve_national' or row.get('module')!='france_irve' or row.get('status')!='ok':
+            raise SystemExit('Unexpected national source')
+          relative=safe_relative(row['artifact'])
+          if relative.parts[:2]!=('objects','FR_irve_national') or len(relative.parts)<5:
+            raise SystemExit('Invalid national object path')
+          national_root=national/pathlib.Path(*relative.parts[:3])
+          if (not national_root.resolve().is_relative_to(national.resolve()) or
+              sha256(national/relative)!=row['sha256'] or
+              artifact_digest(national_root)!=(row['artifact_set_sha256'],row['files']) or
+              row['artifact_set_sha256']!=req['nationalArtifactSetSha256']):
+            raise SystemExit('National object file integrity mismatch')
+          national_static=validate_output(national_root)
+          if national_static['allSha256']!=req['nationalAllSha256'] or sha256(national_root/DYNAMIC)!=req['nationalDynamicFileSha256']:
+            raise SystemExit('National pinned files mismatch')
+          national_proof={k:req[k] for k in ["nationalRun","nationalArtifact","nationalZipSha256","nationalCodeSha","nationalArtifactSetSha256","nationalAllSha256","nationalDynamicFileSha256"]}
+          national_proof['staticSourceDate']=national_static['sourceRetrievedAt']
+          national_proof['staticSourceSha256']=national_static['sourceSha256']
+          (root/'national-root.txt').write_text(str(national_root))
+          (root/'national-source-proof.json').write_text(json.dumps(national_proof,indent=2)+'\n')
+          print('IRVE_PIN_VERIFIED '+json.dumps(national_proof,sort_keys=True))
           tariff_root=validated_dependency(tariffs,'FR:electroverse_full','electroverse')
           status_root=validated_dependency(statuses,'FR:electroverse_status','electroverse_status')
           tariff_manifest=json.loads((tariff_root/'data/electroverse/tariff_cache/manifest.json').read_text())
@@ -127,6 +163,7 @@ jobs:
                'data/platforms/electroverse/validated-mappings',target_is_directory=True)
           provenance={
            'tariffRun':req['tariffRun'],'statusRun':req['statusRun'],
+           'nationalSource':national_proof,
            'sourceTotal':tariff_manifest['totalStations'],
            'completedLocations':status_manifest['completedLocations'],
            'failedLocations':status_manifest['failedLocations'],
@@ -333,7 +370,7 @@ jobs:
         run: |
           set -euo pipefail
           ROOT="$RUNNER_TEMP/electroverse-overlay-offline"
-          python "$GITHUB_WORKSPACE/scripts/audit_electroverse_g5_real_matching.py" --workspace "$ROOT/work" --checkout "$GITHUB_WORKSPACE" --overlay "$ROOT/output" --out "$ROOT/g5-real-comparison"
+          python "$GITHUB_WORKSPACE/scripts/audit_electroverse_g5_real_matching.py" --workspace "$ROOT/work" --checkout "$GITHUB_WORKSPACE" --national-root "$(cat "$ROOT/national-root.txt")" --national-provenance "$ROOT/national-source-proof.json" --overlay "$ROOT/output" --out "$ROOT/g5-real-comparison"
       - name: Upload queryable real comparison evidence (audit only)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -351,6 +388,7 @@ jobs:
             ${{ runner.temp }}/electroverse-overlay-offline/output/
             ${{ runner.temp }}/electroverse-overlay-offline/offline-overlay-audit.json
             ${{ runner.temp }}/electroverse-overlay-offline/source-proof.json
+            ${{ runner.temp }}/electroverse-overlay-offline/national-source-proof.json
             ${{ runner.temp }}/electroverse-overlay-offline/offline-overlay-ab-comparison.json
             ${{ runner.temp }}/electroverse-overlay-offline/baseline-output/manifest.json
             ${{ runner.temp }}/electroverse-overlay-offline/work/reports/electroverse/status-gate-postbuild.json
