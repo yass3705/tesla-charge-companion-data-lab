@@ -1,0 +1,99 @@
+name: V9 IRVE national one-time refresh
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/irve-national-refresh-request-20261124.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-collection
+  cancel-in-progress: false
+jobs:
+  irve-national:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Verify single-source authorization and existing dynamic fixture
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          expected={'source':'FR:irve_national','purpose':'one_time_national_refresh_for_g5','authorizedOn':'2026-11-24','automaticPublication':False,'schedule':False,'electroverseCalls':False}
+          if json.loads(Path('migration/v9/irve-national-refresh-request-20261124.json').read_text())!=expected:
+              raise SystemExit('Unauthorized source or publication flag')
+          PY
+          python tests/test_france_irve_dynamic_status_v9.py
+          python scripts/public_safety_check.py .
+      - name: Collect only official static and dynamic IRVE using migrated method
+        run: |
+          set -euo pipefail
+          python -m v9_rebuild.orchestrator --source FR:irve_national --out "$RUNNER_TEMP/tcc-v9-irve-refresh" --workers 1 --attempts 1
+      - name: Validate immutable national artifact and active scope
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import collections, gzip, json, os
+          from pathlib import Path
+          from v9_rebuild.orchestrator import artifact_digest, safe_relative, sha256
+          from v9_rebuild.france_irve import validate_output, STATIC, DYNAMIC, REPORT
+          from scripts.audit_electroverse_g5_real_matching import validate_national_projection
+          root=Path(os.environ['RUNNER_TEMP'])/'tcc-v9-irve-refresh'
+          m=json.loads((root/'manifest.json').read_text())
+          if m.get('status')!='complete' or len(m.get('sources',[]))!=1:
+              raise SystemExit('Incomplete single-source collection')
+          r=m['sources'][0]
+          if r['source']!='FR:irve_national' or r['module']!='france_irve' or r['status']!='ok':
+              raise SystemExit('Unexpected source')
+          rel=safe_relative(r['artifact'])
+          if rel.parts[:2]!=('objects','FR_irve_national'):
+              raise SystemExit('Unexpected object path')
+          state=root/Path(*rel.parts[:3])
+          if sha256(root/rel)!=r['sha256'] or artifact_digest(state)!=(r['artifact_set_sha256'],r['files']):
+              raise SystemExit('Artifact file integrity mismatch')
+          static=validate_output(state)
+          dynamic=json.loads(gzip.decompress((state/DYNAMIC).read_bytes()))
+          national=json.loads(gzip.decompress((state/STATIC/'all.json.gz').read_bytes()))
+          proof=json.loads((state/REPORT).read_text())
+          active, owners, states=validate_national_projection(national,dynamic,static,proof['sources'])
+          active_sites={owners[pdc] for pdc in active}
+          profiles=sum(1 for station in national for group in station[8] for pdc in group[6] if pdc in active)
+          summary={'source':'FR:irve_national','codeSha':os.environ['GITHUB_SHA'],'artifactSetSha256':r['artifact_set_sha256'],
+                   'staticRetrievedAt':static['sourceRetrievedAt'],'dynamicGeneratedAt':dynamic['generatedAt'],
+                   'staticSourceSha256':static['sourceSha256'],'dynamicSourceSha256':dynamic['sourceSha256'],
+                   'staticAllSha256':static['allSha256'],'dynamicFileSha256':sha256(state/DYNAMIC),
+                   'staticStations':static['stationCount'],'staticEvse':len(owners),'activeStations':len(active_sites),
+                   'activeEvse':len(active),'activeConnectorProfiles':profiles,
+                   'operationalStates':dict(collections.Counter(states.values())),
+                   'dynamicSourceRows':dynamic['sourceRows'],'dynamicMatchedPdc':dynamic['matchedPdc'],
+                   'dynamicUnmatchedPdc':dynamic['unmatchedPdc'],'dynamicInvalidRows':dynamic['invalidRows'],
+                   'electroverseCalls':0,'publication':False,'scheduled':False}
+          (root/'irve-refresh-summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          print('IRVE_REFRESH_VALIDATED '+json.dumps(summary,sort_keys=True))
+          PY
+      - name: Preserve validated snapshot (not Production)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-collection-FR_irve_national
+          path: |
+            ${{ runner.temp }}/tcc-v9-irve-refresh/manifest.json
+            ${{ runner.temp }}/tcc-v9-irve-refresh/objects
+            ${{ runner.temp }}/tcc-v9-irve-refresh/irve-refresh-summary.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve failed manifest without replacing last-good
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-failure-FR_irve_national
+          path: ${{ runner.temp }}/tcc-v9-irve-refresh/manifest.json
+          if-no-files-found: ignore
+          retention-days: 7
