@@ -1,0 +1,38 @@
+name: V9 G5 historical alias local evidence
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/irve-g5-alias-local-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-overlay-offline-audit
+  cancel-in-progress: false
+jobs:
+  tariff-schema:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Unit tests and public safety
+        run: |
+          python -m unittest discover -s tests -p test_irve_g5_alias_local.py
+          python scripts/public_safety_check.py .
+      - name: Review historical aliases and current local evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m scripts.audit_irve_g5_alias_local migration/v9/irve-g5-alias-local-request.json "$RUNNER_TEMP/g5-alias-local"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-g5-alias-local-audit
+          path: ${{ runner.temp }}/g5-alias-local/results/
+          if-no-files-found: error
+          retention-days: 30
