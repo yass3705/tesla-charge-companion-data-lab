@@ -79,6 +79,8 @@ def power_check(a,b,acdc):
     return "FAIL",delta
 
 POWER_SCOPE_RULE = "g5-fr-2026-11-24-v3-exact-power-scope"
+AC_TOLERANCE_RULE = "g5-fr-2026-11-24-v4-exact-ac-1kw"
+AC_TOLERANCE_KW = 1.0
 POWER_SCOPE_SHA256 = "196bb587904635159e7d5bbc774a9cd931d7903320ff0b177cf51df59d0637a3"
 POWER_SCOPE_NATIONAL_ARTIFACT = 14937133575
 MULTITYPE = "MULTITYPE_PDC_INDIVIDUAL_POWER_UNPROVEN"
@@ -97,7 +99,7 @@ def read_power_scope(path, expected_sha, national_artifact):
     if len(result)!=101856: raise ValueError("Power scope coverage mismatch")
     return result
 
-def scoped_power_check(s,n,enabled=False):
+def scoped_power_check(s,n,enabled=False,ac_tolerance=False):
     status,delta=power_check(s["kw"],n["kw"],n["mode"])
     # Exact match only. Preserve source/nominal values and all other checks.
     # Even equal nominal is not proof of an individual socket rating.
@@ -105,16 +107,20 @@ def scoped_power_check(s,n,enabled=False):
         and state(s["plug"],n["plug"])=="PASS" and state(s["mode"],n["mode"])=="PASS"
         and s["kw"] is not None and n["kw"] is not None and 0<s["kw"]<=n["kw"]):
         return "MISSING",delta,"POWER_SCOPE_NOT_COMPARABLE"
+    if (enabled and ac_tolerance and status=="FAIL" and n.get("power_scope")=="SINGLE_DECLARED_TYPE_NOMINAL_ONLY"
+        and s["mode"]==n["mode"]=="AC" and state(s["plug"],n["plug"])=="PASS"
+        and delta is not None and 0<delta<=AC_TOLERANCE_KW):
+        return "PASS",delta,"AC_1KW_TOLERANCE_USER_APPROVED"
     return status,delta,("same_one_decimal_nominal_rounding" if status=="PASS" and delta else None)
 
-def exact_scope_check(src,dst,profiles,siblings,enabled=False):
+def exact_scope_check(src,dst,profiles,siblings,enabled=False,ac_tolerance=False):
     if not src["pk"] or not src["connector"] or not src["price"]:
         return "MISSING","MISSING","NOT_APPLICABLE"
     if len({x["connector"] for x in siblings})!=len(siblings):
         return "NOT_EVALUATED","FAIL","NOT_APPLICABLE"
     def compatible(s,n):
         return (state(s["plug"],n["plug"])!="FAIL" and state(s["mode"],n["mode"])!="FAIL"
-                and scoped_power_check(s,n,enabled)[0]!="FAIL")
+                and scoped_power_check(s,n,enabled,ac_tolerance)[0]!="FAIL")
     plausible=[x for x in profiles if compatible(src,x)]
     reverse=[x for x in siblings if compatible(x,dst)]
     if (len(plausible)==1 and plausible[0] is dst and len(reverse)==1 and reverse[0] is src
@@ -183,7 +189,7 @@ def validate_national_projection(national, dynamic, static_manifest, source_repo
     disposition = {pdc:("en_service" if pdc in active else excluded.get(pdc,{}).get("etat_pdc","MISSING")) for pdc in owners}
     return active, owners, disposition
 
-def candidate_checks(s,n,loc,nsite,exact,alias,owner_unique,source_unique,site_count,approved,scope,cardinality="NOT_EVALUATED",homogeneity="NOT_EVALUATED",power_scope_enabled=False):
+def candidate_checks(s,n,loc,nsite,exact,alias,owner_unique,source_unique,site_count,approved,scope,cardinality="NOT_EVALUATED",homogeneity="NOT_EVALUATED",power_scope_enabled=False,ac_tolerance_enabled=False):
     dist=distance(loc["coords"],nsite["coords"])
     address=state(norm(loc["address"]),norm(nsite["address"]))
     gps="MISSING" if dist is None else ("PASS" if dist<=10 else "FAIL")
@@ -211,7 +217,7 @@ def candidate_checks(s,n,loc,nsite,exact,alias,owner_unique,source_unique,site_c
     identity="PASS" if exact or alias else "MISSING"
     p=state(s["plug"],n["plug"])
     current=state(s["mode"],n["mode"])
-    kw,delta,power_reason=scoped_power_check(s,n,power_scope_enabled and exact)
+    kw,delta,power_reason=scoped_power_check(s,n,power_scope_enabled and exact,ac_tolerance_enabled and exact)
     unique="PASS" if owner_unique and source_unique else "FAIL"
     site_unique="PASS" if (exact or alias) and owner_unique else ("PASS" if site_count==1 else ("FAIL" if site_count>1 else "MISSING"))
     criteria={"country":ctry,"operator":cpo,"station_identity":site,"station_uniqueness":site_unique,
@@ -242,7 +248,9 @@ def main():
     parser.add_argument("--overlay",type=Path,required=True)
     parser.add_argument("--out",type=Path,required=True)
     parser.add_argument("--power-scope",type=Path)
+    parser.add_argument("--ac-tolerance",action="store_true")
     args=parser.parse_args()
+    if args.ac_tolerance and not args.power_scope: parser.error("--ac-tolerance requires pinned --power-scope")
     work,repo,overlay,out=args.workspace,args.checkout,args.overlay,args.out
     out.mkdir(parents=True,exist_ok=False)
     national_root=args.national_root.resolve()
@@ -429,7 +437,7 @@ def main():
     # scope proof. Prior aliases are retained but need individual scope review.
     def exact_scope(src,dst):
         return exact_scope_check(src,dst,[target[i] for i in by_ref[dst["norm"]]],
-                                 source_groups[(src["loc"],src["pk"])],bool(args.power_scope))
+                                 source_groups[(src["loc"],src["pk"])],bool(args.power_scope),args.ac_tolerance)
     comparisons=0; buf=[]; missing_sources=0; exact_pairs=0; technical_exact_pass=0
     for s in sources:
         loc=s["loc"]; x=locations[loc]; rawref=s["norm"]
@@ -459,7 +467,7 @@ def main():
             card=hom="NOT_EVALUATED"
             if exact and unique_target and unique_source:
                 scope,card,hom=exact_scope(s,n)
-            res=candidate_checks(s,n,x,site,exact,alias,unique_target,unique_source,len(close),approved,scope,card,hom,power_scope_enabled=bool(args.power_scope))
+            res=candidate_checks(s,n,x,site,exact,alias,unique_target,unique_source,len(close),approved,scope,card,hom,power_scope_enabled=bool(args.power_scope),ac_tolerance_enabled=args.ac_tolerance)
             res["scope_evidence"]="unique_exact_source_connector_to_national_profile" if scope=="PASS" else None
             res["prior_overlay_scope_observation"]=bool(old)
             res["source_evse_count"]=x["evse_count"];res["national_pdc_count"]=site["pdc_count"]
@@ -508,10 +516,11 @@ def main():
     CREATE INDEX source_evse ON source_connector(location_pk,evse_pk,connector_pk);
     CREATE INDEX candidate_source ON candidate(source_id);
     """)
-    summary={"schemaVersion":1,"ruleVersion":POWER_SCOPE_RULE if args.power_scope else RULE_VERSION,"country":"FR","mode":"AUDIT_ONLY_NO_PRICE_PROMOTION",
+    summary={"schemaVersion":1,"ruleVersion":AC_TOLERANCE_RULE if args.ac_tolerance else (POWER_SCOPE_RULE if args.power_scope else RULE_VERSION),"country":"FR","mode":"AUDIT_ONLY_NO_PRICE_PROMOTION",
         "comparisonAt":dt.datetime.now(dt.timezone.utc).isoformat(),"codeSha":__import__("os").environ.get("GITHUB_SHA"),
         "nationalArtifactProvenance":national_proof,
         "powerScopeEvidenceSha256":POWER_SCOPE_SHA256 if args.power_scope else None,
+        "acToleranceKw":AC_TOLERANCE_KW if args.ac_tolerance else None,
         "nationalManifestSha256":sha(master/"manifest.json"),"nationalAllSha256":mm["allSha256"],"nationalSourceDate":mm.get("sourceRetrievedAt"),
         "electroverseTariffArtifact":14760747281,"electroverseStatusArtifact":14838028097,
         "tariffManifestSha256":sha(cache/"manifest.json"),"mappingSha256":sha(map_path),
