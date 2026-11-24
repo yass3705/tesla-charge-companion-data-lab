@@ -108,7 +108,7 @@ def classify(c):
     else:result="DIRECT_SIMPLE_NO_OBSERVED_POWER_CONDITION"
     return result,sorted(issues),sorted(dimensions),sorted(conditions),sorted(rt)
 def source_key(s):return s["location_pk"],s["evse_pk"],s["connector_pk"]
-def main():
+def main(classifier=classify, details=None, emit=True):
     pin=json.loads(pathlib.Path(sys.argv[1]).read_text())
     if pin["purpose"]!="offline_tariff_schema_and_historical_uniqueness_audit" or pin["supplierCalls"] is not False or pin["automaticPublication"] is not False:raise ValueError("Unapproved scope")
     root=pathlib.Path(sys.argv[2]);root.mkdir()
@@ -157,7 +157,7 @@ def main():
         if old!=r["price_evidence"] or old_fields!=json.loads(r["price_condition_fields"]):raise ValueError("Old gate not reproduced")
         for key,typ in set(walk(c)):inventory[(key,typ)]+=1
         for field in old_fields:extra[field]+=1
-        result,issues,dims,conds,rt=classify(c)
+        result,issues,dims,conds,rt=classifier(c)
         cohort="AC" if n["mode"]=="AC" else "DC"
         if k in targets:
             if not unique(n,s):raise ValueError("Identity independence changed")
@@ -168,7 +168,7 @@ def main():
             for x in rt:types[(cohort,x)]+=1
         outrows.append({**r,"new_schema_evidence":result,"schema_issues":json.dumps(issues),"price_dimensions":json.dumps(dims),
             "recognized_restrictions":json.dumps(conds),"restriction_types_raw":json.dumps(rt),"speed_metadata":json.dumps(c.get("speed")),
-            "connector_field_names":json.dumps(sorted(c)),"identity_candidate":k in targets})
+            "connector_field_names":json.dumps(sorted(c)),"identity_candidate":k in targets,**(details(c) if details else {})})
     history=[];hc=collections.Counter()
     for k in historic:
         n,s=ns[k[0]],ss[k[1]]
@@ -183,7 +183,7 @@ def main():
         if any(not x["connector_pk"] for x in sib) or len({x["connector_pk"] for x in sib})!=len(sib):issues.append("MISSING_OR_DUPLICATE_CONNECTOR_PK")
         if not s["evse_pk"] or not s["connector_pk"] or not n["evse_normalized"] or s["reference_normalized"]!=n["evse_normalized"]:issues.append("EXACT_KEYS_NOT_PROVEN")
         if not issues:issues.append("OTHER_INDEPENDENCE_FAILURE")
-        c=verify_raw(s);result=classify(c)[0] if c is not None else "RAW_CONNECTOR_NOT_PROVEN"
+        c=verify_raw(s);result=classifier(c)[0] if c is not None else "RAW_CONNECTOR_NOT_PROVEN"
         for x in issues:hc[x]+=1
         history.append({**v4map[k],"independent_reasons":json.dumps(issues),"national_competitors":json.dumps([{j:x.get(j) for j in ("id","station_id","evse_id","plug","mode","kw")} for x in a]),
             "source_competitors":json.dumps([{j:x.get(j) for j in ("id","connector_pk","plug","mode","kw","tariff_signature")} for x in b]),
@@ -206,7 +206,7 @@ def main():
             "Historical 30 reviewed, no reassignment; actual availability not established."]}
     report["exportSha256"]={p.name:digest(p) for p in out.glob("*.csv.gz")}
     (out/"schema-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
-    print("G5_TARIFF_SCHEMA "+json.dumps({k:v for k,v in report.items() if k not in ("sourcePin","inventory")},ensure_ascii=False,sort_keys=True))
-    print("G5_TARIFF_SCHEMA_FIELDS "+json.dumps(inv,ensure_ascii=False))
+    if emit:print("G5_TARIFF_SCHEMA "+json.dumps({k:v for k,v in report.items() if k not in ("sourcePin","inventory")},ensure_ascii=False,sort_keys=True))
+    if emit:print("G5_TARIFF_SCHEMA_FIELDS "+json.dumps(inv,ensure_ascii=False))
     db.close()
 if __name__=="__main__":main()
