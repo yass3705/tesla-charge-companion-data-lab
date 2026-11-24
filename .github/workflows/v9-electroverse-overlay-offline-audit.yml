@@ -36,6 +36,7 @@ jobs:
           node --check scripts/lib/electroverse_g5_operator_gps.mjs
           node --check scripts/lib/electroverse_g5_matching_hierarchy.mjs
           node --test tests/electroverse_status_fault_filter.test.mjs tests/electroverse_offer_identity_guard.test.mjs tests/electroverse_g5_national_scope.test.mjs tests/electroverse_g5_operator_gps.test.mjs tests/electroverse_g5_matching_hierarchy.test.mjs
+          python -m unittest discover -s tests -p 'test_electroverse_g5_real_matching.py'
           python scripts/public_safety_check.py .
       - name: Verify immutable exact tariff/status artifacts and extract safely
         env:
@@ -328,6 +329,19 @@ jobs:
           if added or changed:
             raise SystemExit('FAIL: status screening changed tariff identity/price/scope; no publication or artifact promotion')
           PY
+      - name: Compare actual IRVE and Electroverse source connectors and archive all candidate decisions
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/electroverse-overlay-offline"
+          python "$GITHUB_WORKSPACE/scripts/audit_electroverse_g5_real_matching.py" --workspace "$ROOT/work" --checkout "$GITHUB_WORKSPACE" --overlay "$ROOT/output" --out "$ROOT/g5-real-comparison"
+      - name: Upload queryable real comparison evidence (audit only)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-g5-real-matching
+          path: ${{ runner.temp }}/electroverse-overlay-offline/g5-real-comparison/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
       - name: Upload isolated, validated overlay with provenance (not Production)
         if: ${{ success() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
