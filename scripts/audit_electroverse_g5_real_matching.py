@@ -7,6 +7,7 @@ No network, no price changes. No match is declared if proof is missing.
 """
 import argparse
 import collections
+import csv
 import datetime as dt
 import gzip
 import hashlib
@@ -76,6 +77,70 @@ def power_check(a,b,acdc):
     if round(a,1)==round(b,1): return "PASS",delta
     # The 15 kW DC search band is explicitly NOT an acceptance tolerance.
     return "FAIL",delta
+
+POWER_SCOPE_RULE = "g5-fr-2026-11-24-v3-exact-power-scope"
+POWER_SCOPE_SHA256 = "196bb587904635159e7d5bbc774a9cd931d7903320ff0b177cf51df59d0637a3"
+POWER_SCOPE_NATIONAL_ARTIFACT = 14937133575
+MULTITYPE = "MULTITYPE_PDC_INDIVIDUAL_POWER_UNPROVEN"
+
+def read_power_scope(path, expected_sha, national_artifact):
+    if expected_sha!=POWER_SCOPE_SHA256 or national_artifact!=POWER_SCOPE_NATIONAL_ARTIFACT or sha(path)!=expected_sha:
+        raise ValueError("Unverified power scope evidence")
+    result={}
+    with gzip.open(path,"rt",encoding="utf-8",newline="") as f:
+        for row in csv.DictReader(f):
+            k=(row["station_id"],row["evse_id"])
+            if k in result: raise ValueError("Duplicate PDC in power scope")
+            if row["scope"] not in (MULTITYPE,"SINGLE_DECLARED_TYPE_NOMINAL_ONLY","PDC_NOMINAL_MISSING_OR_CONFLICTING"):
+                raise ValueError("Unknown power scope")
+            result[k]=row
+    if len(result)!=101856: raise ValueError("Power scope coverage mismatch")
+    return result
+
+def scoped_power_check(s,n,enabled=False):
+    status,delta=power_check(s["kw"],n["kw"],n["mode"])
+    # Exact match only. Preserve source/nominal values and all other checks.
+    # Even equal nominal is not proof of an individual socket rating.
+    if (enabled and n.get("power_scope")==MULTITYPE
+        and state(s["plug"],n["plug"])=="PASS" and state(s["mode"],n["mode"])=="PASS"
+        and s["kw"] is not None and n["kw"] is not None and 0<s["kw"]<=n["kw"]):
+        return "MISSING",delta,"POWER_SCOPE_NOT_COMPARABLE"
+    return status,delta,("same_one_decimal_nominal_rounding" if status=="PASS" and delta else None)
+
+def exact_scope_check(src,dst,profiles,siblings,enabled=False):
+    if not src["pk"] or not src["connector"] or not src["price"]:
+        return "MISSING","MISSING","NOT_APPLICABLE"
+    if len({x["connector"] for x in siblings})!=len(siblings):
+        return "NOT_EVALUATED","FAIL","NOT_APPLICABLE"
+    def compatible(s,n):
+        return (state(s["plug"],n["plug"])!="FAIL" and state(s["mode"],n["mode"])!="FAIL"
+                and scoped_power_check(s,n,enabled)[0]!="FAIL")
+    plausible=[x for x in profiles if compatible(src,x)]
+    reverse=[x for x in siblings if compatible(x,dst)]
+    if (len(plausible)==1 and plausible[0] is dst and len(reverse)==1 and reverse[0] is src
+        and (src["plug"] is not None or (len(profiles)==1 and len(siblings)==1))):
+        return "PASS","PASS","NOT_APPLICABLE"
+    return "NOT_EVALUATED","NOT_EVALUATED","NOT_EVALUATED"
+
+CRITERION_ORDER=("country","operator","station_identity","station_uniqueness","evse_identity","evse_uniqueness",
+                 "current","plug","power","cardinality","tariff_scope","tariff_homogeneity","address","gps")
+def decision_from_criteria(criteria):
+    if set(criteria)!=set(CRITERION_ORDER): raise ValueError("Unexpected criterion vector")
+    criteria={k:criteria[k] for k in CRITERION_ORDER}
+    missing=[k for k,v in criteria.items() if v=="MISSING"]
+    pending=[k for k,v in criteria.items() if v=="NOT_EVALUATED"]
+    contradictions=[k+":FAIL" for k,v in criteria.items() if v=="FAIL" and k not in ("station_uniqueness","evse_uniqueness")]
+    ambiguity=[k+":FAIL" for k in ("station_uniqueness","evse_uniqueness") if criteria[k]=="FAIL"]
+    required=("station_identity","station_uniqueness","evse_identity","evse_uniqueness","tariff_scope","cardinality")
+    insufficient=[k+":INSUFFICIENT_EVIDENCE" for k in required if criteria[k] not in ("PASS","FAIL")]
+    if criteria["tariff_homogeneity"] not in ("PASS","NOT_APPLICABLE","FAIL"):
+        insufficient.append("tariff_homogeneity:INSUFFICIENT_EVIDENCE")
+    blocked=contradictions+ambiguity+insufficient
+    decision=("REJECTED_CONTRADICTION" if contradictions else ("REJECTED_AMBIGUITY" if ambiguity else
+              ("UNRESOLVED_INSUFFICIENT_EVIDENCE" if insufficient or pending else "MATCH_VALIDATED")))
+    return {"criteria":criteria,"blocking":blocked,"missing":missing,"not_evaluated":pending,
+            "first_blocker":blocked[0] if blocked else (pending[0]+":NOT_EVALUATED" if pending else None),"decision":decision}
+
 def parse_address(value):
     if isinstance(value,str): return value.strip()
     if isinstance(value,dict):
@@ -118,7 +183,7 @@ def validate_national_projection(national, dynamic, static_manifest, source_repo
     disposition = {pdc:("en_service" if pdc in active else excluded.get(pdc,{}).get("etat_pdc","MISSING")) for pdc in owners}
     return active, owners, disposition
 
-def candidate_checks(s,n,loc,nsite,exact,alias,owner_unique,source_unique,site_count,approved,scope,cardinality="NOT_EVALUATED",homogeneity="NOT_EVALUATED"):
+def candidate_checks(s,n,loc,nsite,exact,alias,owner_unique,source_unique,site_count,approved,scope,cardinality="NOT_EVALUATED",homogeneity="NOT_EVALUATED",power_scope_enabled=False):
     dist=distance(loc["coords"],nsite["coords"])
     address=state(norm(loc["address"]),norm(nsite["address"]))
     gps="MISSING" if dist is None else ("PASS" if dist<=10 else "FAIL")
@@ -146,7 +211,7 @@ def candidate_checks(s,n,loc,nsite,exact,alias,owner_unique,source_unique,site_c
     identity="PASS" if exact or alias else "MISSING"
     p=state(s["plug"],n["plug"])
     current=state(s["mode"],n["mode"])
-    kw,delta=power_check(s["kw"],n["kw"],n["mode"])
+    kw,delta,power_reason=scoped_power_check(s,n,power_scope_enabled and exact)
     unique="PASS" if owner_unique and source_unique else "FAIL"
     site_unique="PASS" if (exact or alias) and owner_unique else ("PASS" if site_count==1 else ("FAIL" if site_count>1 else "MISSING"))
     criteria={"country":ctry,"operator":cpo,"station_identity":site,"station_uniqueness":site_unique,
@@ -160,27 +225,13 @@ def candidate_checks(s,n,loc,nsite,exact,alias,owner_unique,source_unique,site_c
     else:
         criteria["address"]="PASS" if address=="PASS" else ("NOT_APPLICABLE" if gps=="PASS" else address)
         criteria["gps"]="PASS" if gps=="PASS" else ("NOT_APPLICABLE" if address=="PASS" else gps)
-    missing=[k for k,v in criteria.items() if v=="MISSING"]
-    pending=[k for k,v in criteria.items() if v=="NOT_EVALUATED"]
-    contradictions=[k+":FAIL" for k,v in criteria.items() if v=="FAIL" and k not in ("station_uniqueness","evse_uniqueness")]
-    ambiguity=[k+":FAIL" for k in ("station_uniqueness","evse_uniqueness") if criteria[k]=="FAIL"]
-    # Missing attributes are diagnostics only. Identity, uniqueness and scope
-    # need positive proof, regardless of absent optional attributes.
-    required=("station_identity","station_uniqueness","evse_identity","evse_uniqueness","tariff_scope","cardinality")
-    insufficient=[k+":INSUFFICIENT_EVIDENCE" for k in required if criteria[k] not in ("PASS","FAIL")]
-    if homogeneity not in ("PASS","NOT_APPLICABLE","FAIL"):
-        insufficient.append("tariff_homogeneity:INSUFFICIENT_EVIDENCE")
-    blocked=contradictions+ambiguity+insufficient
-    decision=("REJECTED_CONTRADICTION" if contradictions else ("REJECTED_AMBIGUITY" if ambiguity else
-              ("UNRESOLVED_INSUFFICIENT_EVIDENCE" if insufficient or pending else "MATCH_VALIDATED")))
-    return {"method":method,"criteria":criteria,"blocking":blocked,"missing":missing,
-            "first_blocker":blocked[0] if blocked else (pending[0]+":NOT_EVALUATED" if pending else None),
-            "not_evaluated":pending,"decision":decision,"distance_m":dist,
+    result=decision_from_criteria(criteria)
+    return {**result,"method":method,"distance_m":dist,
             "gps_limit_m":10,"address_observation":address,"gps_observation":gps,
             "operator_name_observation":name_compare,"power_delta_kw":delta,
             "dc_candidate_band_kw":15 if n["mode"]=="DC" else None,
             "dc_within_candidate_band":delta<=15 if delta is not None and n["mode"]=="DC" else None,
-            "power_justification":"same_one_decimal_nominal_rounding" if kw=="PASS" and delta else None}
+            "power_justification":power_reason}
 
 def main():
     parser=argparse.ArgumentParser()
@@ -190,11 +241,13 @@ def main():
     parser.add_argument("--national-provenance",type=Path,required=True)
     parser.add_argument("--overlay",type=Path,required=True)
     parser.add_argument("--out",type=Path,required=True)
+    parser.add_argument("--power-scope",type=Path)
     args=parser.parse_args()
     work,repo,overlay,out=args.workspace,args.checkout,args.overlay,args.out
     out.mkdir(parents=True,exist_ok=False)
     national_root=args.national_root.resolve()
     national_proof=read(args.national_provenance)
+    power_scope=read_power_scope(args.power_scope,POWER_SCOPE_SHA256,national_proof["nationalArtifact"]) if args.power_scope else {}
     master=national_root/"data/national/france-irve-static-v9"
     mm=read(master/"manifest.json")
     if mm.get("allFile")!="all.json.gz" or sha(master/"all.json.gz")!=mm["allSha256"]:
@@ -297,9 +350,12 @@ def main():
                 if pdc not in active: continue
                 rid=len(target)+1
                 item={"station":sid,"evse":text(pdc),"norm":ident(pdc),"plug":plug(g[1]),"mode":text(g[2]) or None,"kw":number(g[3])}
+                if args.power_scope: item["power_scope"]=power_scope[(sid,text(pdc))]["scope"]
                 target[rid]=item
                 by_ref[item["norm"]].append(rid); by_site[sid].append(rid)
                 nr.append((rid,sid,item["evse"],item["norm"],text(g[1]),item["plug"],item["mode"],item["kw"]))
+    if args.power_scope and set(power_scope)!={(x["station"],x["evse"]) for x in target.values()}:
+        raise ValueError("Power scope identity mismatch")
     if {x["evse"] for x in target.values()}!=active:
         raise ValueError("National active projection mismatch")
     db.executemany("INSERT INTO national_station VALUES(?,?,?,?,?,?,?)",[(k,x["name"],x["address"],x["operator"],*x["coords"],x["pdc_count"]) for k,x in sites.items()])
@@ -371,27 +427,9 @@ def main():
     recent_fault_matches=0; exact_outcomes=collections.Counter()
     # Only exact source EVSE references can currently receive a new positive
     # scope proof. Prior aliases are retained but need individual scope review.
-    def exact_scope(src, dst):
-        profiles=[target[i] for i in by_ref[dst["norm"]]]
-        siblings=source_groups[(src["loc"],src["pk"])]
-        if not src["pk"] or not src["connector"] or not src["price"]:
-            return "MISSING","MISSING","NOT_APPLICABLE"
-        if len({x["connector"] for x in siblings})!=len(siblings):
-            return "NOT_EVALUATED","FAIL","NOT_APPLICABLE"
-        # Conservative one-to-one positive scope. If the IRVE EVSE has more
-        # than one supported profile, a source plug must be positively known.
-        # Unknown source plug can only map to a single profile and a single
-        # connector, with no competing socket or tariff.
-        plausible=[x for x in profiles if state(src["plug"],x["plug"])!="FAIL" and
-                   state(src["mode"],x["mode"])!="FAIL" and
-                   power_check(src["kw"],x["kw"],x["mode"])[0]!="FAIL"]
-        reverse=[x for x in siblings if state(x["plug"],dst["plug"])!="FAIL" and
-                 state(x["mode"],dst["mode"])!="FAIL" and
-                 power_check(x["kw"],dst["kw"],dst["mode"])[0]!="FAIL"]
-        if (len(plausible)==1 and plausible[0] is dst and len(reverse)==1 and reverse[0] is src
-            and (src["plug"] is not None or (len(profiles)==1 and len(siblings)==1))):
-            return "PASS","PASS","NOT_APPLICABLE"
-        return "NOT_EVALUATED","NOT_EVALUATED","NOT_EVALUATED"
+    def exact_scope(src,dst):
+        return exact_scope_check(src,dst,[target[i] for i in by_ref[dst["norm"]]],
+                                 source_groups[(src["loc"],src["pk"])],bool(args.power_scope))
     comparisons=0; buf=[]; missing_sources=0; exact_pairs=0; technical_exact_pass=0
     for s in sources:
         loc=s["loc"]; x=locations[loc]; rawref=s["norm"]
@@ -421,7 +459,7 @@ def main():
             card=hom="NOT_EVALUATED"
             if exact and unique_target and unique_source:
                 scope,card,hom=exact_scope(s,n)
-            res=candidate_checks(s,n,x,site,exact,alias,unique_target,unique_source,len(close),approved,scope,card,hom)
+            res=candidate_checks(s,n,x,site,exact,alias,unique_target,unique_source,len(close),approved,scope,card,hom,power_scope_enabled=bool(args.power_scope))
             res["scope_evidence"]="unique_exact_source_connector_to_national_profile" if scope=="PASS" else None
             res["prior_overlay_scope_observation"]=bool(old)
             res["source_evse_count"]=x["evse_count"];res["national_pdc_count"]=site["pdc_count"]
@@ -470,9 +508,10 @@ def main():
     CREATE INDEX source_evse ON source_connector(location_pk,evse_pk,connector_pk);
     CREATE INDEX candidate_source ON candidate(source_id);
     """)
-    summary={"schemaVersion":1,"ruleVersion":RULE_VERSION,"country":"FR","mode":"AUDIT_ONLY_NO_PRICE_PROMOTION",
+    summary={"schemaVersion":1,"ruleVersion":POWER_SCOPE_RULE if args.power_scope else RULE_VERSION,"country":"FR","mode":"AUDIT_ONLY_NO_PRICE_PROMOTION",
         "comparisonAt":dt.datetime.now(dt.timezone.utc).isoformat(),"codeSha":__import__("os").environ.get("GITHUB_SHA"),
         "nationalArtifactProvenance":national_proof,
+        "powerScopeEvidenceSha256":POWER_SCOPE_SHA256 if args.power_scope else None,
         "nationalManifestSha256":sha(master/"manifest.json"),"nationalAllSha256":mm["allSha256"],"nationalSourceDate":mm.get("sourceRetrievedAt"),
         "electroverseTariffArtifact":14760747281,"electroverseStatusArtifact":14838028097,
         "tariffManifestSha256":sha(cache/"manifest.json"),"mappingSha256":sha(map_path),
