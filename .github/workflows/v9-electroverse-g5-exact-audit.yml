@@ -1,0 +1,76 @@
+name: V9 G5 exact mismatch offline analysis
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/electroverse-g5-exact-audit-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-overlay-offline-audit
+  cancel-in-progress: false
+jobs:
+  exact-mismatch-audit:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Test diagnostic classification
+        run: |
+          python -m unittest discover -s tests -p 'test_electroverse_g5_exact_mismatches.py'
+      - name: Verify pinned audit artifact and extract only comparison database and summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os,pathlib,shutil,stat,subprocess,zipfile
+          req=json.load(open('migration/v9/electroverse-g5-exact-audit-request.json'))
+          expected=json.loads('{"purpose":"offline_exact_mismatch_analysis_only","run":45432872279,"artifact":14940176512,"codeSha":"0b1ae85a7432d6cc89da80a0f33ae1d710b7419a","zipSha256":"0dad4250be2ae38942fdaec1895643db76784c9352e209507a8a56b2434d6d37","sqliteSha256":"da247ada9981e2b17dda2aee192a413fb31e3691d1a4f2b0366029e557067287","nationalArtifact":14937133575,"providerCalls":false,"automaticPublication":false}')
+          if req!=expected: raise SystemExit('Unapproved source or scope')
+          repo=os.environ['GITHUB_REPOSITORY']
+          run=json.loads(subprocess.check_output(['gh','api',f"repos/{repo}/actions/runs/{req['run']}"]))
+          art=json.loads(subprocess.check_output(['gh','api',f"repos/{repo}/actions/artifacts/{req['artifact']}"]))
+          if (run['status']!='completed' or run['conclusion']!='success' or run['head_sha']!=req['codeSha'] or
+              run['head_branch']!='rebuild/v9-20261020' or art['expired'] or
+              art['name']!='tcc-v9-electroverse-g5-real-matching' or art['digest']!='sha256:'+req['zipSha256'] or
+              art.get('workflow_run',{}).get('id')!=req['run']):
+              raise SystemExit('Unverified upstream artifact')
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'g5-exact-audit'
+          root.mkdir()
+          z=root/'source.zip'
+          with z.open('wb') as stream:
+              subprocess.run(['gh','api',f"repos/{repo}/actions/artifacts/{req['artifact']}/zip"],stdout=stream,check=True)
+          if hashlib.sha256(z.read_bytes()).hexdigest()!=req['zipSha256']:raise SystemExit('ZIP digest mismatch')
+          wanted={'g5-matching.sqlite','summary.json'}
+          with zipfile.ZipFile(z) as archive:
+              seen=set()
+              for entry in archive.infolist():
+                  path=pathlib.PurePosixPath(entry.filename)
+                  if path.is_absolute() or '..' in path.parts or stat.S_IFMT(entry.external_attr>>16)==stat.S_IFLNK:
+                      raise SystemExit('Untrusted archive entry')
+                  if entry.is_dir():continue
+                  if path.name not in wanted or path.name in seen:raise SystemExit('Unexpected/duplicate archive member')
+                  seen.add(path.name)
+                  with archive.open(entry) as src,(root/path.name).open('wb') as dst:shutil.copyfileobj(src,dst)
+              if seen!=wanted:raise SystemExit('Missing audit inputs')
+          print('G5_EXACT_INPUT_VERIFIED',req['artifact'],req['zipSha256'])
+          PY
+      - name: Analyze exact identities read-only and export full diagnostic cohort
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/g5-exact-audit"
+          python scripts/audit_electroverse_g5_exact_mismatches.py --db "$ROOT/g5-matching.sqlite" --summary "$ROOT/summary.json" --pin migration/v9/electroverse-g5-exact-audit-request.json --out "$ROOT/results"
+      - name: Preserve audit results only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-electroverse-g5-exact-mismatch-analysis
+          path: ${{ runner.temp }}/g5-exact-audit/results/
+          if-no-files-found: error
+          retention-days: 30
