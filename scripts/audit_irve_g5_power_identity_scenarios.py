@@ -122,8 +122,10 @@ def cached_connectors(root,pin,manifest_sha,wanted):
                     for c in e.get("connectors") or []:
                         k=(loc,str(e.get("pk") or ""),str(c.get("pk") or ""))
                         if k not in wanted:continue
-                        if k in found:raise ValueError("Duplicate archived connector")
-                        found[k]=(e.get("physicalReference"),c)
+                        if k in found:
+                            found[k]=None  # ambiguous raw identity: quarantine rather than abort
+                        else:
+                            found[k]=(e.get("physicalReference"),c)
     if len(seenloc)!=manifest["totalStations"]:raise ValueError("Cache location coverage mismatch")
     return found
 
