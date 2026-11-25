@@ -1,0 +1,41 @@
+name: V9 G5 eight-station identity pilot
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/electroverse-g5-identity-pilot-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-rebuild-exclusive
+  cancel-in-progress: false
+jobs:
+  identity-pilot:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Unit tests and public safety
+        run: |
+          node --test tests/electroverse_g5_identity_pilot.test.mjs
+          python scripts/public_safety_check.py .
+      - name: Collect bounded identity evidence
+        env:
+          ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+        run: |
+          node scripts/electroverse_g5_identity_pilot.mjs migration/v9/electroverse-g5-identity-pilot-request.json "$RUNNER_TEMP/g5-identity-pilot"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-g5-identity-pilot
+          path: ${{ runner.temp }}/g5-identity-pilot/
+          if-no-files-found: error
+          retention-days: 30

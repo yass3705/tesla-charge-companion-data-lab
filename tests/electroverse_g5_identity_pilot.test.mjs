@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {verifyPin,extraFields,locationQuery,project,probe} from '../scripts/electroverse_g5_identity_pilot.mjs';
+const pin=JSON.parse(await fs.readFile(new URL('../migration/v9/electroverse-g5-identity-pilot-request.json',import.meta.url),'utf8'));
+test('fixed scope',()=>{verifyPin(pin);assert.throws(()=>verifyPin({...pin,maxRequests:11}));assert.throws(()=>verifyPin({...pin,targets:pin.targets.slice(1)}));});
+test('only scalar identity fields',()=>{assert.deepEqual(extraFields([{name:'partyId',type:{kind:'SCALAR'}},{name:'name',type:{kind:'SCALAR'}},{name:'evseId',type:{kind:'OBJECT'}},{name:'id',type:{kind:'SCALAR'},args:[{type:{kind:'NON_NULL'}}]}],'evse'),['partyId']);});
+test('reference matching and no wrong location',()=>{const t=pin.targets[0];assert.equal(project({chargingLocation:{chargingLocationPk:t.locationPk,evses:{edges:[{node:{physicalReference:t.physicalReference}}]}}},t).status,'REFERENCE_OBSERVED');assert.equal(project({chargingLocation:{chargingLocationPk:'0'}},t).status,'LOCATION_MISSING_OR_MISMATCH');});
+test('no tariff query',()=>assert.ok(!/priceComponents|pricing|lastSession/i.test(locationQuery())));
+test('stop on 429',async()=>{let n=0;const result=await probe({request:async()=>{n++;return {status:429}}},pin,{sleep:async()=>{}});assert.equal(n,1);assert.equal(result.stopped,'HTTP_429');});
+test('no retries and at most 10 calls',async()=>{let n=0;const result=await probe({request:async(q,v,o)=>{n++;assert.equal(o.attempts,1);if(!v.pk)return {status:200,json:{data:{operator:{name:'Operator',fields:[{name:'pk',type:{kind:'SCALAR'}}]}}}};return {status:200,json:{data:{chargingLocation:{__typename:'Location',chargingLocationPk:v.pk,operator:{__typename:'Operator',name:'X'},evses:{edges:[]}}}}};}},pin,{sleep:async()=>{}});assert.equal(n,10);assert.equal(result.stations.length,8);});
