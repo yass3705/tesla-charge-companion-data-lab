@@ -1,3 +1,7 @@
+## 2026-11-25 — G5 : simulation V6 corrigée relancée
+
+Run [45693428489](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45693428489), code 73e36a339273d9178349d0e0a39e1af45940b9b1, branche rebuild/v9-20261020, état observé in_progress, conclusion non disponible. Correctif du masquage de b, test structurel supplémentaire, mêmes pins JSON (égalité vérifiée), aucun autre workflow déclenché par le commit observé. Vérifier 12 tests, scan public, G5_V6_SIMULATION, 9983 décisions et 14968 V5 préservées, union bijective, motifs et SHA des exports ; aucune promotion, collecte fournisseur, modification main/Production, publication ni G6. G5 PARTIAL ; Mac local inaccessible. Ce commit documentaire ne déclenche pas de run.
+
 ## 2026-11-25 — G5 : échec technique V6 et correctif de relance autorisé
 
 Run [45691838639](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45691838639), job 139479016144, code f53878a9a9d8c8deedd3a5a292983462a9b46875, failure 20:09:08Z : 11 tests et public safety PASS, simulation FAIL ligne 125 (TypeError: int object is not subscriptable), upload skipped, 0 artefact. La boucle a,b=keypair(x) réaffecte b qui contenait les chemins du registre V5 ; contrôle SHA final impossible. Aucun résultat V6 chiffré certifié.
