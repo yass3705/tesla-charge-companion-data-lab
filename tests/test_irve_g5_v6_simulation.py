@@ -1,5 +1,7 @@
 import unittest
-from scripts.audit_irve_g5_v6_simulation import hold_reasons,tariff_status,station_reasons
+import ast
+import inspect
+from scripts.audit_irve_g5_v6_simulation import hold_reasons,tariff_status,station_reasons,main
 import json
 class TestV6(unittest.TestCase):
  def test_missing_operator_allowed(self):self.assertEqual(hold_reasons({"operator":"MISSING","country":"MISSING"}),[])
@@ -19,3 +21,15 @@ class TestV6(unittest.TestCase):
   s=self.site();s["global_national_sites"]='["N","M"]';self.assertIn("STATION_FINGERPRINT_NOT_BIDIRECTIONALLY_UNIQUE",station_reasons(s,self.refs()))
  def test_single_station(self):
   s=self.site();s["raw_pdc_count"]="1";self.assertIn("SINGLE_EVSE_NO_ADDITIONAL_SET_EVIDENCE",station_reasons(s,self.refs()))
+
+ def test_ledger_reference_survives_candidate_loop_and_final_hash_check(self):
+  # Regression for run 45691838639: the candidate loop rebound the ledger dict.
+  tree=ast.parse(inspect.getsource(main))
+  stores=[n for n in ast.walk(tree) if isinstance(n,ast.Name) and isinstance(n.ctx,ast.Store) and n.id=="ledger_files"]
+  self.assertEqual(len(stores),1)
+  checks=[n for n in ast.walk(tree) if isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id=="verify" and len(n.args)==2 and ast.unparse(n.args[0])=="ledger_files['db.sqlite']" and ast.unparse(n.args[1])=="p['sqliteSha256']"]
+  self.assertEqual(len(checks),2)
+  writes=[n.lineno for n in ast.walk(tree) if isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id=="write_csv"]
+  self.assertEqual(len(writes),2)
+  self.assertLess(min(n.lineno for n in checks),min(writes))
+  self.assertGreater(max(n.lineno for n in checks),max(writes))

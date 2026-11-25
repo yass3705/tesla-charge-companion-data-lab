@@ -39,8 +39,8 @@ def station_reasons(site,global_refs):
 def main():
     p=json.loads(pathlib.Path(sys.argv[1]).read_text());root=pathlib.Path(sys.argv[2]);root.mkdir()
     if p["purpose"]!="offline_g5_v6_simulation_only" or p["ruleVersion"]!=VERSION or p["parentRuleVersion"]!=RULE or p["simulationOnly"] is not True or p["supplierCalls"] is not False or p["automaticPublication"] is not False:raise ValueError("Scope")
-    b=download(root/"v5",p["ledger"],{"db.sqlite":("g5-matching-v5.sqlite",),"report.json":("v5-report.json",)})
-    verify(b["db.sqlite"],p["sqliteSha256"]);rp=json.loads(b["report.json"].read_text())
+    ledger_files=download(root/"v5",p["ledger"],{"db.sqlite":("g5-matching-v5.sqlite",),"report.json":("v5-report.json",)})
+    verify(ledger_files["db.sqlite"],p["sqliteSha256"]);rp=json.loads(ledger_files["report.json"].read_text())
     if rp["codeSha"]!=p["ledger"]["codeSha"] or rp["ruleVersion"]!=RULE or rp["sourcePin"]["tariff"]!=p["tariff"] or rp["newValidated"]!=14968:raise ValueError("Ledger lineage")
     a=download(root/"stations",p["stationAudit"],{"candidate-references.csv.gz":("candidate-references.csv.gz",),"station-references.csv.gz":("station-references.csv.gz",),"report.json":("station-reference-report.json",)})
     for f,h in p["stationExports"].items():verify(a[f],h)
@@ -63,7 +63,7 @@ def main():
     tar=rows(t["tariff-candidates.csv.gz"]);tm={keypair(x):x for x in tar}
     strict={keypair(x) for x in cr if yes(x["strict_multi_site_review"])}
     if len(cr)!=9983 or len({keypair(x) for x in cr})!=9983 or len(sites)!=3439 or len(grr)!=72269 or len(refs)!=72269 or len(tar)!=9147 or set(tm)!=strict or len(strict)!=9147:raise ValueError("Cohort")
-    db=sqlite3.connect(b["db.sqlite"].resolve().as_uri()+"?mode=ro&immutable=1",uri=True);db.row_factory=sqlite3.Row
+    db=sqlite3.connect(ledger_files["db.sqlite"].resolve().as_uri()+"?mode=ro&immutable=1",uri=True);db.row_factory=sqlite3.Row
     if db.execute("PRAGMA integrity_check").fetchone()[0]!="ok":raise ValueError("Integrity")
     meta={x["key"]:json.loads(x["value"]) for x in db.execute("SELECT * FROM metadata")}
     if meta["ruleVersion"]!=RULE or meta["codeSha"]!=rp["codeSha"]:raise ValueError("Metadata")
@@ -122,7 +122,7 @@ def main():
     d=root/"results";d.mkdir()
     write_csv(d/"v5-preserved.csv.gz",prior,list(prior[0]))
     write_csv(d/"v6-simulation-decisions.csv.gz",out,list(out[0]))
-    verify(b["db.sqlite"],p["sqliteSha256"])
+    verify(ledger_files["db.sqlite"],p["sqliteSha256"])
     report=dict(codeSha=os.environ.get("GITHUB_SHA"),sourcePin=p,ruleVersion=VERSION,referenceValidated=14968,v5Preserved=len(v5),candidateCount=len(out),simulatedNewIdentities=len(added),simulatedUnion=len(union),simulatedUnionUniqueBothSides=True,decisions=dict(stats),heldReasons=dict(reasons),simulatedByPrefix=dict(prefix),newMatches=0,pricesPromoted=0,supplierCalls=0,automaticPublication=False,simulationOnly=True,limitations=["Operator/prefix crosswalk not independently established; approved exception restricted to convergent multi-EVSE station rule","Eight live sites are corroboration, no extrapolation of operator codes","G6 calculability not assessed; schema-recognized is not calculable","Outside 9983-candidate cohort unchanged in immutable V5 ledger","No publication or Production import"])
     report["exportSha256"]={f.name:digest(f) for f in d.glob("*.csv.gz")};(d/"v6-simulation-report.json").write_text(j(report));print("G5_V6_SIMULATION "+j(report))
 if __name__=="__main__":main()
