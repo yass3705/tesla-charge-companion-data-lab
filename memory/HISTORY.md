@@ -1,3 +1,7 @@
+## 2026-11-25 — G6.3e bis France : replay mixte lancé
+
+Run [45712664803](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45712664803), code c8506e59ba323ae9cf348fee5cd7895299dac8c2, branche rebuild/v9-20261020, état observé in_progress, conclusion non disponible. 70 offres/1 signature ; neutralisation temporaire conditionnée à la preuve de redondance de la règle durée seule, moteur candidat épinglé inchangé. 54 tests Python et 9 JS prévus. Vérifier résultats, SHA exports, conservation des 24115 décisions et 14517 estimations, ambiguïtés et écarts séparés. Aucun fournisseur, promotion ni publication, G5/G6 PARTIAL. Ce commit documentaire ne déclenche aucun run.
+
 ## 2026-11-25 — G6.3e PASS technique partiel ; G6.3e bis autorisée
 
 Run [45711362465](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45711362465), job 139546326397, code 50e01394d7b0cd2ac1d4b84a924ad16a165cef21, success 22:15:38Z ; 49 Python + 9 JS, scan public, 4 gardes, 1638/1638 cas ; 1087 accords conditionnels, 551 ambiguïtés. 4511 offres/24 signatures rejouées, 70 offres/1 signature en revue de structure, 4 offres seuils >7 jours. 14517 estimations inchangées. Artefact 15068615063, 800279 octets, SHA ZIP 144e28e0740a0bef4d6f3eb480c9edb70e9e2a9f1b92dd01dc45f80d3f4177bd, expire 25/12 22:15:34Z ; exports 6ee516ff873fe2b6bd27139c699651f6279f0f584196ddb9781fee6107b144ef, 37efe68fda4c439d64f22c520e50d7f28d5242a650ae659b2feac957f8822913. Durabilité externe non confirmée.
