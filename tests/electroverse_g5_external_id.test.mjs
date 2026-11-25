@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {QUERY,verifyPin,project,probe} from '../scripts/electroverse_g5_external_id.mjs';
+const p=JSON.parse(await fs.readFile(new URL('../migration/v9/irve-g5-final-evidence-request.json',import.meta.url),'utf8'));
+test('fixed scope',()=>{verifyPin(p);assert.throws(()=>verifyPin({...p,liveMaxRequests:9}));});
+test('no tariff data',()=>assert.ok(!/priceComponents|pricing|lastSession/i.test(QUERY)));
+test('exact external id',()=>{let t=p.targets[0];assert.equal(project({chargingLocation:{chargingLocationPk:t.locationPk,externalId:t.nationalStationId}},t).externalIdRelation,'EXACT_NATIONAL_STATION_ID');});
+test('different id not contradiction',()=>{let t=p.targets[0];assert.equal(project({chargingLocation:{chargingLocationPk:t.locationPk,externalId:'123'}},t).externalIdRelation,'DIFFERENT_NOT_AUTOMATIC_CONTRADICTION');});
+test('stop on 429',async()=>{let n=0;let r=await probe({request:async()=>{n++;return {status:429}}},p,{sleep:async()=>{}});assert.equal(n,1);assert.equal(r.stopped,'HTTP_429');});
+test('eight calls no retry',async()=>{let n=0;let r=await probe({request:async(q,v,o)=>{n++;assert.equal(o.attempts,1);return {status:200,json:{data:{chargingLocation:{chargingLocationPk:v.pk}}}}}},p,{sleep:async()=>{}});assert.equal(n,8);assert.equal(r.stations.length,8);});
