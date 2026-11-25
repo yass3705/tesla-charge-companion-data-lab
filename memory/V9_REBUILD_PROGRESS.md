@@ -1,3 +1,7 @@
+## 2026-11-25 — G6.3c France : replay durée lancé
+
+Run [45701834597](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45701834597), code 61021e5cb65b447129804f615549756ebc1d1324, branche rebuild/v9-20261020, état observé queued, conclusion non disponible. 2062 offres, 40 signatures, scénarios autour des bornes en secondes, 31 tests Python prévus et 5 gardes. Contrôler l'oracle Decimal, les divergences du moteur, les motifs de non-certification des taux variables et base/règle libre, les 24115 décisions, la préservation des 14509 estimations et SHA exports. Aucun fournisseur ni promotion, G5/G6 global PARTIAL. Ce commit documentaire ne déclenche aucun run.
+
 ## 2026-11-25 — G6.3b PASS ; G6.3c durée autorisée
 
 Run [45699465597](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45699465597), job 139505442920, code 05d81de01b77efc5ea1d55778def7fb7f3963cb5, success 20:56:42Z ; 25 tests, public safety, 5 gardes PASS, 7/7 cas, 55 offres, 4 stations, 14509/24115 estimations. Artefact 15062880317, 741644 octets, SHA ZIP d07214eafb8ce830cd96cfefaecaa1b0c375234c12c7b6286eb8227ce4907953, expire 25/12 20:56:38Z ; exports afb50e9a038df3891350620f84b77c9d4809ac2eef30d1f4f491e30b5efde133 et 1c12bd4b162fa86d9b421c26ca62097cd506d298b3a73ff5f00321a7d98dfba7. ZIP CRC et SHA exports vérifiés localement ; 9606 restent à examiner. Durabilité externe non confirmée.
