@@ -1,3 +1,7 @@
+## 2026-11-25 — G6.3c bis France : replay sémantique durée lancé
+
+Run [45702756497](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45702756497), code 4e109b408d92b26f37d7e0218469ebe2a6619ac4, branche rebuild/v9-20261020, état observé in_progress, conclusion non disponible. 2054 offres/38 signatures ; enveloppe conservatrice des taux par scénario, replay mécanisme frais différés et garde composant absent, 36 tests Python prévus. Vérifier SHA exports, conservation des 24115 décisions et 14517 estimations, distinguer accords conditionnels et incalculables. Aucune nouvelle certification globale, aucun fournisseur, promotion ni publication ; G5/G6 global PARTIAL. Ce commit documentaire ne déclenche aucun run.
+
 ## 2026-11-25 — G6.3c PASS technique, validation partielle ; G6.3c bis autorisée
 
 Run [45701834597](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45701834597), job 139513656463, code 61021e5cb65b447129804f615549756ebc1d1324, success 21:12:13Z ; 31 tests, public safety, 5 gardes, 822/822 cas, 40 signatures/2062 offres. 8 nouvelles estimations (2 signatures), 2054 offres (38 signatures) restent à examiner ; cumul 14517/24115. Artefact 15063088341, 768484 octets, SHA ZIP aabdfdc334bf8c14ba76a3ce10c469d8ea4e2ad4c8d4e53fe54d8d1586d29843, expire 25/12 21:12:10Z ; exports b5c99019bb431acf1875f155e0ef9ec324f3b246a7d7cfdaab3c50462007dfcb, e1641044735999837e07e4fa172820b7cc171f89bc3b86f1e019276be565cbdd. ZIP/CRC et registre consultés localement ; durabilité externe non confirmée.
