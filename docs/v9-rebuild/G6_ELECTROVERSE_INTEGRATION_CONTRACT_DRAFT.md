@@ -22,3 +22,7 @@ Candidate November active crosswalk accepted (24102 exact, 13 missing power excl
 ## G6.6b-4
 
 G6.6b-3 PASS technical. Explicit opt-in in actual session engine; test runtime-generated requests with the verified gate through isolated two-pass transport. Exact generation and session response verification, reject explicit chargeTimeline until supported and congestion exclusion unproven. No browser endpoint, deployment, actual UI/other lanes certification. See memory.
+
+## G6.6b-4 retry
+
+Runtime replay 45868606202 failed on reverse-input rank equality, not on quote transport. Stable tie-breaks in actual bridge, unchanged primary criteria and replay assertions. New pin and regression test only; no data or gate change. See memory.

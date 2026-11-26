@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: yass3705/tesla-charge-companion-production
-          ref: 6682943d70509eae80dabdf167f1ce67b0058a68
+          ref: e5005177ba3fe0659301a3169dfb6e3b2f1a8d84
           path: production
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -39,7 +39,7 @@ jobs:
           assert subprocess.check_output(['git','-C','production','rev-parse','HEAD'],text=True).strip()==r['productionSha']
           assert not subprocess.check_output(['git','diff','--name-only',r['dataLabParent'],'HEAD','--','scripts/g66b3_quote_gate.py','migration/v9/g6-candidate','v9_rebuild','data'],text=True).strip()
           PY
-          (cd production && node --test tests/v9-g66b4-dynamic-transport.test.mjs tests/v9-offer-exact-scope.test.mjs tests/v9-congestion-soc80.test.mjs tests/v9-tesla-autonomous-catalogue.test.mjs)
+          (cd production && node --test tests/v9-deterministic-ranking-ties.test.mjs tests/v9-g66b4-dynamic-transport.test.mjs tests/v9-offer-exact-scope.test.mjs tests/v9-congestion-soc80.test.mjs tests/v9-tesla-autonomous-catalogue.test.mjs)
           python -m unittest discover -s tests -p test_g66b3_quote_gate.py
           python scripts/public_safety_check.py .
       - name: Exercise actual runtime requests and verified gate
