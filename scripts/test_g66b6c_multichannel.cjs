@@ -46,23 +46,69 @@ for(const [lane,file] of Object.entries(data.archives)){
 const mac=JSON.parse(fs.readFileSync(data.tesla));
 const teslaCountries={};
 const teslaRows=[];
+const teslaFingerprint=crypto.createHash('sha256');
+const isPriced=q=>q.complete!==false&&Number.isFinite(q.totalEur);
+function teslaCheck(country,q,p,offer,f,mode){
+ assert.equal(key(q),key(p),'Tesla '+mode+' price regression '+offer.id);
+ teslaFingerprint.update(key([offer.id,f.startAt,mode,q]));
+ const priced=isPriced(q);
+ country[priced?'pricedChecks':'unpricedChecks']++;
+ country[mode][priced?'priced':'refused']++;
+ if(!priced){const reason=q.reason||'missing_finite_amount';country[mode].reasons[reason]=(country[mode].reasons[reason]||0)+1;}
+ if(priced){const c=offer.currency;country.currencies[c]=(country.currencies[c]||0)+1;}
+}
 for(const raw of mac){
  if(!['FR','IT','CH','DE','ES','NL','GB','MA','BE'].includes(raw.countryCode))continue;
  const a=old.tesla.normalizeStation(raw),b=now.tesla.normalizeStation(raw);
  a.offers=old.tesla.provedConfigurationOffers(raw,a);b.offers=now.tesla.provedConfigurationOffers(raw,b);
  assert.equal(key(a),key(b),'Tesla identity/configuration regression');
  assert.ok(b.evses.every(e=>!e.officialEvseId));
- const country=teslaCountries[b.countryCode]||={stations:0,configurations:0,offers:0,pricedChecks:0,unpricedChecks:0};
+ const country=teslaCountries[b.countryCode]||={stations:0,configurations:0,offers:0,pricedChecks:0,unpricedChecks:0,powerMinuteOffers:0,missingCurveRefusals:0,plannedPowerMinutePriced:0,currencies:{},fixed:{priced:0,refused:0,reasons:{}},planned:{priced:0,refused:0,reasons:{}}};
  country.stations++;country.configurations+=b.evses.length;country.offers+=b.offers.length;
- for(const offer of b.offers)for(const f of cases){
-  const q=now.pricing.evaluateOffer(offer,{...f,currency:offer.currency}),p=old.pricing.evaluateOffer(offer,{...f,currency:offer.currency});
-  assert.equal(key(q),key(p),'Tesla price regression '+offer.id);
-  if(q.complete!==false&&Number.isFinite(q.totalEur))country.pricedChecks++;else country.unpricedChecks++;
+ for(const offer of b.offers){
+  const powerMinute=(offer.pricing.rules||[]).some(rule=>rule.billing==='powerMinute');
+  if(powerMinute)country.powerMinuteOffers++;
+  for(const f of cases){
+   // Preserve the original fixed-input replay, including legitimate refusals.
+   const session={...f,currency:offer.currency};
+   const q=now.pricing.evaluateOffer(offer,session),p=old.pricing.evaluateOffer(offer,session);
+   teslaCheck(country,q,p,offer,f,'fixed');
+   if(powerMinute&&q.reason==='delivered_power_curve_required')country.missingCurveRefusals++;
+   if(!powerMinute)continue;
+   // Power-dependent billing requires the estimated delivered-power timeline.
+   // Scope the actual production planner to the exact archived configuration,
+   // never the fastest neighbouring EVSE. The SOC/battery parameters below
+   // define a separate diagnostic scenario, not a measured charging session.
+   const scoped=(st)=>({...st,id:st.canonicalId,evses:st.evses.filter(e=>offer.evseIds.includes(e.id))});
+   const before=scoped(a),after=scoped(b);
+   assert.equal(after.evses.length,1,'Tesla exact configuration');
+   assert.equal(key(before),key(after),'Tesla exact configuration parity');
+   const plannedInput={startAt:f.startAt,startSoc:f.startSoc,targetSoc:f.targetSoc,
+    batteryCapacityKwh:75,vehicleMaxAcKw:11,vehicleMaxDcKw:250,chargeEfficiency:.92,
+    consumptionKwhPer100Km:17.4,postChargeMinutes:f.postChargeMinutes,
+    includeCongestionFees:f.includeCongestionFees,timeZone:offer.metadata.timeZone,currency:offer.currency};
+   const pa=old.w.TCCV9SessionPlannerEngine.planStation(before,plannedInput);
+   const pb=now.w.TCCV9SessionPlannerEngine.planStation(after,plannedInput);
+   assert.equal(key(pa),key(pb),'Tesla planned session regression '+offer.id);
+   const sa={...pa.effectiveSession,connectedMinutes:pa.connectedMinutes,parkingMinutes:pa.postChargeMinutes};
+   const sb={...pb.effectiveSession,connectedMinutes:pb.connectedMinutes,parkingMinutes:pb.postChargeMinutes};
+   const pq=now.pricing.evaluateOffer(offer,sb),pp=old.pricing.evaluateOffer(offer,sa);
+   teslaCheck(country,pq,pp,offer,f,'planned');
+   if(isPriced(pq)){
+    assert.ok(sb.chargeTimeline.length>0&&pq.components?.powerMinute?.segments?.length>0,'Tesla power-minute timeline evidence');
+    country.plannedPowerMinutePriced++;
+   }
+  }
  }
  if(b.offers.length)teslaRows.push(b);
 }
+// Emit diagnostics BEFORE any gate so a failing country remains observable.
+console.log('G66B6C_TESLA '+JSON.stringify(teslaCountries));
 assert.equal(Object.keys(teslaCountries).length,9);
-assert.ok(Object.values(teslaCountries).every(c=>c.pricedChecks>0),'Tesla positive checks nine countries');
+assert.ok(Object.values(teslaCountries).every(c=>c.pricedChecks>0),'Tesla positive checks nine countries: '+Object.entries(teslaCountries).filter(([,c])=>!c.pricedChecks).map(([k])=>k).join(','));
+for(const [cc,c] of Object.entries(teslaCountries))if(c.powerMinuteOffers>0)
+ assert.ok(c.plannedPowerMinutePriced>0,cc+' Tesla archived power-minute planned positive checks required');
+fingerprints.Tesla=teslaFingerprint.digest('hex');
 const mix=[];
 for(const row of data.mixed){
  const r=row.binding,c=row.connector,e=row.evse,s=row.station;
