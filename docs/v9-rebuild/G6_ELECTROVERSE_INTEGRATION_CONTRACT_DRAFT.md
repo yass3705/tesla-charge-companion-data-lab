@@ -18,3 +18,7 @@ G6.6b-1 import executed but exact crosswalk FAIL (0/24115). Correct canonical la
 ## G6.6b-3
 
 Candidate November active crosswalk accepted (24102 exact, 13 missing power excluded). Isolated callable quote adapter: verify source/target/signature and exact session; recompute oracle and candidate; no frozen quote. Explicit true congestion retains known raw components, false fails closed until separate classification proven. No runtime or public activation; real Direct/Electra non-regression and durable evidence remain open.
+
+## G6.6b-4
+
+G6.6b-3 PASS technical. Explicit opt-in in actual session engine; test runtime-generated requests with the verified gate through isolated two-pass transport. Exact generation and session response verification, reject explicit chargeTimeline until supported and congestion exclusion unproven. No browser endpoint, deployment, actual UI/other lanes certification. See memory.
