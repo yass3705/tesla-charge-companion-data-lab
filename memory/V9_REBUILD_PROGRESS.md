@@ -1,3 +1,7 @@
+## 2026-11-26 — G6.6b-6c : relance corrective confirmée
+
+Data Lab [run 45900594719](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45900594719), code 40509ea59711f79783623e7b45c30293bb2ca1bd, in_progress constaté. Correctif protocole Tesla et refus par pays, aucun autre run pour ce SHA au contrôle. Résultats/artefact non vérifiés ; Production et baseline inchangées. G5/G6 PARTIAL. Aucun fournisseur, promotion, main, publication ou UI. Prochaine action : vérifier conclusion, logs G66B6C_TESLA, comparaisons mixed et empreintes artefacts. Commit mémoire seul, sans redéclenchement.
+
 ## 2026-11-26 — G6.6b-6c FAIL ; correctif de protocole et relance autorisés
 
 [Run 45897460524](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45897460524), job 140174787001, code 291bd7029d820ca8be759e11c9fa3b9ea780cb09, failure 21:23:01Z. 13 suites JS, 41 Python et scan public PASS ; comparaisons Direct/Electra avant assertion Tesla sans divergence signalée. Échec scripts/test_g66b6c_multichannel.cjs ligne 65: Tesla positive checks nine countries ; aucun artefact, aucune validation mixed en aval. Le moteur powerMinute exige chargeTimeline/powerSegments, absents des trois sessions fixes ; hypothèse Maroc non confirmée par les anciens logs. Aucun changement de prix/règle Production justifié.
