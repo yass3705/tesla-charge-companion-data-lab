@@ -43,6 +43,14 @@ jobs:
           assert r['purpose']=='offline_g66b6c_multichannel_regression'
           assert all(r[k] is False for k in ('supplierCalls','automaticPublication','runtimeActivation'))
           assert subprocess.check_output(['git','-C','production','rev-parse','HEAD'],text=True).strip()==r['productionSha']
+          # Retries can place the original audit parent beyond the shallow checkout.
+          # Fetch only the immutable public Data Lab commit if it is absent.
+          parent=r['dataLabParent']
+          assert len(parent)==40 and all(c in '0123456789abcdef' for c in parent)
+          if subprocess.run(['git','cat-file','-e',parent+'^{commit}'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode:
+              subprocess.run(['git','fetch','--no-tags','--depth=1','origin',parent],check=True)
+          assert subprocess.check_output(['git','rev-parse',parent+'^{commit}'],text=True).strip()==parent
+          print('Data Lab comparison parent verified:',parent)
           assert not subprocess.check_output(['git','diff','--name-only',r['dataLabParent'],'HEAD','--','scripts/audit_g66b6b_ranking_transport.py','scripts/test_g66b6b_ranking_transport.cjs','migration/v9/g66b6b-ranking-transport-request.json','scripts/audit_g66b6a_runtime_transport.py','scripts/test_g66b6a_runtime_transport.cjs','migration/v9/g66b6a-runtime-transport-request.json','scripts/g66b5e_dynamic_gate.py','scripts/audit_g66b5e_dynamic_gate.py','migration/v9/g66b5e-dynamic-zero-request.json','scripts/g66b3_quote_gate.py','scripts/g66b5a_planner_gate.py','scripts/g66b5b_clock_gate.py','scripts/replay_g66b5b_clock_candidate.cjs','scripts/audit_g66b5b_clock_planner.py','scripts/audit_g66b5c_clock_review.py','scripts/replay_g66b5c_clock_candidate.cjs','scripts/audit_g66b5d_residual_evidence.py','migration/v9/g66b5d-residual-evidence-request.json','migration/v9/g66b5c-clock-review-request.json','migration/v9/g66b5b-clock-planner-request.json','migration/v9/g6-candidate','v9_rebuild','data'],text=True).strip()
           PY
           (cd production && node --test tests/v9-archived-emsp-restoration.test.mjs tests/v9-direct-archived-profiles.test.mjs tests/v9-electra-plus-direct.test.mjs tests/v9-g66b6b-ranking-transport.test.mjs tests/v9-global-ranking-pages.test.mjs tests/v9-station-card-lot1.test.mjs tests/v9-g66b6-session-proof.test.mjs tests/v9-g66b5-planner-protocol.test.mjs tests/v9-deterministic-ranking-ties.test.mjs tests/v9-g66b4-dynamic-transport.test.mjs tests/v9-offer-exact-scope.test.mjs tests/v9-congestion-soc80.test.mjs tests/v9-tesla-autonomous-catalogue.test.mjs)
