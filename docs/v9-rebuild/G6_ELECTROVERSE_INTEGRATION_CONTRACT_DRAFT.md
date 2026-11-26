@@ -30,3 +30,7 @@ Runtime replay 45868606202 failed on reverse-input rank equality, not on quote t
 ## G6.6b-5a
 
 Actual planner fractional timeline protocol; first conservative tranche for unrestricted and duration-only invariant rate envelopes with candidate agreement. Fee exclusion supported only with archived proof of no positive temporal components, not relabeling time/parking as congestion. Variable clock/calendar rates and external fee semantics unresolved. No browser endpoint, publication or durable archival yet. See memory.
+
+## G6.6b-5b
+
+Clock/date extension isolated; actual modeled step energy allocation by elapsed UTC intersection, require exact energy/duration conservation, retain G6.4c model alternatives and candidate agreement. Mixed duration+clock remains unresolved, congestion proof unchanged. No browser endpoint, publication or durable archival. Prior gates unchanged.

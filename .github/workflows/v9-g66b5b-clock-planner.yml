@@ -1,0 +1,56 @@
+name: V9 G6.6b-5b clock and date planner proof
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/g66b5b-clock-planner-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-overlay-offline-audit
+  cancel-in-progress: false
+jobs:
+  runtime:
+    if: github.repository == 'yass3705/tesla-charge-companion-data-lab' && github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: yass3705/tesla-charge-companion-production
+          ref: e0fa68c28428720166abcc42a27503efa1ec3a30
+          path: production
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Verify pins, runtime tests and safety
+        run: |
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          r=json.loads(Path('migration/v9/g66b5b-clock-planner-request.json').read_text())
+          assert r['purpose']=='offline_g66b5b_clock_planner'
+          assert all(r[k] is False for k in ('supplierCalls','automaticPublication','runtimeActivation'))
+          assert subprocess.check_output(['git','-C','production','rev-parse','HEAD'],text=True).strip()==r['productionSha']
+          assert not subprocess.check_output(['git','diff','--name-only',r['dataLabParent'],'HEAD','--','scripts/g66b3_quote_gate.py','scripts/g66b5a_planner_gate.py','migration/v9/g6-candidate','v9_rebuild','data'],text=True).strip()
+          PY
+          (cd production && node --test tests/v9-g66b5-planner-protocol.test.mjs tests/v9-deterministic-ranking-ties.test.mjs tests/v9-g66b4-dynamic-transport.test.mjs tests/v9-offer-exact-scope.test.mjs tests/v9-congestion-soc80.test.mjs tests/v9-tesla-autonomous-catalogue.test.mjs)
+          python -m unittest discover -s tests -p test_g66b3_quote_gate.py
+          python -m unittest discover -s tests -p test_g66b5a_planner_gate.py
+          python -m unittest discover -s tests -p test_g66b5b_clock_gate.py
+          python scripts/public_safety_check.py .
+      - name: Audit clock/date planner transport and previous quotes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m scripts.audit_g66b5b_clock_planner migration/v9/g66b5b-clock-planner-request.json "$RUNNER_TEMP/g66b5b"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-g66b5b-clock-planner
+          path: ${{ runner.temp }}/g66b5b/results/
+          if-no-files-found: error
+          retention-days: 30
