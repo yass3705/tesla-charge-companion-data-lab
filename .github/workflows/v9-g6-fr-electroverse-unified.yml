@@ -1,0 +1,53 @@
+name: V9 G6 France Electroverse unified ranking simulation
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/g6-fr-electroverse-unified-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-overlay-offline-audit
+  cancel-in-progress: false
+jobs:
+  replay:
+    if: github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Tests and public safety
+        run: |
+          node --version
+          python -m unittest discover -s tests -p test_audit_g6_fr_electroverse.py
+          python -m unittest discover -s tests -p test_replay_g6_fr_simple.py
+          python -m unittest discover -s tests -p test_replay_g6_fr_unrestricted_time.py
+          python -m unittest discover -s tests -p test_replay_g6_fr_free.py
+          python -m unittest discover -s tests -p test_replay_g6_fr_duration.py
+          python -m unittest discover -s tests -p test_replay_g6_fr_duration_semantics.py
+          python -m unittest discover -s tests -p test_replay_g6_fr_time_windows.py
+          python -m unittest discover -s tests -p test_replay_g6_fr_combined_windows.py
+          python -m unittest discover -s tests -p test_replay_g6_fr_combined_mixed.py
+          python -m unittest discover -s tests -p test_replay_g6_fr_date_windows.py
+          python -m unittest discover -s tests -p test_consolidate_g6_fr_scenarios.py
+          python -m unittest discover -s tests -p test_evaluate_g6_fr_dynamic.py
+          python -m unittest discover -s tests -p test_refine_g6_fr_dynamic.py
+          python -m unittest discover -s tests -p test_unify_g6_fr_dynamic.py
+          node tests/test_g6_fr_window_candidate.cjs
+          python scripts/public_safety_check.py .
+      - name: Evaluate unified gate and isolated ranking
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m scripts.unify_g6_fr_dynamic migration/v9/g6-fr-electroverse-unified-request.json "$RUNNER_TEMP/g6-unified"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: tcc-v9-g6-fr-electroverse-unified-ranking
+          path: ${{ runner.temp }}/g6-unified/results/
+          if-no-files-found: error
+          retention-days: 30
