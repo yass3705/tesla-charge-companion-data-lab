@@ -26,3 +26,7 @@ G6.6b-3 PASS technical. Explicit opt-in in actual session engine; test runtime-g
 ## G6.6b-4 retry
 
 Runtime replay 45868606202 failed on reverse-input rank equality, not on quote transport. Stable tie-breaks in actual bridge, unchanged primary criteria and replay assertions. New pin and regression test only; no data or gate change. See memory.
+
+## G6.6b-5a
+
+Actual planner fractional timeline protocol; first conservative tranche for unrestricted and duration-only invariant rate envelopes with candidate agreement. Fee exclusion supported only with archived proof of no positive temporal components, not relabeling time/parking as congestion. Variable clock/calendar rates and external fee semantics unresolved. No browser endpoint, publication or durable archival yet. See memory.
