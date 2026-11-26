@@ -14,3 +14,7 @@ G6.6a technical PASS approved; see versioned memory. G6.6b-1 starts with an immu
 ## G6.6b-2
 
 G6.6b-1 import executed but exact crosswalk FAIL (0/24115). Correct canonical label parsing only and use pinned compatible November static/dynamic en_service projection. Compare archived Direct/Electra exact scopes without promotion; do not infer price parity or relax G5. No runtime activation. See memory for evidence.
+
+## G6.6b-3
+
+Candidate November active crosswalk accepted (24102 exact, 13 missing power excluded). Isolated callable quote adapter: verify source/target/signature and exact session; recompute oracle and candidate; no frozen quote. Explicit true congestion retains known raw components, false fails closed until separate classification proven. No runtime or public activation; real Direct/Electra non-regression and durable evidence remain open.

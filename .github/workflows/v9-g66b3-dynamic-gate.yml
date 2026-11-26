@@ -1,0 +1,42 @@
+name: V9 G6.6b-3 dynamic France Electroverse quote gate
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/g66b3-dynamic-gate-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-overlay-offline-audit
+  cancel-in-progress: false
+jobs:
+  gate:
+    if: github.repository == 'yass3705/tesla-charge-companion-data-lab' && github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Gate tests and public safety
+        run: |
+          python -m unittest discover -s tests -p test_g66b3_quote_gate.py
+          python -m unittest discover -s tests -p test_evaluate_g6_fr_dynamic.py
+          python -m unittest discover -s tests -p test_unify_g6_fr_dynamic.py
+          python -m unittest discover -s tests -p test_audit_g6_fr_segment_rounding.py
+          node tests/test_g6_fr_window_candidate.cjs
+          python scripts/public_safety_check.py .
+      - name: Replay prior results and evaluate real bound identities on new sessions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m scripts.audit_g66b3_dynamic_gate migration/v9/g66b3-dynamic-gate-request.json "$RUNNER_TEMP/g66b3"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-g66b3-dynamic-quote-gate
+          path: ${{ runner.temp }}/g66b3/results/
+          if-no-files-found: error
+          retention-days: 30
