@@ -10,3 +10,7 @@
 ## G6.6a / G6.6b-1
 
 G6.6a technical PASS approved; see versioned memory. G6.6b-1 starts with an immutable crosswalk to actual canonical national catalogue, without runtime activation. Exact national station/EVSE/connector attributes and public-access checks, retain all refusals. No frozen quote may substitute a dynamic session gate. Full G6.6b not yet PASS.
+
+## G6.6b-2
+
+G6.6b-1 import executed but exact crosswalk FAIL (0/24115). Correct canonical label parsing only and use pinned compatible November static/dynamic en_service projection. Compare archived Direct/Electra exact scopes without promotion; do not infer price parity or relax G5. No runtime activation. See memory for evidence.
