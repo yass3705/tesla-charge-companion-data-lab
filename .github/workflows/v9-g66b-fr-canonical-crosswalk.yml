@@ -1,0 +1,74 @@
+name: V9 G6.6b-1 France canonical crosswalk import
+on:
+  push:
+    branches: [rebuild/v9-20261020]
+    paths: [migration/v9/g66b-fr-crosswalk-request.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v9-electroverse-overlay-offline-audit
+  cancel-in-progress: false
+jobs:
+  crosswalk:
+    if: github.repository == 'yass3705/tesla-charge-companion-data-lab' && github.ref == 'refs/heads/rebuild/v9-20261020'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: yass3705/tesla-charge-companion-production
+          ref: e4c804ff0f9fe1b5ef53e263cab437961b51af9e
+          path: production
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Verify scope, pinned code and safety
+        run: |
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          r=json.loads(Path('migration/v9/g66b-fr-crosswalk-request.json').read_text())
+          assert r['purpose']=='g66b1_canonical_crosswalk_only'
+          assert all(r[k] is False for k in ('supplierCalls','automaticPublication','runtimeActivation'))
+          assert subprocess.check_output(['git','-C','production','rev-parse','HEAD'],text=True).strip()==r['productionSha']
+          for path in ('v9_rebuild','scripts/build_v9_canonical_batch.py','data/national/france-irve-static-v9/all.json.gz','data/national/france-irve-static-v9/manifest.json','reports/france/irve-public-access-validation-ledger.json'):
+              assert not subprocess.check_output(['git','diff','--name-only',r['dataLabSha'],'HEAD','--',path],text=True).strip()
+          PY
+          python -m unittest discover -s production/tests -p test_import_g66_fr_projection.py
+          python scripts/public_safety_check.py .
+      - name: Retrieve verified immutable G6.6a artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          pin=json.loads(Path('production/config/migration/g66-fr-projection-pin.json').read_text())
+          r=json.loads(Path('migration/v9/g66b-fr-crosswalk-request.json').read_text())
+          assert pin['run']==r['sourceRun'] and pin['artifact']==r['artifactId']
+          repo=os.environ['GITHUB_REPOSITORY']
+          def api(path): return json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/{path}']))
+          run=api(f"actions/runs/{pin['run']}")
+          art=api(f"actions/artifacts/{pin['artifact']}")
+          assert run['status']=='completed' and run['conclusion']=='success' and run['head_sha']==pin['codeSha'] and run['head_branch']=='rebuild/v9-20261020'
+          assert not art['expired'] and art['name']==pin['name'] and art['digest']=='sha256:'+pin['zipSha256'] and art['workflow_run']['id']==pin['run']
+          with (Path(os.environ['RUNNER_TEMP'])/'g66a.zip').open('wb') as f:
+              subprocess.run(['gh','api',f"repos/{repo}/actions/artifacts/{pin['artifact']}/zip"],stdout=f,check=True)
+          PY
+      - name: Build real canonical national source and stage crosswalk
+        run: |
+          python scripts/build_v9_canonical_batch.py --source FR:irve_static --out "$RUNNER_TEMP/g66b-canonical"
+          BUNDLE=$(python -c 'import json,os,pathlib;p=pathlib.Path(os.environ["RUNNER_TEMP"])/"g66b-canonical";print(p/"bundles"/json.loads((p/"build-report.json").read_text())["bundleId"])')
+          python production/scripts/import_g66_fr_projection.py --bundle "$BUNDLE" --artifact "$RUNNER_TEMP/g66a.zip" --pin production/config/migration/g66-fr-projection-pin.json --out "$RUNNER_TEMP/g66b-result"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tcc-v9-g66b-fr-canonical-crosswalk
+          path: ${{ runner.temp }}/g66b-result/
+          if-no-files-found: error
+          retention-days: 30

@@ -6,3 +6,7 @@
 - Clock/date families use phase-aware models; other families conservative envelope. Calendar gaps, conflicting models, unknown energy allocation or engine mismatch fail closed. Technical rounding reconciliation requires independent exact segment calculation and same cents, no arbitrary epsilon.
 - Preserve prior estimates and original decisions; do not claim invoice or live price certification. Incalculable offers remain visible but unranked, explicit reason; never use zero as missing. Rank only eligible estimates; geography/power/plug/channel filters and congestion controls must be tested in isolated runtime preview. Ranking by total and cost/km, deterministic ties, top20 pagination, no supplier calls.
 - Before integration: prove source artifact durability and deployment authorization, full UI/runtime regression, G0–G9 governance, separate Production review. G5/G6 PARTIAL. No code changes to Production in this step.
+
+## G6.6a / G6.6b-1
+
+G6.6a technical PASS approved; see versioned memory. G6.6b-1 starts with an immutable crosswalk to actual canonical national catalogue, without runtime activation. Exact national station/EVSE/connector attributes and public-access checks, retain all refusals. No frozen quote may substitute a dynamic session gate. Full G6.6b not yet PASS.
