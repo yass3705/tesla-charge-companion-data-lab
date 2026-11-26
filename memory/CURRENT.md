@@ -1,3 +1,7 @@
+## 2026-11-26 — G6.6b-6c : relance après correction checkout confirmée
+
+Data Lab [run 45901023585](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45901023585), code 530ad833b06bcb3223be49336c3222a321ea3c89, in_progress constaté ; seul run pour ce SHA. Correction orchestration : récupération explicite du parent historique immuable si absent. Résultat, tests et artefact non vérifiés ; Production et baseline inchangées. G5/G6 PARTIAL. Aucun fournisseur, promotion, main, publication ou UI. Prochaine action : vérifier parent, tests, logs Tesla et mixed, conclusion et preuves artefact. Commit mémoire seul, sans redéclenchement.
+
 ## 2026-11-26 — G6.6b-6c : relance bloquée par checkout superficiel ; correction autorisée
 
 [Run 45900594719](https://github.com/yass3705/tesla-charge-companion-data-lab/actions/runs/45900594719), job 140185125183, code 40509ea59711f79783623e7b45c30293bb2ca1bd, failure 21:48:43Z. Checkout/setup PASS ; étape Verify pins échoue avant tests : git diff fatal bad object 09eff56818ef24beba54cf5f22c7174430d29a37. fetch-depth 2 ne contient plus le parent historique après commits correctif/mémoire ; comparaisons Tesla/mixed non exécutées, aucun artefact. Aucun résultat tarifaire nouveau.
